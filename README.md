@@ -92,7 +92,7 @@ Before getting started, ensure the following software is installed on your machi
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/itismenyantunnaing/dat-management-dashboard.git
+git clone https://github.com/itismenyantunnaing/dat-courses-management-system.git
 cd dat-management-dashboard
 ```
 
