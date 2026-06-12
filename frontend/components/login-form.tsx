@@ -25,10 +25,8 @@ import {
 import { Input } from "@/components/ui/input"
 import ChangePassword from "./dialogs/changePassword-dialog"
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function LoginForm({className,...props}: React.ComponentProps<"div">) {
+  const [credentials, setCredentials] = useState({ staff_Id: "", password: "" });
   
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const [forgotPasswordStep, setForgotPasswordStep] = useState("staff-id")
@@ -63,6 +61,14 @@ export function LoginForm({
     setForgotPasswordOpen(false)
   }
 
+  const handleLoginForm = () => {
+    const staff_Id = credentials.staff_Id;
+    const password = credentials.password;
+
+
+
+  }
+
   return (
     <>
       <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -72,13 +78,15 @@ export function LoginForm({
             <CardDescription>Please enter your credentials</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={(e) => e.preventDefault()}>
+            <form>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="staff-id-login">Staff ID</FieldLabel>
                   <Input
                     id="staff-id-login"
                     type="text"
+                    value={credentials.staff_Id}
+                    onChange={(e) => setCredentials({...credentials, staff_Id: e.target.value})}
                     placeholder="Enter your staff id"
                     required
                   />
@@ -97,7 +105,13 @@ export function LoginForm({
                       Forgot your password?
                     </a>
                   </div>
-                  <Input id="password" type="password" required />
+                  <Input
+                    id="password"  
+                    type="password"
+                    value={credentials.password}
+                    onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+                    required
+                   />
                 </Field>
                 <Field orientation="horizontal">
                   <div className="flex gap-2">
@@ -108,7 +122,7 @@ export function LoginForm({
                   </div>
                 </Field>
                 <Field>
-                  <Button type="submit">Login</Button>
+                  <Button type="button" onClick={handleLoginForm}>Login</Button>
                 </Field>
               </FieldGroup>
             </form>

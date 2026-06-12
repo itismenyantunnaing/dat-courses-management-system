@@ -22,6 +22,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload05Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { importTabs, VISIBLE_TABS_COUNT } from "../nav/tabs-config"
+import { extractEmployeesFromExcel, extractEmployees } from "@/lib/excel-extractor"
 
 interface ImportDialogProps {
   open: boolean
@@ -90,12 +91,39 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
     }
   }
 
-  const handleImport = () => {
-    if (currentTabData && selectedFile) {
-      currentTabData.onImport(selectedFile)
+const handleImport = async () => {
+  if (currentTabData && selectedFile) {
+    try {
+      const result = await extractEmployeesFromExcel(selectedFile);
+      
+      if (result.success) {
+        console.log(`✅ Found ${result.headers.length} total columns`);
+        console.log(`✅ Found ${result.employees.length} employees`);
+        
+        if (result.employees.length > 0) {
+          console.log('📝 Employees list:');
+          result.employees.forEach((emp, i) => {
+            // Dynamically grab whatever keys are present (e.g., Name, Dept, etc.)
+            const empName = emp["Name"] || emp["name"] || Object.values(emp)[1] || "Unknown Name";
+            const empDept = emp["Dept"] || emp["department"] || Object.values(emp)[2] || "Unknown Dept";
+            
+            console.log(`   ${i + 1}. ${empName} (${empDept})`);
+          });
+          
+          console.log('\n🔧 First employee raw row data:', result.employees[0]);
+        }
+      } else {
+        console.error('Error:', result.error);
+      }
+      
+      onOpenChange(false);
+      
+    } catch (error) {
+      console.error('Import error:', error);
+      alert(`Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    onOpenChange(false)
   }
+};
 
   const handleCancel = () => {
     onOpenChange(false)

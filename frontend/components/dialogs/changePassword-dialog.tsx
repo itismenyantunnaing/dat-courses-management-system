@@ -108,7 +108,7 @@ export default function ChangePassword({
             // Move to OTP step
             handleStepChange("otp")
         } catch (err) {
-            setError("Failed to send OTP. Please try again.")
+            setError("Failed to send OTP. Please try again." + err)
         } finally {
             setIsLoading(false)
         }
@@ -185,15 +185,20 @@ export default function ChangePassword({
 
     // Handle password update (Both Flows)
     const handlePasswordUpdate = async () => {
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+        
         if (newPassword !== confirmPassword) {
             setError("Passwords do not match")
             return
         }
 
-        if (newPassword.length < 6) {
-            setError("Password must be at least 6 characters")
-            return
+        if (!passwordRegex.test(newPassword)) {
+            setError(
+                "Password must be at least 8 characters long, and contain an uppercase letter, a lowercase letter, a number, and a special character."
+            );
+            return; 
         }
+
 
         setIsLoading(true)
         setError("")
@@ -435,17 +440,11 @@ export default function ChangePassword({
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                         />
-                        {newPassword !== confirmPassword && confirmPassword && (
+                        {error && (
                             <p className="text-sm text-destructive">
-                                Passwords do not match
+                                {error}
                             </p>
                         )}
-                        {newPassword && newPassword.length < 6 && (
-                            <p className="text-sm text-destructive">
-                                Password must be at least 6 characters
-                            </p>
-                        )}
-                        {error && <p className="text-sm text-destructive">{error}</p>}
                     </div>
                 </div>
                 <DialogFooter>
@@ -462,8 +461,6 @@ export default function ChangePassword({
                         onClick={handlePasswordUpdate}
                         disabled={
                             !newPassword ||
-                            newPassword !== confirmPassword ||
-                            newPassword.length < 6 ||
                             isLoading
                         }
                     >
