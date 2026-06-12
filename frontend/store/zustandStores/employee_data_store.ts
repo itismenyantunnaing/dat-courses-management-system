@@ -7,7 +7,7 @@ const employeeData = [
     doorlog: "JS002",
     dept: "Engineering",
     team: "Development Team A",
-    status: "active",
+    status: "inactive",
     role: "Software Engineer",
     id: 1002,
     email: "jane.smith@company.com",

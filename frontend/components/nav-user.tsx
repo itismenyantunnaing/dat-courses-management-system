@@ -19,15 +19,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -49,10 +40,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import {
-  CardContent,
-} from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import ChangePassword from "./dialogs/changePassword-dialog"
+import { NotificationsDrawer } from "./drawers/notifications-drawer"
 
 export function NavUser({
   user,
@@ -62,14 +52,16 @@ export function NavUser({
     email: string
     avatar: string
     department?: string
+    team?: string
   }
 }) {
   const { isMobile } = useSidebar()
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
-  const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false)
+  const [changePasswordDialogOpen, setChangePasswordDialogOpen] =
+    useState(false)
   const [personalInfoDialogOpen, setPersonalInfoDialogOpen] = useState(false)
-  
+
   // Profile states
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [profileImage, setProfileImage] = useState(user.avatar)
@@ -78,28 +70,6 @@ export function NavUser({
 
   // Change Password Flow States
   const [changePasswordStep, setChangePasswordStep] = useState("old-password")
-
-  // Sample notifications data
-  const notifications = [
-    {
-      id: 1,
-      title: "New message",
-      description: "You have a new message from John",
-      time: "2 minutes ago",
-    },
-    {
-      id: 2,
-      title: "Update available",
-      description: "A new version of the app is available",
-      time: "1 hour ago",
-    },
-    {
-      id: 3,
-      title: "Meeting reminder",
-      description: "Team meeting in 30 minutes",
-      time: "3 hours ago",
-    },
-  ]
 
   const handleLogout = async () => {
     setIsLoading(true)
@@ -155,7 +125,11 @@ export function NavUser({
     setChangePasswordStep(step)
   }
 
-  const handleChangePasswordUpdate = async (data: { staffId?: string; newPassword: string; oldPassword?: string }) => {
+  const handleChangePasswordUpdate = async (data: {
+    staffId?: string
+    newPassword: string
+    oldPassword?: string
+  }) => {
     console.log("Password changed successfully")
     setIsLoading(true)
     try {
@@ -248,20 +222,20 @@ export function NavUser({
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault()
-                    setNotificationDrawerOpen(true)
-                  }}
-                >
-                  <HugeiconsIcon icon={NotificationIcon} strokeWidth={2} />
-                  Notifications
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault()
                     setChangePasswordDialogOpen(true)
                   }}
                 >
                   <HugeiconsIcon icon={Key02Icon} strokeWidth={2} />
                   Change password
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    setNotificationDrawerOpen(true)
+                  }}
+                >
+                  <HugeiconsIcon icon={NotificationIcon} strokeWidth={2} />
+                  Notifications
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -292,7 +266,7 @@ export function NavUser({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="no-scrollbar flex-1 overflow-y-auto px-6 py-2">
+          <div className="flex-1 overflow-y-auto px-6 py-2">
             {/* Profile Image Section */}
             <div className="flex flex-col items-center space-y-2">
               <div className="relative">
@@ -377,12 +351,16 @@ export function NavUser({
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Employee ID
-                  </Label>
+                  <Label className="text-sm text-muted-foreground">Team</Label>
                   <p className="text-base font-medium">
-                    EMP-{Math.floor(Math.random() * 10000)}
+                    {user.team || "Block Chain"}
                   </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm text-muted-foreground">
+                    Staff ID
+                  </Label>
+                  <p className="text-base font-medium">25-00287</p>
                 </div>
               </CardContent>
             </div>
@@ -402,63 +380,11 @@ export function NavUser({
         </DialogContent>
       </Dialog>
 
-      {/* Left-side Drawer for Notifications */}
-      <Drawer
+      {/* Notifications Drawer - Separated Component */}
+      <NotificationsDrawer
         open={notificationDrawerOpen}
         onOpenChange={setNotificationDrawerOpen}
-        direction="left"
-      >
-        <DrawerContent className="right-0 left-auto h-full w-[400px] rounded-l-lg">
-          <DrawerHeader>
-            <DrawerTitle>Notifications</DrawerTitle>
-            <DrawerDescription>
-              Your recent notifications and updates
-            </DrawerDescription>
-          </DrawerHeader>
-
-          <div className="flex-1 overflow-auto px-4">
-            {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <HugeiconsIcon
-                  icon={NotificationIcon}
-                  strokeWidth={2}
-                  className="mb-3 size-12 text-muted-foreground"
-                />
-                <p className="text-sm text-muted-foreground">
-                  No new notifications
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="flex cursor-pointer flex-col space-y-1 rounded-lg border p-4 transition-colors hover:bg-accent"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium">
-                        {notification.title}
-                      </h4>
-                      <span className="text-xs text-muted-foreground">
-                        {notification.time}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {notification.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <DrawerFooter>
-            <DrawerClose asChild>
-              <Button variant="outline">Close</Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+      />
 
       {/* Logout Dialog */}
       <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
@@ -488,7 +414,7 @@ export function NavUser({
         </DialogContent>
       </Dialog>
 
-      {/* Change Password Dialog - Let ChangePassword handle everything */}
+      {/* Change Password Dialog */}
       <Dialog
         open={changePasswordDialogOpen}
         onOpenChange={(open) => {
