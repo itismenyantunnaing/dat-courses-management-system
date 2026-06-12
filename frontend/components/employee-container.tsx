@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -55,6 +56,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
+import { Employee } from "@/types/employee"
 
 const STROKE_WIDTH = 2
 
@@ -70,28 +72,6 @@ const statusLabels = {
   pending: "Pending",
 }
 
-interface Employee {
-  sr: number
-  div: string
-  staff_id: string
-  name: string
-  doorlog: string
-  dept: string
-  team: string
-  status: string
-  role: string
-  id: number
-  email: string
-  is_core_personnel: boolean
-  has_japan_business_trip: boolean
-  employee_code: string
-  department_dir_id: number
-  team_id: number
-  title_id: number
-  role_id: number
-  is_admin: boolean
-  created_at: string
-}
 
 const BorderedTableCell = ({ children, className = "", ...props }: React.ComponentProps<typeof TableCell>) => (
   <TableCell className={`border-r border-l ${className}`} {...props}>
@@ -105,13 +85,7 @@ const BorderedTableHead = ({ children, className = "", ...props }: React.Compone
   </TableHead>
 )
 
-interface EmployeeTableProps {
-  searchPlaceholder?: string
-}
-
-export function EmployeeContainer({
-  searchPlaceholder = "Search employees...",
-}: EmployeeTableProps) {
+export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -156,7 +130,7 @@ export function EmployeeContainer({
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
       employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.staff_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesStatus =
       statusFilter === "all" || employee.status === statusFilter
@@ -313,13 +287,13 @@ export function EmployeeContainer({
                       <BorderedTableCell>{employee.sr}</BorderedTableCell>
                       <BorderedTableCell>{employee.div}</BorderedTableCell>
                       <BorderedTableCell className="font-mono text-sm">
-                        {employee.staff_id}
+                        {employee.id}
                       </BorderedTableCell>
                       <BorderedTableCell className="font-medium">
                         {employee.name}
                       </BorderedTableCell>
                       <BorderedTableCell>{employee.doorlog}</BorderedTableCell>
-                      <BorderedTableCell>{employee.dept}</BorderedTableCell>
+                      <BorderedTableCell>{employee.dept_dat}</BorderedTableCell>
                       <BorderedTableCell>{employee.team}</BorderedTableCell>
                       <BorderedTableCell>
                         <div className="flex items-center gap-2">
