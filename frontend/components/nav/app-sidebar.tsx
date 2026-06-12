@@ -12,99 +12,23 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  UserGroupIcon,
-  LibraryIcon,
-  DashboardBrowsingIcon,
-  DiplomaIcon,
-  ComputerVideoCallIcon,
-  DatabaseIcon,
-} from "@hugeicons/core-free-icons"
 import { NavUser } from "@/components/nav-user"
 import { NavGroup } from "./nav-group"
-import { importTabs, VISIBLE_TABS_COUNT } from "../nav/tabs-config"
-
-
-const STROKE_WIDTH = 2
-
-const data = {
-  user: {
-    name: "Nyan Tun Naing",
-    email: "itismenyantunnaing@gmail.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  NavDashboard: [
-    {
-      title: "My Dashboard",
-      tabId: "dashboard",
-      type: "primary" as const,
-      icon: (
-        <HugeiconsIcon
-          icon={DashboardBrowsingIcon}
-          strokeWidth={STROKE_WIDTH}
-        />
-      ),
-    },
-  ],
-  NavManage: [
-    {
-      title: "Master Data",
-      tabId: "master",
-      type: "dropdown" as const,
-      icon: <HugeiconsIcon icon={DatabaseIcon} strokeWidth={STROKE_WIDTH} />,
-      isActive: false,
-      items: [
-        {
-          title: "Import data",
-          action: "import" as const,
-        },
-        {
-          title: "Export data",
-          action: "export" as const,
-        },
-        {
-          title: "Delete data",
-          action: "delete" as const,
-        },
-      ],
-    },
-    ...importTabs.map((tab) => ({
-      title: tab.label,
-      tabId: tab.id,
-      type: "primary" as const,
-      icon: <HugeiconsIcon icon={tab.icon} strokeWidth={STROKE_WIDTH} />,
-    }))
-  ],
-  NavAnnouncements: [
-    {
-      title: "Seminar",
-      tabId: "seminar",
-      type: "primary" as const,
-      icon: (
-        <HugeiconsIcon
-          icon={ComputerVideoCallIcon}
-          strokeWidth={STROKE_WIDTH}
-        />
-      ),
-    },
-    {
-      title: "Exams",
-      tabId: "exams",
-      type: "primary" as const,
-      icon: <HugeiconsIcon icon={DiplomaIcon} strokeWidth={STROKE_WIDTH} />,
-    },
-  ],
-}
+import { getSidebarConfig } from "./sidebar-config"
 
 export function AppSidebar({
   onTabChange,
   activeTab,
+  userRole = "admin",
   ...props
 }: {
   onTabChange?: (tab: string) => void
   activeTab?: string
+  userRole?: "admin" | "learner" | "approver"
 } & React.ComponentProps<typeof Sidebar>) {
+  // Get data based on user role
+  const data = getSidebarConfig(userRole)
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="flex justify-center">
@@ -121,24 +45,16 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavGroup
-          items={data.NavDashboard}
-          sidebarGroupLabel="Dashboard"
-          onTabChange={onTabChange}
-          activeTab={activeTab}
-        />
-        <NavGroup
-          items={data.NavManage}
-          sidebarGroupLabel="Manage"
-          onTabChange={onTabChange}
-          activeTab={activeTab}
-        />
-        <NavGroup
-          items={data.NavAnnouncements}
-          sidebarGroupLabel="Announcements"
-          onTabChange={onTabChange}
-          activeTab={activeTab}
-        />
+        {/* Loop through nav groups */}
+        {data.navGroups.map((group, index) => (
+          <NavGroup
+            key={index}
+            items={group.items}
+            sidebarGroupLabel={group.groupLabel}
+            onTabChange={onTabChange}
+            activeTab={activeTab}
+          />
+        ))}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

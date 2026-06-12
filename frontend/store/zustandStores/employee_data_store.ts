@@ -1,23 +1,27 @@
 import { Employee_StoreType } from "../types"
 
 const employeeData = [
-  {
-    "sr": 1,
-    "id": "1002",
-    "staff_id": "EMP002",
-    "name": "Jane Smith",
-    "email": "jane.smith@company.com",
-    "doorlog": "JS002",
-    "status": "active",
-    "is_admin": false,
-    "is_core_personnel": true,
-    "has_japan_business_trip": false,
-    "div": "ENG",
-    "dept_dir": "Engineering Division",
-    "dept_dat": "Software Development Dept",
-    "team": "Development Team A",
-    "role": "Software Engineer",
-    "position": null
+  { 
+    sr: 1,
+    div: "ENG",
+    staff_id: "EMP002", 
+    name: "Jane Smith", 
+    doorlog: "JS002",
+    dept: "Engineering",
+    team: "Development Team A",
+    status: "inactive",
+    role: "Software Engineer",
+    id: 1002,
+    email: "jane.smith@company.com",
+    is_core_personnel: true,
+    has_japan_business_trip: false,
+    employee_code: "EMP002",
+    department_dir_id: 1,
+    team_id: 1,
+    title_id: 1,
+    role_id: 1,
+    is_admin: false,
+    created_at: "2024-01-15T00:00:00Z"
   },
   {
     "sr": 2,

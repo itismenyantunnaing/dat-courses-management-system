@@ -14,13 +14,6 @@ import { CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   Select,
   SelectContent,
   SelectGroup,
@@ -36,7 +29,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Pagination,
@@ -49,37 +41,55 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  MoreHorizontalIcon,
-  EditIcon,
-  Delete02Icon,
   FilterIcon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
-import { Employee } from "@/types/employee"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 const STROKE_WIDTH = 2
 
-const statusColors = {
-  active: "bg-green-500",
-  inactive: "bg-gray-500",
-  pending: "bg-yellow-500",
+// Status badge styling using Badge component
+const getStatusBadge = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "active":
+      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950"
+    case "inactive":
+      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
+    default:
+      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
+  }
 }
 
 const statusLabels = {
   active: "Active",
   inactive: "Inactive",
-  pending: "Pending",
 }
 
 
-const BorderedTableCell = ({ children, className = "", ...props }: React.ComponentProps<typeof TableCell>) => (
-  <TableCell className={`border-r border-l ${className}`} {...props}>
+// Updated BorderedTableCell to accept a selected prop
+const BorderedTableCell = ({
+  children,
+  className = "",
+  selected = false,
+  ...props
+}: React.ComponentProps<typeof TableCell> & { selected?: boolean }) => (
+  <TableCell
+    className={cn("border-r border-l", selected && "bg-muted/50", className)}
+    {...props}
+  >
     {children}
   </TableCell>
 )
 
-const BorderedTableHead = ({ children, className = "", ...props }: React.ComponentProps<typeof TableHead>) => (
+const BorderedTableHead = ({
+  children,
+  className = "",
+  ...props
+}: React.ComponentProps<typeof TableHead>) => (
   <TableHead className={`border-r border-l ${className}`} {...props}>
     {children}
   </TableHead>
@@ -91,31 +101,40 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [itemsPerPage, setItemsPerPage] = useState(15)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(
+    null
+  )
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [employees, setEmployees] = useState<Employee[]>([])
 
-  const { fetch_EmployeeData, employee_data } = mainStore();
+  // Add state for row selection
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+
+  // State for bulk delete dialog
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+
+  const { fetch_EmployeeData, employee_data } = mainStore()
 
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
-      await fetch_EmployeeData();
-      setIsLoading(false);
-    };
-    
-    loadData();
-  }, [fetch_EmployeeData]);
+      setIsLoading(true)
+      await fetch_EmployeeData()
+      setIsLoading(false)
+    }
+
+    loadData()
+  }, [fetch_EmployeeData])
 
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
-      setEmployees(employee_data);
+      setEmployees(employee_data)
     }
-  }, [employee_data]);
+  }, [employee_data])
 
-  // Column headers
+  // Column headers - removed Actions column
   const employeeHeaders = [
+    { field: "select", header_name: "" },
     { field: "sr", header_name: "Sr." },
     { field: "div", header_name: "Div" },
     { field: "staff_id", header_name: "Staff ID" },
@@ -125,7 +144,7 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
     { field: "team", header_name: "Team" },
     { field: "status", header_name: "Status" },
     { field: "role", header_name: "Role" },
-  ];
+  ]
 
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
@@ -153,28 +172,77 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
-  const handleDeleteClick = (employee: Employee) => {
-    setEmployeeToDelete(employee)
-    setDeleteDialogOpen(true)
+  // Handle select all on current page
+  const handleSelectAll = () => {
+    const allSelected = paginatedEmployees.every(
+      (employee) => rowSelection[employee.id.toString()]
+    )
+
+    if (allSelected) {
+      // Deselect all on current page
+      const newSelection = { ...rowSelection }
+      paginatedEmployees.forEach((employee) => {
+        delete newSelection[employee.id.toString()]
+      })
+      setRowSelection(newSelection)
+    } else {
+      // Select all on current page
+      const newSelection = { ...rowSelection }
+      paginatedEmployees.forEach((employee) => {
+        newSelection[employee.id.toString()] = true
+      })
+      setRowSelection(newSelection)
+    }
   }
 
-  const handleDeleteConfirm = async () => {
+  // Handle individual row selection
+  const handleRowSelect = (employeeId: string) => {
+    setRowSelection((prev) => ({
+      ...prev,
+      [employeeId]: !prev[employeeId],
+    }))
+  }
+
+  // Get selected employees count
+  const selectedCount = Object.values(rowSelection).filter(Boolean).length
+
+  // Get selected employees list
+  const getSelectedEmployees = () => {
+    const selectedIds = Object.entries(rowSelection)
+      .filter(([, selected]) => selected)
+      .map(([id]) => parseInt(id))
+    return employees.filter((employee) => selectedIds.includes(employee.id))
+  }
+
+  // Handle bulk delete click - open dialog
+  const handleBulkDeleteClick = () => {
+    setBulkDeleteDialogOpen(true)
+  }
+
+  // Handle bulk delete confirm
+  const handleBulkDeleteConfirm = async () => {
+    const selectedEmployees = getSelectedEmployees()
+    if (selectedEmployees.length === 0) return
+
     setIsDeleting(true)
     try {
-      const index = employees.findIndex(
-        (e) => e.id === employeeToDelete?.id
+      const selectedIds = selectedEmployees.map((emp) => emp.id)
+      const newEmployees = employees.filter(
+        (employee) => !selectedIds.includes(employee.id)
       )
-      if (index !== -1) {
-        const newEmployees = [...employees];
-        newEmployees.splice(index, 1);
-        setEmployees(newEmployees);
+      setEmployees(newEmployees)
+      setRowSelection({}) // Clear all selections
+      setBulkDeleteDialogOpen(false)
+
+      // Adjust page if current page becomes empty
+      const newTotalPages = Math.ceil(newEmployees.length / itemsPerPage)
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages)
+      } else if (newTotalPages === 0) {
+        setCurrentPage(1)
       }
-      setDeleteDialogOpen(false)
-      setEmployeeToDelete(null)
-      if (paginatedEmployees.length === 1 && currentPage > 1)
-        setCurrentPage(currentPage - 1)
     } catch (error) {
-      console.error("Delete failed:", error)
+      console.error("Bulk delete failed:", error)
     } finally {
       setIsDeleting(false)
     }
@@ -203,17 +271,17 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
     return pages
   }
 
-  const totalColumns = employeeHeaders.length + 1 // +1 for Actions column
+  const totalColumns = employeeHeaders.length // No +1 for Actions anymore
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
           <p className="text-muted-foreground">Loading employees...</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -234,20 +302,29 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
                 className="pl-8"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <HugeiconsIcon icon={FilterIcon} strokeWidth={STROKE_WIDTH} />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent align="center" sideOffset={5}>
-                <SelectGroup>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <HugeiconsIcon icon={FilterIcon} strokeWidth={STROKE_WIDTH} />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent align="center" sideOffset={5}>
+                  <SelectGroup>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              {selectedCount > 0 && (
+                <Button variant="destructive" onClick={handleBulkDeleteClick}>
+                  <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} /> Delete (
+                  {selectedCount}) Employee
+                  {selectedCount > 1 ? "s" : ""}
+                </Button>
+              )}
+            </div>
           </div>
 
           <div
@@ -257,7 +334,20 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  {employeeHeaders.map((header) => (
+                  {/* Select All Checkbox */}
+                  <BorderedTableHead className="w-10 align-middle whitespace-nowrap">
+                    <Checkbox
+                      checked={
+                        paginatedEmployees.length > 0 &&
+                        paginatedEmployees.every(
+                          (employee) => rowSelection[employee.id.toString()]
+                        )
+                      }
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </BorderedTableHead>
+                  {employeeHeaders.slice(1).map((header) => (
                     <BorderedTableHead
                       key={header.field}
                       className="align-middle whitespace-nowrap"
@@ -265,9 +355,6 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
                       {header.header_name}
                     </BorderedTableHead>
                   ))}
-                  <BorderedTableHead className="text-right align-middle whitespace-nowrap">
-                    Actions
-                  </BorderedTableHead>
                 </TableRow>
               </TableHeader>
 
@@ -282,69 +369,74 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
                     </BorderedTableCell>
                   </TableRow>
                 ) : (
-                  paginatedEmployees.map((employee) => (
-                    <TableRow key={employee.id}>
-                      <BorderedTableCell>{employee.sr}</BorderedTableCell>
-                      <BorderedTableCell>{employee.div}</BorderedTableCell>
-                      <BorderedTableCell className="font-mono text-sm">
-                        {employee.id}
-                      </BorderedTableCell>
-                      <BorderedTableCell className="font-medium">
-                        {employee.name}
-                      </BorderedTableCell>
-                      <BorderedTableCell>{employee.doorlog}</BorderedTableCell>
-                      <BorderedTableCell>{employee.dept_dat}</BorderedTableCell>
-                      <BorderedTableCell>{employee.team}</BorderedTableCell>
-                      <BorderedTableCell>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-2 w-2 rounded-full ${statusColors[employee.status as keyof typeof statusColors] || "bg-gray-500"}`}
+                  paginatedEmployees.map((employee) => {
+                    const isSelected = !!rowSelection[employee.id.toString()]
+                    return (
+                      <TableRow key={employee.id}>
+                        {/* Selection Checkbox */}
+                        <BorderedTableCell
+                          className="w-10"
+                          selected={isSelected}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              handleRowSelect(employee.id.toString())
+                            }
+                            aria-label={`Select ${employee.name}`}
                           />
-                          <span className="text-sm">
-                            {statusLabels[employee.status as keyof typeof statusLabels] || employee.status}
-                          </span>
-                        </div>
-                      </BorderedTableCell>
-                      <BorderedTableCell>{employee.role}</BorderedTableCell>
-                      <BorderedTableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <HugeiconsIcon
-                                icon={MoreHorizontalIcon}
-                                strokeWidth={STROKE_WIDTH}
-                              />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <HugeiconsIcon
-                                icon={EditIcon}
-                                strokeWidth={STROKE_WIDTH}
-                              />
-                              Edit employee
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              variant="destructive"
-                              onSelect={() => handleDeleteClick(employee)}
-                            >
-                              <HugeiconsIcon
-                                icon={Delete02Icon}
-                                strokeWidth={STROKE_WIDTH}
-                              />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </BorderedTableCell>
-                    </TableRow>
-                  ))
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {employee.sr}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {employee.div}
+                        </BorderedTableCell>
+                        <BorderedTableCell
+                          className="font-mono text-sm"
+                          selected={isSelected}
+                        >
+                          {employee.staff_id}
+                        </BorderedTableCell>
+                        <BorderedTableCell
+                          className="font-medium"
+                          selected={isSelected}
+                        >
+                          {employee.name}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {employee.doorlog}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {employee.dept}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {employee.team}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          <Badge className={getStatusBadge(employee.status)}>
+                            {statusLabels[
+                              employee.status as keyof typeof statusLabels
+                            ] || employee.status}
+                          </Badge>
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {employee.role}
+                        </BorderedTableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
           </div>
+
+          {/* Show selected rows count */}
+          {/* {selectedCount > 0 && (
+            <div className="mt-2 text-sm text-muted-foreground">
+              {selectedCount} of {filteredEmployees.length} row(s) selected.
+            </div>
+          )} */}
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Field orientation="horizontal" className="w-fit">
@@ -415,7 +507,7 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
                     }}
                     className={
                       currentPage === totalPages ||
-                        filteredEmployees.length === 0
+                      filteredEmployees.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -427,25 +519,29 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
         </CardContent>
       </div>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Bulk Delete Dialog */}
+      <Dialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {employeeToDelete?.name}? This
-              action cannot be undone.
+              Are you sure you want to delete {selectedCount} selected employee
+              {selectedCount > 1 ? "s" : ""}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={() => setBulkDeleteDialogOpen(false)}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteConfirm}
+              onClick={handleBulkDeleteConfirm}
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete"}

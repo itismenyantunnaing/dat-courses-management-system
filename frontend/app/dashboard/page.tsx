@@ -20,8 +20,7 @@ import { SeminarContainer } from "@/components/seminar-container"
 import { ExamsContainer } from "@/components/exams-container"
 import { allTabs } from "@/components/nav/nav-group"
 import DashboardContainer from "@/components/dashboard-container"
-import {SkillContainer} from "@/components/skill-container"
-
+import { SkillContainer } from "@/components/skill-container"
 
 export default function DashboardPage() {
   // const { currentDataType, setCurrentDataType, currentLabel } = usePage()
@@ -40,19 +39,31 @@ export default function DashboardPage() {
 
   const getCurrentLabel = () => {
     switch (activeTab) {
-      case "employees": return "Employee Management"
-      case "courses": return "Course Management"
-      case "seminar": return "Seminar Management"
-      case "exams": return "Exam Management"
-      case "skills": return "Skill Management"
-      default: return "Dashboard"
+      case "employees":
+        return "Employee Management"
+      case "courses":
+        return "Course Management"
+      case "seminar":
+        return "Seminar Management"
+      case "exams":
+        return "Exam Management"
+      case "skills":
+        return "Skill Management"
+      default:
+        return "Dashboard"
     }
   }
 
   return (
     <>
       <SidebarProvider className="w-full overflow-hidden">
-        <AppSidebar onTabChange={setActiveTab} activeTab={activeTab} />
+        <AppSidebar userRole="admin" onTabChange={setActiveTab} activeTab={activeTab} />
+        {/* <AppSidebar userRole="learner" onTabChange={setActiveTab} activeTab={activeTab} /> */}
+        {/* <AppSidebar
+          userRole="approver"
+          onTabChange={setActiveTab}
+          activeTab={activeTab}
+        /> */}
         <SidebarInset className="overflow-x-auto">
           <header className="flex h-16 items-center justify-between gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex w-full items-center justify-between px-4">
@@ -66,19 +77,26 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex gap-2">
-                  {activeTab !== "dashboard" &&
+                  {activeTab !== "dashboard" && (
                     <>
-                      <Button variant="outline" size="sm" onClick={handleImport}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleImport}
+                      >
                         <HugeiconsIcon icon={Upload05Icon} strokeWidth={2} />
                         Import
                       </Button>
-                      <Button variant="outline" size="sm" onClick={handleExport}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExport}
+                      >
                         <HugeiconsIcon icon={Download05Icon} strokeWidth={2} />
                         Export
                       </Button>
                     </>
-                  }
-
+                  )}
                 </div>
               </div>
             </div>
@@ -117,6 +135,5 @@ export default function DashboardPage() {
         label={activeTab}
       />
     </>
-
   )
 }

@@ -1,12 +1,8 @@
 // Tab configuration shared between nav-group and dialogs
 import {
   UserGroupIcon,
-  LibraryIcon,
-  DashboardBrowsingIcon,
-  DiplomaIcon,
-  ComputerVideoCallIcon,
-  DatabaseIcon,
-  CodeIcon
+  CodeIcon,
+  CourseIcon
 } from "@hugeicons/core-free-icons"
 
 export const allTabs = [
@@ -38,7 +34,7 @@ export const allTabs = [
     exportTitle: "Export Courses Data",
     exportDescription: "Export course data from the system.",
     accept: ".csv,.json,.xlsx,.xls",
-    icon: LibraryIcon,
+    icon: CourseIcon,
     maxSize: 500,
     onImport: (file: File) => {
       console.log("Importing courses data:", file)
