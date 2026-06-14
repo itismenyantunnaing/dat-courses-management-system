@@ -49,6 +49,7 @@ import { mainStore } from "@/store/mainStore"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { EditEmployeeDrawer } from "@/components/drawers/employees/editEmployee-drawer"
 
 const STROKE_WIDTH = 2
 
@@ -68,7 +69,6 @@ const statusLabels = {
   active: "Active",
   inactive: "Inactive",
 }
-
 
 // Updated BorderedTableCell to accept a selected prop
 const BorderedTableCell = ({
@@ -95,7 +95,9 @@ const BorderedTableHead = ({
   </TableHead>
 )
 
-export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
+export function EmployeeContainer({
+  searchPlaceholder = "Search employees...",
+}) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -113,6 +115,12 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
 
   // State for bulk delete dialog
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+
+  // State for edit drawer
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null
+  )
 
   const { fetch_EmployeeData, employee_data } = mainStore()
 
@@ -132,7 +140,7 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
     }
   }, [employee_data])
 
-  // Column headers - removed Actions column
+  // Column headers
   const employeeHeaders = [
     { field: "select", header_name: "" },
     { field: "sr", header_name: "Sr." },
@@ -149,8 +157,9 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
       employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      employee.staff_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (employee.email &&
+        employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesStatus =
       statusFilter === "all" || employee.status === statusFilter
     return matchesSearch && matchesStatus
@@ -201,6 +210,19 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
       ...prev,
       [employeeId]: !prev[employeeId],
     }))
+  }
+
+  // Handle row click to open edit drawer
+  const handleRowClick = (employee: Employee) => {
+    setSelectedEmployee(employee)
+    setEditDrawerOpen(true)
+  }
+
+  // Handle successful employee update
+  const handleEmployeeUpdated = async () => {
+    setIsLoading(true)
+    await fetch_EmployeeData()
+    setIsLoading(false)
   }
 
   // Get selected employees count
@@ -372,11 +394,16 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
                   paginatedEmployees.map((employee) => {
                     const isSelected = !!rowSelection[employee.id.toString()]
                     return (
-                      <TableRow key={employee.id}>
-                        {/* Selection Checkbox */}
+                      <TableRow
+                        key={employee.id}
+                        className="cursor-pointer transition-colors hover:bg-muted/50"
+                        onClick={() => handleRowClick(employee)}
+                      >
+                        {/* Selection Checkbox - prevent click from triggering row click */}
                         <BorderedTableCell
                           className="w-10"
                           selected={isSelected}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <Checkbox
                             checked={isSelected}
@@ -549,6 +576,13 @@ export function EmployeeContainer({searchPlaceholder = "Search employees..."}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <EditEmployeeDrawer
+        open={editDrawerOpen}
+        onOpenChange={setEditDrawerOpen}
+        employee={selectedEmployee}
+        onSuccess={handleEmployeeUpdated}
+      />
     </>
   )
 }
