@@ -10,10 +10,15 @@ import {
   SidebarTrigger,
 } from "../../components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { Upload05Icon, Download05Icon } from "@hugeicons/core-free-icons"
+import {
+  Upload05Icon,
+  Download05Icon,
+  UserAdd02Icon,
+} from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ImportDialog } from "@/components/dialogs/import-dialog"
 import { ExportDialog } from "@/components/dialogs/export-dialog"
+import { CreateEmployeeDrawer } from "@/components/drawers/employees/createEmployee-drawer"
 import { EmployeeContainer } from "@/components/employee-container"
 import { CoursesContainer } from "@/components/courses-container"
 import { SeminarContainer } from "@/components/seminar-container"
@@ -23,11 +28,11 @@ import DashboardContainer from "@/components/dashboard-container"
 import { SkillContainer } from "@/components/skill-container"
 
 export default function DashboardPage() {
-  // const { currentDataType, setCurrentDataType, currentLabel } = usePage()
-
   const [activeTab, setActiveTab] = useState("dashboard")
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isNewEmployeeDrawerOpen, setIsNewEmployeeDrawerOpen] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const handleImport = () => {
     setIsImportDialogOpen(true)
@@ -35,6 +40,15 @@ export default function DashboardPage() {
 
   const handleExport = () => {
     setIsExportDialogOpen(true)
+  }
+
+  const handleNewEmployee = () => {
+    setIsNewEmployeeDrawerOpen(true)
+  }
+
+  const handleEmployeeCreated = () => {
+    // Refresh the employee list
+    setRefreshKey((prev) => prev + 1)
   }
 
   const getCurrentLabel = () => {
@@ -57,13 +71,11 @@ export default function DashboardPage() {
   return (
     <>
       <SidebarProvider className="w-full overflow-hidden">
-        <AppSidebar userRole="admin" onTabChange={setActiveTab} activeTab={activeTab} />
-        {/* <AppSidebar userRole="learner" onTabChange={setActiveTab} activeTab={activeTab} /> */}
-        {/* <AppSidebar
-          userRole="approver"
+        <AppSidebar
+          userRole="admin"
           onTabChange={setActiveTab}
           activeTab={activeTab}
-        /> */}
+        />
         <SidebarInset className="overflow-x-auto">
           <header className="flex h-16 items-center justify-between gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex w-full items-center justify-between px-4">
@@ -79,6 +91,21 @@ export default function DashboardPage() {
                 <div className="flex gap-2">
                   {activeTab !== "dashboard" && (
                     <>
+                      {activeTab === "employees" && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={handleNewEmployee}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          <HugeiconsIcon
+                            icon={UserAdd02Icon}
+                            strokeWidth={2}
+                            className="mr-1"
+                          />
+                          New Employee
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -106,7 +133,7 @@ export default function DashboardPage() {
               <DashboardContainer />
             </TabsContent>
             <TabsContent value="employees" className="m-0">
-              <EmployeeContainer />
+              <EmployeeContainer key={refreshKey} />
             </TabsContent>
             <TabsContent value="courses" className="m-0">
               <CoursesContainer />
@@ -133,6 +160,11 @@ export default function DashboardPage() {
         open={isExportDialogOpen}
         onOpenChange={setIsExportDialogOpen}
         label={activeTab}
+      />
+      <CreateEmployeeDrawer
+        open={isNewEmployeeDrawerOpen}
+        onOpenChange={setIsNewEmployeeDrawerOpen}
+        onSuccess={handleEmployeeCreated}
       />
     </>
   )
