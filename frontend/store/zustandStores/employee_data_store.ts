@@ -17,7 +17,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Software Development Dept",
     "team": "Development Team A",
-    "role": "Software Engineer",
+    "role": "learner",
     "position": null
   },
   {
@@ -34,7 +34,7 @@ const employeeData = [
     "dept_dir": "Product Division",
     "dept_dat": "Product Management Dept",
     "team": "Product Team A",
-    "role": "Product Manager",
+    "role": "approver",
     "position": null
   },
   {
@@ -51,7 +51,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Quality Assurance Dept",
     "team": "Development Team B",
-    "role": "Senior Developer",
+    "role": "learner",
     "position": null
   },
   {
@@ -68,7 +68,7 @@ const employeeData = [
     "dept_dir": "Sales Division",
     "dept_dat": "Regional Sales Dept",
     "team": "Sales Team A",
-    "role": "Sales Representative",
+    "role": "learner",
     "position": null
   },
   {
@@ -85,7 +85,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Software Development Dept",
     "team": "Development Team A",
-    "role": "Tech Lead",
+    "role": "approver",
     "position": null
   },
   {
@@ -102,7 +102,7 @@ const employeeData = [
     "dept_dir": "Marketing Division",
     "dept_dat": "Digital Marketing Dept",
     "team": "Marketing Team A",
-    "role": "Marketing Specialist",
+    "role": "learner",
     "position": null
   },
   {
@@ -119,7 +119,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Infrastructure Dept",
     "team": "Development Team C",
-    "role": "Junior Developer",
+    "role": "learner",
     "position": null
   },
   {
@@ -136,7 +136,7 @@ const employeeData = [
     "dept_dir": "Product Division",
     "dept_dat": "Product Strategy Dept",
     "team": "Product Team B",
-    "role": "Product Owner",
+    "role": "approver",
     "position": null
   },
   {
@@ -153,7 +153,7 @@ const employeeData = [
     "dept_dir": "Sales Division",
     "dept_dat": "Account Management Dept",
     "team": "Sales Team B",
-    "role": "Account Manager",
+    "role": "learner",
     "position": null
   },
   {
@@ -170,7 +170,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Software Development Dept",
     "team": "Development Team A",
-    "role": "Architect",
+    "role": "admin",
     "position": null
   },
   {
@@ -187,7 +187,7 @@ const employeeData = [
     "dept_dir": "Product Division",
     "dept_dat": "Product Management Dept",
     "team": "Product Team A",
-    "role": "Business Analyst",
+    "role": "learner",
     "position": null
   },
   {
@@ -204,7 +204,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Quality Assurance Dept",
     "team": "Development Team B",
-    "role": "Software Engineer",
+    "role": "learner",
     "position": null
   },
   {
@@ -221,7 +221,7 @@ const employeeData = [
     "dept_dir": "Marketing Division",
     "dept_dat": "Digital Marketing Dept",
     "team": "Marketing Team B",
-    "role": "Marketing Manager",
+    "role": "learner",
     "position": null
   },
   {
@@ -238,7 +238,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Software Development Dept",
     "team": "Development Team A",
-    "role": "Senior Developer",
+    "role": "approver",
     "position": null
   },
   {
@@ -255,7 +255,7 @@ const employeeData = [
     "dept_dir": "Product Division",
     "dept_dat": "Product Strategy Dept",
     "team": "Product Team B",
-    "role": "Product Analyst",
+    "role": "learner",
     "position": null
   },
   {
@@ -272,7 +272,7 @@ const employeeData = [
     "dept_dir": "Sales Division",
     "dept_dat": "Regional Sales Dept",
     "team": "Sales Team A",
-    "role": "Sales Manager",
+    "role": "learner",
     "position": null
   },
   {
@@ -289,7 +289,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Quality Assurance Dept",
     "team": "Development Team B",
-    "role": "Tech Lead",
+    "role": "admin",
     "position": null
   },
   {
@@ -306,7 +306,7 @@ const employeeData = [
     "dept_dir": "Product Division",
     "dept_dat": "Product Management Dept",
     "team": "Product Team A",
-    "role": "Product Manager",
+    "role": "approver",
     "position": null
   },
   {
@@ -323,7 +323,7 @@ const employeeData = [
     "dept_dir": "Marketing Division",
     "dept_dat": "Digital Marketing Dept",
     "team": "Marketing Team A",
-    "role": "Social Media Manager",
+    "role": "learner",
     "position": null
   },
   {
@@ -340,7 +340,7 @@ const employeeData = [
     "dept_dir": "Engineering Division",
     "dept_dat": "Infrastructure Dept",
     "team": "Development Team C",
-    "role": "Software Architect",
+    "role": "admin",
     "position": null
   }
 ];

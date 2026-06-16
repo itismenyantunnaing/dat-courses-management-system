@@ -1,11 +1,23 @@
-import { Employee } from "@/types/employee";
-import { SkillCategory, EmployeeSkill, DevelopmentCapability, EmployeeDevelopmentExperience, LanguageSkill, ManagementScore} from '@/types/skillset';
-import { TargetDates, EmployeeJapaneseLevel } from "@/types/current_target"; 
-
+import type { EmployeeJapaneseLevel, TargetDates } from "@/types/current_target"
+import { Employee } from "@/types/employee"
+import { Holiday } from "@/types/holiday"
+import {
+  SkillCategory,
+  EmployeeSkill,
+  DevelopmentCapability,
+  EmployeeDevelopmentExperience,
+  LanguageSkill,
+  ManagementScore,
+} from "@/types/skillset"
 
 export interface Employee_StoreType {
-  employee_data: Employee[];
-  fetch_EmployeeData: () => Promise<void>;
+  employee_data: Employee[]
+  fetch_EmployeeData: () => Promise<void>
+}
+
+export interface Holiday_StoreType {
+  holiday_data: Holiday[]
+  fetch_HolidayData: () => Promise<void>
 }
 
 export interface SkillSet_StoreType {

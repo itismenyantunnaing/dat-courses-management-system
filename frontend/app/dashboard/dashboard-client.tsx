@@ -1,7 +1,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
+
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { AppSidebar } from "../../components/nav/app-sidebar"
 import { Separator } from "../../components/ui/separator"
 import {
@@ -9,13 +10,16 @@ import {
     SidebarProvider,
     SidebarTrigger,
 } from "../../components/ui/sidebar"
+import {
+  Upload05Icon,
+  Download05Icon,
+  UserAdd02Icon,
+} from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { Upload05Icon, Download05Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ImportDialog } from "@/components/dialogs/import-dialog"
 import { ExportDialog } from "@/components/dialogs/export-dialog"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import ChangePassword from "@/components/dialogs/changePassword-dialog"
+import { CreateEmployeeDrawer } from "@/components/drawers/employees/createEmployee-drawer"
 import { EmployeeContainer } from "@/components/employee-container"
 import { CoursesContainer } from "@/components/courses-container"
 import { SeminarContainer } from "@/components/seminar-container"
@@ -23,7 +27,9 @@ import { ExamsContainer } from "@/components/exams-container"
 import { allTabs } from "@/components/nav/nav-group"
 import DashboardContainer from "@/components/dashboard-container"
 import { SkillContainer } from "@/components/skill-container"
-import { CurrentTargetContainer } from "@/components/current-target-container"
+import { HolidaysContainer } from "@/components/holidays-container"
+import ChangePassword from "@/components/dialogs/changePassword-dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 interface DashboardClientProps {
     userData: {
@@ -35,23 +41,15 @@ interface DashboardClientProps {
     }
 }
 
-const tabComponents = [
-    { value: "dashboard", component: <DashboardContainer /> },
-    { value: "employees", component: <EmployeeContainer /> },
-    { value: "courses", component: <CoursesContainer /> },
-    { value: "seminar", component: <SeminarContainer /> },
-    { value: "exams", component: <ExamsContainer /> },
-    { value: "skills", component: <SkillContainer /> },
-    { value: "current_target_data", component: <CurrentTargetContainer /> },
-];
-
 export default function DashboardPage({ userData }: DashboardClientProps) {
-    // const { currentDataType, setCurrentDataType, currentLabel } = usePage()
-    const [mounted, setMounted] = useState(false)
     const [activeTab, setActiveTab] = useState("dashboard")
+    const [mounted, setMounted] = useState(false)
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+    const [isNewEmployeeDrawerOpen, setIsNewEmployeeDrawerOpen] = useState(false)
+    const [refreshKey, setRefreshKey] = useState(0)
     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
+
     useEffect(() => {
         setMounted(true)
     }, [])
@@ -71,6 +69,16 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         setIsExportDialogOpen(true)
     }
 
+    const handleEmployeeCreated = () => {
+        // Refresh the employee list
+        setRefreshKey((prev) => prev + 1)
+    }
+
+    const handleNewEmployee = () => {
+        setIsNewEmployeeDrawerOpen(true)
+    }
+
+
     const getCurrentLabel = () => {
         switch (activeTab) {
             case "employees":
@@ -83,25 +91,11 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                 return "Exam Management"
             case "skills":
                 return "Skill Management"
+            case "holidays":
+                return "Holiday Management"
             default:
                 return "Dashboard"
         }
-    }
-
-    if (!mounted) {
-        return (
-            <div className="flex h-screen w-full">
-                <div className="w-64 bg-muted animate-pulse" />
-                <div className="flex-1">
-                    <div className="h-16 border-b px-4 flex items-center">
-                        <div className="h-6 w-32 bg-muted rounded animate-pulse" />
-                    </div>
-                    <div className="p-4">
-                        <div className="h-96 bg-muted rounded animate-pulse" />
-                    </div>
-                </div>
-            </div>
-        )
     }
 
     return (
@@ -128,6 +122,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                                 <div className="flex gap-2">
                                     {activeTab !== "dashboard" && (
                                         <>
+                                           
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -151,11 +146,27 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                         </div>
                     </header>
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        {tabComponents.map((tab) => (
-                            <TabsContent key={tab.value} value={tab.value} className="m-0">
-                                {tab.component}
-                            </TabsContent>
-                        ))}
+                        <TabsContent value="dashboard" className="m-0">
+                            <DashboardContainer />
+                        </TabsContent>
+                        <TabsContent value="employees" className="m-0">
+                            <EmployeeContainer />
+                        </TabsContent>
+                        <TabsContent value="courses" className="m-0">
+                            <CoursesContainer />
+                        </TabsContent>
+                        <TabsContent value="seminar" className="m-0">
+                            <SeminarContainer />
+                        </TabsContent>
+                        <TabsContent value="exams" className="m-0">
+                            <ExamsContainer />
+                        </TabsContent>
+                        <TabsContent value="skills" className="m-0">
+                            <SkillContainer />
+                        </TabsContent>
+                        <TabsContent value="holidays" className="m-0">
+                            <HolidaysContainer />
+                        </TabsContent>
                     </Tabs>
                 </SidebarInset>
             </SidebarProvider>
@@ -169,6 +180,12 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                 open={isExportDialogOpen}
                 onOpenChange={setIsExportDialogOpen}
                 label={activeTab}
+            />
+
+            <CreateEmployeeDrawer
+                open={isNewEmployeeDrawerOpen}
+                onOpenChange={setIsNewEmployeeDrawerOpen}
+                onSuccess={handleEmployeeCreated}
             />
 
             {/* Forced Password Change Dialog for New Users */}

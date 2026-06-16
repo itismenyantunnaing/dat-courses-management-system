@@ -13,14 +13,6 @@ import { CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -40,39 +32,56 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  FilterIcon,
   Delete02Icon,
-  UserAdd02Icon,
+  CalendarAdd01Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { EditEmployeeDrawer } from "@/components/drawers/employees/editEmployee-drawer"
-import { CreateEmployeeDrawer } from "./drawers/employees/createEmployee-drawer"
-import { Employee } from "@/types/employee"
+import { EditHolidayDrawer } from "@/components/drawers/holidays/editHoliday-drawer"
+import { Holiday } from "@/types/holiday"
+import { CreateHolidayDrawer } from "./drawers/holidays/createHoliday-drawer"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+} from "./ui/select"
 
 const STROKE_WIDTH = 2
 
-// Status badge styling using Badge component
-const getStatusBadge = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "active":
-      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950"
-    case "inactive":
-      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
-    default:
-      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
+// Status badge styling
+const getStatusBadge = (date: string) => {
+  const today = new Date()
+  const holidayDate = new Date(date)
+
+  if (holidayDate < today) {
+    return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
+  } else if (holidayDate.toDateString() === today.toDateString()) {
+    return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
+  } else {
+    return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
   }
 }
 
-const statusLabels = {
-  active: "Active",
-  inactive: "Inactive",
+const getStatusLabel = (date: string) => {
+  const today = new Date()
+  const holidayDate = new Date(date)
+
+  if (holidayDate < today) {
+    return "Passed"
+  } else if (holidayDate.toDateString() === today.toDateString()) {
+    return "Today"
+  } else {
+    return "Upcoming"
+  }
 }
 
-// Updated BorderedTableCell to accept a selected prop
+// BorderedTableCell component
 const BorderedTableCell = ({
   children,
   className = "",
@@ -97,91 +106,78 @@ const BorderedTableHead = ({
   </TableHead>
 )
 
-export function EmployeeContainer({
-  searchPlaceholder = "Search employees...",
+export function HolidaysContainer({
+  searchPlaceholder = "Search holidays...",
 }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [itemsPerPage, setItemsPerPage] = useState(15)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(
-    null
-  )
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [holidays, setHolidays] = useState<Holiday[]>([])
 
-  // Add state for row selection
+  // State for row selection
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
 
   // State for bulk delete dialog
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   // State for edit drawer
-  const [isNewEmployeeDrawerOpen, setIsNewEmployeeDrawerOpen] = useState(false)
+  const [isNewHolidayDrawerOpen, setIsNewHolidayDrawerOpen] = useState(false)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null
-  )
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [selectedHoliday, setSelectedHoliday] = useState<Holiday | null>(null)
 
-  const { fetch_EmployeeData, employee_data } = mainStore()
+  const { fetch_HolidayData, holiday_data } = mainStore()
+
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
-      await fetch_EmployeeData()
+      await fetch_HolidayData()
       setIsLoading(false)
     }
 
     loadData()
-  }, [fetch_EmployeeData])
+  }, [fetch_HolidayData])
 
   useEffect(() => {
-    if (employee_data && employee_data.length > 0) {
-      setEmployees(employee_data)
+    if (holiday_data && holiday_data.length > 0) {
+      setHolidays(holiday_data)
     }
-  }, [employee_data])
+  }, [holiday_data])
 
   // Column headers
-  const employeeHeaders = [
+  const holidayHeaders = [
     { field: "select", header_name: "" },
     { field: "sr", header_name: "Sr." },
-    { field: "div", header_name: "Div" },
-    { field: "staff_id", header_name: "Staff ID" },
-    { field: "name", header_name: "Name" },
-    { field: "doorlog", header_name: "DoorLog" },
-    { field: "dept", header_name: "Dept" },
-    { field: "team", header_name: "Team" },
+    { field: "name", header_name: "Holiday Name" },
+    { field: "date", header_name: "Date" },
+    { field: "day", header_name: "Day" },
     { field: "status", header_name: "Status" },
-    { field: "role", header_name: "Role" },
+    { field: "description", header_name: "Description" },
   ]
 
-  const filteredEmployees = employees.filter((employee) => {
+  const filteredHolidays = holidays.filter((holiday) => {
     const matchesSearch =
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (employee.email &&
-        employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesStatus =
-      statusFilter === "all" || employee.status === statusFilter
-    return matchesSearch && matchesStatus
+      holiday.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (holiday.description &&
+        holiday.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    return matchesSearch
   })
 
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredHolidays.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedEmployees = filteredEmployees.slice(
+  const paginatedHolidays = filteredHolidays.slice(
     startIndex,
     startIndex + itemsPerPage
   )
 
-  const handleNewEmployee = () => {
-    setIsNewEmployeeDrawerOpen(true)
+  const handleNewHoliday = () => {
+    setIsNewHolidayDrawerOpen(true)
   }
 
-  const handleEmployeeCreated = () => {
-    // Refresh the employee list
+  const handleHolidayCreated = () => {
     setRefreshKey((prev) => prev + 1)
   }
 
@@ -196,81 +192,78 @@ export function EmployeeContainer({
 
   // Handle select all on current page
   const handleSelectAll = () => {
-    const allSelected = paginatedEmployees.every(
-      (employee) => rowSelection[employee.id.toString()]
+    const allSelected = paginatedHolidays.every(
+      (holiday) => rowSelection[holiday.id.toString()]
     )
 
     if (allSelected) {
-      // Deselect all on current page
       const newSelection = { ...rowSelection }
-      paginatedEmployees.forEach((employee) => {
-        delete newSelection[employee.id.toString()]
+      paginatedHolidays.forEach((holiday) => {
+        delete newSelection[holiday.id.toString()]
       })
       setRowSelection(newSelection)
     } else {
-      // Select all on current page
       const newSelection = { ...rowSelection }
-      paginatedEmployees.forEach((employee) => {
-        newSelection[employee.id.toString()] = true
+      paginatedHolidays.forEach((holiday) => {
+        newSelection[holiday.id.toString()] = true
       })
       setRowSelection(newSelection)
     }
   }
 
   // Handle individual row selection
-  const handleRowSelect = (employeeId: string) => {
+  const handleRowSelect = (holidayId: string) => {
     setRowSelection((prev) => ({
       ...prev,
-      [employeeId]: !prev[employeeId],
+      [holidayId]: !prev[holidayId],
     }))
   }
 
   // Handle row click to open edit drawer
-  const handleRowClick = (employee: Employee) => {
-    setSelectedEmployee(employee)
+  const handleRowClick = (holiday: Holiday) => {
+    setSelectedHoliday(holiday)
     setEditDrawerOpen(true)
   }
 
-  // Handle successful employee update
-  const handleEmployeeUpdated = async () => {
+  // Handle successful holiday update
+  const handleHolidayUpdated = async () => {
     setIsLoading(true)
-    await fetch_EmployeeData()
+    await fetch_HolidayData()
     setIsLoading(false)
   }
 
-  // Get selected employees count
+  // Get selected holidays count
   const selectedCount = Object.values(rowSelection).filter(Boolean).length
 
-  // Get selected employees list
-  const getSelectedEmployees = () => {
+  // Get selected holidays list
+  const getSelectedHolidays = () => {
     const selectedIds = Object.entries(rowSelection)
       .filter(([, selected]) => selected)
       .map(([id]) => parseInt(id))
-    return employees.filter((employee) => selectedIds.includes(Number(employee.id)))
+    return holidays.filter((holiday) => selectedIds.includes(holiday.id))
   }
 
-  // Handle bulk delete click - open dialog
+  // Handle bulk delete click
   const handleBulkDeleteClick = () => {
     setBulkDeleteDialogOpen(true)
   }
 
   // Handle bulk delete confirm
   const handleBulkDeleteConfirm = async () => {
-    const selectedEmployees = getSelectedEmployees()
-    if (selectedEmployees.length === 0) return
+    const selectedHolidays = getSelectedHolidays()
+    if (selectedHolidays.length === 0) return
 
     setIsDeleting(true)
     try {
-      const selectedIds = selectedEmployees.map((emp) => emp.id)
-      const newEmployees = employees.filter(
-        (employee) => !selectedIds.includes(employee.id)
+      const selectedIds = selectedHolidays.map((holiday) => holiday.id)
+      const newHolidays = holidays.filter(
+        (holiday) => !selectedIds.includes(holiday.id)
       )
-      setEmployees(newEmployees)
-      setRowSelection({}) // Clear all selections
+      setHolidays(newHolidays)
+      setRowSelection({})
       setBulkDeleteDialogOpen(false)
 
-      // Adjust page if current page becomes empty
-      const newTotalPages = Math.ceil(newEmployees.length / itemsPerPage)
+      const newTotalPages = Math.ceil(newHolidays.length / itemsPerPage)
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages)
       } else if (newTotalPages === 0) {
@@ -306,14 +299,14 @@ export function EmployeeContainer({
     return pages
   }
 
-  const totalColumns = employeeHeaders.length // No +1 for Actions anymore
+  const totalColumns = holidayHeaders.length
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-muted-foreground">Loading employees...</p>
+          <p className="text-muted-foreground">Loading holidays...</p>
         </div>
       </div>
     )
@@ -324,7 +317,7 @@ export function EmployeeContainer({
       <div className="flex flex-col gap-4 py-6">
         <CardContent className="px-4">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative max-w-sm flex-1">
+            <div className="relative max-w-xs flex-1">
               <HugeiconsIcon
                 icon={Search01Icon}
                 strokeWidth={STROKE_WIDTH}
@@ -338,32 +331,19 @@ export function EmployeeContainer({
               />
             </div>
             <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-auto">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent align="center" sideOffset={5}>
-                  <SelectGroup>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
               {selectedCount > 0 && (
                 <Button variant="destructive" onClick={handleBulkDeleteClick}>
                   <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} /> Delete (
-                  {selectedCount}) Employee
+                  {selectedCount}) Holiday
                   {selectedCount > 1 ? "s" : ""}
                 </Button>
               )}
               <Button
                 variant="default"
-                onClick={handleNewEmployee}
+                onClick={handleNewHoliday}
                 className="bg-primary hover:bg-primary/90"
               >
-                <HugeiconsIcon icon={UserAdd02Icon} strokeWidth={2} />
+                <HugeiconsIcon icon={CalendarAdd01Icon} strokeWidth={2} />
                 New
               </Button>
             </div>
@@ -376,20 +356,19 @@ export function EmployeeContainer({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  {/* Select All Checkbox */}
                   <BorderedTableHead className="w-10 align-middle whitespace-nowrap">
                     <Checkbox
                       checked={
-                        paginatedEmployees.length > 0 &&
-                        paginatedEmployees.every(
-                          (employee) => rowSelection[employee.id.toString()]
+                        paginatedHolidays.length > 0 &&
+                        paginatedHolidays.every(
+                          (holiday) => rowSelection[holiday.id.toString()]
                         )
                       }
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all"
                     />
                   </BorderedTableHead>
-                  {employeeHeaders.slice(1).map((header) => (
+                  {holidayHeaders.slice(1).map((header) => (
                     <BorderedTableHead
                       key={header.field}
                       className="align-middle whitespace-nowrap"
@@ -401,25 +380,24 @@ export function EmployeeContainer({
               </TableHeader>
 
               <TableBody>
-                {paginatedEmployees.length === 0 ? (
+                {paginatedHolidays.length === 0 ? (
                   <TableRow>
                     <BorderedTableCell
                       colSpan={totalColumns}
                       className="py-8 text-center text-muted-foreground"
                     >
-                      No employees found
+                      No holidays found
                     </BorderedTableCell>
                   </TableRow>
                 ) : (
-                  paginatedEmployees.map((employee, index) => {
-                    const isSelected = !!rowSelection[employee.id.toString()]
+                  paginatedHolidays.map((holiday) => {
+                    const isSelected = !!rowSelection[holiday.id.toString()]
                     return (
                       <TableRow
-                        key={employee.id}
+                        key={holiday.id}
                         className="cursor-pointer transition-colors hover:bg-muted/50"
-                        onClick={() => handleRowClick(employee)}
+                        onClick={() => handleRowClick(holiday)}
                       >
-                        {/* Selection Checkbox - prevent click from triggering row click */}
                         <BorderedTableCell
                           className="w-10"
                           selected={isSelected}
@@ -428,47 +406,36 @@ export function EmployeeContainer({
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() =>
-                              handleRowSelect(employee.id.toString())
+                              handleRowSelect(holiday.id.toString())
                             }
-                            aria-label={`Select ${employee.name}`}
+                            aria-label={`Select ${holiday.name}`}
                           />
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {index + 1}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.div}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="text-sm"
-                          selected={isSelected}
-                        >
-                          {employee.id}
+                          {holiday.sr}
                         </BorderedTableCell>
                         <BorderedTableCell
                           className="font-medium"
                           selected={isSelected}
                         >
-                          {employee.name}
+                          {holiday.name}
+                        </BorderedTableCell>
+                        <BorderedTableCell
+                          className="text-sm"
+                          selected={isSelected}
+                        >
+                          {new Date(holiday.date).toLocaleDateString()}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.doorlog}
+                          {holiday.day}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.dept_dat}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.team}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          <Badge className={getStatusBadge(employee.status)}>
-                            {statusLabels[
-                              employee.status as keyof typeof statusLabels
-                            ] || employee.status}
+                          <Badge className={getStatusBadge(holiday.date)}>
+                            {getStatusLabel(holiday.date)}
                           </Badge>
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.role}
+                          {holiday.description || "-"}
                         </BorderedTableCell>
                       </TableRow>
                     )
@@ -477,13 +444,6 @@ export function EmployeeContainer({
               </TableBody>
             </Table>
           </div>
-
-          {/* Show selected rows count */}
-          {/* {selectedCount > 0 && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              {selectedCount} of {filteredEmployees.length} row(s) selected.
-            </div>
-          )} */}
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Field orientation="horizontal" className="w-fit">
@@ -507,9 +467,9 @@ export function EmployeeContainer({
               </Select>
             </Field>
             <div className="text-sm text-muted-foreground">
-              Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} of{" "}
-              {filteredEmployees.length} employees
+              Showing {filteredHolidays.length === 0 ? 0 : startIndex + 1} to{" "}
+              {Math.min(startIndex + itemsPerPage, filteredHolidays.length)} of{" "}
+              {filteredHolidays.length} holidays
             </div>
             <Pagination className="mx-0 w-auto">
               <PaginationContent>
@@ -521,7 +481,7 @@ export function EmployeeContainer({
                       handlePrevious()
                     }}
                     className={
-                      currentPage === 1 || filteredEmployees.length === 0
+                      currentPage === 1 || filteredHolidays.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -554,7 +514,7 @@ export function EmployeeContainer({
                     }}
                     className={
                       currentPage === totalPages ||
-                      filteredEmployees.length === 0
+                      filteredHolidays.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -575,7 +535,7 @@ export function EmployeeContainer({
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {selectedCount} selected employee
+              Are you sure you want to delete {selectedCount} selected holiday
               {selectedCount > 1 ? "s" : ""}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -597,16 +557,16 @@ export function EmployeeContainer({
         </DialogContent>
       </Dialog>
 
-      <CreateEmployeeDrawer
-        open={isNewEmployeeDrawerOpen}
-        onOpenChange={setIsNewEmployeeDrawerOpen}
-        onSuccess={handleEmployeeCreated}
-      />
-      <EditEmployeeDrawer
+      <EditHolidayDrawer
         open={editDrawerOpen}
         onOpenChange={setEditDrawerOpen}
-        employee={selectedEmployee}
-        onSuccess={handleEmployeeUpdated}
+        holiday={selectedHoliday}
+        onSuccess={handleHolidayUpdated}
+      />
+      <CreateHolidayDrawer
+        open={isNewHolidayDrawerOpen}
+        onOpenChange={setIsNewHolidayDrawerOpen}
+        onSuccess={handleHolidayCreated}
       />
     </>
   )

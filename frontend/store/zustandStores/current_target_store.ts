@@ -1,9 +1,6 @@
 import { currentTarget_StoreType } from "../types"
 
 
-type StoreSet = (fn: (state: currentTarget_StoreType) => Partial<currentTarget_StoreType>) => void;
-type StoreGet = () => currentTarget_StoreType;
-
 const targetDate = [
   {
     target_1_date: new Date("2026-09-01T00:00:00.000Z"),
@@ -58,6 +55,11 @@ const japanese_levels = [
     "confidence_level": null
   }
 ]
+
+
+
+type StoreSet = (fn: (state: currentTarget_StoreType) => Partial<currentTarget_StoreType>) => void;
+type StoreGet = () => currentTarget_StoreType;
 
 
 export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({

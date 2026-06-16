@@ -3,7 +3,9 @@ import {
   UserGroupIcon,
   CodeIcon,
   CourseIcon,
+  CalendarIcon,
   TrendingUp,
+  RepostIcon,
 } from "@hugeicons/core-free-icons"
 
 export const allTabs = [
@@ -67,7 +69,7 @@ export const allTabs = [
       console.log("Deleting skills data")
     },
   },
-   {
+  {
     id: "current_target_data",
     label: "Current target",
     importTitle: "Import current target Data",
@@ -87,6 +89,46 @@ export const allTabs = [
       console.log("Deleting current target  data")
     },
   },
+  {
+    id: "holidays",
+    label: "Holidays",
+    importTitle: "Import Holidays Data",
+    importDescription: "Upload holiday data file to import into the system.",
+    exportTitle: "Export Holidays Data",
+    exportDescription: "Export holiday data from the system.",
+    accept: ".csv,.json,.xlsx,.xls",
+    icon: CalendarIcon,
+    maxSize: 500,
+    onImport: (file: File) => {
+      console.log("Importing holidays data:", file)
+    },
+    onExport: (format: string) => {
+      console.log(`Exporting holidays data as ${format}`)
+    },
+    onDelete: (selectedItems: string[]) => {
+      console.log("Deleting holidays data")
+    },
+  },
+  {
+    id: "exam_progress_report",
+    label: "Exam Progress Report",
+    importTitle: "Import Exam Progress Report",
+    importDescription: "Upload Exam Progress Report file to import into the system.",
+    exportTitle: "Export Exam Progress Report",
+    exportDescription: "Export Exam Progress Report from the system.",
+    accept: ".csv,.json,.xlsx,.xls",
+    icon: RepostIcon,
+    maxSize: 500,
+    onImport: (file: File) => {
+      console.log("Importing Exam Progress Report:", file)
+    },
+    onExport: (format: string) => {
+      console.log(`Exporting Exam Progress Report as ${format}`)
+    },
+    onDelete: (selectedItems: string[]) => {
+      console.log("Deleting Exam Progress Report")
+    }
+  }
 ]
 
 export const importTabs = allTabs
