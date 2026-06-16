@@ -2,7 +2,8 @@
 import {
   UserGroupIcon,
   CodeIcon,
-  CourseIcon
+  CourseIcon,
+  TrendingUp,
 } from "@hugeicons/core-free-icons"
 
 export const allTabs = [
@@ -46,7 +47,7 @@ export const allTabs = [
       console.log("Deleting courses data")
     },
   },
-    {
+  {
     id: "skills",
     label: "Skills",
     importTitle: "Import Skills Data",
@@ -64,6 +65,26 @@ export const allTabs = [
     },
     onDelete: (selectedItems: string[]) => {
       console.log("Deleting skills data")
+    },
+  },
+   {
+    id: "current_target_data",
+    label: "Current target",
+    importTitle: "Import current target Data",
+    importDescription: "Upload current target data file to import into the system.",
+    exportTitle: "Export current target Data",
+    exportDescription: "Export current target data from the system.",
+    accept: ".csv,.json,.xlsx,.xls",
+    icon: TrendingUp,
+    maxSize: 500,
+    onImport: (file: File) => {
+      console.log("Importing current target  data:", file)
+    },
+    onExport: (format: string) => {
+      console.log(`Exporting current target  data as ${format}`)
+    },
+    onDelete: (selectedItems: string[]) => {
+      console.log("Deleting current target  data")
     },
   },
 ]

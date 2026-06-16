@@ -477,16 +477,34 @@ export const approverData: SidebarConfig = {
 
 // Helper function to get sidebar config based on user role
 export function getSidebarConfig(
-  role: "admin" | "learner" | "approver"
+  role: "admin" | "learner" | "approver",
+  userData?: { name?: string; email?: string }
 ): SidebarConfig {
+  let baseConfig: SidebarConfig
+
   switch (role) {
     case "admin":
-      return adminData
+      baseConfig = adminData
+      break
     case "learner":
-      return learnerData
+      baseConfig = learnerData
+      break
     case "approver":
-      return approverData
+      baseConfig = approverData
+      break
     default:
-      return adminData
+      baseConfig = adminData
   }
+
+  // Create a new object to avoid mutating the original static data
+  const config: SidebarConfig = {
+    ...baseConfig,
+    user: {
+      ...baseConfig.user,
+      ...(userData?.name && { name: userData.name }),
+      ...(userData?.email && { email: userData.email }),
+    },
+  }
+
+  return config
 }

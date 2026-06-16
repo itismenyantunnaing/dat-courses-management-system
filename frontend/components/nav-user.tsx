@@ -43,6 +43,8 @@ import { Separator } from "@/components/ui/separator"
 import { CardContent } from "@/components/ui/card"
 import ChangePassword from "./dialogs/changePassword-dialog"
 import { NotificationsDrawer } from "./drawers/notifications-drawer"
+import { logout } from "@/app/actions/auth"  // ✅ Import logout action
+import { useRouter } from "next/navigation"   // ✅ Import useRouter
 
 export function NavUser({
   user,
@@ -55,6 +57,7 @@ export function NavUser({
     team?: string
   }
 }) {
+  const router = useRouter()  // ✅ Initialize router
   const { isMobile } = useSidebar()
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
@@ -71,15 +74,17 @@ export function NavUser({
   // Change Password Flow States
   const [changePasswordStep, setChangePasswordStep] = useState("old-password")
 
+  // ✅ Updated handleLogout function
   const handleLogout = async () => {
     setIsLoading(true)
     try {
-      console.log("Logging out...")
-      setLogoutDialogOpen(false)
+      await logout()
     } catch (error) {
       console.error("Logout failed:", error)
+      // Optionally show error message to user
     } finally {
       setIsLoading(false)
+      setLogoutDialogOpen(false)
     }
   }
 

@@ -10,7 +10,7 @@ export interface Employee {
   is_core_personnel: boolean;
   has_japan_business_trip: boolean;
 
-  noti_setting: string;
+  // noti_setting: string;
   
   div: string;
   dept_dir: string;

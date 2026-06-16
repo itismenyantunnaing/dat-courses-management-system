@@ -24,49 +24,77 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import ChangePassword from "./dialogs/changePassword-dialog"
+import { login, sendOtp, verifyOtp, resetPassword } from "@/app/actions/auth"
 
-export function LoginForm({className,...props}: React.ComponentProps<"div">) {
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+
+export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [credentials, setCredentials] = useState({ staff_Id: "", password: "" });
-  
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const [forgotPasswordStep, setForgotPasswordStep] = useState("staff-id")
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("")
+  const [forgotPasswordOtp, setForgotPasswordOtp] = useState("")
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
+  const [forgotPasswordError, setForgotPasswordError] = useState("")
 
   // Reset form
   const resetForm = () => {
     setForgotPasswordStep("staff-id")
+    setForgotPasswordEmail("")
+    setForgotPasswordOtp("")
+    setForgotPasswordError("")
   }
 
-  // Forgot Password Callbacks for ChangePassword component
-  const handleForgotPasswordStepChange = (step: string) => {
-    console.log("Forgot password step:", step)
-    setForgotPasswordStep(step)
-  }
-
-  const handleForgotPasswordUpdate = async (data: { staffId?: string; newPassword: string; oldPassword?: string }) => {
-    console.log("Reset password for:", data.staffId)
-    try {
-      // API call to reset password
-      // await resetPassword(data.staffId, data.newPassword)
-      console.log("Password reset successfully")
-      resetForm()
-      setForgotPasswordOpen(false)
-    } catch (err) {
-      console.error("Failed to reset password:", err)
+  // Handle Login
+  const handleLoginForm = async () => {
+    if (!credentials.staff_Id || !credentials.password) {
+      setError("Please enter both Staff ID and Password")
+      return
     }
+
+    setLoading(true)
+    setError("")
+
+    try {
+      const result = await login({
+        staff_Id: credentials.staff_Id,
+        password: credentials.password
+      })
+
+      if (result.success) {
+
+        window.location.href = "/dashboard"
+      } else {
+        setError(result.message || "Login failed")
+      }
+    } catch (err) {
+      console.error("Login error:", err)
+      setError("An unexpected error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Handle Forgot Password completion
+  const handleForgotPasswordUpdate = async (data: {
+    staffId?: string;
+    email?: string;
+    otp?: string;
+    newPassword: string;
+    oldPassword?: string
+  }) => {
+    console.log("Forgot password completed successfully for:", data.staffId)
+    setForgotPasswordOpen(false)
+    resetForm()
   }
 
   const handleForgotPasswordClose = () => {
     console.log("Close forgot password dialog")
     resetForm()
     setForgotPasswordOpen(false)
-  }
-
-  const handleLoginForm = () => {
-    const staff_Id = credentials.staff_Id;
-    const password = credentials.password;
-
-
-
   }
 
   return (
@@ -78,7 +106,7 @@ export function LoginForm({className,...props}: React.ComponentProps<"div">) {
             <CardDescription>Please enter your credentials</CardDescription>
           </CardHeader>
           <CardContent>
-            <form>
+            <form onSubmit={(e) => { e.preventDefault(); handleLoginForm() }}>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="staff-id-login">Staff ID</FieldLabel>
@@ -86,9 +114,10 @@ export function LoginForm({className,...props}: React.ComponentProps<"div">) {
                     id="staff-id-login"
                     type="text"
                     value={credentials.staff_Id}
-                    onChange={(e) => setCredentials({...credentials, staff_Id: e.target.value})}
+                    onChange={(e) => setCredentials({ ...credentials, staff_Id: e.target.value })}
                     placeholder="Enter your staff id"
                     required
+                    disabled={loading}
                   />
                 </Field>
                 <Field>
@@ -106,13 +135,19 @@ export function LoginForm({className,...props}: React.ComponentProps<"div">) {
                     </a>
                   </div>
                   <Input
-                    id="password"  
+                    id="password"
                     type="password"
                     value={credentials.password}
-                    onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+                    onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                     required
-                   />
+                    disabled={loading}
+                  />
                 </Field>
+                {error && (
+                  <div className="text-sm text-red-500 text-center">
+                    {error}
+                  </div>
+                )}
                 <Field orientation="horizontal">
                   <div className="flex gap-2">
                     <Checkbox id="remember-me" defaultChecked />
@@ -122,7 +157,9 @@ export function LoginForm({className,...props}: React.ComponentProps<"div">) {
                   </div>
                 </Field>
                 <Field>
-                  <Button type="button" onClick={handleLoginForm}>Login</Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Logging in..." : "Login"}
+                  </Button>
                 </Field>
               </FieldGroup>
             </form>
@@ -130,7 +167,7 @@ export function LoginForm({className,...props}: React.ComponentProps<"div">) {
         </Card>
       </div>
 
-      {/* Forgot Password Dialog - ChangePassword handles all steps */}
+      {/* Forgot Password Dialog */}
       <Dialog
         open={forgotPasswordOpen}
         onOpenChange={(open) => {
@@ -142,9 +179,12 @@ export function LoginForm({className,...props}: React.ComponentProps<"div">) {
           <ChangePassword
             flow="forgot"
             step={forgotPasswordStep}
-            onStepChange={handleForgotPasswordStepChange}
             onPasswordUpdate={handleForgotPasswordUpdate}
             onClose={handleForgotPasswordClose}
+            loading={forgotPasswordLoading}
+            error={forgotPasswordError}
+            onEmailChange={setForgotPasswordEmail}
+            onOtpChange={setForgotPasswordOtp}
           />
         </DialogContent>
       </Dialog>

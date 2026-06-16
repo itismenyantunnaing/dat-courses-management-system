@@ -1,5 +1,6 @@
 import { Employee } from "@/types/employee";
 import { SkillCategory, EmployeeSkill, DevelopmentCapability, EmployeeDevelopmentExperience, LanguageSkill, ManagementScore} from '@/types/skillset';
+import { TargetDates, EmployeeJapaneseLevel } from "@/types/current_target"; 
 
 
 export interface Employee_StoreType {
@@ -20,4 +21,11 @@ export interface SkillSet_StoreType {
   fetch_devCapData: () => Promise<void>;
   fetch_languageSkillData: () => Promise<void>;
   fetch_managementScoreData: () => Promise<void>; 
+}
+
+export interface currentTarget_StoreType{
+  japaneseTargetDates_Data?: TargetDates[];
+  employeeJapaneseLevel_Data?: EmployeeJapaneseLevel[];
+  fetch_TargetDates: () => Promise<void>; 
+  fetch_EmployeeJapaneseLevel: () => Promise<void>; 
 }

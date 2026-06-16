@@ -20,14 +20,16 @@ export function AppSidebar({
   onTabChange,
   activeTab,
   userRole = "admin",
+  userData,
   ...props
 }: {
   onTabChange?: (tab: string) => void
   activeTab?: string
   userRole?: "admin" | "learner" | "approver"
+  userData?: { name?: string; email?: string }
 } & React.ComponentProps<typeof Sidebar>) {
   // Get data based on user role
-  const data = getSidebarConfig(userRole)
+  const data = getSidebarConfig(userRole, userData)
 
   return (
     <Sidebar collapsible="icon" {...props}>

@@ -15,26 +15,38 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from "@/components/ui/input-otp"
+import { getAuthToken, logout } from "@/app/actions/auth"
 
 interface ChangePasswordProps {
     step?: string;
     flow?: "forgot" | "change";
+    force?: boolean;  // Added force prop
     onStepChange?: (step: string) => void;
     onPasswordUpdate?: (data: { staffId?: string; newPassword: string; oldPassword?: string }) => void;
     onClose?: () => void;
-    staffId?: string; 
+    staffId?: string;
+    loading?: boolean;
+    error?: string;
+    onEmailChange?: (email: string) => void;
+    onOtpChange?: (otp: string) => void;
 }
 
 export default function ChangePassword({
     step = "",
     flow = "forgot",
+    force = false,
     onStepChange,
     onPasswordUpdate,
     onClose,
-    staffId: externalStaffId = ""
+    staffId: externalStaffId = "",
+    loading: externalLoading = false,
+    error: externalError = "",
+    onEmailChange,
+    onOtpChange
 }: ChangePasswordProps) {
     // Form states
     const [staffId, setStaffId] = useState(externalStaffId)
+    const [email, setEmail] = useState("")
     const [otp, setOtp] = useState("")
     const [oldPassword, setOldPassword] = useState("")
     const [newPassword, setNewPassword] = useState("")
@@ -43,6 +55,22 @@ export default function ChangePassword({
     const [error, setError] = useState("")
     const [otpError, setOtpError] = useState("")
     const [currentStep, setCurrentStep] = useState(step);
+    const [token, setToken] = useState<string | null>(null)
+    const [otpSuccess, setOtpSuccess] = useState("")
+
+    // Sync internal step with prop
+    useEffect(() => {
+        if (step) {
+            setCurrentStep(step)
+        }
+    }, [step])
+
+    // Get token for change password flow
+    useEffect(() => {
+        if (flow === "change") {
+            getAuthToken().then(setToken)
+        }
+    }, [flow])
 
     // Countdown states for OTP
     const [countdown, setCountdown] = useState(0)
@@ -71,6 +99,7 @@ export default function ChangePassword({
     // Reset form
     const resetForm = () => {
         setStaffId(externalStaffId)
+        setEmail("")
         setOtp("")
         setOldPassword("")
         setNewPassword("")
@@ -90,10 +119,17 @@ export default function ChangePassword({
         }
     }
 
-    // Handle staff ID submission (Forgot Password Flow)
-    const handleStaffIdSubmit = async () => {
-        if (!staffId) {
-            setError("Please enter your staff ID")
+    // Handle close with force check
+    const handleClose = () => {
+        if (!force && onClose) {
+            onClose()
+        }
+    }
+
+    // Handle email submission (Forgot Password Flow)
+    const handleEmailSubmit = async () => {
+        if (!email) {
+            setError("Please enter your email address")
             return
         }
 
@@ -101,20 +137,45 @@ export default function ChangePassword({
         setError("")
 
         try {
-            // API call to send OTP
-            console.log("Sending OTP to staff ID:", staffId)
-            // await sendOtp(staffId)
+            // Using direct fetch instead of server action to maintain session
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/forgot-password`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email }),
+            })
 
-            // Move to OTP step
-            handleStepChange("otp")
+            const text = await response.text()
+            console.log("Send OTP response:", text)
+
+            if (response.ok) {
+                // Notify parent about email
+                if (onEmailChange) {
+                    onEmailChange(email)
+                }
+                // Move to OTP step
+                handleStepChange("otp")
+            } else {
+                let errorMessage = "Failed to send OTP. Please check your email address."
+                try {
+                    const json = JSON.parse(text)
+                    errorMessage = json.message || errorMessage
+                } catch (e) {
+                    errorMessage = text || errorMessage
+                }
+                setError(errorMessage)
+            }
         } catch (err) {
-            setError("Failed to send OTP. Please try again." + err)
+            console.error("Send OTP error:", err)
+            setError("Network error. Please try again.")
         } finally {
             setIsLoading(false)
         }
     }
 
-    // Handle OTP verification (Forgot Password Flow)
+    // In handleOtpSubmit function
     const handleOtpSubmit = async () => {
         if (otp.length !== 6) {
             setError("Please enter a valid 6-digit OTP")
@@ -125,20 +186,45 @@ export default function ChangePassword({
         setError("")
 
         try {
-            // API call to verify OTP
-            console.log("Verifying OTP:", otp)
-            // await verifyOtp(staffId, otp)
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/verify-otp`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email, otp }),
+            })
 
-            // Move to new password step
-            handleStepChange("new-password")
-            setOtp("")
-            setOtpError("")
+            const text = await response.text()
+            console.log("Verify OTP response:", text)
+
+            if (response.ok && (text.toLowerCase().includes("verified") || text.toLowerCase().includes("success"))) {
+                // Store OTP for later use in reset
+                if (onOtpChange) {
+                    onOtpChange(otp)
+                }
+                // Move to reset step
+                handleStepChange("reset")
+                // DO NOT clear OTP here, it's needed for the reset-password call
+                setOtpError("")
+            } else {
+                let errorMessage = "Invalid OTP. Please try again."
+                try {
+                    const json = JSON.parse(text)
+                    errorMessage = json.message || errorMessage
+                } catch (e) {
+                    errorMessage = text || errorMessage
+                }
+                setError(errorMessage)
+            }
         } catch (err) {
-            setError("Invalid OTP. Please try again.")
+            console.error("Verify OTP error:", err)
+            setError("Network error. Please try again.")
         } finally {
             setIsLoading(false)
         }
     }
+
 
     // Handle resend OTP (Forgot Password Flow)
     const handleResendOtp = async () => {
@@ -146,13 +232,37 @@ export default function ChangePassword({
         setError("")
 
         try {
-            console.log("Resending OTP to staff ID:", staffId)
-            // await resendOtp(staffId)
+            // Using direct fetch to maintain session
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/forgot-password`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email }),
+            })
 
-            // Reset countdown
-            setCountdown(60)
+            const text = await response.text()
+
+            if (response.ok) {
+                // Reset countdown
+                setCountdown(60)
+                setOtpSuccess("OTP resent successfully!")
+                // Clear success message after 3 seconds
+                setTimeout(() => setError(""), 3000)
+            } else {
+                let errorMessage = "Failed to resend OTP"
+                try {
+                    const json = JSON.parse(text)
+                    errorMessage = json.message || errorMessage
+                } catch (e) {
+                    errorMessage = text || errorMessage
+                }
+                setError(errorMessage)
+            }
         } catch (err) {
-            setError("Failed to resend OTP. Please try again.")
+            console.error("Resend OTP error:", err)
+            setError("Network error. Please try again.")
         } finally {
             setIsLoading(false)
         }
@@ -165,19 +275,45 @@ export default function ChangePassword({
             return
         }
 
+        if (flow === "change" && !token) {
+            setError("Authentication session expired. Please login again.")
+            return
+        }
+
         setIsLoading(true)
         setError("")
 
         try {
-            // API call to verify old password
-            console.log("Verifying old password")
-            // await verifyOldPassword(oldPassword)
+            // Using direct fetch to maintain session for the two-step change process
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/verify-current-password`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                credentials: 'include',
+                body: JSON.stringify({ currentPassword: oldPassword }),
+            })
 
-            // Move to new password step
-            handleStepChange("new-password")
-            setOldPassword("")
+            const text = await response.text()
+            console.log("Verify current password response:", text)
+
+            if (response.ok) {
+                // Move to new password step
+                handleStepChange("new-password")
+            } else {
+                let errorMessage = "Current password is incorrect. Please try again."
+                try {
+                    const json = JSON.parse(text)
+                    errorMessage = json.message || errorMessage
+                } catch (e) {
+                    errorMessage = text || errorMessage
+                }
+                setError(errorMessage)
+            }
         } catch (err) {
-            setError("Current password is incorrect. Please try again.")
+            console.error("Verify password error:", err)
+            setError("Network error. Please try again.")
         } finally {
             setIsLoading(false)
         }
@@ -186,56 +322,124 @@ export default function ChangePassword({
     // Handle password update (Both Flows)
     const handlePasswordUpdate = async () => {
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-        
+
         if (newPassword !== confirmPassword) {
             setError("Passwords do not match")
             return
         }
 
-        if (!passwordRegex.test(newPassword)) {
-            setError(
-                "Password must be at least 8 characters long, and contain an uppercase letter, a lowercase letter, a number, and a special character."
-            );
-            return; 
+        // Check if new password is same as current password (only for change flow)
+        if (flow === "change" && newPassword === oldPassword) {
+            setError("New password cannot be the same as your current password")
+            return
         }
 
+        if (!passwordRegex.test(newPassword)) {
+            setError("Password must contain: 8+ chars, A-Z, a-z, 0-9, and symbol (@$!%*?&)")
+            return;
+        }
 
         setIsLoading(true)
         setError("")
 
         try {
-            // Prepare data based on flow
-            const updateData = flow === "forgot"
-                ? { staffId, newPassword }
-                : { newPassword, oldPassword }
+            if (flow === "forgot") {
 
-            console.log(`Updating password via ${flow} flow:`, updateData)
+                const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/verify-otp`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, otp }),
+                })
 
-            // API call to update password
-            // if (flow === "forgot") {
-            //     await resetPassword(staffId, newPassword)
-            // } else {
-            //     await changePassword(oldPassword, newPassword)
-            // }
+                const verifyText = await verifyResponse.text()
+                console.log("Re-verify response:", verifyText)
 
-            // Notify parent with the updated password data
-            if (onPasswordUpdate) {
-                onPasswordUpdate(updateData)
+                if (!verifyResponse.ok || !(verifyText.toLowerCase().includes("verified") || verifyText.toLowerCase().includes("success"))) {
+                    setError("OTP verification session expired. Please go back and verify again.")
+                    setIsLoading(false)
+                    return
+                }
+
+                // Reset password for forgot flow
+                const resetResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/reset-password`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, newPassword }),
+                })
+
+                const resetText = await resetResponse.text()
+                console.log("Password reset response:", resetText)
+
+                if (resetResponse.ok && (resetText.toLowerCase().includes("success") || resetText.toLowerCase().includes("successful"))) {
+                    if (onPasswordUpdate) {
+                        onPasswordUpdate({ staffId: email, newPassword })
+                    }
+                    if (!force && onClose) {
+                        onClose()
+                    }
+                    resetForm()
+                    alert("Password updated successfully! Please login with your new password.")
+                } else {
+                    let errorMessage = "Failed to update password"
+                    try {
+                        const json = JSON.parse(resetText)
+                        errorMessage = json.message || errorMessage
+                    } catch (e) {
+                        errorMessage = resetText || errorMessage
+                    }
+                    setError(errorMessage)
+                }
+            } else {
+                // For change password flow, use direct fetch to maintain session
+                const changeResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/change-password`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ newPassword, confirmPassword }),
+                })
+
+                const changeText = await changeResponse.text()
+                console.log("Password change response:", changeText)
+
+                if (changeResponse.ok && (changeText.toLowerCase().includes("success") || changeText.toLowerCase().includes("successful") || changeText.toLowerCase().includes("changed"))) {
+                    if (onPasswordUpdate) {
+                        onPasswordUpdate({ staffId: email, newPassword })
+                    }
+                    if (!force && onClose) {
+                        onClose()
+                    }
+                    resetForm()
+                    alert("Password changed successfully! You will be logged out for security.")
+                    await logout()
+                } else {
+                    let errorMessage = "Failed to change password"
+                    try {
+                        const json = JSON.parse(changeText)
+                        errorMessage = json.message || errorMessage
+                    } catch (e) {
+                        errorMessage = changeText || errorMessage
+                    }
+                    setError(errorMessage)
+                }
             }
-
-            // Close dialog and reset
-            if (onClose) {
-                onClose()
-            }
-            resetForm()
         } catch (err) {
+            console.error("Password update error:", err)
             setError("Failed to update password. Please try again.")
         } finally {
             setIsLoading(false)
         }
     }
 
-    // Render forgot password flow (default)
+    // Render forgot password flow
     const renderForgotPasswordFlow = () => {
         switch (currentStep) {
             case "staff-id":
@@ -244,21 +448,21 @@ export default function ChangePassword({
                         <DialogHeader>
                             <DialogTitle>Forgot Password</DialogTitle>
                             <DialogDescription>
-                                Enter your staff ID to receive a verification code.
+                                Enter your email address to receive a verification code.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="staff-id">Staff ID</Label>
+                                <Label htmlFor="email">Email Address</Label>
                                 <Input
-                                    id="staff-id"
-                                    type="text"
-                                    placeholder="Enter your staff ID"
-                                    value={staffId}
-                                    onChange={(e) => setStaffId(e.target.value)}
+                                    id="email"
+                                    type="email"
+                                    placeholder="Enter your email address"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                     onKeyDown={(e) => {
-                                        if (e.key === "Enter" && staffId) {
-                                            handleStaffIdSubmit()
+                                        if (e.key === "Enter" && email) {
+                                            handleEmailSubmit()
                                         }
                                     }}
                                     autoFocus
@@ -267,12 +471,14 @@ export default function ChangePassword({
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={onClose}>
-                                Cancel
-                            </Button>
+                            {!force && (
+                                <Button variant="outline" onClick={handleClose}>
+                                    Cancel
+                                </Button>
+                            )}
                             <Button
-                                onClick={handleStaffIdSubmit}
-                                disabled={!staffId || isLoading}
+                                onClick={handleEmailSubmit}
+                                disabled={!email || isLoading}
                             >
                                 {isLoading ? "Sending..." : "Send OTP"}
                             </Button>
@@ -319,6 +525,12 @@ export default function ChangePassword({
                                     {otpError}
                                 </p>
                             )}
+                            {error && (
+                                <p className="text-sm text-destructive">{error}</p>
+                            )}
+                            {otpSuccess && (
+                                <p className="text-sm text-green-400">{otpSuccess}</p>
+                            )}
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -328,14 +540,16 @@ export default function ChangePassword({
                                 disabled={countdown > 0 || isLoading}
                             >
                                 {countdown > 0
-                                    ? `you can resend code in ${countdown}s`
+                                    ? `Resend code in ${countdown}s`
                                     : "Resend code"}
                             </Button>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => handleStepChange("staff-id")}>
-                                Back
-                            </Button>
+                            {!force && (
+                                <Button variant="outline" onClick={() => handleStepChange("staff-id")}>
+                                    Back
+                                </Button>
+                            )}
                             <Button
                                 onClick={handleOtpSubmit}
                                 disabled={otp.length !== 6 || isLoading}
@@ -346,7 +560,7 @@ export default function ChangePassword({
                     </>
                 )
 
-            case "new-password":
+            case "reset":
                 return renderNewPasswordForm()
 
             default:
@@ -361,8 +575,11 @@ export default function ChangePassword({
                 return (
                     <>
                         <DialogHeader>
-                            <DialogTitle>Change Password</DialogTitle>
+                            <DialogTitle>
+                                Update Your Password
+                            </DialogTitle>
                             <DialogDescription>
+                                {force && <span className=" text-sm font-normal text-destructive">You have to change your password at the first login.</span>} <br />
                                 Please enter your current password to continue.
                             </DialogDescription>
                         </DialogHeader>
@@ -386,9 +603,11 @@ export default function ChangePassword({
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={onClose}>
-                                Cancel
-                            </Button>
+                            {!force && (
+                                <Button variant="outline" onClick={handleClose}>
+                                    Cancel
+                                </Button>
+                            )}
                             <Button
                                 onClick={handleOldPasswordSubmit}
                                 disabled={!oldPassword || isLoading}
@@ -407,16 +626,19 @@ export default function ChangePassword({
         }
     }
 
-    // Shared new password form (used by both flows)
+    // Shared new password form
     const renderNewPasswordForm = () => {
+        const title = flow === "forgot" ? "Reset Password" : "Create New Password"
+        const description = flow === "forgot"
+            ? "Enter your new password below."
+            : "Enter your new password below. Make sure it's secure and easy to remember."
+
         return (
             <>
                 <DialogHeader>
-                    <DialogTitle>
-                        {flow === "forgot" ? "Reset Password" : "Change Password"}
-                    </DialogTitle>
+                    <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>
-                        Enter your new password below. Make sure it&apos;s secure and easy to remember.
+                        {description}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -446,23 +668,24 @@ export default function ChangePassword({
                             </p>
                         )}
                     </div>
+
                 </div>
                 <DialogFooter>
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            const previousStep = flow === "forgot" ? "otp" : "old-password"
-                            handleStepChange(previousStep)
-                        }}
-                    >
-                        Back
-                    </Button>
+                    {!force && (
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                const previousStep = flow === "forgot" ? "otp" : "old-password"
+                                handleStepChange(previousStep)
+                                setError("")
+                            }}
+                        >
+                            Back
+                        </Button>
+                    )}
                     <Button
                         onClick={handlePasswordUpdate}
-                        disabled={
-                            !newPassword ||
-                            isLoading
-                        }
+                        disabled={!newPassword || !confirmPassword || isLoading}
                     >
                         {isLoading ? "Updating..." : "Update Password"}
                     </Button>
@@ -470,6 +693,10 @@ export default function ChangePassword({
             </>
         )
     }
+
+    // Use external loading/error if provided
+    const displayLoading = externalLoading || isLoading
+    const displayError = externalError || error
 
     // Main render
     return (

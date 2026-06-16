@@ -47,31 +47,12 @@ import {
 import React from "react"
 import { mainStore } from "@/store/mainStore"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { EditEmployeeDrawer } from "@/components/drawers/employees/editEmployee-drawer"
 import type { Employee } from "@/types/employee"
+import type { TargetDates, EmployeeJapaneseLevel } from "@/types/current_target"
 
 const STROKE_WIDTH = 2
 
-// Status badge styling using Badge component
-const getStatusBadge = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "active":
-      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950"
-    case "inactive":
-      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
-    default:
-      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
-  }
-}
-
-const statusLabels = {
-  active: "Active",
-  inactive: "Inactive",
-}
-
-// Updated BorderedTableCell to accept a selected prop
 const BorderedTableCell = ({
   children,
   className = "",
@@ -89,51 +70,49 @@ const BorderedTableCell = ({
 const BorderedTableHead = ({
   children,
   className = "",
+  colSpan,
+  rowSpan,
   ...props
-}: React.ComponentProps<typeof TableHead>) => (
-  <TableHead className={`border-r border-l ${className}`} {...props}>
+}: React.ComponentProps<typeof TableHead> & { colSpan?: number; rowSpan?: number }) => (
+  <TableHead className={`border-r border-l ${className}`} colSpan={colSpan} rowSpan={rowSpan} {...props}>
     {children}
   </TableHead>
 )
 
-export function EmployeeContainer({
-  searchPlaceholder = "Search employees...",
-}) {
+export function CurrentTargetContainer({ searchPlaceholder = "Search employees..." }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [itemsPerPage, setItemsPerPage] = useState(15)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(
-    null
-  )
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [employees, setEmployees] = useState<Employee[]>([])
 
-  // Add state for row selection
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
-
-  // State for bulk delete dialog
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
-  // State for edit drawer
-  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null
-  )
-
-  const { fetch_EmployeeData, employee_data } = mainStore()
+  const {
+    fetch_EmployeeData,
+    employee_data,
+    fetch_TargetDates,
+    japaneseTargetDates_Data,
+    fetch_EmployeeJapaneseLevel,
+    employeeJapaneseLevel_Data
+  } = mainStore()
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
-      await fetch_EmployeeData()
+      await Promise.all([
+        fetch_EmployeeData(),
+        fetch_TargetDates(),
+        fetch_EmployeeJapaneseLevel()
+      ])
       setIsLoading(false)
     }
 
     loadData()
-  }, [fetch_EmployeeData])
+  }, [fetch_EmployeeData, fetch_TargetDates, fetch_EmployeeJapaneseLevel])
 
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
@@ -141,26 +120,105 @@ export function EmployeeContainer({
     }
   }, [employee_data])
 
-  // Column headers
+  // Helper function to get Japanese level data for an employee by index
+  const getJapaneseLevelData = (index: number): EmployeeJapaneseLevel | undefined => {
+    return employeeJapaneseLevel_Data?.[index]
+  }
+
+  // Helper function to get target dates for an employee by index
+  const getTargetDatesData = (index: number): TargetDates | undefined => {
+    return japaneseTargetDates_Data?.[index]
+  }
+
+  // Helper function to format date for group name
+  const formatGroupDate = (date: Date | string | undefined): string => {
+    if (!date) return "TBD"
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+  }
+
+  // Employee Headers (will use rowSpan=2)
   const employeeHeaders = [
     { field: "select", header_name: "" },
-    { field: "sr", header_name: "Sr." },
-    { field: "div", header_name: "Div" },
+    { field: "Sr", header_name: "Sr" },
     { field: "staff_id", header_name: "Staff ID" },
     { field: "name", header_name: "Name" },
-    { field: "doorlog", header_name: "DoorLog" },
-    { field: "dept", header_name: "Dept" },
+    { field: "email", header_name: "Email" },
+    { field: "position", header_name: "Post" },
     { field: "team", header_name: "Team" },
-    { field: "status", header_name: "Status" },
-    { field: "role", header_name: "Role" },
-  ]
+    { field: "dept", header_name: "Dept" },
+    { field: "jlpt_nat_test", header_name: "JLPT / NAT Test" },
+  ];
+
+  // Grouped Japanese Headers
+  const getJapaneseHeaderGroups = (targetDate?: TargetDates) => {
+    const target1Date = targetDate?.target_1_date
+      ? formatGroupDate(targetDate.target_1_date)
+      : "Sep-2026"
+    const target2Date = targetDate?.target_2_date
+      ? formatGroupDate(targetDate.target_2_date)
+      : "Mar-2027"
+
+    return [
+      {
+        groupName: "Certified Level",
+        children: [
+          { field: "jlpt_highest_level", header_name: "JLPT Highest Level (Certified)" },
+          { field: "other_japanese_level", header_name: "Other Highest Japanese Level (Certified) if any" },
+          { field: "preferred_joining_group", header_name: "Preferred Joining Group & Level" },
+        ]
+      },
+      {
+        groupName: "Current",
+        children: [
+          { field: "communication_level_1", header_name: "Communication Level" },
+        ]
+      },
+      {
+        groupName: `Target Level to be on ${target1Date}`,
+        children: [
+          { field: "target_1_date", header_name: "Target Date" },
+          { field: "jlpt_nat_test_level", header_name: "JLPT / NAT Test Level" },
+          { field: "communication_level_2", header_name: "Communication Level" },
+        ]
+      },
+      {
+        groupName: `Target Level to be on ${target2Date}`,
+        children: [
+          { field: "target_2_date", header_name: "Target Date" },
+          { field: "jlpt_nat_test_level_2", header_name: "JLPT / NAT Test Level" },
+          { field: "communication_level_3", header_name: "Communication Level" },
+        ]
+      },
+      {
+        groupName: "Current Learning Level and Method",
+        children: [
+          { field: "japanese_level_current", header_name: "Japanese Level (Current Learning)" },
+          { field: "learning_method", header_name: "If you are studying Japanese, Learning Method (Online/Zoom, In-person, Video Record, Mobile App or Web)" }
+        ]
+      },
+      {
+        groupName: "JLPT Exam Target",
+        children: [
+          { field: "want_sit_jlpt_jul_2026", header_name: "Want to sit JLPT exam on Jul 2026" },
+          { field: "jlpt_level_for_jul_2026", header_name: "If Yes, Which Level?" },
+          { field: "confidence_level_pass_exam", header_name: "Confidence Level to Pass Exam" },
+        ]
+      },
+    ]
+  }
+
+  const firstTargetDate = getTargetDatesData(0)
+  const japaneseHeaderGroups = getJapaneseHeaderGroups(firstTargetDate)
+
+  // Flatten for data mapping
+  const flattenedJapaneseHeaders = japaneseHeaderGroups.flatMap(group => group.children);
 
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
       employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.staff_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (employee.email &&
-        employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      employee.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesStatus =
       statusFilter === "all" || employee.status === statusFilter
     return matchesSearch && matchesStatus
@@ -182,21 +240,18 @@ export function EmployeeContainer({
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
-  // Handle select all on current page
   const handleSelectAll = () => {
     const allSelected = paginatedEmployees.every(
       (employee) => rowSelection[employee.id.toString()]
     )
 
     if (allSelected) {
-      // Deselect all on current page
       const newSelection = { ...rowSelection }
       paginatedEmployees.forEach((employee) => {
         delete newSelection[employee.id.toString()]
       })
       setRowSelection(newSelection)
     } else {
-      // Select all on current page
       const newSelection = { ...rowSelection }
       paginatedEmployees.forEach((employee) => {
         newSelection[employee.id.toString()] = true
@@ -205,7 +260,6 @@ export function EmployeeContainer({
     }
   }
 
-  // Handle individual row selection
   const handleRowSelect = (employeeId: string) => {
     setRowSelection((prev) => ({
       ...prev,
@@ -213,23 +267,8 @@ export function EmployeeContainer({
     }))
   }
 
-  // Handle row click to open edit drawer
-  const handleRowClick = (employee: Employee) => {
-    setSelectedEmployee(employee)
-    setEditDrawerOpen(true)
-  }
-
-  // Handle successful employee update
-  const handleEmployeeUpdated = async () => {
-    setIsLoading(true)
-    await fetch_EmployeeData()
-    setIsLoading(false)
-  }
-
-  // Get selected employees count
   const selectedCount = Object.values(rowSelection).filter(Boolean).length
 
-  // Get selected employees list
   const getSelectedEmployees = () => {
     const selectedIds = Object.entries(rowSelection)
       .filter(([, selected]) => selected)
@@ -237,12 +276,10 @@ export function EmployeeContainer({
     return employees.filter((employee) => selectedIds.includes(Number(employee.id)))
   }
 
-  // Handle bulk delete click - open dialog
   const handleBulkDeleteClick = () => {
     setBulkDeleteDialogOpen(true)
   }
 
-  // Handle bulk delete confirm
   const handleBulkDeleteConfirm = async () => {
     const selectedEmployees = getSelectedEmployees()
     if (selectedEmployees.length === 0) return
@@ -254,10 +291,9 @@ export function EmployeeContainer({
         (employee) => !selectedIds.includes(employee.id)
       )
       setEmployees(newEmployees)
-      setRowSelection({}) // Clear all selections
+      setRowSelection({})
       setBulkDeleteDialogOpen(false)
 
-      // Adjust page if current page becomes empty
       const newTotalPages = Math.ceil(newEmployees.length / itemsPerPage)
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages)
@@ -294,7 +330,7 @@ export function EmployeeContainer({
     return pages
   }
 
-  const totalColumns = employeeHeaders.length // No +1 for Actions anymore
+  const totalColumns = employeeHeaders.length + flattenedJapaneseHeaders.length
 
   if (isLoading) {
     return (
@@ -356,21 +392,50 @@ export function EmployeeContainer({
           >
             <Table>
               <TableHeader>
+                {/* First Row - Group Headers */}
                 <TableRow className="bg-muted/50">
-                  {/* Select All Checkbox */}
-                  <BorderedTableHead className="w-10 align-middle whitespace-nowrap">
-                    <Checkbox
-                      checked={
-                        paginatedEmployees.length > 0 &&
-                        paginatedEmployees.every(
-                          (employee) => rowSelection[employee.id.toString()]
-                        )
-                      }
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all"
-                    />
-                  </BorderedTableHead>
-                  {employeeHeaders.slice(1).map((header) => (
+                  {/* Employee Headers - with rowSpan=2 */}
+                  {employeeHeaders.map((header) => (
+                    <BorderedTableHead
+                      key={header.field}
+                      className={cn(
+                        "align-middle whitespace-nowrap text-center",
+                        header.field === "select" && "w-10 min-w-[40px]"
+                      )}
+                      rowSpan={2}
+                    >
+                      {header.field === "select" ? (
+                        <Checkbox
+                          checked={
+                            paginatedEmployees.length > 0 &&
+                            paginatedEmployees.every(
+                              (employee) => rowSelection[employee.id.toString()]
+                            )
+                          }
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                      ) : (
+                        header.header_name
+                      )}
+                    </BorderedTableHead>
+                  ))}
+                  {/* Japanese Group Headers */}
+                  {japaneseHeaderGroups.map((group) => (
+                    <BorderedTableHead
+                      key={group.groupName}
+                      className="align-middle whitespace-nowrap text-center bg-muted/30"
+                      colSpan={group.children.length}
+                    >
+                      {group.groupName}
+                    </BorderedTableHead>
+                  ))}
+                </TableRow>
+
+                {/* Second Row - Sub Headers (only for Japanese headers) */}
+                <TableRow className="bg-muted/50">
+                  {/* Japanese Sub Headers */}
+                  {flattenedJapaneseHeaders.map((header) => (
                     <BorderedTableHead
                       key={header.field}
                       className="align-middle whitespace-nowrap"
@@ -394,62 +459,83 @@ export function EmployeeContainer({
                 ) : (
                   paginatedEmployees.map((employee, index) => {
                     const isSelected = !!rowSelection[employee.id.toString()]
+                    const globalIndex = startIndex + index + 1
+                    const actualIndex = startIndex + index
+                    const jpLevel = getJapaneseLevelData(actualIndex)
+
+
                     return (
-                      <TableRow
-                        key={employee.id}
-                        className="cursor-pointer transition-colors hover:bg-muted/50"
-                        onClick={() => handleRowClick(employee)}
-                      >
-                        {/* Selection Checkbox - prevent click from triggering row click */}
-                        <BorderedTableCell
-                          className="w-10"
-                          selected={isSelected}
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                      <TableRow key={employee.id}>
+                        {/* Employee Data */}
+                        <BorderedTableCell className="w-10 min-w-[40px]" selected={isSelected}>
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={() =>
-                              handleRowSelect(employee.id.toString())
-                            }
+                            onCheckedChange={() => handleRowSelect(employee.id.toString())}
                             aria-label={`Select ${employee.name}`}
                           />
                         </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {index + 1}
+                        <BorderedTableCell selected={isSelected}>{globalIndex}</BorderedTableCell>
+                        <BorderedTableCell selected={isSelected} className="font-mono text-sm">
+                          {employee.id || "-"}
                         </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.div}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="font-mono text-sm"
-                          selected={isSelected}
-                        >
-                          {employee.id}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="font-medium"
-                          selected={isSelected}
-                        >
+                        <BorderedTableCell selected={isSelected} className="font-medium">
                           {employee.name}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.doorlog}
+                          {employee.email || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.dept_dat}
+                          {employee.position || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.team}
+                          {employee.team || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          <Badge className={getStatusBadge(employee.status)}>
-                            {statusLabels[
-                              employee.status as keyof typeof statusLabels
-                            ] || employee.status}
-                          </Badge>
+                          {employee.dept_dat || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.role}
+                          {employee.jlpt_nat_test || "-"}
+                        </BorderedTableCell>
+
+                        {/* Japanese Data from Store */}
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.jlpt_highest_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.other_japanese_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.preferred_learning_group || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.current_communication_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.target_1_jlpt_nat_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.target_1_communication_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.target_2_jlpt_nat_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.target_2_communication_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.current_learning_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.learning_method || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.want_to_sit_exam === true ? "Yes" : jpLevel?.want_to_sit_exam === false ? "No" : "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.exam_target_level || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          {jpLevel?.confidence_level || "-"}
                         </BorderedTableCell>
                       </TableRow>
                     )
@@ -458,13 +544,6 @@ export function EmployeeContainer({
               </TableBody>
             </Table>
           </div>
-
-          {/* Show selected rows count */}
-          {/* {selectedCount > 0 && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              {selectedCount} of {filteredEmployees.length} row(s) selected.
-            </div>
-          )} */}
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Field orientation="horizontal" className="w-fit">
@@ -534,8 +613,7 @@ export function EmployeeContainer({
                       handleNext()
                     }}
                     className={
-                      currentPage === totalPages ||
-                      filteredEmployees.length === 0
+                      currentPage === totalPages || filteredEmployees.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -547,11 +625,7 @@ export function EmployeeContainer({
         </CardContent>
       </div>
 
-      {/* Bulk Delete Dialog */}
-      <Dialog
-        open={bulkDeleteDialogOpen}
-        onOpenChange={setBulkDeleteDialogOpen}
-      >
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
@@ -561,29 +635,15 @@ export function EmployeeContainer({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setBulkDeleteDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setBulkDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleBulkDeleteConfirm}
-              disabled={isDeleting}
-            >
+            <Button variant="destructive" onClick={handleBulkDeleteConfirm} disabled={isDeleting}>
               {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <EditEmployeeDrawer
-        open={editDrawerOpen}
-        onOpenChange={setEditDrawerOpen}
-        employee={selectedEmployee}
-        onSuccess={handleEmployeeUpdated}
-      />
     </>
   )
 }
