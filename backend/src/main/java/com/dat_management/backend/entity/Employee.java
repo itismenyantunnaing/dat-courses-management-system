@@ -1,23 +1,30 @@
 package com.dat_management.backend.entity;
 
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 @Entity
 @Table(name = "employees")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Employee implements UserDetails {
@@ -36,7 +43,21 @@ public class Employee implements UserDetails {
 
     @Column(nullable = false)
     private String status = "default";
-    
+
+    @ManyToOne
+    @JoinColumn(name = "team_id")
+    private Team team;
+
+    @ManyToOne
+    @JoinColumn(name = "department_dir_id")
+    private DepartmentDir departmentDir;
+
+    @Column(unique = true)
+    private String doorlog;
+
+    @Column(nullable = false)
+    private String position;
+
     @Column(name = "emp_status", nullable = false)
     private String empStatus = "active";
     
@@ -50,9 +71,22 @@ public class Employee implements UserDetails {
     @JoinColumn(name = "role_id")
     private Role role;
 
+    private LocalDate dob;
+
+    private String profilePhotoPath;
+
+    @Column(nullable = false)
+    private Boolean isCorePersonnel = false;
+
+    @Column(nullable = false)
+    private Boolean hasJapanBusinessTrip = false;
+
+    @Column(nullable = false)
+    private Boolean notiSetting = false;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
+    private Boolean isDeleted = false;
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
