@@ -5,7 +5,7 @@ import {
   CourseIcon,
   CalendarIcon,
   TrendingUp,
-  RepostIcon,
+
 } from "@hugeicons/core-free-icons"
 
 export const allTabs = [
@@ -109,26 +109,6 @@ export const allTabs = [
       console.log("Deleting holidays data")
     },
   },
-  {
-    id: "exam_progress_report",
-    label: "Exam Progress Report",
-    importTitle: "Import Exam Progress Report",
-    importDescription: "Upload Exam Progress Report file to import into the system.",
-    exportTitle: "Export Exam Progress Report",
-    exportDescription: "Export Exam Progress Report from the system.",
-    accept: ".csv,.json,.xlsx,.xls",
-    icon: RepostIcon,
-    maxSize: 500,
-    onImport: (file: File) => {
-      console.log("Importing Exam Progress Report:", file)
-    },
-    onExport: (format: string) => {
-      console.log(`Exporting Exam Progress Report as ${format}`)
-    },
-    onDelete: (selectedItems: string[]) => {
-      console.log("Deleting Exam Progress Report")
-    }
-  }
 ]
 
 export const importTabs = allTabs

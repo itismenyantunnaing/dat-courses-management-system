@@ -1,17 +1,9 @@
+// components/examProgress-report-container.tsx
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import { useState, useEffect } from "react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -21,6 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Search01Icon,
+} from "@hugeicons/core-free-icons"
+import React from "react"
+import { mainStore } from "@/store/mainStore"
+import { DepartmentTable } from '@/components/examProgressTables/DepartmentTable'
+import { TeamTargetPlanTable } from '@/components/examProgressTables/TeamTargetPlanTable'
+import { TeamCommunicationTable } from '@/components/examProgressTables/TeamCommunicationTable'
+import { CommunicationCapabilityTable } from '@/components/examProgressTables/CommunicationCapabilityTable'
+import { TeamNoCertifiedTable } from '@/components/examProgressTables/TeamNoCertifiedTable'
+import { Button } from "@/components/ui/button"
+import { Delete02Icon } from "@hugeicons/core-free-icons"
 import {
   Dialog,
   DialogContent,
@@ -29,319 +34,214 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldLabel } from "@/components/ui/field"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  Search01Icon,
-  FilterIcon,
-  Delete02Icon,
-} from "@hugeicons/core-free-icons"
-import React from "react"
-import { mainStore } from "@/store/mainStore"
-import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
-import type { Employee } from "@/types/employee"
-import type { TargetDates, EmployeeJapaneseLevel } from "@/types/current_target"
 
 const STROKE_WIDTH = 2
 
-const BorderedTableCell = ({
-  children,
-  className = "",
-  selected = false,
-  ...props
-}: React.ComponentProps<typeof TableCell> & { selected?: boolean }) => (
-  <TableCell
-    className={cn("border-r border-l", selected && "bg-muted/50", className)}
-    {...props}
-  >
-    {children}
-  </TableCell>
-)
+type ViewType = 'department' | 'teamTargetPlan' | 'teamCommunication' | 'teamCommunicationCapability' | 'teamNone'
 
-const BorderedTableHead = ({
-  children,
-  className = "",
-  colSpan,
-  rowSpan,
-  ...props
-}: React.ComponentProps<typeof TableHead> & { colSpan?: number; rowSpan?: number }) => (
-  <TableHead className={`border-r border-l ${className}`} colSpan={colSpan} rowSpan={rowSpan} {...props}>
-    {children}
-  </TableHead>
-)
-
-export function ExamProgressReportContainer({ searchPlaceholder = "Search employees..." }) {
+export function ExamProgressReportContainer() {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [itemsPerPage, setItemsPerPage] = useState(15)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [viewType, setViewType] = useState<ViewType>("department")
+  const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [employees, setEmployees] = useState<Employee[]>([])
-
+  
+  // Row selection state
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [selectedCount, setSelectedCount] = useState(0)
+  
+  const [deptData, setDeptData] = useState<any[]>([])
+  const [teamData, setTeamData] = useState<any[]>([])
+  const [capabilityData, setCapabilityData] = useState<any[]>([])
+  
+  const isDataLoadedRef = useRef(false)
 
   const {
-    fetch_EmployeeData,
-    employee_data,
+    fetch_DeptData,
+    fetch_TeamData,
     fetch_TargetDates,
+    getDeptWithCounts,
+    getTeamWithCounts,
+    deptDisplayData,
     japaneseTargetDates_Data,
-    fetch_EmployeeJapaneseLevel,
-    employeeJapaneseLevel_Data
   } = mainStore()
 
+   // Transform data to pivot format for capability table
+  const transformToPivot = (data: any[]) => {
+    if (data.length === 0) return []
+    const firstRow = data[0]
+    const commKeys: string[] = []
+    let index = 0
+    while (true) {
+      const key = `current_comm_${index}`
+      if (key in firstRow) { commKeys.push(key); index++ } else { break; }
+    }
+    const pivotRows: any[] = []
+    const fullTexts = [
+      "Level 0 | None",
+      "Level 1 | G1: Email writing-Chat with DIR and QA/bug/issues reporting using simple words",
+      "Level 1 | G2: Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool",
+      "Level 1 | G3: Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words",
+      "Level 2 | G1: Email reading/writing/MS team chat, Daily team conversation",
+      "Level 2 | G2: Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese",
+      "Level 2 | G3: Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, Basic meeting participation",
+      "Level 3: Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal"
+    ]
+    commKeys.forEach((key, idx) => {
+      let currentTotal = 0, target1Total = 0, target2Total = 0
+      data.forEach(row => {
+        currentTotal += (row[`current_comm_${idx}`] as number) || 0
+        target1Total += (row[`target1_comm_${idx}`] as number) || 0
+        target2Total += (row[`target2_comm_${idx}`] as number) || 0
+      })
+      pivotRows.push({ 
+        id: fullTexts[idx] || key, 
+        level_full: fullTexts[idx] || key, 
+        current: currentTotal, 
+        target1: target1Total, 
+        target2: target2Total 
+      })
+    })
+    return pivotRows
+  }
+
+  // Load all data once
   useEffect(() => {
-    const loadData = async () => {
+    const loadAllData = async () => {
       setIsLoading(true)
       await Promise.all([
-        fetch_EmployeeData(),
+        fetch_DeptData(),
+        fetch_TeamData(),
         fetch_TargetDates(),
-        fetch_EmployeeJapaneseLevel()
       ])
+      
+      const depts = getDeptWithCounts() || []
+      setDeptData(depts)
+      
+      const teams = getTeamWithCounts() || []
+      setTeamData(teams)
+      
+      const pivoted = transformToPivot(teams)
+      setCapabilityData(pivoted)
+      
+      isDataLoadedRef.current = true
       setIsLoading(false)
     }
+    loadAllData()
+  }, [fetch_DeptData, fetch_TeamData, fetch_TargetDates, getDeptWithCounts, getTeamWithCounts])
 
-    loadData()
-  }, [fetch_EmployeeData, fetch_TargetDates, fetch_EmployeeJapaneseLevel])
+ 
 
+  // Update selected count when rowSelection changes
   useEffect(() => {
-    if (employee_data && employee_data.length > 0) {
-      setEmployees(employee_data)
-    }
-  }, [employee_data])
+    const count = Object.values(rowSelection).filter(Boolean).length
+    setSelectedCount(count)
+  }, [rowSelection])
 
-  // Helper function to get Japanese level data for an employee by index
-  const getJapaneseLevelData = (index: number): EmployeeJapaneseLevel | undefined => {
-    return employeeJapaneseLevel_Data?.[index]
-  }
-
-  // Helper function to get target dates for an employee by index
-  const getTargetDatesData = (index: number): TargetDates | undefined => {
-    return japaneseTargetDates_Data?.[index]
-  }
-
-  // Helper function to format date for group name
-  const formatGroupDate = (date: Date | string | undefined): string => {
-    if (!date) return "TBD"
-    const dateObj = typeof date === 'string' ? new Date(date) : date
-    return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
-  }
-
-  // Employee Headers (will use rowSpan=2)
-  const employeeHeaders = [
-    { field: "select", header_name: "" },
-    { field: "Sr", header_name: "Sr" },
-    { field: "staff_id", header_name: "Staff ID" },
-    { field: "name", header_name: "Name" },
-    { field: "email", header_name: "Email" },
-    { field: "position", header_name: "Post" },
-    { field: "team", header_name: "Team" },
-    { field: "dept", header_name: "Dept" },
-    { field: "jlpt_nat_test", header_name: "JLPT / NAT Test" },
-  ];
-
-  // Grouped Japanese Headers
-  const getJapaneseHeaderGroups = (targetDate?: TargetDates) => {
-    const target1Date = targetDate?.target_1_date
-      ? formatGroupDate(targetDate.target_1_date)
-      : "Sep-2026"
-    const target2Date = targetDate?.target_2_date
-      ? formatGroupDate(targetDate.target_2_date)
-      : "Mar-2027"
-
-    return [
-      {
-        groupName: "Certified Level",
-        children: [
-          { field: "jlpt_highest_level", header_name: "JLPT Highest Level (Certified)" },
-          { field: "other_japanese_level", header_name: "Other Highest Japanese Level (Certified) if any" },
-          { field: "preferred_joining_group", header_name: "Preferred Joining Group & Level" },
-        ]
-      },
-      {
-        groupName: "Current",
-        children: [
-          { field: "communication_level_1", header_name: "Communication Level" },
-        ]
-      },
-      {
-        groupName: `Target Level to be on ${target1Date}`,
-        children: [
-          { field: "target_1_date", header_name: "Target Date" },
-          { field: "jlpt_nat_test_level", header_name: "JLPT / NAT Test Level" },
-          { field: "communication_level_2", header_name: "Communication Level" },
-        ]
-      },
-      {
-        groupName: `Target Level to be on ${target2Date}`,
-        children: [
-          { field: "target_2_date", header_name: "Target Date" },
-          { field: "jlpt_nat_test_level_2", header_name: "JLPT / NAT Test Level" },
-          { field: "communication_level_3", header_name: "Communication Level" },
-        ]
-      },
-      {
-        groupName: "Current Learning Level and Method",
-        children: [
-          { field: "japanese_level_current", header_name: "Japanese Level (Current Learning)" },
-          { field: "learning_method", header_name: "If you are studying Japanese, Learning Method (Online/Zoom, In-person, Video Record, Mobile App or Web)" }
-        ]
-      },
-      {
-        groupName: "JLPT Exam Target",
-        children: [
-          { field: "want_sit_jlpt_jul_2026", header_name: "Want to sit JLPT exam on Jul 2026" },
-          { field: "jlpt_level_for_jul_2026", header_name: "If Yes, Which Level?" },
-          { field: "confidence_level_pass_exam", header_name: "Confidence Level to Pass Exam" },
-        ]
-      },
-    ]
-  }
-
-  const firstTargetDate = getTargetDatesData(0)
-  const japaneseHeaderGroups = getJapaneseHeaderGroups(firstTargetDate)
-
-  // Flatten for data mapping
-  const flattenedJapaneseHeaders = japaneseHeaderGroups.flatMap(group => group.children);
-
-  const filteredEmployees = employees.filter((employee) => {
-    const matchesSearch =
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesStatus =
-      statusFilter === "all" || employee.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
-
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedEmployees = filteredEmployees.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  )
-
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(Number(value))
+  const handleViewChange = (value: ViewType) => {
+    setViewType(value)
     setCurrentPage(1)
+    setSearchTerm("")
+    setSelectedDeptId(null)
+    setRowSelection({})
   }
 
-  const handlePrevious = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
-  const handleNext = () =>
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-
-  const handleSelectAll = () => {
-    const allSelected = paginatedEmployees.every(
-      (employee) => rowSelection[employee.id.toString()]
-    )
-
-    if (allSelected) {
-      const newSelection = { ...rowSelection }
-      paginatedEmployees.forEach((employee) => {
-        delete newSelection[employee.id.toString()]
-      })
-      setRowSelection(newSelection)
-    } else {
-      const newSelection = { ...rowSelection }
-      paginatedEmployees.forEach((employee) => {
-        newSelection[employee.id.toString()] = true
-      })
-      setRowSelection(newSelection)
+  const getPlaceholder = () => {
+    switch (viewType) {
+      case 'department':
+        return 'Search departments...'
+      default:
+        return 'Search teams...'
     }
   }
 
-  const handleRowSelect = (employeeId: string) => {
-    setRowSelection((prev) => ({
-      ...prev,
-      [employeeId]: !prev[employeeId],
-    }))
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true)
   }
 
-  const selectedCount = Object.values(rowSelection).filter(Boolean).length
-
-  const getSelectedEmployees = () => {
-    const selectedIds = Object.entries(rowSelection)
-      .filter(([, selected]) => selected)
-      .map(([id]) => parseInt(id))
-    return employees.filter((employee) => selectedIds.includes(Number(employee.id)))
-  }
-
-  const handleBulkDeleteClick = () => {
-    setBulkDeleteDialogOpen(true)
-  }
-
-  const handleBulkDeleteConfirm = async () => {
-    const selectedEmployees = getSelectedEmployees()
-    if (selectedEmployees.length === 0) return
-
+  const handleDeleteConfirm = async () => {
     setIsDeleting(true)
     try {
-      const selectedIds = selectedEmployees.map((emp) => emp.id)
-      const newEmployees = employees.filter(
-        (employee) => !selectedIds.includes(employee.id)
-      )
-      setEmployees(newEmployees)
-      setRowSelection({})
-      setBulkDeleteDialogOpen(false)
-
-      const newTotalPages = Math.ceil(newEmployees.length / itemsPerPage)
-      if (currentPage > newTotalPages && newTotalPages > 0) {
-        setCurrentPage(newTotalPages)
-      } else if (newTotalPages === 0) {
-        setCurrentPage(1)
+      const selectedIds = Object.keys(rowSelection).filter(key => rowSelection[key])
+      
+      console.log('=== DELETE CONFIRMED ===')
+      console.log('View Type:', viewType)
+      console.log('Selected IDs:', selectedIds)
+      
+      // Delete from the appropriate data source based on view type
+      switch (viewType) {
+        case 'department': {
+          const newData = deptData.filter((item) => {
+            return !selectedIds.includes(item.dept_name)
+          })
+          console.log('New dept data:', newData.map(d => d.dept_name))
+          setDeptData(newData)
+          break
+        }
+        case 'teamTargetPlan':
+        case 'teamCommunication':
+        case 'teamNone': {
+          const newData = teamData.filter((item) => {
+            return !selectedIds.includes(item.team_name)
+          })
+          console.log('New team data:', newData.map(d => d.team_name))
+          setTeamData(newData)
+          // Also update capability data
+          const newCapData = transformToPivot(newData)
+          setCapabilityData(newCapData)
+          break
+        }
+        case 'teamCommunicationCapability': {
+          const newData = capabilityData.filter((item) => {
+            return !selectedIds.includes(item.id)
+          })
+          console.log('New capability data:', newData.map(d => d.id))
+          setCapabilityData(newData)
+          break
+        }
       }
+      
+      setRowSelection({})
+      setDeleteDialogOpen(false)
+      
     } catch (error) {
-      console.error("Bulk delete failed:", error)
+      console.error("Delete failed:", error)
     } finally {
       setIsDeleting(false)
     }
   }
 
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = []
-    const maxVisible = 5
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i)
-    } else if (currentPage <= 3) {
-      for (let i = 1; i <= 4; i++) pages.push(i)
-      pages.push("...")
-      pages.push(totalPages)
-    } else if (currentPage >= totalPages - 2) {
-      pages.push(1)
-      pages.push("...")
-      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i)
-    } else {
-      pages.push(1)
-      pages.push("...")
-      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
-      pages.push("...")
-      pages.push(totalPages)
+  // Get current data based on view type
+  const getCurrentData = () => {
+    switch (viewType) {
+      case 'department':
+        return deptData
+      case 'teamTargetPlan':
+      case 'teamCommunication':
+      case 'teamNone':
+        return teamData
+      case 'teamCommunicationCapability':
+        return capabilityData
+      default:
+        return []
     }
-    return pages
   }
-
-  const totalColumns = employeeHeaders.length + flattenedJapaneseHeaders.length
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-muted-foreground">Loading employees...</p>
+          <p className="text-muted-foreground">Loading certification data...</p>
         </div>
       </div>
     )
   }
+
+  const currentData = getCurrentData()
 
   return (
     <>
@@ -355,290 +255,155 @@ export function ExamProgressReportContainer({ searchPlaceholder = "Search employ
                 className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
               />
               <Input
-                placeholder={searchPlaceholder}
+                placeholder={getPlaceholder()}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
               />
             </div>
             <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <HugeiconsIcon icon={FilterIcon} strokeWidth={STROKE_WIDTH} />
-                  <SelectValue placeholder="Status" />
+              {selectedCount > 0 && (
+                <Button variant="destructive" onClick={handleDeleteClick}>
+                  <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="mr-1 h-4 w-4" />
+                  Delete ({selectedCount}) row{selectedCount > 1 ? 's' : ''}
+                </Button>
+              )}
+
+              {(viewType !== 'department') && deptDisplayData && deptDisplayData.length > 0 && (
+                <Select 
+                  value={selectedDeptId?.toString() || "all"} 
+                  onValueChange={(value) => {
+                    setSelectedDeptId(value === "all" ? null : Number(value))
+                    setCurrentPage(1)
+                    setRowSelection({})
+                  }}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent align="center" sideOffset={5}>
+                    <SelectGroup>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {deptDisplayData.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id.toString()}>
+                          {dept.dept_name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              )}
+
+              <Select value={viewType} onValueChange={handleViewChange}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Select View" />
                 </SelectTrigger>
                 <SelectContent align="center" sideOffset={5}>
                   <SelectGroup>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="department">By Department</SelectItem>
+                    <SelectItem value="teamTargetPlan">By Team (Target Plan)</SelectItem>
+                    <SelectItem value="teamCommunication">By Team (Communication Level)</SelectItem>
+                    <SelectItem value="teamCommunicationCapability">Communication Capability</SelectItem>
+                    <SelectItem value="teamNone">Not Certified Members</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              {selectedCount > 0 && (
-                <Button variant="destructive" onClick={handleBulkDeleteClick}>
-                  <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} /> Delete (
-                  {selectedCount}) Employee
-                  {selectedCount > 1 ? "s" : ""}
-                </Button>
-              )}
             </div>
           </div>
 
-          <div
-            className="relative overflow-x-auto rounded-md border"
-            style={{ zIndex: 1 }}
-          >
-            <Table>
-              <TableHeader>
-                {/* First Row - Group Headers */}
-                <TableRow className="bg-muted/50">
-                  {/* Employee Headers - with rowSpan=2 */}
-                  {employeeHeaders.map((header) => (
-                    <BorderedTableHead
-                      key={header.field}
-                      className={cn(
-                        "align-middle whitespace-nowrap text-center",
-                        header.field === "select" && "w-10 min-w-[40px]"
-                      )}
-                      rowSpan={2}
-                    >
-                      {header.field === "select" ? (
-                        <Checkbox
-                          checked={
-                            paginatedEmployees.length > 0 &&
-                            paginatedEmployees.every(
-                              (employee) => rowSelection[employee.id.toString()]
-                            )
-                          }
-                          onCheckedChange={handleSelectAll}
-                          aria-label="Select all"
-                        />
-                      ) : (
-                        header.header_name
-                      )}
-                    </BorderedTableHead>
-                  ))}
-                  {/* Japanese Group Headers */}
-                  {japaneseHeaderGroups.map((group) => (
-                    <BorderedTableHead
-                      key={group.groupName}
-                      className="align-middle whitespace-nowrap text-center bg-muted/30"
-                      colSpan={group.children.length}
-                    >
-                      {group.groupName}
-                    </BorderedTableHead>
-                  ))}
-                </TableRow>
+          {viewType === 'department' && (
+            <DepartmentTable
+              key={`dept-${viewType}`}
+              searchTerm={searchTerm}
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              data={currentData}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+            />
+          )}
 
-                {/* Second Row - Sub Headers (only for Japanese headers) */}
-                <TableRow className="bg-muted/50">
-                  {/* Japanese Sub Headers */}
-                  {flattenedJapaneseHeaders.map((header) => (
-                    <BorderedTableHead
-                      key={header.field}
-                      className="align-middle whitespace-nowrap"
-                    >
-                      {header.header_name}
-                    </BorderedTableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
+          {viewType === 'teamTargetPlan' && (
+            <TeamTargetPlanTable
+              key={`team-${viewType}`}
+              searchTerm={searchTerm}
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              selectedDeptId={selectedDeptId}
+              data={currentData}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              targetDates={japaneseTargetDates_Data}
+            />
+          )}
 
-              <TableBody>
-                {paginatedEmployees.length === 0 ? (
-                  <TableRow>
-                    <BorderedTableCell
-                      colSpan={totalColumns}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      No employees found
-                    </BorderedTableCell>
-                  </TableRow>
-                ) : (
-                  paginatedEmployees.map((employee, index) => {
-                    const isSelected = !!rowSelection[employee.id.toString()]
-                    const globalIndex = startIndex + index + 1
-                    const actualIndex = startIndex + index
-                    const jpLevel = getJapaneseLevelData(actualIndex)
+          {viewType === 'teamCommunication' && (
+            <TeamCommunicationTable
+              key={`comm-${viewType}`}
+              searchTerm={searchTerm}
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              selectedDeptId={selectedDeptId}
+              data={currentData}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              targetDates={japaneseTargetDates_Data}
+            />
+          )}
 
+          {viewType === 'teamCommunicationCapability' && (
+            <CommunicationCapabilityTable
+              key={`cap-${viewType}`}
+              searchTerm={searchTerm}
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              selectedDeptId={selectedDeptId}
+              data={currentData}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+            />
+          )}
 
-                    return (
-                      <TableRow key={employee.id}>
-                        {/* Employee Data */}
-                        <BorderedTableCell className="w-10 min-w-[40px]" selected={isSelected}>
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => handleRowSelect(employee.id.toString())}
-                            aria-label={`Select ${employee.name}`}
-                          />
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>{globalIndex}</BorderedTableCell>
-                        <BorderedTableCell selected={isSelected} className="font-mono text-sm">
-                          {employee.id || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected} className="font-medium">
-                          {employee.name}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.email || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.position || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.team || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.dept_dat || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.jlpt_nat_test || "-"}
-                        </BorderedTableCell>
-
-                        {/* Japanese Data from Store */}
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.jlpt_highest_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.other_japanese_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.preferred_learning_group || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.current_communication_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.target_1_jlpt_nat_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.target_1_communication_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.target_2_jlpt_nat_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.target_2_communication_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.current_learning_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.learning_method || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.want_to_sit_exam === true ? "Yes" : jpLevel?.want_to_sit_exam === false ? "No" : "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.exam_target_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.confidence_level || "-"}
-                        </BorderedTableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Field orientation="horizontal" className="w-fit">
-              <FieldLabel htmlFor="select-rows-per-page">
-                Rows per page
-              </FieldLabel>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={handleItemsPerPageChange}
-              >
-                <SelectTrigger className="w-18" id="select-rows-per-page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    <SelectItem value="15">15</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <div className="text-sm text-muted-foreground">
-              Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} of{" "}
-              {filteredEmployees.length} employees
-            </div>
-            <Pagination className="mx-0 w-auto">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handlePrevious()
-                    }}
-                    className={
-                      currentPage === 1 || filteredEmployees.length === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-                {getPageNumbers().map((page, index) => (
-                  <PaginationItem key={index}>
-                    {page === "..." ? (
-                      <span className="px-2">...</span>
-                    ) : (
-                      <PaginationLink
-                        href="#"
-                        isActive={currentPage === page}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          setCurrentPage(page as number)
-                        }}
-                      >
-                        {page}
-                      </PaginationLink>
-                    )}
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handleNext()
-                    }}
-                    className={
-                      currentPage === totalPages || filteredEmployees.length === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+          {viewType === 'teamNone' && (
+            <TeamNoCertifiedTable
+              key={`none-${viewType}`}
+              searchTerm={searchTerm}
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              selectedDeptId={selectedDeptId}
+              data={currentData}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              targetDates={japaneseTargetDates_Data}
+            />
+          )}
         </CardContent>
       </div>
 
-      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {selectedCount} selected employee
+              Are you sure you want to delete {selectedCount} selected row
               {selectedCount > 1 ? "s" : ""}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDeleteDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleBulkDeleteConfirm} disabled={isDeleting}>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
               {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
@@ -647,3 +412,5 @@ export function ExamProgressReportContainer({ searchPlaceholder = "Search employ
     </>
   )
 }
+
+export default ExamProgressReportContainer
