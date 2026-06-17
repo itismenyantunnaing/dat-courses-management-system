@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -10,11 +9,7 @@ import {
     SidebarProvider,
     SidebarTrigger,
 } from "../../components/ui/sidebar"
-import {
-    Upload05Icon,
-    Download05Icon,
-    UserAdd02Icon,
-} from "@hugeicons/core-free-icons"
+import { Upload05Icon, Download05Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ImportDialog } from "@/components/dialogs/import-dialog"
@@ -24,7 +19,6 @@ import { EmployeeContainer } from "@/components/employee-container"
 import { CoursesContainer } from "@/components/courses-container"
 import { SeminarContainer } from "@/components/seminar-container"
 import { ExamsContainer } from "@/components/exams-container"
-import { allTabs } from "@/components/nav/nav-group"
 import DashboardContainer from "@/components/dashboard-container"
 import { SkillContainer } from "@/components/skill-container"
 import { HolidaysContainer } from "@/components/holidays-container"
@@ -80,7 +74,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         setIsNewEmployeeDrawerOpen(true)
     }
 
-
     const getCurrentLabel = () => {
         switch (activeTab) {
             case "employees":
@@ -93,40 +86,20 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                 return "Exam Management"
             case "skills":
                 return "Skill Management"
-            case "current_target_data":
-                return "Current Target level Management"
             case "holidays":
                 return "Holiday Management"
-            case "exam_progress_report":
-                return "Exam Progress Report Management"
             default:
                 return "Dashboard"
         }
     }
 
-
-    if (!mounted) {
-        return (
-            <div className="flex h-screen w-full">
-                <div className="w-64 bg-muted animate-pulse" />
-                <div className="flex-1">
-                    <div className="h-16 border-b px-4 flex items-center">
-                        <div className="h-6 w-32 bg-muted rounded animate-pulse" />
-                    </div>
-                    <div className="p-4">
-                        <div className="h-96 bg-muted rounded animate-pulse" />
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
     return (
         <>
-
             <SidebarProvider className="w-full overflow-hidden">
                 <AppSidebar
-                    userRole={userData.role.toLowerCase() as "admin" | "learner" | "approver"}
+                    userRole={
+                        userData.role.toLowerCase() as "admin" | "learner" | "approver"
+                    }
                     userData={{ name: userData.name, email: userData.email }}
                     onTabChange={setActiveTab}
                     activeTab={activeTab}
@@ -146,7 +119,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                                 <div className="flex gap-2">
                                     {activeTab !== "dashboard" && (
                                         <>
-
                                             <Button
                                                 variant="outline"
                                                 size="sm"

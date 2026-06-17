@@ -66,7 +66,7 @@ export function EditEmployeeDrawer({
     if (employee && open) {
       const newFormData = {
         div: employee.div || "",
-        staff_id: employee.staff_id || "",
+        staff_id: employee.id || "",
         name: employee.name || "",
         doorlog: employee.doorlog || "",
         dept: employee.dept || "",
