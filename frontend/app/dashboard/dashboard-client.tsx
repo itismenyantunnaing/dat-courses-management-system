@@ -93,6 +93,22 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         }
     }
 
+    if (!mounted) {
+        return (
+            <div className="flex h-screen w-full">
+                <div className="w-64 bg-muted animate-pulse" />
+                <div className="flex-1">
+                    <div className="h-16 border-b px-4 flex items-center">
+                        <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+                    </div>
+                    <div className="p-4">
+                        <div className="h-96 bg-muted rounded animate-pulse" />
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <>
             <SidebarProvider className="w-full overflow-hidden">

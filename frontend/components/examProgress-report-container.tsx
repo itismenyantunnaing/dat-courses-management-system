@@ -69,7 +69,7 @@ export function ExamProgressReportContainer() {
     japaneseTargetDates_Data,
   } = mainStore()
 
-   // Transform data to pivot format for capability table
+  // Transform data to pivot format for capability table
   const transformToPivot = (data: any[]) => {
     if (data.length === 0) return []
     const firstRow = data[0]
@@ -133,8 +133,6 @@ export function ExamProgressReportContainer() {
     loadAllData()
   }, [fetch_DeptData, fetch_TeamData, fetch_TargetDates, getDeptWithCounts, getTeamWithCounts])
 
- 
-
   // Update selected count when rowSelection changes
   useEffect(() => {
     const count = Object.values(rowSelection).filter(Boolean).length
@@ -149,12 +147,21 @@ export function ExamProgressReportContainer() {
     setRowSelection({})
   }
 
+  // ✅ Dynamic placeholder based on view type
   const getPlaceholder = () => {
     switch (viewType) {
       case 'department':
         return 'Search departments...'
-      default:
+      case 'teamTargetPlan':
         return 'Search teams...'
+      case 'teamCommunication':
+        return 'Search teams...'
+      case 'teamNone':
+        return 'Search teams...'
+      case 'teamCommunicationCapability':
+        return 'Search communication levels...'
+      default:
+        return 'Search...'
     }
   }
 
@@ -269,7 +276,8 @@ export function ExamProgressReportContainer() {
                 </Button>
               )}
 
-              {(viewType !== 'department') && deptDisplayData && deptDisplayData.length > 0 && (
+              {/* ✅ Show department filter only for team views that support it (exclude Communication Capability) */}
+              {(viewType !== 'department' && viewType !== 'teamCommunicationCapability') && deptDisplayData && deptDisplayData.length > 0 && (
                 <Select 
                   value={selectedDeptId?.toString() || "all"} 
                   onValueChange={(value) => {
@@ -303,8 +311,8 @@ export function ExamProgressReportContainer() {
                     <SelectItem value="department">By Department</SelectItem>
                     <SelectItem value="teamTargetPlan">By Team (Target Plan)</SelectItem>
                     <SelectItem value="teamCommunication">By Team (Communication Level)</SelectItem>
+                    <SelectItem value="teamNone">By Team (No Certified Members)</SelectItem>
                     <SelectItem value="teamCommunicationCapability">Communication Capability</SelectItem>
-                    <SelectItem value="teamNone">Not Certified Members</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
