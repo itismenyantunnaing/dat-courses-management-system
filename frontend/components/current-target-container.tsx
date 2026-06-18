@@ -165,44 +165,42 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
         children: [
           { field: "jlpt_highest_level", header_name: "JLPT Highest Level (Certified)" },
           { field: "other_japanese_level", header_name: "Other Highest Japanese Level (Certified) if any" },
-          { field: "preferred_joining_group", header_name: "Preferred Joining Group & Level" },
+          { field: "preferred_learning_group", header_name: "Preferred Joining Group & Level" },
         ]
       },
       {
         groupName: "Current",
         children: [
-          { field: "communication_level_1", header_name: "Communication Level" },
+          { field: "current_communication_level", header_name: "Communication Level" },
         ]
       },
       {
         groupName: `Target Level to be on ${target1Date}`,
         children: [
-          { field: "target_1_date", header_name: "Target Date" },
-          { field: "jlpt_nat_test_level", header_name: "JLPT / NAT Test Level" },
-          { field: "communication_level_2", header_name: "Communication Level" },
+          { field: "target_1_jlpt_nat_level", header_name: "JLPT / NAT Test Level" },
+          { field: "target_1_communication_level", header_name: "Communication Level" },
         ]
       },
       {
         groupName: `Target Level to be on ${target2Date}`,
         children: [
-          { field: "target_2_date", header_name: "Target Date" },
-          { field: "jlpt_nat_test_level_2", header_name: "JLPT / NAT Test Level" },
-          { field: "communication_level_3", header_name: "Communication Level" },
+          { field: "target_2_jlpt_nat_level", header_name: "JLPT / NAT Test Level" },
+          { field: "target_2_communication_level", header_name: "Communication Level" },
         ]
       },
       {
         groupName: "Current Learning Level and Method",
         children: [
-          { field: "japanese_level_current", header_name: "Japanese Level (Current Learning)" },
+          { field: "current_learning_level", header_name: "Japanese Level (Current Learning)" },
           { field: "learning_method", header_name: "If you are studying Japanese, Learning Method (Online/Zoom, In-person, Video Record, Mobile App or Web)" }
         ]
       },
       {
         groupName: "JLPT Exam Target",
         children: [
-          { field: "want_sit_jlpt_jul_2026", header_name: "Want to sit JLPT exam on Jul 2026" },
-          { field: "jlpt_level_for_jul_2026", header_name: "If Yes, Which Level?" },
-          { field: "confidence_level_pass_exam", header_name: "Confidence Level to Pass Exam" },
+          { field: "want_to_sit_exam", header_name: "Want to sit JLPT exam on Jul 2026" },
+          { field: "exam_target_level", header_name: "If Yes, Which Level?" },
+          { field: "confidence_level", header_name: "Confidence Level to Pass Exam" },
         ]
       },
     ]
@@ -463,7 +461,6 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                     const actualIndex = startIndex + index
                     const jpLevel = getJapaneseLevelData(actualIndex)
 
-
                     return (
                       <TableRow key={employee.id}>
                         {/* Employee Data */}
@@ -497,7 +494,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                           {employee.jlpt_nat_test || "-"}
                         </BorderedTableCell>
 
-                        {/* Japanese Data from Store */}
+                        {/* ✅ Corrected Japanese Data Mapping */}
                         <BorderedTableCell selected={isSelected}>
                           {jpLevel?.jlpt_highest_level || "-"}
                         </BorderedTableCell>

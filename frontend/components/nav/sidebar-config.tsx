@@ -16,6 +16,7 @@ import {
   CourseIcon,
   DocumentValidationIcon,
   Time02Icon,
+  ChartHistogramIcon
 } from "@hugeicons/core-free-icons"
 import { importTabs } from "./tabs-config"
 
@@ -135,6 +136,22 @@ export const adminData: SidebarConfig = {
           tabId: "exams",
           type: "primary",
           icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
+        },
+      ],
+    },
+    {
+      groupLabel: "Reports",
+      items: [
+        {
+          title: "Exam progress",
+          tabId: "exam_progress_report",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon
+              icon={ChartHistogramIcon}
+              strokeWidth={STROKE_WIDTH}
+            />
+          ),
         },
       ],
     },

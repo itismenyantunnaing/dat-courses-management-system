@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -246,7 +247,9 @@ export function EmployeeContainer({
     const selectedIds = Object.entries(rowSelection)
       .filter(([, selected]) => selected)
       .map(([id]) => parseInt(id))
-    return employees.filter((employee) => selectedIds.includes(Number(employee.id)))
+    return employees.filter((employee) =>
+      selectedIds.includes(Number(employee.id))
+    )
   }
 
   // Handle bulk delete click - open dialog
@@ -345,9 +348,11 @@ export function EmployeeContainer({
                 <SelectContent align="center" sideOffset={5}>
                   <SelectGroup>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
+                    {Object.entries(statusLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -477,13 +482,6 @@ export function EmployeeContainer({
               </TableBody>
             </Table>
           </div>
-
-          {/* Show selected rows count */}
-          {/* {selectedCount > 0 && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              {selectedCount} of {filteredEmployees.length} row(s) selected.
-            </div>
-          )} */}
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Field orientation="horizontal" className="w-fit">

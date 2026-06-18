@@ -327,10 +327,10 @@ export function EmployeeForm({
         </div>
       </div>
 
-      <Separator />
+      {/* <Separator /> */}
 
       {/* Additional Information Section */}
-      <div>
+      {/* <div>
         <h3 className="mb-4 text-lg font-semibold">Additional Information</h3>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -345,7 +345,7 @@ export function EmployeeForm({
             />
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }

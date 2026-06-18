@@ -1,4 +1,4 @@
-import { currentTarget_StoreType } from "../types"
+import { CurrentTarget_StoreType } from "../types"
 
 
 const targetDate = [
@@ -58,8 +58,8 @@ const japanese_levels = [
 
 
 
-type StoreSet = (fn: (state: currentTarget_StoreType) => Partial<currentTarget_StoreType>) => void;
-type StoreGet = () => currentTarget_StoreType;
+type StoreSet = (fn: (state: CurrentTarget_StoreType) => Partial<CurrentTarget_StoreType>) => void;
+type StoreGet = () => CurrentTarget_StoreType;
 
 
 export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({

@@ -578,8 +578,12 @@ export default function ChangePassword({
                             <DialogTitle>
                                 Update Your Password
                             </DialogTitle>
+                            {force &&
                             <DialogDescription>
-                                {force && <span className=" text-sm font-normal text-destructive">You have to change your password at the first login.</span>} <br />
+                                 <span className=" text-sm font-normal text-destructive">You have to change your password at the first login.</span>
+                            </DialogDescription>
+                            } 
+                            <DialogDescription>
                                 Please enter your current password to continue.
                             </DialogDescription>
                         </DialogHeader>

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { EmployeeForm, EmployeeFormData } from "@/components/drawers/employees/employeeForm"
+import type { Employee } from "@/types/employee"
 
 interface EditEmployeeDrawerProps {
   open: boolean
@@ -66,17 +67,16 @@ export function EditEmployeeDrawer({
     if (employee && open) {
       const newFormData = {
         div: employee.div || "",
-        staff_id: employee.staff_id || "",
+        staff_id: employee.id || "",
         name: employee.name || "",
         doorlog: employee.doorlog || "",
-        dept: employee.dept || "",
+        dept: employee.dept_dat || "",
         team: employee.team || "",
         status: employee.status || "active",
         role: employee.role || "",
         email: employee.email || "",
         phone: employee.phone || "",
         join_date: employee.join_date || "",
-        address: employee.address || "",
       }
       setFormData(newFormData)
       setOriginalFormData(newFormData)
