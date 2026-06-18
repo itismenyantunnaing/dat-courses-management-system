@@ -26,10 +26,13 @@ public class ForgotPasswordService {
    
     // STEP 1: SEND OTP
     public String sendOtp(String email, HttpSession session) {
-
+        //orElseThrow(() -> new RuntimeException("User not found"))
         Employee employee = employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+                .orElse(null);
+        
+        if (employee == null) {
+            throw new RuntimeException("Employee not found");
+        }
         // generate OTP
         String otp = String.format("%06d", new Random().nextInt(999999));
 

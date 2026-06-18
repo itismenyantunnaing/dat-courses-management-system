@@ -20,4 +20,7 @@ public class Holiday {
 
     @Column(nullable = false)
     private String holidayName;
+
+    @Column(nullable = false)
+    private boolean isDeleted = false;
 }

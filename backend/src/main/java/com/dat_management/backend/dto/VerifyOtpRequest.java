@@ -1,10 +1,7 @@
 package com.dat_management.backend.dto;
 
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
+import lombok.Data;
+@Data
 public class VerifyOtpRequest {
     private String email;
     private String otp;

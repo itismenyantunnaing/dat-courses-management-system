@@ -1,9 +1,6 @@
 package com.dat_management.backend.dto;
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
+import lombok.Data;
+@Data
 public class VerifyCurrentPassword {
 	private String currentPassword;
 }
