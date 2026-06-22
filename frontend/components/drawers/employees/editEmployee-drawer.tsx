@@ -1,4 +1,4 @@
-// components/drawers/employees/EditEmployeeDrawer.tsx
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { EmployeeForm, EmployeeFormData } from "@/components/drawers/employees/employeeForm"
 import type { Employee } from "@/types/employee"
+import { mainStore } from "@/store/mainStore"
 
 interface EditEmployeeDrawerProps {
   open: boolean
@@ -28,33 +29,29 @@ export function EditEmployeeDrawer({
   onSuccess,
 }: EditEmployeeDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { update_EmployeeData } = mainStore()
+  
   const [formData, setFormData] = useState<EmployeeFormData>({
     div: "",
     staff_id: "",
     name: "",
     doorlog: "",
-    dept: "",
+    dept_dat: "",
     team: "",
-    status: "active",
+    emp_status: "active",
     role: "",
     email: "",
-    phone: "",
-    join_date: "",
-    address: "",
   })
   const [originalFormData, setOriginalFormData] = useState<EmployeeFormData>({
     div: "",
     staff_id: "",
     name: "",
     doorlog: "",
-    dept: "",
+    dept_dat: "",
     team: "",
-    status: "active",
+    emp_status: "active",
     role: "",
     email: "",
-    phone: "",
-    join_date: "",
-    address: "",
   })
 
   // Check if form has changes
@@ -66,17 +63,15 @@ export function EditEmployeeDrawer({
   useEffect(() => {
     if (employee && open) {
       const newFormData = {
-        div: employee.div || "",
+        div: employee.div_name || "",
         staff_id: employee.id || "",
         name: employee.name || "",
         doorlog: employee.doorlog || "",
-        dept: employee.dept_dat || "",
+        dept_dat: employee.dept_dat || "",
         team: employee.team || "",
-        status: employee.status || "active",
+        emp_status: employee.emp_status || "active",
         role: employee.role || "",
         email: employee.email || "",
-        phone: employee.phone || "",
-        join_date: employee.join_date || "",
       }
       setFormData(newFormData)
       setOriginalFormData(newFormData)
@@ -84,17 +79,72 @@ export function EditEmployeeDrawer({
   }, [employee, open])
 
   const handleSubmit = async () => {
-    if (!hasChanges()) return
+
+
+    if (!hasChanges()) {
+      console.log("No changes to save")
+      return
+    }
+
+    // Validate required fields
+    if (!formData.staff_id || !formData.name || !formData.email || 
+        !formData.div || !formData.dept_dat || !formData.role || 
+        !formData.doorlog || !formData.emp_status) {
+      console.error("Please fill in all required fields")
+      return
+    }
+
 
     setIsSubmitting(true)
 
     try {
+
       // TODO: Replace with your actual API call
       await new Promise((resolve) => setTimeout(resolve, 1000))
       console.log("Employee updated:", { id: employee?.id, ...formData })
 
+      // Map form data to Employee type - PRESERVE ALL ORIGINAL FIELDS
+      const updatedEmployee: Employee = {
+        // Keep all original employee data
+        ...employee!,
+        // Override with updated values from form
+        id: formData.staff_id,
+        name: formData.name,
+        email: formData.email,
+        doorlog: formData.doorlog,
+        position: formData.role,
+        emp_status: formData.emp_status,
+        div_name: formData.div,
+        dept_dat: formData.dept_dat,
+        team: formData.team,
+        role: formData.role,
+        // Preserve these fields from original employee
+        is_core_personnel: employee?.is_core_personnel || false,
+        has_japan_business_trip: employee?.has_japan_business_trip || false,
+        noti_setting: employee?.noti_setting || true,
+        dept_dir: employee?.dept_dir || null,
+        dob: employee?.dob || "",
+        profile_photo_path: employee?.profile_photo_path || "",
+      }
+
+
+      // Call the store's update method
+      await update_EmployeeData(employee!.id, updatedEmployee)
+
+    
+
+      // Call the store's update method
+      const result = await update_EmployeeData(employee!.id, updatedEmployee)
+      if (result && (result.includes("not found") || result.includes("already exists") || result.includes("Failed"))) {
+        alert(result)
+        return
+      } else {
+        alert(result)
+      }
+
       onOpenChange(false)
       onSuccess?.()
+      
     } catch (error) {
       console.error("Failed to update employee:", error)
     } finally {

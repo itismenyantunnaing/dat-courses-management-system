@@ -38,7 +38,7 @@ interface SessionData {
 // Session configuration
 const SESSION_CONFIG = {
     DURATION_HOURS: 1,
-    DURATION_MS: 60 * 60 * 1000, 
+    DURATION_MS: 60 * 60 * 100000, 
     COOKIE_NAME: 'auth_session',
     COOKIE_OPTIONS: {
         httpOnly: true,
@@ -222,9 +222,37 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
             }),
         })
 
-        const data = await response.json()
+        // Get the raw response text first
+        const rawText = await response.text()
+        console.log("Raw login response:", rawText)
+        console.log("Response status:", response.status)
+        
+        let data;
+        try {
+            // Try to parse as JSON
+            data = JSON.parse(rawText)
+        } catch {
+            // If parsing fails, check if response is empty
+            if (!rawText || rawText.trim() === '') {
+                console.warn("Empty response received from server")
+                data = { message: "Server returned empty response" }
+            } else {
+                // If not JSON and not empty, treat as plain text
+                console.warn("Non-JSON response:", rawText)
+                data = { message: rawText }
+            }
+        }
 
         if (response.ok) {
+            // Check if we have the required data
+            if (!data.token) {
+                console.error("Missing token in response:", data)
+                return {
+                    success: false,
+                    message: "Invalid server response: missing token"
+                }
+            }
+
             // Set session cookie with all user data
             await setSessionCookie(
                 data.token,   

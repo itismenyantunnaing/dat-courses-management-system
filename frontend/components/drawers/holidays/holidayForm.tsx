@@ -17,9 +17,8 @@ import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
 export interface HolidayFormData {
-  name: string
-  date: string
-  description?: string
+  holidayName: string
+  holidayDate: string
 }
 
 interface HolidayFormProps {
@@ -35,7 +34,7 @@ export function HolidayForm({
 }: HolidayFormProps) {
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    data.date ? new Date(data.date) : undefined
+    data.holidayDate ? new Date(data.holidayDate) : undefined
   )
 
   const handleInputChange = (field: keyof HolidayFormData, value: string) => {
@@ -48,14 +47,18 @@ export function HolidayForm({
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date)
     if (date) {
-      const formattedDate = date.toISOString().split("T")[0]
-      handleInputChange("date", formattedDate)
+      // Fix: Use local date without timezone conversion
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const formattedDate = `${year}-${month}-${day}`
+
+      handleInputChange("holidayDate", formattedDate)
     } else {
-      handleInputChange("date", "")
+      handleInputChange("holidayDate", "")
     }
     setDatePickerOpen(false)
   }
-
   // Get day of week for display
   const getDayOfWeek = (dateString: string) => {
     if (!dateString) return ""
@@ -85,8 +88,8 @@ export function HolidayForm({
               </Label>
               <Input
                 id="name"
-                value={data.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
+                value={data.holidayName}
+                onChange={(e) => handleInputChange("holidayName", e.target.value)}
                 placeholder="Enter holiday name"
                 required
                 className="w-full"
@@ -124,9 +127,9 @@ export function HolidayForm({
                   />
                 </PopoverContent>
               </Popover>
-              {data.date && (
+              {data.holidayDate && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Day: {getDayOfWeek(data.date)}
+                  Day: {getDayOfWeek(data.holidayDate)}
                 </p>
               )}
             </div>
@@ -134,25 +137,6 @@ export function HolidayForm({
         </div>
       </div>
 
-      <Separator />
-
-      {/* Additional Information Section */}
-      <div>
-        <h3 className="mb-4 text-lg font-semibold">Additional Information</h3>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={data.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              placeholder="Enter holiday description (optional)"
-              rows={3}
-              className="w-full resize-y"
-            />
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

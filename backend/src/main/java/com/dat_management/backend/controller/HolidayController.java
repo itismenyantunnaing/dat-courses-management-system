@@ -17,6 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/holidays")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class HolidayController {
 
     private final HolidayService holidayService;
@@ -78,7 +79,7 @@ public class HolidayController {
     // Update Holiday By Id
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateHoliday(
-            @PathVariable Integer id, 
+            @PathVariable Integer id,
             @Valid @RequestBody HolidayDto dto) {
         try {
             holidayService.updateHoliday(id, dto);
@@ -90,7 +91,7 @@ public class HolidayController {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", e.getMessage());
-            
+
             if (e.getMessage().contains("not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             } else if (e.getMessage().contains("already exists")) {
@@ -101,12 +102,12 @@ public class HolidayController {
     }
 
     // Delete Holiday By Id
-        @DeleteMapping("/{ids}")
+    @DeleteMapping("/{ids}")
     public ResponseEntity<Map<String, Object>> deleteHoliday(@PathVariable List<Integer> ids) {
         List<Integer> successfullyDeleted = new ArrayList<>();
         List<Integer> failedDeletions = new ArrayList<>();
         Map<Integer, String> errors = new HashMap<>();
-        
+
         for (Integer id : ids) {
             try {
                 holidayService.softDeleteHoliday(id);
@@ -116,9 +117,9 @@ public class HolidayController {
                 errors.put(id, e.getMessage());
             }
         }
-        
+
         Map<String, Object> response = new HashMap<>();
-        
+
         if (failedDeletions.isEmpty()) {
             response.put("success", true);
             response.put("message", "All holidays deleted successfully");

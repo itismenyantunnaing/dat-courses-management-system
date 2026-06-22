@@ -14,11 +14,18 @@ import {
   HolidayForm,
   HolidayFormData,
 } from "@/components/drawers/holidays/holidayForm"
+import { mainStore } from "@/store/mainStore"
+import { Holiday } from "@/types/holiday"
 
 interface CreateHolidayDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
+}
+
+const getDayName = (dateString: string): string => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { weekday: 'long' })
 }
 
 export function CreateHolidayDrawer({
@@ -28,27 +35,44 @@ export function CreateHolidayDrawer({
 }: CreateHolidayDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<HolidayFormData>({
-    name: "",
-    date: "",
-    description: "",
+    holidayName: "",
+    holidayDate: "",
   })
 
+  const { holiday_data, add_HolidayData } = mainStore()
+
   const handleSubmit = async () => {
+    if (!formData.holidayName || !formData.holidayDate) return
+
     setIsSubmitting(true)
 
     try {
-      // TODO: Replace with your actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Holiday created:", formData)
 
+      // Create new holiday
+      const newHoliday: Holiday = {
+        holidayName: formData.holidayName,
+        holidayDate: formData.holidayDate,
+      }
+
+      const result = await add_HolidayData(newHoliday);
+
+      if (result && (result.includes("already exists") || result.includes("Failed"))) {
+        alert(result)
+        return
+      } else {
+        alert(result)
+      }
+
+      // Reset for
+
+      // Close drawer and trigger success
       onOpenChange(false)
       onSuccess?.()
 
       // Reset form
       setFormData({
-        name: "",
-        date: "",
-        description: "",
+        holidayName: "",
+        holidayDate: "",
       })
     } catch (error) {
       console.error("Failed to create holiday:", error)
@@ -75,7 +99,7 @@ export function CreateHolidayDrawer({
             <Button
               className="flex-1"
               onClick={handleSubmit}
-              disabled={isSubmitting || !formData.name || !formData.date}
+              disabled={isSubmitting || !formData.holidayName || !formData.holidayDate}
             >
               {isSubmitting ? "Creating..." : "Create Holiday"}
             </Button>

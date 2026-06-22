@@ -153,7 +153,7 @@ const technical_tableHeader = [
   },
   {
     "id": 3,
-    "category_name": "Uncategorized",
+    "category_name": "empty",
     "skill_sub_categories": [
       {
         "id": 3,
@@ -1034,9 +1034,11 @@ const managementScoresData = [
 ];
 
 
-
 type StoreSet = (fn: (state: SkillSet_StoreType) => Partial<SkillSet_StoreType>) => void;
 type StoreGet = () => SkillSet_StoreType;
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 
 export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
   fetch_SkillData: async () => {
@@ -1048,7 +1050,21 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   fetch_devCapHeaders: async () => {
-    set(() => ({ devCap_headers: developement_capability_tableHeader }));
+     try {
+      const response = await fetch(`${apiUrl}/api/skills/development`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const developement_capability_tableHeader = await response.json();
+      console.log(developement_capability_tableHeader)
+      set(() => ({ devCap_headers: developement_capability_tableHeader }));
+
+    } catch (error) {
+      console.error('Error fetching holiday data:', error);
+      set(() => ({ devCap_headers: [] }));
+    }
   },
 
   fetch_devCapData: async () => {

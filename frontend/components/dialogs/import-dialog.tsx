@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -22,54 +22,73 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload05Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { importTabs, VISIBLE_TABS_COUNT } from "../nav/tabs-config"
-// import { extractEmployeesFromExcel, extractEmployees } from "@/lib/excel-extractor"
 
 interface ImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  label?: string
+  label?: string // Used ONLY for filtering which tabs to show
 }
 
 export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialogProps) {
   const [activeImportTab, setActiveImportTab] = useState("")
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Check if we should show tabs (only for "all" label)
-  const showTabs = label === "all";
+  // Get the filtered tabs based on label prop
+  const filteredTabs = useMemo(() => {
+    if (label === "all") {
+      return importTabs
+    }
+    // Filter tabs based on label
+    return importTabs.filter((tab) => {
+      if (label === "employees") return tab.id === "employees"
+      if (label === "courses") return tab.id === "courses"
+      if (label === "seminar") return tab.id === "seminar"
+      if (label === "exams") return tab.id === "exams"
+      if (label === "dashboard") return tab.id === "dashboard"
+      if (label === "holidays") return tab.id === "holidays"
+      return tab.id === label
+    })
+  }, [label])
+
+  // Check if we should show tabs (more than 1 tab)
+  const showTabs = filteredTabs.length > 1
 
   // Get the current tab data
   const currentTabData = useMemo(() => {
     if (showTabs) {
       return importTabs.find((tab) => tab.id === activeImportTab)
     } else {
-      // Find the matching single tab
-      const matchingTab = importTabs.find((tab) => {
-        if (label === "employees") return tab.id === "employees"
-        if (label === "courses") return tab.id === "courses"
-        if (label === "seminar") return tab.id === "seminar"
-        if (label === "exams") return tab.id === "exams"
-        if (label === "dashboard") return tab.id === "dashboard"
-        return tab.id === label
-      })
-      return matchingTab || importTabs[0]
+      // If only one tab, use the first filtered tab
+      return filteredTabs[0] || importTabs[0]
     }
-  }, [showTabs, activeImportTab, label])
+  }, [showTabs, activeImportTab, filteredTabs])
 
   // Reset when dialog opens
   useEffect(() => {
     if (open) {
-      if (showTabs && importTabs.length > 0) {
-        setActiveImportTab(importTabs[0].id)
+      if (showTabs && filteredTabs.length > 0) {
+        setActiveImportTab(filteredTabs[0].id)
       }
       setSelectedFile(null)
       setIsDragging(false)
+      setIsProcessing(false)
     }
-  }, [open, showTabs])
+  }, [open, showTabs, filteredTabs])
+
+  // Handle tab change
+  const handleTabChange = (tabId: string) => {
+    setActiveImportTab(tabId)
+    setSelectedFile(null)
+    setIsDragging(false)
+    setIsProcessing(false)
+  }
 
   const handleFileChange = (file: File | null) => {
     if (file && currentTabData) {
-          setSelectedFile(file)
+      setSelectedFile(file)
     }
   }
 
@@ -91,39 +110,39 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
     }
   }
 
-const handleImport = async () => {
-  if (currentTabData && selectedFile) {
+  // Import logic based on tab config
+  const handleImport = async () => {
+    if (!currentTabData || !selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    setIsProcessing(true);
+
     try {
-      // const result = await extractEmployeesFromExcel(selectedFile);
+      // Use the centralized onImport function from tabs-config.ts
+      const result = await currentTabData.onImport(selectedFile);
       
-      // if (result.success) {
-      //   console.log(`✅ Found ${result.headers.length} total columns`);
-      //   console.log(`✅ Found ${result.employees.length} employees`);
-        
-      //   if (result.employees.length > 0) {
-      //     console.log('📝 Employees list:');
-      //     result.employees.forEach((emp, i) => {
-      //       // Dynamically grab whatever keys are present (e.g., Name, Dept, etc.)
-      //       const empName = emp["Name"] || emp["name"] || Object.values(emp)[1] || "Unknown Name";
-      //       const empDept = emp["Dept"] || emp["department"] || Object.values(emp)[2] || "Unknown Dept";
-            
-      //       console.log(`   ${i + 1}. ${empName} (${empDept})`);
-      //     });
-          
-      //     console.log('\n🔧 First employee raw row data:', result.employees[0]);
-      //   }
-      // } else {
-      //   console.error('Error:', result.error);
-      // }
-      
-      onOpenChange(false);
+      // Handle optional result object or simple success
+      if (result && typeof result === 'object') {
+        if (result.success) {
+          onOpenChange(false);
+        } else {
+          // Failure with message 
+          if (result.message) console.log(`ℹ️ ${result.message}`);
+        }
+      } else {
+        alert(`✅ Successfully imported ${currentTabData.label} data!`);
+        onOpenChange(false);
+      }
       
     } catch (error) {
-      console.error('Import error:', error);
-      alert(`Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Import error:', error);
+      alert(`❌ Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
     }
-  }
-};
+  };
 
   const handleCancel = () => {
     onOpenChange(false)
@@ -131,65 +150,70 @@ const handleImport = async () => {
 
   // File upload area component
   const FileUploadArea = () => (
-    <div
-      className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-        isDragging
-          ? "border-primary bg-primary/5"
-          : "border-muted-foreground/25"
-      }`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <div className="flex flex-col items-center gap-4">
-        <div className="rounded-full bg-muted p-3">
-          <HugeiconsIcon
-            icon={Upload05Icon}
-            strokeWidth={1.5}
-            className="size-8 text-muted-foreground"
-          />
-        </div>
-        <div className="space-y-2 text-center">
-          <p className="text-sm font-medium">
-            {selectedFile
-              ? selectedFile.name
-              : "Choose a file or drag & drop it here"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Maximum {currentTabData?.maxSize || 10} MB file size
-          </p>
-          {selectedFile && (
-            <p className="text-xs text-green-600">
-              ✓ File selected: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+    <div className="space-y-4">
+      <div
+        className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+          isDragging
+            ? "border-primary bg-primary/5"
+            : "border-muted-foreground/25"
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className="flex flex-col items-center gap-4">
+          <div className="rounded-full bg-muted p-3">
+            <HugeiconsIcon
+              icon={Upload05Icon}
+              strokeWidth={1.5}
+              className="size-8 text-muted-foreground"
+            />
+          </div>
+          <div className="space-y-2 text-center">
+            <p className="text-sm font-medium">
+              {selectedFile
+                ? selectedFile.name
+                : "Choose a file or drag & drop it here"}
             </p>
-          )}
-        </div>
-        <input
-          type="file"
-          id="file-upload"
-          className="hidden"
-          onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
-          accept={currentTabData?.accept}
-        />
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => document.getElementById("file-upload")?.click()}
-          >
-            Browse Files
-          </Button>
-          {selectedFile && (
+            <p className="text-xs text-muted-foreground">
+              Maximum {currentTabData?.maxSize || 10} MB file size
+            </p>
+            {selectedFile && (
+              <p className="text-xs text-green-600">
+                ✓ File selected: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            )}
+          </div>
+          <input
+            type="file"
+            id="file-upload"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+            accept={currentTabData?.accept}
+          />
+          <div className="flex gap-2">
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => setSelectedFile(null)}
+              onClick={() => fileInputRef.current?.click()}
             >
-              Clear
+              Browse Files
             </Button>
-          )}
+            {selectedFile && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedFile(null)
+                }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -214,8 +238,11 @@ const handleImport = async () => {
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button onClick={handleImport} disabled={!selectedFile}>
-              Import {currentTabData?.label || "Data"}
+            <Button 
+              onClick={handleImport} 
+              disabled={!selectedFile || isProcessing}
+            >
+              {isProcessing ? 'Processing...' : `Import ${currentTabData?.label || "Data"}`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -223,9 +250,9 @@ const handleImport = async () => {
     )
   }
 
-  // Tabs view (when label is "all")
-  const visibleImportTabs = importTabs.slice(0, VISIBLE_TABS_COUNT)
-  const dropdownImportTabs = importTabs.slice(VISIBLE_TABS_COUNT)
+  // Tabs view (when multiple tabs)
+  const visibleImportTabs = filteredTabs.slice(0, VISIBLE_TABS_COUNT)
+  const dropdownImportTabs = filteredTabs.slice(VISIBLE_TABS_COUNT)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -238,7 +265,7 @@ const handleImport = async () => {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeImportTab} onValueChange={setActiveImportTab} className="w-full">
+        <Tabs value={activeImportTab} onValueChange={handleTabChange} className="w-full">
           <div className="flex items-center gap-2">
             <TabsList className="h-auto w-full">
               <div
@@ -248,7 +275,16 @@ const handleImport = async () => {
                 }}
               >
                 {visibleImportTabs.map((tab) => (
-                  <TabsTrigger key={tab.id} value={tab.id} className="w-full">
+                  <TabsTrigger 
+                    key={tab.id} 
+                    value={tab.id} 
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedFile(null)
+                      setIsDragging(false)
+                      setIsProcessing(false)
+                    }}
+                  >
                     {tab.label}
                   </TabsTrigger>
                 ))}
@@ -267,7 +303,12 @@ const handleImport = async () => {
                   {dropdownImportTabs.map((tab) => (
                     <DropdownMenuItem
                       key={tab.id}
-                      onSelect={() => setActiveImportTab(tab.id)}
+                      onSelect={() => {
+                        setActiveImportTab(tab.id)
+                        setSelectedFile(null)
+                        setIsDragging(false)
+                        setIsProcessing(false)
+                      }}
                       className="flex items-center justify-between"
                     >
                       <span>{tab.label}</span>
@@ -281,7 +322,7 @@ const handleImport = async () => {
             )}
           </div>
 
-          {importTabs.map((tab) => (
+          {filteredTabs.map((tab) => (
             <TabsContent key={tab.id} value={tab.id} className="mt-4">
               <FileUploadArea />
             </TabsContent>
@@ -292,8 +333,11 @@ const handleImport = async () => {
           <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={handleImport} disabled={!selectedFile}>
-            Import {currentTabData?.label || "Data"}
+          <Button 
+            onClick={handleImport} 
+            disabled={!selectedFile || isProcessing}
+          >
+            {isProcessing ? 'Processing...' : `Import ${currentTabData?.label || "Data"}`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,4 +1,3 @@
-// components/drawers/employees/CreateEmployeeDrawer.tsx
 "use client"
 
 import { useState } from "react"
@@ -15,6 +14,8 @@ import {
   EmployeeForm,
   EmployeeFormData,
 } from "@/components/drawers/employees/employeeForm"
+import { mainStore } from "@/store/mainStore"
+import { Employee } from "@/types/employee"
 
 interface CreateEmployeeDrawerProps {
   open: boolean
@@ -28,31 +29,72 @@ export function CreateEmployeeDrawer({
   onSuccess,
 }: CreateEmployeeDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { add_EmployeeData } = mainStore()
+
   const [formData, setFormData] = useState<EmployeeFormData>({
     div: "",
     staff_id: "",
     name: "",
     doorlog: "",
-    dept: "",
+    dept_dat: "",
     team: "",
-    status: "active",
+    emp_status: "active",
     role: "",
     email: "",
-    phone: "",
-    join_date: "",
-    address: "",
   })
 
+  // Check if all required fields are filled
+  const isFormValid =
+    formData.staff_id.trim() !== "" &&
+    formData.name.trim() !== "" &&
+    formData.email.trim() !== "" &&
+    formData.div.trim() !== "" &&
+    formData.dept_dat.trim() !== "" &&
+    formData.role.trim() !== "" &&
+    formData.doorlog.trim() !== "" &&
+    formData.emp_status.trim() !== ""
+
   const handleSubmit = async () => {
+    // Validate required fields
+    if (!formData.staff_id || !formData.name || !formData.email ||
+      !formData.div || !formData.dept_dat || !formData.role ||
+      !formData.doorlog || !formData.emp_status) {
+      console.error("Please fill in all required fields")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      // TODO: Replace with your actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Employee created:", formData)
+      // Map form data to Employee type
+      const newEmployee: Employee = {
+        id: formData.staff_id,
+        name: formData.name,
+        email: formData.email,
+        doorlog: formData.doorlog,
+        position: formData.role, // Using role as position
+        emp_status: formData.emp_status,
+        is_core_personnel: false,
+        has_japan_business_trip: false,
+        noti_setting: true,
+        div_name: formData.div,
+        dept_dir: null,
+        dept_dat: formData.dept_dat,
+        team: formData.team,
+        role: formData.role,
+        dob: "", // Add if needed
+        profile_photo_path: "", // Add if needed
+      }
 
-      onOpenChange(false)
-      onSuccess?.()
+      // Call the store's add method
+      const result = await add_EmployeeData(newEmployee);
+      if (result && (result.includes("already exists") || result.includes("Failed"))) {
+        alert(result)
+        return
+      } else {
+        alert(result)
+      }
+
 
       // Reset form
       setFormData({
@@ -60,15 +102,16 @@ export function CreateEmployeeDrawer({
         staff_id: "",
         name: "",
         doorlog: "",
-        dept: "",
+        dept_dat: "",
         team: "",
-        status: "active",
+        emp_status: "active",
         role: "",
         email: "",
-        phone: "",
-        join_date: "",
-        address: "",
       })
+
+      onOpenChange(false)
+      onSuccess?.()
+
     } catch (error) {
       console.error("Failed to create employee:", error)
     } finally {
@@ -94,7 +137,7 @@ export function CreateEmployeeDrawer({
             <Button
               className="flex-1"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? "Creating..." : "Create Employee"}
             </Button>

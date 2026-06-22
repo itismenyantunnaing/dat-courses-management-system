@@ -41,8 +41,10 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  FilterIcon,
   Delete02Icon,
+  UserAdd02Icon,
+  CalendarAdd02Icon,
+  ViewIcon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -50,6 +52,23 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import type { Employee } from "@/types/employee"
 import type { TargetDates, EmployeeJapaneseLevel } from "@/types/current_target"
+import { CreateCurrentTargetDrawer } from "@/components/drawers/currentTarget/createCurrentTarget-drawer"
+import { EditCurrentTargetDrawer } from "@/components/drawers/currentTarget/editCurrentTarget-drawer"
+import { EditTargetDatesDrawer } from "@/components/drawers/currentTarget/editTargetDates-drawer"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const STROKE_WIDTH = 2
 
@@ -82,14 +101,26 @@ const BorderedTableHead = ({
 export function CurrentTargetContainer({ searchPlaceholder = "Search employees..." }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [itemsPerPage, setItemsPerPage] = useState(15)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+
+  // State for create/edit drawers
+  const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false)
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+  const [selectedProfile, setSelectedProfile] = useState<EmployeeJapaneseLevel | null>(null)
+  const [selectedEmployeeForProfile, setSelectedEmployeeForProfile] = useState<Employee | null>(null)
+  const [isEditTargetDatesDrawerOpen, setIsEditTargetDatesDrawerOpen] = useState(false)
+  const [isCreateTargetDatesDrawerOpen, setIsCreateTargetDatesDrawerOpen] = useState(false)
+
+  // Column visibility state for Japanese data sections
+  // Using "all" as default, and individual section keys for single selection
+  const [selectedSection, setSelectedSection] = useState<string>("all")
 
   const {
     fetch_EmployeeData,
@@ -97,8 +128,12 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     fetch_TargetDates,
     japaneseTargetDates_Data,
     fetch_EmployeeJapaneseLevel,
-    employeeJapaneseLevel_Data
+    employeeJapaneseLevel_Data,
+    delete_bulkJapaneseLevel,
   } = mainStore()
+
+  // Create a map for fast employee -> profile lookup
+  const [employeeProfileMap, setEmployeeProfileMap] = useState<Map<string, EmployeeJapaneseLevel>>(new Map())
 
   useEffect(() => {
     const loadData = async () => {
@@ -120,13 +155,43 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     }
   }, [employee_data])
 
-  // Helper function to get Japanese level data for an employee by index
-  const getJapaneseLevelData = (index: number): EmployeeJapaneseLevel | undefined => {
-    return employeeJapaneseLevel_Data?.[index]
+  // Build the employee -> profile map when data changes
+  useEffect(() => {
+    const map = new Map<string, EmployeeJapaneseLevel>()
+
+    if (employeeJapaneseLevel_Data && employeeJapaneseLevel_Data.length > 0) {
+      employeeJapaneseLevel_Data.forEach((profile: EmployeeJapaneseLevel) => {
+        const empId = profile.employee_id || profile.employeeId
+        if (empId) {
+          map.set(empId.toString(), profile)
+        }
+      })
+    }
+
+    setEmployeeProfileMap(map)
+  }, [employeeJapaneseLevel_Data])
+
+  // Update employees list when employee_data or map changes
+  useEffect(() => {
+    if (employee_data && employee_data.length > 0) {
+      // Only keep employees that have profiles in the map
+      const filteredEmployees = employee_data.filter((employee) => {
+        return employeeProfileMap.has(employee.id)
+      })
+      setEmployees(filteredEmployees)
+    }
+  }, [employee_data, employeeProfileMap])
+
+  // Helper function to get Japanese level data by employee ID
+  const getJapaneseLevelByEmployeeId = (employeeId: string): EmployeeJapaneseLevel | undefined => {
+    return employeeProfileMap.get(employeeId)
   }
 
   // Helper function to get target dates for an employee by index
   const getTargetDatesData = (index: number): TargetDates | undefined => {
+    if (!japaneseTargetDates_Data || japaneseTargetDates_Data.length === 0) {
+      return undefined
+    }
     return japaneseTargetDates_Data?.[index]
   }
 
@@ -134,10 +199,43 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   const formatGroupDate = (date: Date | string | undefined): string => {
     if (!date) return "TBD"
     const dateObj = typeof date === 'string' ? new Date(date) : date
+    if (isNaN(dateObj.getTime())) return "TBD"
     return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
   }
 
-  // Employee Headers (will use rowSpan=2)
+  // Handle successful create/update
+  const handleDataChanged = () => {
+    setRefreshKey(prev => prev + 1)
+    fetch_EmployeeJapaneseLevel()
+    fetch_EmployeeData()
+    fetch_TargetDates()
+  }
+
+  // Handle row click to open edit drawer
+  const handleRowClick = (employee: Employee) => {
+    const profile = getJapaneseLevelByEmployeeId(employee.id)
+    if (profile) {
+      setSelectedProfile(profile)
+      setSelectedEmployeeForProfile(employee)
+      setEditDrawerOpen(true)
+    }
+  }
+
+  // Handle new profile creation
+  const handleNewProfile = () => {
+    setIsCreateDrawerOpen(true)
+  }
+
+  // Handle opening target dates drawer (edit or create)
+  const handleEditTargetDates = () => {
+    if (japaneseTargetDates_Data && japaneseTargetDates_Data.length > 0) {
+      setIsEditTargetDatesDrawerOpen(true)
+    } else {
+      setIsCreateTargetDatesDrawerOpen(true)
+    }
+  }
+
+  // Employee Headers (will use rowSpan=2) - FIXED, no status
   const employeeHeaders = [
     { field: "select", header_name: "" },
     { field: "Sr", header_name: "Sr" },
@@ -150,18 +248,22 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     { field: "jlpt_nat_test", header_name: "JLPT / NAT Test" },
   ];
 
-  // Grouped Japanese Headers
+  // Grouped Japanese Headers with section keys
   const getJapaneseHeaderGroups = (targetDate?: TargetDates) => {
-    const target1Date = targetDate?.target_1_date
-      ? formatGroupDate(targetDate.target_1_date)
-      : "Sep-2026"
-    const target2Date = targetDate?.target_2_date
-      ? formatGroupDate(targetDate.target_2_date)
-      : "Mar-2027"
+    const target1Date = targetDate?.target1Date
+      ? formatGroupDate(targetDate.target1Date)
+      : "(Date 1)"
+    const target2Date = targetDate?.target2Date
+      ? formatGroupDate(targetDate.target2Date)
+      : "(Date 2)"
+    const examDateStr = targetDate?.examDate
+      ? formatGroupDate(targetDate.examDate)
+      : "(Exam Date)"
 
     return [
       {
         groupName: "Certified Level",
+        sectionKey: "certified_level",
         children: [
           { field: "jlpt_highest_level", header_name: "JLPT Highest Level (Certified)" },
           { field: "other_japanese_level", header_name: "Other Highest Japanese Level (Certified) if any" },
@@ -170,12 +272,14 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       },
       {
         groupName: "Current",
+        sectionKey: "current",
         children: [
           { field: "current_communication_level", header_name: "Communication Level" },
         ]
       },
       {
         groupName: `Target Level to be on ${target1Date}`,
+        sectionKey: "target_levels",
         children: [
           { field: "target_1_jlpt_nat_level", header_name: "JLPT / NAT Test Level" },
           { field: "target_1_communication_level", header_name: "Communication Level" },
@@ -183,6 +287,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       },
       {
         groupName: `Target Level to be on ${target2Date}`,
+        sectionKey: "target_levels",
         children: [
           { field: "target_2_jlpt_nat_level", header_name: "JLPT / NAT Test Level" },
           { field: "target_2_communication_level", header_name: "Communication Level" },
@@ -190,15 +295,17 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       },
       {
         groupName: "Current Learning Level and Method",
+        sectionKey: "learning_method",
         children: [
           { field: "current_learning_level", header_name: "Japanese Level (Current Learning)" },
           { field: "learning_method", header_name: "If you are studying Japanese, Learning Method (Online/Zoom, In-person, Video Record, Mobile App or Web)" }
         ]
       },
       {
-        groupName: "JLPT Exam Target",
+        groupName: `JLPT Exam Target (${examDateStr})`,
+        sectionKey: "exam_target",
         children: [
-          { field: "want_to_sit_exam", header_name: "Want to sit JLPT exam on Jul 2026" },
+          { field: "want_to_sit_exam", header_name: `Want to sit JLPT exam` },
           { field: "exam_target_level", header_name: "If Yes, Which Level?" },
           { field: "confidence_level", header_name: "Confidence Level to Pass Exam" },
         ]
@@ -207,19 +314,25 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   }
 
   const firstTargetDate = getTargetDatesData(0)
-  const japaneseHeaderGroups = getJapaneseHeaderGroups(firstTargetDate)
+  const allJapaneseHeaderGroups = getJapaneseHeaderGroups(firstTargetDate)
+
+  // Filter visible Japanese header groups based on selected section
+  const visibleJapaneseHeaderGroups = allJapaneseHeaderGroups.filter(
+    group => {
+      if (selectedSection === "all") return true
+      return group.sectionKey === selectedSection
+    }
+  )
 
   // Flatten for data mapping
-  const flattenedJapaneseHeaders = japaneseHeaderGroups.flatMap(group => group.children);
+  const flattenedJapaneseHeaders = visibleJapaneseHeaderGroups.flatMap(group => group.children);
 
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
       employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesStatus =
-      statusFilter === "all" || employee.status === statusFilter
-    return matchesSearch && matchesStatus
+    return matchesSearch
   })
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
@@ -267,39 +380,64 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
 
   const selectedCount = Object.values(rowSelection).filter(Boolean).length
 
-  const getSelectedEmployees = () => {
-    const selectedIds = Object.entries(rowSelection)
-      .filter(([, selected]) => selected)
-      .map(([id]) => parseInt(id))
-    return employees.filter((employee) => selectedIds.includes(Number(employee.id)))
+  const getSelectedEmployees = (): Employee[] => {
+    const selectedIds = Object.keys(rowSelection).filter((key) => rowSelection[key] === true)
+    return employees.filter((employee) => selectedIds.includes(employee.id.toString()))
   }
 
   const handleBulkDeleteClick = () => {
+    const selected = getSelectedEmployees()
+    if (selected.length === 0) {
+      alert('Please select at least one employee to delete.')
+      return
+    }
     setBulkDeleteDialogOpen(true)
   }
 
   const handleBulkDeleteConfirm = async () => {
     const selectedEmployees = getSelectedEmployees()
-    if (selectedEmployees.length === 0) return
+
+    if (selectedEmployees.length === 0) {
+      alert('No employees selected.')
+      return
+    }
 
     setIsDeleting(true)
     try {
-      const selectedIds = selectedEmployees.map((emp) => emp.id)
-      const newEmployees = employees.filter(
-        (employee) => !selectedIds.includes(employee.id)
-      )
-      setEmployees(newEmployees)
+      // Get the profile IDs for selected employees using the map
+      const profileIds: number[] = [];
+
+      selectedEmployees.forEach((emp) => {
+        const profile = employeeProfileMap.get(emp.id)
+        if (profile?.id) {
+          profileIds.push(profile.id)
+        }
+      });
+
+      if (profileIds.length === 0) {
+        alert('No Japanese profile data found for the selected employees.')
+        setBulkDeleteDialogOpen(false)
+        return
+      }
+
+      const result = await delete_bulkJapaneseLevel(profileIds)
+      if (result && result.includes("Failed")) {
+        alert(result)
+        return
+      }
+
+      alert(result)
+
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
 
-      const newTotalPages = Math.ceil(newEmployees.length / itemsPerPage)
-      if (currentPage > newTotalPages && newTotalPages > 0) {
-        setCurrentPage(newTotalPages)
-      } else if (newTotalPages === 0) {
-        setCurrentPage(1)
-      }
+      // Fetch fresh data
+      await fetch_EmployeeJapaneseLevel()
+      await fetch_EmployeeData()
+
     } catch (error) {
-      console.error("Bulk delete failed:", error)
+      console.error('❌ Bulk delete failed:', error)
+      alert('Failed to delete Japanese profile data. Please try again.')
     } finally {
       setIsDeleting(false)
     }
@@ -330,6 +468,37 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
 
   const totalColumns = employeeHeaders.length + flattenedJapaneseHeaders.length
 
+  // Generate employee options for the create drawer
+  const employeeOptions = employee_data
+    .filter((emp) => !employeeProfileMap.has(emp.id))
+    .map((emp) => ({
+      value: emp.id,
+      label: `${emp.id} - ${emp.name}`,
+    }))
+
+  // Section display names for the column visibility dropdown
+  const sectionDisplayNames = {
+    certified_level: "Certified Level",
+    current: "Current",
+    target_levels: "Target Levels",
+    learning_method: "Current Learning Level and Method",
+    exam_target: "JLPT Exam Target",
+  }
+
+  // Handle section selection (radio button style)
+  const handleSectionSelect = (sectionKey: string) => {
+    if (sectionKey === "all") {
+      setSelectedSection("all")
+    } else {
+      // If clicking the already selected section, go back to "all"
+      if (selectedSection === sectionKey) {
+        setSelectedSection("all")
+      } else {
+        setSelectedSection(sectionKey)
+      }
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -359,21 +528,57 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                 className="pl-8"
               />
             </div>
-            <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <HugeiconsIcon icon={FilterIcon} strokeWidth={STROKE_WIDTH} />
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent align="center" sideOffset={5}>
-                  <SelectGroup>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-2 flex-wrap">
+              {/* Column Visibility Dropdown with Radio-style selection */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <HugeiconsIcon icon={ViewIcon} strokeWidth={2} className="h-4 w-4" />
+                    {selectedSection === "all" ? "All Sections" : sectionDisplayNames[selectedSection as keyof typeof sectionDisplayNames]}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel>Filter Japanese Data Sections</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    Employee columns are always visible
+                  </div>
+                  <DropdownMenuSeparator />
+                  
+                  {/* Show All Sections - acts as a toggle/reset */}
+                  <DropdownMenuCheckboxItem
+                    checked={selectedSection === "all"}
+                    onCheckedChange={() => handleSectionSelect("all")}
+                    className="font-medium"
+                  >
+                    Show All Sections
+                  </DropdownMenuCheckboxItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* Individual Sections - Radio button style */}
+                  {Object.entries(sectionDisplayNames).map(([key, label]) => (
+                    <DropdownMenuCheckboxItem
+                      key={key}
+                      checked={selectedSection === key}
+                      onCheckedChange={() => handleSectionSelect(key)}
+                      className="pl-6"
+                    >
+                      {label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5">
+                    <div className="text-xs text-muted-foreground">
+                      {selectedSection === "all" 
+                        ? "Showing all sections" 
+                        : `Showing only: ${sectionDisplayNames[selectedSection as keyof typeof sectionDisplayNames]}`}
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               {selectedCount > 0 && (
                 <Button variant="destructive" onClick={handleBulkDeleteClick}>
                   <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} /> Delete (
@@ -381,6 +586,14 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                   {selectedCount > 1 ? "s" : ""}
                 </Button>
               )}
+              <Button
+                variant="default"
+                onClick={handleNewProfile}
+                className="bg-primary hover:bg-primary/90"
+              >
+                <HugeiconsIcon icon={UserAdd02Icon} strokeWidth={2} />
+                New
+              </Button>
             </div>
           </div>
 
@@ -388,11 +601,10 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
             className="relative overflow-x-auto rounded-md border"
             style={{ zIndex: 1 }}
           >
-            <Table>
+            <Table key={refreshKey}>
               <TableHeader>
                 {/* First Row - Group Headers */}
                 <TableRow className="bg-muted/50">
-                  {/* Employee Headers - with rowSpan=2 */}
                   {employeeHeaders.map((header) => (
                     <BorderedTableHead
                       key={header.field}
@@ -418,21 +630,27 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                       )}
                     </BorderedTableHead>
                   ))}
-                  {/* Japanese Group Headers */}
-                  {japaneseHeaderGroups.map((group) => (
+                  {visibleJapaneseHeaderGroups.map((group) => (
                     <BorderedTableHead
                       key={group.groupName}
-                      className="align-middle whitespace-nowrap text-center bg-muted/30"
+                      className={cn(
+                        "align-middle whitespace-nowrap text-center bg-muted/30",
+                        (group.groupName.includes("Target Level") || group.groupName.includes("JLPT Exam Target")) && 
+                        "cursor-pointer hover:bg-muted/50 transition-colors"
+                      )}
                       colSpan={group.children.length}
+                      onClick={() => {
+                        if (group.groupName.includes("Target Level") || group.groupName.includes("JLPT Exam Target")) {
+                          handleEditTargetDates()
+                        }
+                      }}
                     >
                       {group.groupName}
                     </BorderedTableHead>
                   ))}
                 </TableRow>
 
-                {/* Second Row - Sub Headers (only for Japanese headers) */}
                 <TableRow className="bg-muted/50">
-                  {/* Japanese Sub Headers */}
                   {flattenedJapaneseHeaders.map((header) => (
                     <BorderedTableHead
                       key={header.field}
@@ -451,20 +669,26 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                       colSpan={totalColumns}
                       className="py-8 text-center text-muted-foreground"
                     >
-                      No employees found
+                      No employees with Japanese profile data found
                     </BorderedTableCell>
                   </TableRow>
                 ) : (
                   paginatedEmployees.map((employee, index) => {
                     const isSelected = !!rowSelection[employee.id.toString()]
                     const globalIndex = startIndex + index + 1
-                    const actualIndex = startIndex + index
-                    const jpLevel = getJapaneseLevelData(actualIndex)
+                    const jpLevel = getJapaneseLevelByEmployeeId(employee.id)
 
                     return (
-                      <TableRow key={employee.id}>
-                        {/* Employee Data */}
-                        <BorderedTableCell className="w-10 min-w-[40px]" selected={isSelected}>
+                      <TableRow
+                        key={employee.id}
+                        className="cursor-pointer transition-colors hover:bg-muted/50"
+                        onClick={() => handleRowClick(employee)}
+                      >
+                        <BorderedTableCell
+                          className="w-10 min-w-[40px]"
+                          selected={isSelected}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => handleRowSelect(employee.id.toString())}
@@ -491,49 +715,62 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                           {employee.dept_dat || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.jlpt_nat_test || "-"}
+                          {jpLevel?.jlptNatTest || "-"}
                         </BorderedTableCell>
-
-                        {/* ✅ Corrected Japanese Data Mapping */}
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.jlpt_highest_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.other_japanese_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.preferred_learning_group || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.current_communication_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.target_1_jlpt_nat_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.target_1_communication_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.target_2_jlpt_nat_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.target_2_communication_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.current_learning_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.learning_method || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.want_to_sit_exam === true ? "Yes" : jpLevel?.want_to_sit_exam === false ? "No" : "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.exam_target_level || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.confidence_level || "-"}
-                        </BorderedTableCell>
+                        {/* Only render visible Japanese columns */}
+                        {visibleJapaneseHeaderGroups.map((group) => {
+                          return group.children.map((header) => {
+                            let value = "-"
+                            switch (header.field) {
+                              case "jlpt_highest_level":
+                                value = jpLevel?.jlptHighestLevel || "-"
+                                break
+                              case "other_japanese_level":
+                                value = jpLevel?.otherJapaneseLevel || "-"
+                                break
+                              case "preferred_learning_group":
+                                value = jpLevel?.preferredLearningGroup || "-"
+                                break
+                              case "current_communication_level":
+                                value = jpLevel?.currentCommunicationLevel || "-"
+                                break
+                              case "target_1_jlpt_nat_level":
+                                value = jpLevel?.target1JlptNatLevel || "-"
+                                break
+                              case "target_1_communication_level":
+                                value = jpLevel?.target1CommunicationLevel || "-"
+                                break
+                              case "target_2_jlpt_nat_level":
+                                value = jpLevel?.target2JlptNatLevel || "-"
+                                break
+                              case "target_2_communication_level":
+                                value = jpLevel?.target2CommunicationLevel || "-"
+                                break
+                              case "current_learning_level":
+                                value = jpLevel?.currentLearningLevel || "-"
+                                break
+                              case "learning_method":
+                                value = jpLevel?.learningMethod || "-"
+                                break
+                              case "want_to_sit_exam":
+                                value = jpLevel?.wantToSitExam === true ? "Yes" : jpLevel?.wantToSitExam === false ? "No" : "-"
+                                break
+                              case "exam_target_level":
+                                value = jpLevel?.examTargetLevel || "-"
+                                break
+                              case "confidence_level":
+                                value = jpLevel?.confidenceLevel || "-"
+                                break
+                              default:
+                                value = "-"
+                            }
+                            return (
+                              <BorderedTableCell key={header.field} selected={isSelected}>
+                                {value}
+                              </BorderedTableCell>
+                            )
+                          })
+                        })}
                       </TableRow>
                     )
                   })
@@ -566,7 +803,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
             <div className="text-sm text-muted-foreground">
               Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
               {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} of{" "}
-              {filteredEmployees.length} employees
+              {filteredEmployees.length} employees with Japanese data
             </div>
             <Pagination className="mx-0 w-auto">
               <PaginationContent>
@@ -622,13 +859,30 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
         </CardContent>
       </div>
 
+      {/* Bulk Delete Dialog */}
       <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete {selectedCount} selected employee
-              {selectedCount > 1 ? "s" : ""}? This action cannot be undone.
+            <DialogTitle>Confirm Delete Japanese Profile Data</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Are you sure you want to delete the <strong>Japanese profile data</strong> for <strong>{selectedCount}</strong> selected employee{selectedCount > 1 ? "s" : ""}?
+                </p>
+                <div className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 border border-yellow-200">
+                  <p className="font-medium">⚠️ Important Note:</p>
+                  <p className="mt-1">
+                    This action will <strong>only delete the Japanese language profile data</strong> (JLPT levels,
+                    communication levels, learning methods, exam targets, etc.).
+                  </p>
+                  <p className="mt-1">
+                    The <strong>employee information</strong> (name, ID, email, department, etc.) will <strong>remain unchanged</strong>.
+                  </p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  This action cannot be undone. The employees will no longer appear in this view until new Japanese profile data is added.
+                </p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -636,11 +890,50 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleBulkDeleteConfirm} disabled={isDeleting}>
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? "Deleting..." : "Delete Japanese Data Only"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Profile Drawer */}
+      <CreateCurrentTargetDrawer
+        key={`create-${refreshKey}`}
+        open={isCreateDrawerOpen}
+        onOpenChange={setIsCreateDrawerOpen}
+        onSuccess={handleDataChanged}
+        employeeOptions={employeeOptions}
+      />
+
+      {/* Edit Profile Drawer */}
+      <EditCurrentTargetDrawer
+        key={selectedProfile?.id}
+        open={editDrawerOpen}
+        onOpenChange={setEditDrawerOpen}
+        profile={selectedProfile}
+        onSuccess={handleDataChanged}
+      />
+
+      {/* Edit Target Dates Drawer */}
+      <EditTargetDatesDrawer
+        open={isEditTargetDatesDrawerOpen}
+        onOpenChange={setIsEditTargetDatesDrawerOpen}
+        targetDates={japaneseTargetDates_Data?.[0] || null}
+        mode="edit"
+        onSuccess={handleDataChanged}
+      />
+
+      {/* Create Target Dates Drawer */}
+      <EditTargetDatesDrawer
+        open={isCreateTargetDatesDrawerOpen}
+        onOpenChange={setIsCreateTargetDatesDrawerOpen}
+        targetDates={null}
+        mode="create"
+        onSuccess={() => {
+          handleDataChanged()
+          setIsCreateTargetDatesDrawerOpen(false)
+        }}
+      />
     </>
   )
 }

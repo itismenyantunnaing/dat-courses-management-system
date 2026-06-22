@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -26,6 +27,7 @@ import ChangePassword from "@/components/dialogs/changePassword-dialog"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { CurrentTargetContainer } from "@/components/current-target-container"
 import { ExamProgressReportContainer } from "@/components/examProgress-report-container"
+import { mainStore } from "@/store/mainStore"
 
 interface DashboardClientProps {
     userData: {
@@ -48,6 +50,10 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
     useEffect(() => {
         setMounted(true)
+        // Attach store to window for global access in non-hook files
+        if (typeof window !== 'undefined') {
+            (window as any).mainStore = mainStore;
+        }
     }, [])
 
     useEffect(() => {

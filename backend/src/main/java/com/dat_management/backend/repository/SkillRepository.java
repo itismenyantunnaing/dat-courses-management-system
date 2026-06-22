@@ -2,8 +2,11 @@ package com.dat_management.backend.repository;
 
 import com.dat_management.backend.entity.Skill;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import java.util.List;
+import java.util.Optional;
 
-@Repository
 public interface SkillRepository extends JpaRepository<Skill, Integer> {
+    Optional<Skill> findBySkillNameIgnoreCaseAndSubCategoryId(String skillName, Integer subCategoryId);
+    Optional<Skill> findBySkillNameIgnoreCase(String skillName);
+    List<Skill> findBySubCategoryId(Integer subCategoryId);
 }

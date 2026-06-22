@@ -1,10 +1,6 @@
 export interface Holiday {
-  id: number
-  sr: number
-  name: string
-  date: string
-  day: string
+  id?: number
+  holidayDate: string
+  holidayName?: string
   status?: string
-  description?: string
-  created_at?: string
 }

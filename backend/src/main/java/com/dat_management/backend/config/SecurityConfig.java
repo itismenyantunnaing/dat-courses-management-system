@@ -1,6 +1,5 @@
 package com.dat_management.backend.config;
 
-
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
@@ -21,9 +20,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -39,26 +37,27 @@ public class SecurityConfig {
         System.out.println("🔥 SECURITY FILTER CHAIN LOADED");
 
         http
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/**").permitAll()
-                .requestMatchers(
-                    "/api/auth",
-                    "/api/auth/login",
-                    "/api/auth/forgot-password",
-                    "/api/auth/verify-otp",
-                    "/api/auth/reset-password"
-                ).permitAll()
-                .requestMatchers("/dashboard/admin").hasAnyRole("ADMIN", "PMO")
-                .requestMatchers("/dashboard/PM").hasAnyRole("PM", "HOD")
-                .requestMatchers("/dashboard/staff").hasRole("STAFF")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/").permitAll()
+                        .requestMatchers("/api/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth",
+                                "/api/auth/login",
+                                "/api/auth/forgot-password",
+                                "/api/auth/verify-otp",
+                                "/api/auth/reset-password",
+                                "/api/employees",
+                                "/api/employees/",
+                                "/api/**"
+                        ).permitAll()
+                        .requestMatchers("/dashboard/admin").hasAnyRole("Admin", "PMO")
+                        .requestMatchers("/dashboard/PM").hasAnyRole("PM", "HOD")
+                        .requestMatchers("/dashboard/staff").hasRole("STAFF")
+                        .anyRequest().authenticated());
+                // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

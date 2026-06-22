@@ -290,24 +290,39 @@ class HolidayControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("TC_HOL_DELETE_01 | DELETE existing holiday → 200 OK, success true")
+    @DisplayName("TC_HOL_DELETE_01 | DELETE existing holiday -> 200 OK, success true")
     void deleteHoliday_validId_returns200() throws Exception {
         Holiday saved = insertHoliday("2025-12-25", "Christmas Day");
 
         mockMvc.perform(delete("/api/holidays/{id}", saved.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Holiday deleted successfully"));
+                .andExpect(jsonPath("$.message").value("All holidays deleted successfully"))
+                .andExpect(jsonPath("$.deletedIds[0]").value(saved.getId()));
     }
 
     @Test
-    @DisplayName("TC_HOL_DELETE_02 | DELETE non-existent ID → 404 Not Found")
+    @DisplayName("TC_HOL_DELETE_02 | DELETE non-existent ID -> 404 Not Found")
     void deleteHoliday_nonExistentId_returns404() throws Exception {
         mockMvc.perform(delete("/api/holidays/{id}", 99999))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value(containsString("not found")));
+                .andExpect(jsonPath("$.message").value("Failed to delete any holidays"))
+                .andExpect(jsonPath("$.errors.99999").value(containsString("not found")));
     }
 
+    @Test
+    @DisplayName("TC_HOL_DELETE_03 | DELETE mixed existing and non-existent IDs -> 206 Partial Content")
+    void deleteHoliday_mixedIds_returns206() throws Exception {
+        Holiday saved = insertHoliday("2025-12-25", "Christmas Day");
+
+        mockMvc.perform(delete("/api/holidays/{ids}", saved.getId() + ",99999"))
+                .andExpect(status().isPartialContent())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Some holidays deleted successfully, some failed"))
+                .andExpect(jsonPath("$.deletedIds[0]").value(saved.getId()))
+                .andExpect(jsonPath("$.failedIds[0]").value(99999))
+                .andExpect(jsonPath("$.errors.99999").value(containsString("not found")));
+    }
 
 }

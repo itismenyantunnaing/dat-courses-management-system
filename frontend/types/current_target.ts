@@ -1,31 +1,41 @@
+// types/current_target.ts
+
 export interface TargetDates {
-  target_1_date: Date;
-  target_2_date: Date;
+  id?: number;
+  target1Date: Date | string;
+  target2Date: Date | string;
+  examDate?: Date | string;
+  isActive?: boolean;
 }
 
 export interface EmployeeJapaneseLevel {
+  id?: number;
+  employeeId?: string;
+  employee_id?: string;
+
   // Certified Levels
-  jlpt_highest_level: string | null;
-  other_japanese_level: string | null;
-  preferred_learning_group: string | null;
-  
+  jlptHighestLevel: string | null;
+  otherJapaneseLevel: string | null;
+  preferredLearningGroup: string | null;
+
   // Current Level
-  current_communication_level: string | null;
-  
+  currentCommunicationLevel: string | null;
+
   // Target 1 Levels
-  target_1_jlpt_nat_level: string | null;
-  target_1_communication_level: string | null;
-  
+  target1JlptNatLevel: string | null;
+  target1CommunicationLevel: string | null;
+
   // Target 2 Levels
-  target_2_jlpt_nat_level: string | null;
-  target_2_communication_level: string | null;
-  
+  target2JlptNatLevel: string | null;
+  target2CommunicationLevel: string | null;
+
   // Current Learning
-  current_learning_level: string | null;
-  learning_method: string | null;
-  
+  currentLearningLevel: string | null;
+  learningMethod: string | null;
+
   // JLPT Exam Target
-  want_to_sit_exam: boolean;
-  exam_target_level: string | null;
-  confidence_level: string | null;
+  wantToSitExam: boolean;
+  examTargetLevel: string | null;
+  jlptNatTest: string | null;
+  confidenceLevel: string | null;
 }

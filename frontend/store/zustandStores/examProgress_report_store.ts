@@ -36,6 +36,9 @@ const mockDeptResponse: DeptCertificationResponse = {
     }
 }
 
+
+
+
 const mockTeamResponse: TeamCertificationResponse = {
     "BlockChain": {
         "deptId": 1,
@@ -211,7 +214,6 @@ export const examProgressReport_Store = (set: StoreSet, get: StoreGet) => ({
         set(() => ({ teamData: teamData, teamDisplayData: teamDisplayData }))
     },
 
-    fetch_TargetDates: async () => {},
 
     getDeptWithCounts: () => {
         return get().deptDisplayData || []

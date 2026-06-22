@@ -1,4 +1,3 @@
-// components/forms/EmployeeForm.tsx
 "use client"
 
 import { Input } from "@/components/ui/input"
@@ -12,17 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { CalendarIcon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { mainStore } from "@/store/mainStore"
 
@@ -31,14 +20,11 @@ export interface EmployeeFormData {
   staff_id: string
   name: string
   doorlog: string
-  dept: string
+  dept_dat: string
   team: string
-  status: string
+  emp_status: string
   role: string
   email: string
-  phone?: string
-  join_date?: string
-  address?: string
 }
 
 interface EmployeeFormProps {
@@ -52,10 +38,7 @@ export function EmployeeForm({
   onChange,
   isEdit = false,
 }: EmployeeFormProps) {
-  const [joinDateOpen, setJoinDateOpen] = useState(false)
-  const [joinDate, setJoinDate] = useState<Date | undefined>(
-    data.join_date ? new Date(data.join_date) : undefined
-  )
+  const [isLoading, setIsLoading] = useState(true)
 
   const {
     division_options,
@@ -67,10 +50,21 @@ export function EmployeeForm({
 
   // Fetch data to populate options when form mounts
   useEffect(() => {
-    if (!division_options.length || !department_options.length) {
-      fetch_EmployeeData()
+    const loadOptions = async () => {
+      setIsLoading(true)
+      try {
+        // Only fetch if options are empty
+        if (!division_options.length || !department_options.length) {
+          await fetch_EmployeeData()
+        }
+      } catch (error) {
+        console.error("Failed to fetch employee options:", error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [division_options.length, department_options.length, fetch_EmployeeData])
+    loadOptions()
+  }, [])
 
   const handleInputChange = (field: keyof EmployeeFormData, value: string) => {
     onChange({
@@ -79,15 +73,15 @@ export function EmployeeForm({
     })
   }
 
-  const handleDateSelect = (date: Date | undefined) => {
-    setJoinDate(date)
-    if (date) {
-      const formattedDate = date.toISOString().split("T")[0]
-      handleInputChange("join_date", formattedDate)
-    } else {
-      handleInputChange("join_date", "")
-    }
-    setJoinDateOpen(false)
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
+          <p className="text-muted-foreground">Loading form options...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -107,6 +101,7 @@ export function EmployeeForm({
               placeholder="Enter staff ID"
               required
               className="w-full"
+              disabled={isEdit}
             />
           </div>
           <div className="min-w-0 space-y-2">
@@ -135,43 +130,6 @@ export function EmployeeForm({
               required
               className="w-full"
             />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              id="phone"
-              value={data.phone}
-              onChange={(e) => handleInputChange("phone", e.target.value)}
-              placeholder="Enter phone number"
-              className="w-full"
-            />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="join_date">Join Date</Label>
-            <Popover open={joinDateOpen} onOpenChange={setJoinDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  id="join_date"
-                  className="w-full justify-between font-normal"
-                >
-                  {joinDate ? joinDate.toLocaleDateString() : "Select date"}
-                  <HugeiconsIcon icon={CalendarIcon} strokeWidth={2} />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto overflow-hidden p-0"
-                align="start"
-              >
-                <Calendar
-                  mode="single"
-                  selected={joinDate}
-                  defaultMonth={joinDate}
-                  captionLayout="dropdown"
-                  onSelect={handleDateSelect}
-                />
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
       </div>
@@ -215,8 +173,8 @@ export function EmployeeForm({
               Department <span className="text-red-500">*</span>
             </Label>
             <Select
-              value={data.dept}
-              onValueChange={(value) => handleInputChange("dept", value)}
+              value={data.dept_dat}
+              onValueChange={(value) => handleInputChange("dept_dat", value)}
               required
             >
               <SelectTrigger className="w-full">
@@ -295,8 +253,8 @@ export function EmployeeForm({
               Status <span className="text-red-500">*</span>
             </Label>
             <Select
-              value={data.status}
-              onValueChange={(value) => handleInputChange("status", value)}
+              value={data.emp_status}
+              onValueChange={(value) => handleInputChange("emp_status", value)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select status" />
@@ -326,26 +284,6 @@ export function EmployeeForm({
           </div>
         </div>
       </div>
-
-      {/* <Separator /> */}
-
-      {/* Additional Information Section */}
-      {/* <div>
-        <h3 className="mb-4 text-lg font-semibold">Additional Information</h3>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
-            <Textarea
-              id="address"
-              value={data.address}
-              onChange={(e) => handleInputChange("address", e.target.value)}
-              placeholder="Enter full address"
-              rows={3}
-              className="w-full resize-y"
-            />
-          </div>
-        </div>
-      </div> */}
     </div>
   )
 }

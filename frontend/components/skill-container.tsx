@@ -20,6 +20,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import {
   Select,
@@ -53,7 +55,7 @@ import {
   MoreHorizontalIcon,
   EditIcon,
   Delete02Icon,
-  FilterIcon,
+  ViewIcon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -67,8 +69,6 @@ type GroupedSkill = {
   skill_name: string;
   sub_category_name: string;
 };
-
-type ViewType = 'all' | 'administrator' | 'developer' | 'technicalAbility';
 
 const BorderedTableCell = ({ children, className = "", ...props }: React.ComponentProps<typeof TableCell>) => (
   <TableCell className={`border-r border-l ${className}`} {...props}>
@@ -124,8 +124,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
   const [languageSkillMap, setLanguageSkillMap] = useState<Map<string, { language_skill_level: number | null; jlpt_highest_level: string | null }>>(new Map());
   const [managementScoresMap, setManagementScoresMap] = useState<Map<string, ManagementScore>>(new Map());
 
-  // View filter state - like the ExamProgressReportContainer
-  const [viewFilter, setViewFilter] = useState<ViewType>("all");
+  // Column visibility state using radio-style selection
+  const [selectedSection, setSelectedSection] = useState<string>("all")
 
   const { fetch_EmployeeData, employee_data, fetch_SkillHeaders, skill_headers, fetch_SkillData, skillData, fetch_devCapHeaders, devCap_headers, fetch_devCapData, devCap_data, fetch_languageSkillData, languageSkill_data, fetch_managementScoreData, managementScores_Data } = mainStore();
 
@@ -346,10 +346,31 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
   const totalSkillColumns = dynamicSkillsList.length * 2
   const totalColumns = employeeHeaders.length + 1 + totalSkillColumns // +1 for Actions
 
-  // Check if a section should be visible based on filter
-  const showAdministrator = viewFilter === 'all' || viewFilter === 'administrator';
-  const showDeveloper = viewFilter === 'all' || viewFilter === 'developer';
-  const showTechnicalAbility = viewFilter === 'all' || viewFilter === 'technicalAbility';
+  // Check if a section should be visible based on selected section
+  const showAdministrator = selectedSection === "all" || selectedSection === "administrator";
+  const showDeveloper = selectedSection === "all" || selectedSection === "developer";
+  const showTechnicalAbility = selectedSection === "all" || selectedSection === "technicalAbility";
+
+  // Section display names for the column visibility dropdown
+  const sectionDisplayNames = {
+    administrator: "Administrator",
+    developer: "Developer",
+    technicalAbility: "Technical Ability",
+  }
+
+  // Handle section selection (radio button style)
+  const handleSectionSelect = (sectionKey: string) => {
+    if (sectionKey === "all") {
+      setSelectedSection("all")
+    } else {
+      // If clicking the already selected section, go back to "all"
+      if (selectedSection === sectionKey) {
+        setSelectedSection("all")
+      } else {
+        setSelectedSection(sectionKey)
+      }
+    }
+  }
 
   if (isLoading) {
     return (
@@ -382,27 +403,55 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
               />
             </div>
             <div className="flex gap-2">
-              {/* View Type Selector - like ExamProgressReportContainer */}
-              <Select 
-                value={viewFilter} 
-                onValueChange={(value: ViewType) => {
-                  setViewFilter(value)
-                  setCurrentPage(1)
-                }}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <HugeiconsIcon icon={FilterIcon} strokeWidth={STROKE_WIDTH} />
-                  <SelectValue placeholder="Filter View" />
-                </SelectTrigger>
-                <SelectContent align="center" sideOffset={5}>
-                  <SelectGroup>
-                    <SelectItem value="all">All Sections</SelectItem>
-                    <SelectItem value="administrator">Administrator</SelectItem>
-                    <SelectItem value="developer">Developer</SelectItem>
-                    <SelectItem value="technicalAbility">Technical Ability</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              {/* Column Visibility Dropdown with Radio-style selection */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <HugeiconsIcon icon={ViewIcon} strokeWidth={2} className="h-4 w-4" />
+                    {selectedSection === "all" ? "All Sections" : sectionDisplayNames[selectedSection as keyof typeof sectionDisplayNames]}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel>Filter Skill Sections</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    Employee columns are always visible
+                  </div>
+                  <DropdownMenuSeparator />
+                  
+                  {/* Show All Sections - acts as a toggle/reset */}
+                  <DropdownMenuCheckboxItem
+                    checked={selectedSection === "all"}
+                    onCheckedChange={() => handleSectionSelect("all")}
+                    className="font-medium"
+                  >
+                    Show All Sections
+                  </DropdownMenuCheckboxItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* Individual Sections - Radio button style */}
+                  {Object.entries(sectionDisplayNames).map(([key, label]) => (
+                    <DropdownMenuCheckboxItem
+                      key={key}
+                      checked={selectedSection === key}
+                      onCheckedChange={() => handleSectionSelect(key)}
+                      className="pl-6"
+                    >
+                      {label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5">
+                    <div className="text-xs text-muted-foreground">
+                      {selectedSection === "all" 
+                        ? "Showing all sections" 
+                        : `Showing only: ${sectionDisplayNames[selectedSection as keyof typeof sectionDisplayNames]}`}
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -422,7 +471,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     </BorderedTableHead>
                   ))}
 
-                  {/* ADMINISTRATOR MAIN HEADER - Filterable */}
+                  {/* ADMINISTRATOR MAIN HEADER - Column Filterable */}
                   {showAdministrator && (
                     <BorderedTableHead
                       colSpan={5}
@@ -432,7 +481,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     </BorderedTableHead>
                   )}
 
-                  {/* DEVELOPER HEADER - Filterable */}
+                  {/* DEVELOPER HEADER - Column Filterable */}
                   {showDeveloper && (
                     <BorderedTableHead
                       colSpan={10}
@@ -442,7 +491,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     </BorderedTableHead>
                   )}
 
-                  {/* TECHNICAL ABILITY HEADER - Filterable */}
+                  {/* TECHNICAL ABILITY HEADER - Column Filterable */}
                   {showTechnicalAbility && (
                     <BorderedTableHead
                       colSpan={Object.values(dynamicSkillsByCategory).reduce(
@@ -717,7 +766,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           </Badge>
                         </BorderedTableCell>
 
-                        {/* Administrator Columns - Filterable */}
+                        {/* Administrator Columns - Column Filterable */}
                         {showAdministrator && (
                           <>
                             {[
@@ -734,7 +783,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           </>
                         )}
 
-                        {/* Developer Columns - Filterable */}
+                        {/* Developer Columns - Column Filterable */}
                         {showDeveloper && (
                           <>
                             {/* Language Skills */}
@@ -784,7 +833,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           </>
                         )}
 
-                        {/* Technical Skills Cells - Filterable */}
+                        {/* Technical Skills Cells - Column Filterable */}
                         {showTechnicalAbility && (
                           <>
                             {dynamicSkillsList.map((skill) => {

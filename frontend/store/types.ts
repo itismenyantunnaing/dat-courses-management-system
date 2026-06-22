@@ -14,17 +14,33 @@ import {
   type DeptWithCounts,
   type TeamWithCounts,
   type DeptCertificationResponse,
-  type TeamCertificationResponse, // ✅ Add Team import
+  type TeamCertificationResponse, 
 } from "@/types/exam_progress_report"
 
 export interface Employee_StoreType {
   employee_data: Employee[]
+  isCreating?: boolean
+  isDeleting?: boolean
+  isUpdating?: boolean
+  division_options: { value: string; label: string }[]
+  department_options: { value: string; label: string }[]
+  team_options: { value: string; label: string }[]
+  role_options: { value: string; label: string }[]
   fetch_EmployeeData: () => Promise<void>
+  add_EmployeeData: (employee: Employee) => Promise<string>
+  delete_EmployeeData: (employeeIds: string | string[]) => Promise<string>
+  update_EmployeeData: (id: string, employee: Employee) => Promise<string>
+  bulkDelete_EmployeeData: (employeeIds: string[]) => Promise<void>
 }
 
 export interface Holiday_StoreType {
   holiday_data: Holiday[]
+  
   fetch_HolidayData: () => Promise<void>
+  add_HolidayData: (holiday: Holiday) =>  Promise<string> 
+  delete_HolidayData: (holidayIds: number | number[]) => Promise<string>
+  update_HolidayData: (id: number, updatedHoliday: Holiday) => Promise<string>
+  bulkCreate_HolidayData: (holidays: { holidayName: string; holidayDate: string }[]) => Promise<void>
 }
 
 export interface SkillSet_StoreType {
@@ -43,10 +59,19 @@ export interface SkillSet_StoreType {
 }
 
 export interface CurrentTarget_StoreType {
-  japaneseTargetDates_Data?: TargetDates[];
-  employeeJapaneseLevel_Data?: EmployeeJapaneseLevel[];
+  japaneseTargetDates_Data: TargetDates[];
+  employeeJapaneseLevel_Data: EmployeeJapaneseLevel[];
+  isLoading: boolean;
+  error: string | null;
   fetch_TargetDates: () => Promise<void>;
+  update_TargetDates: (id: number, data: TargetDates) => Promise<string>;
   fetch_EmployeeJapaneseLevel: () => Promise<void>;
+  add_EmployeeJapaneseLevel: (data: EmployeeJapaneseLevel) => Promise<string>;
+  edit_EmployeeJapaneseLevel: (id: number, data: EmployeeJapaneseLevel) => Promise<string>;
+  delete_singleJapaneseLevel: (id: number) => Promise<string>;
+  delete_bulkJapaneseLevel: (ids: number[]) => Promise<string>;
+  deleteEmployeeJapaneseProfileByEmployeeId: (employeeId: string) => Promise<string>;
+  bulkCreate_CurrentTargetData: (data: EmployeeJapaneseLevel[]) => Promise<string>;
 }
 
 // export interface ExamProgressReport_StoreType {
@@ -68,7 +93,6 @@ export interface ExamProgressReport_StoreType {
     teamDisplayData?: TeamWithCounts[];
     fetch_DeptData: () => Promise<void>;
     fetch_TeamData: () => Promise<void>;
-    fetch_TargetDates: () => Promise<void>;
     getDeptWithCounts: () => DeptWithCounts[];
     getTeamWithCounts: () => TeamWithCounts[];
     getTeamsByDept: (deptId: number) => TeamWithCounts[];

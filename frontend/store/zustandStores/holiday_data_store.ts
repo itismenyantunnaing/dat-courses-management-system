@@ -1,216 +1,246 @@
+// store/zustandStores/holiday_data_store.ts
+import type { Holiday } from "@/types/holiday"
 import { Holiday_StoreType } from "../types"
 
-const holidayData = [
-  {
-    id: 1,
-    sr: 1,
-    name: "New Year's Day",
-    date: "2025-01-01",
-    day: "Wednesday",
-    status: "upcoming",
-    description: "Celebration of the New Year",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    sr: 2,
-    name: "Independence Day",
-    date: "2025-01-04",
-    day: "Saturday",
-    status: "upcoming",
-    description: "Independence Day celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 3,
-    sr: 3,
-    name: "Union Day",
-    date: "2025-02-12",
-    day: "Wednesday",
-    status: "upcoming",
-    description: "Union Day celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 4,
-    sr: 4,
-    name: "Peasants' Day",
-    date: "2025-03-02",
-    day: "Sunday",
-    status: "upcoming",
-    description: "Peasants' Day celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 5,
-    sr: 5,
-    name: "Full Moon Day of Tabaung",
-    date: "2025-03-14",
-    day: "Friday",
-    status: "upcoming",
-    description: "Full Moon Day of Tabaung",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 6,
-    sr: 6,
-    name: "Armed Forces Day",
-    date: "2025-03-27",
-    day: "Thursday",
-    status: "upcoming",
-    description: "Armed Forces Day celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 7,
-    sr: 7,
-    name: "Thingyan Water Festival",
-    date: "2025-04-13",
-    day: "Sunday",
-    status: "upcoming",
-    description: "Thingyan Water Festival celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 8,
-    sr: 8,
-    name: "Myanmar New Year",
-    date: "2025-04-16",
-    day: "Wednesday",
-    status: "upcoming",
-    description: "Myanmar New Year celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 9,
-    sr: 9,
-    name: "Labour Day",
-    date: "2025-05-01",
-    day: "Thursday",
-    status: "upcoming",
-    description: "International Workers' Day",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 10,
-    sr: 10,
-    name: "Full Moon Day of Kasone",
-    date: "2025-05-12",
-    day: "Monday",
-    status: "upcoming",
-    description: "Full Moon Day of Kasone",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 11,
-    sr: 11,
-    name: "Martyrs' Day",
-    date: "2025-07-19",
-    day: "Saturday",
-    status: "upcoming",
-    description: "Martyrs' Day commemoration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 12,
-    sr: 12,
-    name: "Full Moon Day of Waso",
-    date: "2025-07-21",
-    day: "Monday",
-    status: "upcoming",
-    description: "Full Moon Day of Waso",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 13,
-    sr: 13,
-    name: "Full Moon Day of Thadingyut",
-    date: "2025-10-17",
-    day: "Friday",
-    status: "upcoming",
-    description: "Full Moon Day of Thadingyut",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 14,
-    sr: 14,
-    name: "Full Moon Day of Tazaungmone",
-    date: "2025-11-15",
-    day: "Saturday",
-    status: "upcoming",
-    description: "Full Moon Day of Tazaungmone",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 15,
-    sr: 15,
-    name: "National Day",
-    date: "2025-11-26",
-    day: "Wednesday",
-    status: "upcoming",
-    description: "National Day celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 16,
-    sr: 16,
-    name: "Karen New Year",
-    date: "2025-12-21",
-    day: "Sunday",
-    status: "upcoming",
-    description: "Karen New Year celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 17,
-    sr: 17,
-    name: "Christmas Day",
-    date: "2025-12-25",
-    day: "Thursday",
-    status: "upcoming",
-    description: "Christmas Day celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 18,
-    sr: 18,
-    name: "Kayin New Year",
-    date: "2025-12-28",
-    day: "Sunday",
-    status: "upcoming",
-    description: "Kayin New Year celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 19,
-    sr: 19,
-    name: "Chinese New Year",
-    date: "2025-01-29",
-    day: "Wednesday",
-    status: "upcoming",
-    description: "Chinese New Year celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 20,
-    sr: 20,
-    name: "Eid al-Fitr",
-    date: "2025-03-31",
-    day: "Monday",
-    status: "upcoming",
-    description: "End of Ramadan celebration",
-    created_at: "2024-01-01T00:00:00Z",
-  },
-]
 
 type StoreSet = (
   fn: (state: Holiday_StoreType) => Partial<Holiday_StoreType>
 ) => void
 type StoreGet = () => Holiday_StoreType
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export const holidayDataStore = (set: StoreSet, get: StoreGet) => ({
   holiday_data: [],
+  isCreating: false,
+
   fetch_HolidayData: async () => {
-    set(() => ({ holiday_data: holidayData }))
+    try {
+      const response = await fetch(`${apiUrl}/api/holidays`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const holidayData = await response.json();
+      set(() => ({ holiday_data: holidayData }));
+    } catch (error) {
+      console.error('Error fetching holiday data:', error);
+      set(() => ({ holiday_data: [] }));
+    }
+  },
+
+  add_HolidayData: async (newHoliday: Holiday) => {
+    const previousData = get().holiday_data;
+
+    // Check if a holiday with the same date already exists
+    const existingHoliday = previousData.find(
+      h => h.holidayDate === newHoliday.holidayDate
+    );
+
+    if (existingHoliday) {
+      return `Holiday with date ${newHoliday.holidayDate} already exists.`;
+    }
+
+    // Create a copy with a generated temporary ID string so the UI doesn't crash
+    const optimisticHoliday = {
+      ...newHoliday,
+      id: -Date.now()
+    };
+
+    // Immediately push the holiday with its temporary ID to the UI
+    set(() => ({
+      holiday_data: [...previousData, optimisticHoliday],
+      isCreating: true
+    }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/holidays`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newHoliday),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Refresh to get the real ID from the server
+      await get().fetch_HolidayData();
+
+      return `Holiday created successfully`;
+
+    } catch (error) {
+      console.error('Error posting holiday data:', error);
+
+      // Rollback to original state if the API fails
+      set(() => ({
+        holiday_data: previousData,
+        isCreating: false
+      }));
+
+      return `Failed to create holiday: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+  },
+
+  // Delete holiday 
+  delete_HolidayData: async (holidayIds: number | number[]) => {
+    const previousData = get().holiday_data;
+
+    // Normalize input to always be an array of numbers
+    const idsToDelete = Array.isArray(holidayIds) ? holidayIds : [holidayIds];
+    const count = idsToDelete.length;
+
+    // Optimistically filter out the deleted holidays immediately from the UI
+    set(() => ({
+      holiday_data: previousData.filter(h => h.id !== undefined && !idsToDelete.includes(h.id)),
+    }));
+
+    try {
+      const idsPath = idsToDelete.join(',');
+
+      const response = await fetch(`${apiUrl}/api/holidays/${idsPath}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response}`);
+      }
+
+      await response.json();
+
+      const customMessage = count === 1
+        ? `1 Holiday deleted successfully`
+        : `${count} Holidays deleted successfully`;
+
+      return customMessage;
+
+    } catch (error) {
+      console.error('Error deleting holiday data:', error);
+
+      // Rollback to original state if the API completely fails
+      set(() => ({
+        holiday_data: previousData
+      }));
+
+      return `Failed to delete ${count === 1 ? 'holiday' : 'holidays'}`;
+    }
+  },
+
+  // Update holiday
+  update_HolidayData: async (id: number, updatedHoliday: Holiday) => {
+    const previousData = get().holiday_data;
+
+    // Check if holiday exists
+    const existingHoliday = previousData.find(h => h.id === id);
+
+    if (!existingHoliday) {
+      return `Holiday with ID "${id}" not found.`;
+    }
+
+    // Check for duplicate date (if date is being changed)
+    if (updatedHoliday.holidayDate && updatedHoliday.holidayDate !== existingHoliday.holidayDate) {
+      const duplicateDate = previousData.find(
+        h => h.holidayDate === updatedHoliday.holidayDate && h.id !== id
+      );
+      if (duplicateDate) {
+        return `Holiday with date "${updatedHoliday.holidayDate}" already exists.`;
+      }
+    }
+
+    // Optimistically update the holiday in the UI
+    const updatedData = previousData.map((h) =>
+      h.id === id ? { ...h, ...updatedHoliday } : h
+    );
+
+    set(() => ({
+      holiday_data: updatedData,
+      isUpdating: true
+    }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/holidays/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedHoliday),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      await response.json();
+
+      // Refresh to get the updated data from the server
+      await get().fetch_HolidayData();
+
+      return `Holiday "${existingHoliday.holidayName}" updated successfully.`;
+
+    } catch (error) {
+      console.error('Error updating holiday:', error);
+
+      // Rollback to original state if the API fails
+      set(() => ({
+        holiday_data: previousData,
+        isUpdating: false
+      }));
+
+      return `Failed to update holiday: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+  },
+
+  bulkCreate_HolidayData: async (holidays: { holidayName: string; holidayDate: string }[]) => {
+    const previousData = get().holiday_data;
+
+    // Create optimistic items with temporary IDs
+    const optimisticHolidays = holidays.map((h, index) => ({
+      id: -Date.now() - index,
+      holidayName: h.holidayName,
+      holidayDate: h.holidayDate,
+    }));
+
+    // Optimistically add all holidays to the UI
+    set(() => ({
+      holiday_data: [...previousData, ...optimisticHolidays]
+    }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/holidays/list`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(holidays),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Bulk insert successful:', result);
+
+      // Refresh the holiday data to get the actual IDs from the database
+      await get().fetch_HolidayData();
+
+    } catch (error) {
+      console.error('Error bulk creating holidays:', error);
+
+      // Rollback to original state if the API fails
+      set(() => ({
+        holiday_data: previousData
+      }));
+
+      throw error;
+    }
   },
 })

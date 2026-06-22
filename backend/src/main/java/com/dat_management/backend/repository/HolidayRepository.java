@@ -17,4 +17,6 @@ public interface HolidayRepository extends JpaRepository<Holiday, Integer> {
     List<Holiday> findAllByIsDeletedFalse();
 
     Optional<Holiday> findByIdAndIsDeletedFalse(Integer id);
+
+    boolean existsByHolidayDateAndIsDeletedFalse(LocalDate holidayDate);
 }

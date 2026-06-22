@@ -35,6 +35,7 @@ import {
   Search01Icon,
   Delete02Icon,
   CalendarAdd01Icon,
+  Download03Icon, // Add this import
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -82,6 +83,11 @@ const getStatusLabel = (date: string) => {
   }
 }
 
+const getDayName = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { weekday: 'long' })
+}
+
 // BorderedTableCell component
 const BorderedTableCell = ({
   children,
@@ -115,7 +121,6 @@ export function HolidaysContainer({
   const [itemsPerPage, setItemsPerPage] = useState(15)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [holidays, setHolidays] = useState<Holiday[]>([])
 
   // State for row selection
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
@@ -128,8 +133,10 @@ export function HolidaysContainer({
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   const [selectedHoliday, setSelectedHoliday] = useState<Holiday | null>(null)
 
-  const { fetch_HolidayData, holiday_data } = mainStore()
+  // Use store directly - no local state duplication
+  const { fetch_HolidayData, holiday_data, delete_HolidayData } = mainStore()
 
+  // Track refresh key to force re-render when store updates
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
@@ -142,10 +149,10 @@ export function HolidaysContainer({
     loadData()
   }, [fetch_HolidayData])
 
+
+  // Update refresh key when holiday_data changes
   useEffect(() => {
-    if (holiday_data && holiday_data.length > 0) {
-      setHolidays(holiday_data)
-    }
+    setRefreshKey(prev => prev + 1)
   }, [holiday_data])
 
   // Column headers
@@ -156,14 +163,12 @@ export function HolidaysContainer({
     { field: "date", header_name: "Date" },
     { field: "day", header_name: "Day" },
     { field: "status", header_name: "Status" },
-    { field: "description", header_name: "Description" },
   ]
 
-  const filteredHolidays = holidays.filter((holiday) => {
+  // Use holiday_data directly from store
+  const filteredHolidays = holiday_data.filter((holiday) => {
     const matchesSearch =
-      holiday.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (holiday.description &&
-        holiday.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      holiday.holidayName?.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
 
@@ -194,19 +199,19 @@ export function HolidaysContainer({
   // Handle select all on current page
   const handleSelectAll = () => {
     const allSelected = paginatedHolidays.every(
-      (holiday) => rowSelection[holiday.id.toString()]
+      (holiday) => rowSelection[holiday.id?.toString() ?? '']
     )
 
     if (allSelected) {
       const newSelection = { ...rowSelection }
       paginatedHolidays.forEach((holiday) => {
-        delete newSelection[holiday.id.toString()]
+        delete newSelection[holiday.id?.toString() ?? '']
       })
       setRowSelection(newSelection)
     } else {
       const newSelection = { ...rowSelection }
       paginatedHolidays.forEach((holiday) => {
-        newSelection[holiday.id.toString()] = true
+        newSelection[holiday.id?.toString() ?? ""] = true
       })
       setRowSelection(newSelection)
     }
@@ -227,10 +232,8 @@ export function HolidaysContainer({
   }
 
   // Handle successful holiday update
-  const handleHolidayUpdated = async () => {
-    setIsLoading(true)
-    await fetch_HolidayData()
-    setIsLoading(false)
+  const handleHolidayUpdated = () => {
+    setRefreshKey((prev) => prev + 1)
   }
 
   // Get selected holidays count
@@ -241,9 +244,12 @@ export function HolidaysContainer({
     const selectedIds = Object.entries(rowSelection)
       .filter(([, selected]) => selected)
       .map(([id]) => parseInt(id))
-    return holidays.filter((holiday) => selectedIds.includes(holiday.id))
-  }
+      .filter(id => !isNaN(id)) // Also filter out NaN values
 
+    return holiday_data.filter((holiday) =>
+      holiday.id !== undefined && selectedIds.includes(holiday.id)
+    )
+  }
   // Handle bulk delete click
   const handleBulkDeleteClick = () => {
     setBulkDeleteDialogOpen(true)
@@ -256,20 +262,26 @@ export function HolidaysContainer({
 
     setIsDeleting(true)
     try {
-      const selectedIds = selectedHolidays.map((holiday) => holiday.id)
-      const newHolidays = holidays.filter(
-        (holiday) => !selectedIds.includes(holiday.id)
-      )
-      setHolidays(newHolidays)
+      // Delete from store - UI updates automatically
+
+      const selectedIds = selectedHolidays
+        .map((holiday) => holiday.id)
+        .filter(id => id !== undefined && id !== null)
+
+
+      const result = await delete_HolidayData(selectedIds)
+
+      alert(result)
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
 
-      const newTotalPages = Math.ceil(newHolidays.length / itemsPerPage)
+      const newTotalPages = Math.ceil(holiday_data.length / itemsPerPage)
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages)
       } else if (newTotalPages === 0) {
         setCurrentPage(1)
       }
+      setRefreshKey((prev) => prev + 1)
     } catch (error) {
       console.error("Bulk delete failed:", error)
     } finally {
@@ -331,7 +343,7 @@ export function HolidaysContainer({
                 className="pl-8"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {selectedCount > 0 && (
                 <Button variant="destructive" onClick={handleBulkDeleteClick}>
                   <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} /> Delete (
@@ -354,7 +366,7 @@ export function HolidaysContainer({
             className="relative overflow-x-auto rounded-md border"
             style={{ zIndex: 1 }}
           >
-            <Table>
+            <Table key={refreshKey}>
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <BorderedTableHead className="w-10 align-middle whitespace-nowrap">
@@ -362,7 +374,7 @@ export function HolidaysContainer({
                       checked={
                         paginatedHolidays.length > 0 &&
                         paginatedHolidays.every(
-                          (holiday) => rowSelection[holiday.id.toString()]
+                          (holiday) => rowSelection[holiday.id?.toString() ?? ""]
                         )
                       }
                       onCheckedChange={handleSelectAll}
@@ -391,8 +403,8 @@ export function HolidaysContainer({
                     </BorderedTableCell>
                   </TableRow>
                 ) : (
-                  paginatedHolidays.map((holiday) => {
-                    const isSelected = !!rowSelection[holiday.id.toString()]
+                  paginatedHolidays.map((holiday, index) => {
+                    const isSelected = !!holiday.id && !!rowSelection[holiday.id.toString()];
                     return (
                       <TableRow
                         key={holiday.id}
@@ -407,36 +419,33 @@ export function HolidaysContainer({
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() =>
-                              handleRowSelect(holiday.id.toString())
+                              handleRowSelect(holiday.id?.toString() ?? "")
                             }
-                            aria-label={`Select ${holiday.name}`}
+                            aria-label={`Select ${holiday.holidayName}`}
                           />
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {holiday.sr}
+                          {index + 1}
                         </BorderedTableCell>
                         <BorderedTableCell
                           className="font-medium"
                           selected={isSelected}
                         >
-                          {holiday.name}
+                          {holiday.holidayName}
                         </BorderedTableCell>
                         <BorderedTableCell
                           className="text-sm"
                           selected={isSelected}
                         >
-                          {new Date(holiday.date).toLocaleDateString()}
+                          {new Date(holiday.holidayDate).toLocaleDateString()}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {holiday.day}
+                          {getDayName(holiday.holidayDate)}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          <Badge className={getStatusBadge(holiday.date)}>
-                            {getStatusLabel(holiday.date)}
+                          <Badge className={getStatusBadge(holiday.holidayDate)}>
+                            {getStatusLabel(holiday.holidayDate)}
                           </Badge>
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {holiday.description || "-"}
                         </BorderedTableCell>
                       </TableRow>
                     )
@@ -515,7 +524,7 @@ export function HolidaysContainer({
                     }}
                     className={
                       currentPage === totalPages ||
-                      filteredHolidays.length === 0
+                        filteredHolidays.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -559,6 +568,7 @@ export function HolidaysContainer({
       </Dialog>
 
       <EditHolidayDrawer
+        key={selectedHoliday?.id}
         open={editDrawerOpen}
         onOpenChange={setEditDrawerOpen}
         holiday={selectedHoliday}

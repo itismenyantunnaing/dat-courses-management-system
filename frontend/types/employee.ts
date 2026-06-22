@@ -1,24 +1,19 @@
 export interface Employee {
-  sr: number;
   id: string;
   name: string;
   email: string;
   doorlog: string;
-  
-  status: string;
-  is_admin: boolean;
+  position: string;
+  emp_status: string;
+  status?: string;
   is_core_personnel: boolean;
   has_japan_business_trip: boolean;
-
-  // noti_setting: string;
-  
-  div: string;
-  dept_dir: string;
+  noti_setting: boolean;
+  div_name: string;
+  dept_dir: string | null;
   dept_dat: string;
-  
   team: string;
   role: string;
-  
-  position: string | null;
-
+  dob: string;
+  profile_photo_path: string;
 }

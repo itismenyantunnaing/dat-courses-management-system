@@ -1,0 +1,89 @@
+package com.dat_management.backend.service;
+
+import com.dat_management.backend.dto.TargetTermRequest;
+import com.dat_management.backend.dto.TargetTermResponse;
+import com.dat_management.backend.entity.TargetTerm;
+import com.dat_management.backend.repository.TargetTermRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class TargetTermService {
+
+    private final TargetTermRepository targetTermRepository;
+
+    public List<TargetTermResponse> getAll() {
+        return targetTermRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public List<TargetTermResponse> getActiveTerms() {
+        return targetTermRepository.findByIsActiveTrue()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public TargetTermResponse getById(Integer id) {
+        TargetTerm targetTerm = targetTermRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Target term not found with id: " + id));
+
+        return toResponse(targetTerm);
+    }
+
+    public TargetTermResponse create(TargetTermRequest request) {
+        TargetTerm targetTerm = new TargetTerm();
+        setFields(targetTerm, request);
+
+        if (targetTerm.getIsActive() == null) {
+            targetTerm.setIsActive(true);
+        }
+
+        return toResponse(targetTermRepository.save(targetTerm));
+    }
+
+    public TargetTermResponse update(Integer id, TargetTermRequest request) {
+        TargetTerm targetTerm = targetTermRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Target term not found with id: " + id));
+
+        setFields(targetTerm, request);
+
+        return toResponse(targetTermRepository.save(targetTerm));
+    }
+
+    public void delete(Integer id) {
+        TargetTerm targetTerm = targetTermRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Target term not found with id: " + id));
+
+        targetTermRepository.delete(targetTerm);
+    }
+
+    public void deleteList(List<Integer> ids) {
+        targetTermRepository.deleteAllById(ids);
+    }
+
+    private void setFields(TargetTerm targetTerm, TargetTermRequest request) {
+        targetTerm.setTarget1Date(request.getTarget1Date());
+        targetTerm.setTarget2Date(request.getTarget2Date());
+        targetTerm.setExamDate(request.getExamDate());
+
+        if (request.getIsActive() != null) {
+            targetTerm.setIsActive(request.getIsActive());
+        }
+    }
+
+    private TargetTermResponse toResponse(TargetTerm targetTerm) {
+        return TargetTermResponse.builder()
+                .id(targetTerm.getId())
+                .target1Date(targetTerm.getTarget1Date())
+                .target2Date(targetTerm.getTarget2Date())
+                .examDate(targetTerm.getExamDate())
+                .isActive(targetTerm.getIsActive())
+                .build();
+    }
+}

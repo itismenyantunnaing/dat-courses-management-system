@@ -51,12 +51,12 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { EditEmployeeDrawer } from "@/components/drawers/employees/editEmployee-drawer"
-import { CreateEmployeeDrawer } from "./drawers/employees/createEmployee-drawer"
+import { CreateEmployeeDrawer } from "@/components/drawers/employees/createEmployee-drawer"
 import { Employee } from "@/types/employee"
 
 const STROKE_WIDTH = 2
 
-// Status badge styling using Badge component
+// Status badge styling
 const getStatusBadge = (status: string) => {
   switch (status.toLowerCase()) {
     case "active":
@@ -73,7 +73,6 @@ const statusLabels = {
   inactive: "Inactive",
 }
 
-// Updated BorderedTableCell to accept a selected prop
 const BorderedTableCell = ({
   children,
   className = "",
@@ -106,14 +105,11 @@ export function EmployeeContainer({
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [itemsPerPage, setItemsPerPage] = useState(15)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(
-    null
-  )
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [employees, setEmployees] = useState<Employee[]>([])
 
-  // Add state for row selection
+  // State for row selection
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
 
   // State for bulk delete dialog
@@ -122,12 +118,16 @@ export function EmployeeContainer({
   // State for edit drawer
   const [isNewEmployeeDrawerOpen, setIsNewEmployeeDrawerOpen] = useState(false)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null
-  )
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
 
-  const { fetch_EmployeeData, employee_data } = mainStore()
+  // Use store directly - no local state duplication
+  const {
+    fetch_EmployeeData,
+    employee_data,
+    delete_EmployeeData,
+    isDeleting: isStoreDeleting
+  } = mainStore()
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -135,15 +135,8 @@ export function EmployeeContainer({
       await fetch_EmployeeData()
       setIsLoading(false)
     }
-
     loadData()
   }, [fetch_EmployeeData])
-
-  useEffect(() => {
-    if (employee_data && employee_data.length > 0) {
-      setEmployees(employee_data)
-    }
-  }, [employee_data])
 
   // Column headers
   const employeeHeaders = [
@@ -159,16 +152,35 @@ export function EmployeeContainer({
     { field: "role", header_name: "Role" },
   ]
 
-  const filteredEmployees = employees.filter((employee) => {
+  const filteredEmployees = employee_data.filter((employee) => {
+    if (!searchTerm.trim()) return true;
+
+    const searchLower = searchTerm.toLowerCase();
+
+    // Safely get values with fallbacks
+    const name = (employee.name || '').toLowerCase();
+    const id = (employee.id || '').toLowerCase();
+    const email = (employee.email || '').toLowerCase();
+    const div_name = (employee.div_name || '').toLowerCase();
+    const dept_dat = (employee.dept_dat || '').toLowerCase();
+    const team = (employee.team || '').toLowerCase();
+    const role = (employee.role || '').toLowerCase();
+    const status = (employee.emp_status || employee.status || '').toLowerCase();
     const matchesSearch =
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (employee.email &&
-        employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesStatus =
-      statusFilter === "all" || employee.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+      name.includes(searchLower) ||
+      id.includes(searchLower) ||
+      email.includes(searchLower) ||
+      div_name.includes(searchLower) ||
+      dept_dat.includes(searchLower) ||
+      team.includes(searchLower) ||
+      role.includes(searchLower) ||
+      status.includes(searchLower);
+
+    // Apply status filter
+    const matchesStatus = statusFilter === "all" || employee.emp_status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -177,14 +189,11 @@ export function EmployeeContainer({
     startIndex + itemsPerPage
   )
 
+
   const handleNewEmployee = () => {
     setIsNewEmployeeDrawerOpen(true)
   }
 
-  const handleEmployeeCreated = () => {
-    // Refresh the employee list
-    setRefreshKey((prev) => prev + 1)
-  }
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value))
@@ -202,14 +211,12 @@ export function EmployeeContainer({
     )
 
     if (allSelected) {
-      // Deselect all on current page
       const newSelection = { ...rowSelection }
       paginatedEmployees.forEach((employee) => {
         delete newSelection[employee.id.toString()]
       })
       setRowSelection(newSelection)
     } else {
-      // Select all on current page
       const newSelection = { ...rowSelection }
       paginatedEmployees.forEach((employee) => {
         newSelection[employee.id.toString()] = true
@@ -232,12 +239,7 @@ export function EmployeeContainer({
     setEditDrawerOpen(true)
   }
 
-  // Handle successful employee update
-  const handleEmployeeUpdated = async () => {
-    setIsLoading(true)
-    await fetch_EmployeeData()
-    setIsLoading(false)
-  }
+
 
   // Get selected employees count
   const selectedCount = Object.values(rowSelection).filter(Boolean).length
@@ -246,13 +248,13 @@ export function EmployeeContainer({
   const getSelectedEmployees = () => {
     const selectedIds = Object.entries(rowSelection)
       .filter(([, selected]) => selected)
-      .map(([id]) => parseInt(id))
-    return employees.filter((employee) =>
-      selectedIds.includes(Number(employee.id))
+      .map(([id]) => id)
+    return employee_data.filter((employee) =>
+      selectedIds.includes(employee.id)
     )
   }
 
-  // Handle bulk delete click - open dialog
+  // Handle bulk delete click
   const handleBulkDeleteClick = () => {
     setBulkDeleteDialogOpen(true)
   }
@@ -262,18 +264,15 @@ export function EmployeeContainer({
     const selectedEmployees = getSelectedEmployees()
     if (selectedEmployees.length === 0) return
 
-    setIsDeleting(true)
     try {
       const selectedIds = selectedEmployees.map((emp) => emp.id)
-      const newEmployees = employees.filter(
-        (employee) => !selectedIds.includes(employee.id)
-      )
-      setEmployees(newEmployees)
-      setRowSelection({}) // Clear all selections
+
+      const result = await delete_EmployeeData(selectedIds)
+      alert(result)
+      setRowSelection({})
       setBulkDeleteDialogOpen(false)
 
-      // Adjust page if current page becomes empty
-      const newTotalPages = Math.ceil(newEmployees.length / itemsPerPage)
+      const newTotalPages = Math.ceil(employee_data.length / itemsPerPage)
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages)
       } else if (newTotalPages === 0) {
@@ -281,8 +280,6 @@ export function EmployeeContainer({
       }
     } catch (error) {
       console.error("Bulk delete failed:", error)
-    } finally {
-      setIsDeleting(false)
     }
   }
 
@@ -309,7 +306,7 @@ export function EmployeeContainer({
     return pages
   }
 
-  const totalColumns = employeeHeaders.length // No +1 for Actions anymore
+  const totalColumns = employeeHeaders.length
 
   if (isLoading) {
     return (
@@ -357,7 +354,11 @@ export function EmployeeContainer({
                 </SelectContent>
               </Select>
               {selectedCount > 0 && (
-                <Button variant="destructive" onClick={handleBulkDeleteClick}>
+                <Button
+                  variant="destructive"
+                  onClick={handleBulkDeleteClick}
+                  disabled={isStoreDeleting}
+                >
                   <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} /> Delete (
                   {selectedCount}) Employee
                   {selectedCount > 1 ? "s" : ""}
@@ -381,7 +382,6 @@ export function EmployeeContainer({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  {/* Select All Checkbox */}
                   <BorderedTableHead className="w-10 align-middle whitespace-nowrap">
                     <Checkbox
                       checked={
@@ -424,7 +424,6 @@ export function EmployeeContainer({
                         className="cursor-pointer transition-colors hover:bg-muted/50"
                         onClick={() => handleRowClick(employee)}
                       >
-                        {/* Selection Checkbox - prevent click from triggering row click */}
                         <BorderedTableCell
                           className="w-10"
                           selected={isSelected}
@@ -442,7 +441,7 @@ export function EmployeeContainer({
                           {index + 1}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          {employee.div}
+                          {employee.div_name}
                         </BorderedTableCell>
                         <BorderedTableCell
                           className="text-sm"
@@ -466,10 +465,10 @@ export function EmployeeContainer({
                           {employee.team}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          <Badge className={getStatusBadge(employee.status)}>
+                          <Badge className={getStatusBadge(employee.emp_status)}>
                             {statusLabels[
-                              employee.status as keyof typeof statusLabels
-                            ] || employee.status}
+                              employee.emp_status as keyof typeof statusLabels
+                            ] || employee.emp_status}
                           </Badge>
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
@@ -552,7 +551,7 @@ export function EmployeeContainer({
                     }}
                     className={
                       currentPage === totalPages ||
-                      filteredEmployees.length === 0
+                        filteredEmployees.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -587,9 +586,9 @@ export function EmployeeContainer({
             <Button
               variant="destructive"
               onClick={handleBulkDeleteConfirm}
-              disabled={isDeleting}
+              disabled={isStoreDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isStoreDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -598,13 +597,12 @@ export function EmployeeContainer({
       <CreateEmployeeDrawer
         open={isNewEmployeeDrawerOpen}
         onOpenChange={setIsNewEmployeeDrawerOpen}
-        onSuccess={handleEmployeeCreated}
       />
       <EditEmployeeDrawer
+        key={selectedEmployee?.id}
         open={editDrawerOpen}
         onOpenChange={setEditDrawerOpen}
         employee={selectedEmployee}
-        onSuccess={handleEmployeeUpdated}
       />
     </>
   )

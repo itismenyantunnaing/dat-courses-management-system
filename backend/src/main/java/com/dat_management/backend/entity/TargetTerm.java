@@ -21,5 +21,7 @@ public class TargetTerm {
     @Column(nullable = false)
     private LocalDate target2Date;
 
+    @Column(nullable =false)
+    private LocalDate examDate;
     private Boolean isActive = true;
 }
