@@ -143,14 +143,14 @@ class EmployeeServiceTest {
         request.setDivisionName("Digital");
         request.setDepartmentDatName("DAT");
         request.setTeamName("Platform");
-        request.setRoleName("");
         request.setPassword("Initial1!");
+        request.setRoleName("staff");
 
         when(employeeRepository.existsByIdAndIsDeletedFalse("EMP002")).thenReturn(false);
         when(divisionRepository.findByDivisionName("Digital")).thenReturn(Optional.of(division));
         when(departmentDatRepository.findByDeptNameAndDivision("DAT", division)).thenReturn(Optional.of(departmentDat));
         when(teamRepository.findByTeamNameAndDepartmentDat("Platform", departmentDat)).thenReturn(Optional.of(team));
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
+        when(roleRepository.findByRoleName("staff")).thenReturn(Optional.of(role));
         when(passwordEncoder.encode("Initial1!")).thenReturn("encoded-custom");
         when(employeeRepository.save(any(Employee.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
