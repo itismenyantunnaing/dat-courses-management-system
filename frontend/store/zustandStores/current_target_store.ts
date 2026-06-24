@@ -91,9 +91,9 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
         item.id === id ? updatedTerm : item
       );
 
-      set(() => ({ 
+      set(() => ({
         japaneseTargetDates_Data: updatedData,
-        isLoading: false 
+        isLoading: false
       }));
 
 
@@ -348,33 +348,88 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // Bulk Import Japanese Profiles
-  bulkCreate_CurrentTargetData: async (data: EmployeeJapaneseLevel[]) => {
-    try {
-      const response = await fetch(`${apiUrl}/api/employee-japanese-profiles/import`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+// Bulk Import Japanese Profiles - Remove internal batching
+bulkCreate_CurrentTargetData: async (data: EmployeeJapaneseLevel[]) => {
+    console.log(`📦 Bulk importing ${data.length} Japanese profiles...`);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-      }
-
-      const importedProfiles = await response.json();
-      console.log(`✅ Successfully imported ${importedProfiles.length} profiles`);
-
-      // Refresh the data in store
-      await get().fetch_EmployeeJapaneseLevel();
-
-      return `${importedProfiles.length} Japanese profiles imported successfully`;
-
-    } catch (error) {
-      console.error('Error during bulk import of Japanese profiles:', error);
-      return `Failed to import Japanese profiles: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    if (!data || data.length === 0) {
+        console.warn('⚠️ No data to import');
+        return 'No data to import';
     }
-  },
+
+    try {
+        const mainStore = (window as any).mainStore?.getState?.();
+        const token = mainStore?.getToken?.() || mainStore?.session?.token || null;
+
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        // Single API call - no internal batching
+        const response = await fetch(`${apiUrl}/api/employee-japanese-profiles/import`, {
+            method: 'POST',
+            headers: headers,
+            credentials: 'include',
+            body: JSON.stringify(data),
+        });
+
+        // Handle 403 - try individual records
+        if (response.status === 403) {
+            console.warn(`⚠️ 403 Forbidden - trying individual records`);
+            let successCount = 0;
+            for (const record of data) {
+                try {
+                    const indResponse = await fetch(`${apiUrl}/api/employee-japanese-profiles/import`, {
+                        method: 'POST',
+                        headers: headers,
+                        credentials: 'include',
+                        body: JSON.stringify([record]),
+                    });
+                    if (indResponse.ok) {
+                        successCount++;
+                    }
+                } catch (e) {
+                    console.error('❌ Failed to import record');
+                }
+            }
+            // Refresh data
+            try {
+                await get().fetch_EmployeeJapaneseLevel();
+            } catch (refreshError) {
+                console.warn('⚠️ Could not refresh profiles:', refreshError);
+            }
+            return `${successCount} out of ${data.length} Japanese profiles imported successfully`;
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        let importedBatch = [];
+        try {
+            importedBatch = await response.json();
+        } catch (e) {
+            console.warn('⚠️ Could not parse response');
+            importedBatch = [];
+        }
+
+        // Refresh data
+        try {
+            await get().fetch_EmployeeJapaneseLevel();
+        } catch (refreshError) {
+            console.warn('⚠️ Could not refresh profiles:', refreshError);
+        }
+
+        return `${importedBatch.length || data.length} Japanese profiles imported successfully`;
+
+    } catch (error: any) {
+        console.error('❌ Error during bulk import:', error);
+        throw error;
+    }
+},
 });

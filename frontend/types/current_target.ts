@@ -9,7 +9,7 @@ export interface TargetDates {
 }
 
 export interface EmployeeJapaneseLevel {
-  id?: number;
+  id: number;
   employeeId?: string;
   employee_id?: string;
 

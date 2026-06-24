@@ -348,7 +348,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   // bulk create employee
-  bulkCreate_EmployeeData: async (employees: any[]) => {
+  bulkCreate_EmployeeData: async (employees: Employee[]) => {
     const previousData = get().employee_data;
 
 
@@ -360,7 +360,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       doorlog: emp.doorlog || null,
       position: emp.position || '',
       emp_status: emp.status || 'active',
-      status: emp.status || 'active',
+      status: 'default',
       is_core_personnel: emp.is_core_personnel || false,
       has_japan_business_trip: emp.has_japan_business_trip || false,
       noti_setting: emp.noti_setting !== undefined ? emp.noti_setting : true,

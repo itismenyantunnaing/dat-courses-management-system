@@ -2,7 +2,7 @@ export interface Employee {
   id: string;
   name: string;
   email: string;
-  doorlog: string;
+  doorlog: string | null;
   position: string;
   emp_status: string;
   status?: string;

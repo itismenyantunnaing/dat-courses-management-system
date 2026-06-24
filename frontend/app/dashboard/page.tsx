@@ -9,6 +9,5 @@ export default async function DashboardPage() {
     redirect('/')
   }
   
-  // ← Pass session data as props to the client component
   return <DashboardClient userData={session} />
 }

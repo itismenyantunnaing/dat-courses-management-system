@@ -14,8 +14,10 @@ import {
   type DeptWithCounts,
   type TeamWithCounts,
   type DeptCertificationResponse,
-  type TeamCertificationResponse, 
+  type TeamCertificationResponse,
 } from "@/types/exam_progress_report"
+import type { JapaneseCertificate } from "@/types/certificate"
+import type { SessionData } from "@/types/session";
 
 export interface Employee_StoreType {
   employee_data: Employee[]
@@ -35,9 +37,9 @@ export interface Employee_StoreType {
 
 export interface Holiday_StoreType {
   holiday_data: Holiday[]
-  
+
   fetch_HolidayData: () => Promise<void>
-  add_HolidayData: (holiday: Holiday) =>  Promise<string> 
+  add_HolidayData: (holiday: Holiday) => Promise<string>
   delete_HolidayData: (holidayIds: number | number[]) => Promise<string>
   update_HolidayData: (id: number, updatedHoliday: Holiday) => Promise<string>
   bulkCreate_HolidayData: (holidays: { holidayName: string; holidayDate: string }[]) => Promise<void>
@@ -87,13 +89,36 @@ export interface CurrentTarget_StoreType {
 // }
 
 export interface ExamProgressReport_StoreType {
-    deptData?: DeptCertificationResponse;
-    teamData?: TeamCertificationResponse;
-    deptDisplayData?: DeptWithCounts[];
-    teamDisplayData?: TeamWithCounts[];
-    fetch_DeptData: () => Promise<void>;
-    fetch_TeamData: () => Promise<void>;
-    getDeptWithCounts: () => DeptWithCounts[];
-    getTeamWithCounts: () => TeamWithCounts[];
-    getTeamsByDept: (deptId: number) => TeamWithCounts[];
+  deptData?: DeptCertificationResponse;
+  teamData?: TeamCertificationResponse;
+  deptDisplayData?: DeptWithCounts[];
+  teamDisplayData?: TeamWithCounts[];
+  fetch_DeptData: () => Promise<void>;
+  fetch_TeamData: () => Promise<void>;
+  getDeptWithCounts: () => DeptWithCounts[];
+  getTeamWithCounts: () => TeamWithCounts[];
+  getTeamsByDept: (deptId: number) => TeamWithCounts[];
+}
+
+
+
+export interface Certificates_StoreType {
+  certificateData: JapaneseCertificate[]
+  fetch_CertificateData: (userId?: string) => Promise<JapaneseCertificate[]> 
+  add_CertificateData: (certificate: JapaneseCertificate) => Promise<string>
+  update_CertificateData: (id: string, updates: Partial<JapaneseCertificate>) => Promise<string>
+  delete_CertificateData: (id: string) => Promise<string>
+}
+
+
+export interface Session_StoreType {
+  session: SessionData | null
+  isAuthenticated: boolean
+  setSession: (session: SessionData | null) => void
+  clearSession: () => void
+  getToken: () => string | null
+  getUserRole: () => string | null
+  getUserName: () => string | null
+  getUserEmail: () => string | null
+  getUserId: () => string | null
 }

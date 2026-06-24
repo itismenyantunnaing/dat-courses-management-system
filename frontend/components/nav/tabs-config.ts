@@ -7,7 +7,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { extractHolidayDataFromExcel } from "@/lib/Excel-extractor-Holiday"
 import { extractEmployeeDataFromExcel, validateEmployeeData, EmployeeExcelData } from "@/lib/Excel-extractor-Employee"
-import { extractCurrentTargetDataFromExcel, transformToApiFormat, validateCurrentTargetData } from "@/lib/Excel-extractor-currentTarget";
+import { extractCurrentTargetDataFromExcel, transformToApiFormat, validateCurrentTargetData, validateCurrentTargetDataWithEmployees, type CurrentTargetRow } from "@/lib/Excel-extractor-currentTarget";
 import { exportEmployeesToExcel, exportEmployeesToCSV, exportEmployeesToPDF } from "@/lib/export/Export-employeesData";
 import { exportSkillsToCSV, exportSkillsToExcel, exportSkillsToPDF } from "@/lib/export/Export-skillsetData";
 import { exportHolidaysToExcel, exportHolidaysToCSV, exportHolidaysToPDF } from "@/lib/export/Export-holidayData";
@@ -316,10 +316,85 @@ export const allTabs = [
 
         console.log(`📊 Extracted ${extractedData.data.length} records in ${(performance.now() - startTime).toFixed(0)}ms`);
 
-        // Validate the data
+        // Access store via window
+        const store = (window as any).mainStore?.getState();
+        if (!store || !store.bulkCreate_CurrentTargetData) {
+          throw new Error('System store not initialized. Please refresh and try again.');
+        }
+
+        // ===== FETCH EMPLOYEE DATA FIRST =====
+        let existingEmployeeIds = new Set<string>();
+        try {
+          console.log('📋 Checking employee data in store...');
+
+          // Check if employee_data is empty
+          if (!store.employee_data || store.employee_data.length === 0) {
+            console.log('📋 Employee data is empty. Fetching from API...');
+
+            // Show loading message
+            const loadingMessage = 'Fetching employee data from system. Please wait...';
+            console.log(loadingMessage);
+
+            // Fetch employee data
+            await store.fetch_EmployeeData();
+
+            // Get fresh state after fetch
+            const freshStore = (window as any).mainStore?.getState();
+            if (!freshStore || !freshStore.employee_data || freshStore.employee_data.length === 0) {
+              console.warn('⚠️ Still no employee data after fetch. Proceeding without employee validation.');
+            } else {
+              console.log(`✅ Fetched ${freshStore.employee_data.length} employees from system`);
+            }
+          } else {
+            console.log(`✅ Found ${store.employee_data.length} employees in store`);
+          }
+
+          // Get the latest employee data (either from store or after fetch)
+          const currentStore = (window as any).mainStore?.getState();
+          const employeeData = currentStore?.employee_data || [];
+
+          // Extract employee IDs
+          existingEmployeeIds = new Set(
+            employeeData.map((emp: any) => emp.id || emp.employeeId || emp.staffId)
+          );
+
+          console.log(`📋 Extracted ${existingEmployeeIds.size} unique employee IDs`);
+
+          // Log first few IDs for debugging
+          if (existingEmployeeIds.size > 0) {
+            const sampleIds = Array.from(existingEmployeeIds).slice(0, 5);
+            console.log('📋 Sample employee IDs:', sampleIds);
+          }
+
+        } catch (error) {
+          console.warn('⚠️ Error fetching employee data:', error);
+          console.warn('⚠️ Proceeding without employee validation. Backend will validate.');
+        }
+
+        // ===== VALIDATE WITH EMPLOYEE EXISTENCE CHECK =====
         const validationStart = performance.now();
-        const { valid, invalid } = validateCurrentTargetData(extractedData.data);
+
+        let valid: CurrentTargetRow[] = [];
+        let invalid: { data: CurrentTargetRow; errors: string[] }[] = [];
+
+        if (existingEmployeeIds.size > 0) {
+          // Use employee validation
+          const result = validateCurrentTargetDataWithEmployees(
+            extractedData.data,
+            existingEmployeeIds
+          );
+          valid = result.valid;
+          invalid = result.invalid;
+        } else {
+          // Fallback to basic validation (only checks Staff ID presence and duplicates)
+          console.warn('⚠️ No employee data available. Using basic validation only.');
+          const result = validateCurrentTargetData(extractedData.data);
+          valid = result.valid;
+          invalid = result.invalid;
+        }
+
         console.log(`✅ Validation completed in ${(performance.now() - validationStart).toFixed(0)}ms`);
+        console.log(`📊 Valid: ${valid.length}, Invalid: ${invalid.length}`);
 
         // Log all invalid rows with details
         if (invalid.length > 0) {
@@ -330,13 +405,35 @@ export const allTabs = [
             Errors: item.errors.join('; ')
           })));
 
-          const shouldContinue = confirm(
-            `⚠️ ${invalid.length} rows have missing or invalid data.\n\n` +
-            `Valid rows: ${valid.length}\n` +
-            `Invalid rows: ${invalid.length}\n\n` +
-            `Continue with ${valid.length} valid rows?`
+          // Separate errors by type
+          const missingEmployeeErrors = invalid.filter(
+            item => item.errors.some(e => e.includes('does NOT exist'))
+          );
+          const duplicateErrors = invalid.filter(
+            item => item.errors.some(e => e.includes('Duplicate'))
+          );
+          const missingIdErrors = invalid.filter(
+            item => item.errors.some(e => e.includes('required'))
           );
 
+          let message = `⚠️ ${invalid.length} rows have issues:\n\n`;
+          message += `✅ Valid rows: ${valid.length}\n`;
+          message += `❌ Invalid rows: ${invalid.length}\n\n`;
+
+          if (missingEmployeeErrors.length > 0) {
+            message += `🚫 ${missingEmployeeErrors.length} rows: Staff ID does not exist in system\n`;
+            message += `   Please create these employees first or correct the Staff IDs.\n\n`;
+          }
+          if (duplicateErrors.length > 0) {
+            message += `🔄 ${duplicateErrors.length} rows: Duplicate Staff IDs\n\n`;
+          }
+          if (missingIdErrors.length > 0) {
+            message += `❌ ${missingIdErrors.length} rows: Missing Staff ID\n\n`;
+          }
+
+          message += `Continue with ${valid.length} valid rows?`;
+
+          const shouldContinue = confirm(message);
           if (!shouldContinue) {
             return { success: false, message: 'Import cancelled by user' };
           }
@@ -347,63 +444,96 @@ export const allTabs = [
           return { success: false, message: 'No valid data' };
         }
 
+        // ===== DOUBLE-CHECK: Filter out any records with invalid employee IDs =====
+        const apiData = transformToApiFormat(valid);
+        let filteredApiData = apiData;
+
+        if (existingEmployeeIds.size > 0) {
+          filteredApiData = apiData.filter(record => {
+            if (!record.employeeId) {
+              console.warn(`⚠️ Skipping record with no employee ID`);
+              return false;
+            }
+            if (!existingEmployeeIds.has(record.employeeId)) {
+              console.warn(`⚠️ Skipping employee "${record.employeeId}" - does not exist in system`);
+              return false;
+            }
+            return true;
+          });
+
+          const skippedCount = apiData.length - filteredApiData.length;
+          if (skippedCount > 0) {
+            console.log(`📊 Skipped ${skippedCount} records with invalid employee IDs`);
+            alert(`ℹ️ ${skippedCount} records were skipped because the employee IDs don't exist in the system.\n\nContinuing with ${filteredApiData.length} records.`);
+          }
+        }
+
+        if (filteredApiData.length === 0) {
+          alert('No valid records to import. All records have invalid employee IDs.');
+          return { success: false, message: 'No valid records to import' };
+        }
+
         const shouldProceed = confirm(
-          `You are about to import ${valid.length} current target profiles into the database. This may take a few moments. Continue?`
+          `You are about to import ${filteredApiData.length} current target profiles into the database. This may take a few moments.\n\n` +
+          `Continue?`
         );
 
         if (!shouldProceed) {
           return { success: false, message: 'Import cancelled by user' };
         }
 
-        // Transform to API format
-        const apiData = transformToApiFormat(valid);
-
-        // Access store via window
-        const store = (window as any).mainStore?.getState();
-        if (!store || !store.bulkCreate_CurrentTargetData) {
-          throw new Error('System store not initialized. Please refresh and try again.');
-        }
-
         // Import in smaller batches for better reliability
-        const BATCH_SIZE = 50;
+        const BATCH_SIZE = 25;
         let importedCount = 0;
-        const totalBatches = Math.ceil(apiData.length / BATCH_SIZE);
+        const totalBatches = Math.ceil(filteredApiData.length / BATCH_SIZE);
 
         console.log(`🔄 Starting import with ${totalBatches} batches of ${BATCH_SIZE} records each`);
         console.log("=".repeat(60));
 
-        for (let i = 0; i < apiData.length; i += BATCH_SIZE) {
-          const batch = apiData.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < filteredApiData.length; i += BATCH_SIZE) {
+          const batch = filteredApiData.slice(i, i + BATCH_SIZE);
           const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
           const startIndex = i;
-
-          console.log(`\n📦 Processing Batch ${batchNumber}/${totalBatches}`);
+          let batchImported = false;
 
           try {
+            console.log(`\n📦 Processing Batch ${batchNumber}/${totalBatches}`);
             await store.bulkCreate_CurrentTargetData(batch);
             importedCount += batch.length;
             console.log(`✅ Batch ${batchNumber} completed successfully`);
+            batchImported = true;
           } catch (error) {
-            console.error(`❌ Batch ${batchNumber} failed:`, error);
+            // Don't log the full error here - it's handled by retry
+            console.warn(`⚠️ Batch ${batchNumber} failed as batch, retrying individually...`);
 
-            // Try to import failed batch one by one to identify problematic records
-            console.log(`🔄 Retrying batch ${batchNumber} records individually...`);
-
+            // Try to import failed batch one by one
+            let successCount = 0;
             for (let j = 0; j < batch.length; j++) {
               const recordIndex = startIndex + j;
               try {
                 await store.bulkCreate_CurrentTargetData([batch[j]]);
                 importedCount++;
-                console.log(`   ✅ Record ${recordIndex + 1} (${batch[j].employeeId || 'NO_ID'}) imported successfully`);
+                successCount++;
+                // Log progress every 10 records
+                if (successCount % 10 === 0 || successCount === batch.length) {
+                  console.log(`   📊 Imported ${successCount}/${batch.length} records from batch ${batchNumber}`);
+                }
               } catch (retryError) {
-                console.error(`   ❌ Record ${recordIndex + 1} failed permanently:`, retryError);
+                // Silently log the failure (or skip logging entirely)
+                console.debug(`   ⚠️ Record ${recordIndex + 1} (${batch[j].employeeId || 'NO_ID'}) failed`);
               }
+            }
+
+            if (successCount === batch.length) {
+              console.log(`✅ Batch ${batchNumber} completed successfully (individual imports)`);
+            } else {
+              console.log(`⚠️ Batch ${batchNumber} partially completed: ${successCount}/${batch.length} records`);
             }
           }
         }
 
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1);
-        const finalMessage = `Successfully imported ${importedCount} out of ${apiData.length} records in ${totalTime}s.`;
+        const finalMessage = `Successfully imported ${importedCount} out of ${filteredApiData.length} records in ${totalTime}s.`;
         console.log(`\n📊 Import completed: ${finalMessage}`);
         alert(`✅ ${finalMessage}`);
 
@@ -420,14 +550,14 @@ export const allTabs = [
 
       // Get data from store
       const store = (window as any).mainStore?.getState();
-      const { 
-        employeeJapaneseLevel_Data, 
+      const {
+        employeeJapaneseLevel_Data,
         employee_data,
-        japaneseTargetDates_Data 
-      } = store || { 
-        employeeJapaneseLevel_Data: [], 
+        japaneseTargetDates_Data
+      } = store || {
+        employeeJapaneseLevel_Data: [],
         employee_data: [],
-        japaneseTargetDates_Data: [] 
+        japaneseTargetDates_Data: []
       };
 
       if (!employeeJapaneseLevel_Data || employeeJapaneseLevel_Data.length === 0) {
@@ -438,19 +568,19 @@ export const allTabs = [
       try {
         if (format === "excel" || format === "xlsx") {
           await exportCurrentTargetToExcel(
-            employeeJapaneseLevel_Data, 
+            employeeJapaneseLevel_Data,
             employee_data,
             japaneseTargetDates_Data
           );
         } else if (format === "csv") {
           await exportCurrentTargetToCSV(
-            employeeJapaneseLevel_Data, 
+            employeeJapaneseLevel_Data,
             employee_data,
             japaneseTargetDates_Data
           );
         } else if (format === "pdf") {
           await exportCurrentTargetToPDF(
-            employeeJapaneseLevel_Data, 
+            employeeJapaneseLevel_Data,
             employee_data,
             japaneseTargetDates_Data
           );

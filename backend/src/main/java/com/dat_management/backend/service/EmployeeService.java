@@ -20,15 +20,21 @@ import java.util.stream.Collectors;
 @Transactional
 public class EmployeeService {
 
-    private final EmployeeRepository      employeeRepository;
-    private final TeamRepository          teamRepository;
+    private final EmployeeRepository employeeRepository;
+    private final TeamRepository teamRepository;
     private final DepartmentDirRepository departmentDirRepository;
     private final DepartmentDatRepository departmentDatRepository;
-    private final DivisionRepository      divisionRepository;
-    private final RoleRepository          roleRepository;
-    private final PasswordEncoder         passwordEncoder;
+    private final DivisionRepository divisionRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final SkillSetService skillSetService; // Add this
 
     // ── Mapping ──────────────────────────────────────────────────────────────
+
+    public Employee getEmployeeById(String id) {
+        return employeeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
+    }
 
     private EmployeeResponseDTO toDTO(Employee e) {
         String divName = null;
@@ -129,8 +135,7 @@ public class EmployeeService {
             } catch (Exception ex) {
                 failed.add(Map.of(
                         "id", dto.getId() != null ? dto.getId() : "(unknown)",
-                        "reason", ex.getMessage() != null ? ex.getMessage() : "Unknown error"
-                ));
+                        "reason", ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
             }
         }
 
@@ -139,8 +144,7 @@ public class EmployeeService {
                 "successCount", created.size(),
                 "failedCount", failed.size(),
                 "created", created,
-                "failed", failed
-        );
+                "failed", failed);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -204,6 +208,21 @@ public class EmployeeService {
         return toDTO(employeeRepository.save(e));
     }
 
+    private Role resolveOrCreateRole(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            return null;
+        }
+
+        return roleRepository.findByRoleName(roleName)
+                .orElseGet(() -> {
+                    Role newRole = new Role();
+                    newRole.setRoleName(roleName);
+                    // You might want to set additional fields like description
+                    // newRole.setDescription("Auto-created role: " + roleName);
+                    return roleRepository.saveAndFlush(newRole);
+                });
+    }
+
     // ── Apply DTO fields to entity ───────────────────────────────────────────
 
     private void applyDTO(Employee e, EmployeeRequestDTO dto) {
@@ -224,18 +243,17 @@ public class EmployeeService {
             Team resolvedTeam = resolveOrCreateTeamChain(
                     dto.getDivisionName(),
                     dto.getDepartmentDatName(),
-                    dto.getTeamName()
-            );
+                    dto.getTeamName());
             if (resolvedTeam != null) {
                 e.setTeam(resolvedTeam);
             }
-        } 
+        }
         if (dto.getRoleName() != null && !dto.getRoleName().isBlank()) {
             Role resolvedRole = resolveOrCreateRole(dto.getRoleName());
-        if (resolvedRole != null) {
-            e.setRole(resolvedRole);
+            if (resolvedRole != null) {
+                e.setRole(resolvedRole);
+            }
         }
-    }
     }
 
     // ── Cascade find-or-create: Division -> DepartmentDat -> Team ───────────────
@@ -283,23 +301,6 @@ public class EmployeeService {
                     newTeam.setIsDeleted(false);
                     return teamRepository.saveAndFlush(newTeam);
                 });
-    }
-
-    // ── Role find-or-create ───────────────────────────────────────────────
-
-    private Role resolveOrCreateRole(String roleName) {
-    if (roleName == null || roleName.isBlank()) {
-        return null;
-    }
-    
-    return roleRepository.findByRoleName(roleName)
-            .orElseGet(() -> {
-                Role newRole = new Role();
-                newRole.setRoleName(roleName);
-                // You might want to set additional fields like description
-                // newRole.setDescription("Auto-created role: " + roleName);
-                return roleRepository.saveAndFlush(newRole);
-            });
     }
 
     private String generateCode(String name) {

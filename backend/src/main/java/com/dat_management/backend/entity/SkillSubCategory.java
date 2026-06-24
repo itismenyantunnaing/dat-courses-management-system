@@ -22,7 +22,7 @@ public class SkillSubCategory {
     @JoinColumn(name = "category_id", nullable = false)
     private SkillCategory category;
 
-    @Column(nullable = false)
+    @Column(unique = true)
     private String subCategoryName;
 
     private Boolean isActive = true;
