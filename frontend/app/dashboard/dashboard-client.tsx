@@ -130,7 +130,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         <AppSidebar
           userRole={
             // userData.role.toLowerCase() as "admin" | "learner" | "approver"
-            "admin"
+            "learner"
           }
           userData={{ name: userData.name, email: userData.email }}
           onTabChange={setActiveTab}
