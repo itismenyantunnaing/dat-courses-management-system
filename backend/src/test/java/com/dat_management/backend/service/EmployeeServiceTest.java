@@ -56,6 +56,9 @@ class EmployeeServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private SkillSetService skillSetService;
+
     @Test
     void getAllReturnsMappedActiveEmployees() {
         EmployeeService service = service();
@@ -249,7 +252,8 @@ class EmployeeServiceTest {
                 departmentDatRepository,
                 divisionRepository,
                 roleRepository,
-                passwordEncoder);
+                passwordEncoder,
+                skillSetService);
     }
 
     private static EmployeeRequestDTO request(String id, String name) {
