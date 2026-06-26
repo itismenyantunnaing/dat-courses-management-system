@@ -41,14 +41,14 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/**").permitAll()
                         .requestMatchers(
-                                "/api/auth",
-                                "/api/auth/login",
-                                "/api/auth/forgot-password",
-                                "/api/auth/verify-otp",
-                                "/api/auth/reset-password",
+                                "/security/api/auth",
+                                "/security/api/auth/login",
+                                "/security/api/auth/forgot-password",
+                                "/security/api/auth/verify-otp",
+                                "/security/api/auth/reset-password",
                                 "/api/employees",
                                 "/api/employees/",
                                 "/api/**"
@@ -56,8 +56,8 @@ public class SecurityConfig {
                         .requestMatchers("/dashboard/admin").hasAnyRole("Admin", "PMO")
                         .requestMatchers("/dashboard/PM").hasAnyRole("PM", "HOD")
                         .requestMatchers("/dashboard/staff").hasRole("STAFF")
-                        .anyRequest().authenticated());
-                // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

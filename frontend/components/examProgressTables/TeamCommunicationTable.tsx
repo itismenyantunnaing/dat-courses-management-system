@@ -25,13 +25,39 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Checkbox } from "@/components/ui/checkbox"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { CircleIcon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import type { TeamWithCounts } from "@/types/exam_progress_report"
-import type { TargetDates } from "@/types/current_target"
-import { parseCommunicationLevel } from "@/types/exam_progress_report"
+
+// Add this helper function
+const parseCommunicationLevel = (level: string): { label: string; description: string } => {
+  const descriptions: Record<string, string> = {
+    "Level 0 | None": "No communication capability",
+    "Level 1 | G1": "Email writing-Chat with DIR and QA/bug/issues reporting using simple words",
+    "Level 1 | G2": "Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool",
+    "Level 1 | G3": "Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words",
+    "Level 2 | G1": "Email reading/writing/MS team chat, Daily team conversation",
+    "Level 2 | G2": "Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese",
+    "Level 2 | G3": "Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, can Participate/discuss with Japanese Customers",
+    "Level 3": "Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal"
+  }
+  
+  // Find matching description
+  let description = ""
+  for (const [key, value] of Object.entries(descriptions)) {
+    if (level.includes(key)) {
+      description = value
+      break
+    }
+  }
+  
+  // Extract label (e.g., "Level 1 | G1" from full string)
+  const labelMatch = level.match(/(Level \d+ \| G\d+|Level \d+)/)
+  const label = labelMatch ? labelMatch[0] : level
+  
+  return { label, description }
+}
 
 type ColumnConfig = {
   field: string;
@@ -49,10 +75,9 @@ type ColumnGroupConfig = {
   width?: string;
 }
 
-const formatDate = (date: Date | string | undefined): string => {
+const formatDate = (date: string | null | undefined): string => {
   if (!date) return "TBD"
-  const dateObj = typeof date === 'string' ? new Date(date) : date
-  return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+  return date // Date is already formatted as "MMM-yyyy" from backend
 }
 
 const extractCommLevels = (data: TeamWithCounts[]): string[] => {
@@ -72,14 +97,14 @@ const extractCommLevels = (data: TeamWithCounts[]): string[] => {
   return levels;
 }
 
-const getColumnGroups = (targetDate?: TargetDates, commLevels: string[] = []): ColumnGroupConfig[] => {
-  const target1Date = targetDate?.target_1_date ? formatDate(targetDate.target_1_date) : "Sep-2026"
-  const target2Date = targetDate?.target_2_date ? formatDate(targetDate.target_2_date) : "Mar-2027"
+const getColumnGroups = (target1Date?: string | null, target2Date?: string | null, commLevels: string[] = []): ColumnGroupConfig[] => {
+  const date1 = target1Date ? formatDate(target1Date) : "Target 1"
+  const date2 = target2Date ? formatDate(target2Date) : "Target 2"
   const levels = commLevels.length > 0 ? commLevels : ["Level 0 | None", "Level 1 | G1", "Level 1 | G2", "Level 1 | G3", "Level 2 | G1", "Level 2 | G2", "Level 2 | G3", "Level 3"]
   return [
     { id: "current", header: "Current", colSpan: levels.length, fields: levels.map((_, index) => `current_comm_${index}`), width: "w-[120px]" },
-    { id: "target1", header: target1Date, colSpan: levels.length, fields: levels.map((_, index) => `target1_comm_${index}`), width: "w-[120px]" },
-    { id: "target2", header: target2Date, colSpan: levels.length, fields: levels.map((_, index) => `target2_comm_${index}`), width: "w-[120px]" }
+    { id: "target1", header: date1, colSpan: levels.length, fields: levels.map((_, index) => `target1_comm_${index}`), width: "w-[120px]" },
+    { id: "target2", header: date2, colSpan: levels.length, fields: levels.map((_, index) => `target2_comm_${index}`), width: "w-[120px]" }
   ]
 }
 
@@ -89,12 +114,12 @@ const getColumnConfigs = (data: TeamWithCounts[]): ColumnConfig[] => {
   const defaultLevels = ["Level 0 | None", "Level 1 | G1", "Level 1 | G2", "Level 1 | G3", "Level 2 | G1", "Level 2 | G2", "Level 2 | G3", "Level 3"];
   const levels = commFields.length > 0 ? commFields : defaultLevels;
   
-  // ✅ Use unique keys by combining period + index
+  // Use unique keys by combining period + index
   levels.forEach((field, index) => {
     const label = defaultLevels[index] || field;
     const parsed = parseCommunicationLevel(label);
     columns.push({ 
-      field: `current_${index}`,  // ✅ Unique key
+      field: `current_${index}`,
       header: parsed.label, 
       width: "w-[80px]",
       tooltip: parsed.description
@@ -105,7 +130,7 @@ const getColumnConfigs = (data: TeamWithCounts[]): ColumnConfig[] => {
     const label = defaultLevels[index] || field;
     const parsed = parseCommunicationLevel(label);
     columns.push({ 
-      field: `target1_${index}`,  // ✅ Unique key
+      field: `target1_${index}`,
       header: parsed.label, 
       width: "w-[80px]",
       tooltip: parsed.description
@@ -116,7 +141,7 @@ const getColumnConfigs = (data: TeamWithCounts[]): ColumnConfig[] => {
     const label = defaultLevels[index] || field;
     const parsed = parseCommunicationLevel(label);
     columns.push({ 
-      field: `target2_${index}`,  // ✅ Unique key
+      field: `target2_${index}`,
       header: parsed.label, 
       width: "w-[80px]",
       tooltip: parsed.description
@@ -126,8 +151,8 @@ const getColumnConfigs = (data: TeamWithCounts[]): ColumnConfig[] => {
   return columns
 }
 
-const BorderedTableCell = ({ children, className = "", selected = false, ...props }: any) => (
-  <TableCell className={cn("border-r border-l", selected && "bg-muted/50", className)} {...props}>{children}</TableCell>
+const BorderedTableCell = ({ children, className = "", ...props }: any) => (
+  <TableCell className={cn("border-r border-l", className)} {...props}>{children}</TableCell>
 )
 
 const BorderedTableHead = ({ children, className = "", colSpan, rowSpan, ...props }: any) => (
@@ -137,23 +162,31 @@ const BorderedTableHead = ({ children, className = "", colSpan, rowSpan, ...prop
 )
 
 interface TeamCommunicationTableProps {
-  searchTerm: string; currentPage: number; itemsPerPage: number; onPageChange: (page: number) => void; onItemsPerPageChange: (value: number) => void; selectedDeptId?: number | null;
+  searchTerm: string; 
+  currentPage: number; 
+  itemsPerPage: number; 
+  onPageChange: (page: number) => void; 
+  onItemsPerPageChange: (value: number) => void; 
+  selectedDeptId?: number | null;
   data: TeamWithCounts[];
-  rowSelection?: Record<string, boolean>;
-  onRowSelectionChange?: (selection: Record<string, boolean>) => void;
-  targetDates?: TargetDates[];
+  target1Date?: string | null;
+  target2Date?: string | null;
 }
 
 export function TeamCommunicationTable({
-  searchTerm, currentPage, itemsPerPage, onPageChange, onItemsPerPageChange, selectedDeptId,
-  data, rowSelection: externalRowSelection = {}, onRowSelectionChange, targetDates,
+  searchTerm, 
+  currentPage, 
+  itemsPerPage, 
+  onPageChange, 
+  onItemsPerPageChange, 
+  selectedDeptId,
+  data, 
+  target1Date,
+  target2Date,
 }: TeamCommunicationTableProps) {
-  const rowSelection = externalRowSelection
-  const setRowSelection = onRowSelectionChange
 
-  const firstTargetDate = targetDates?.[0]
   const commFields = extractCommLevels(data)
-  const columnGroups = getColumnGroups(firstTargetDate, commFields)
+  const columnGroups = getColumnGroups(target1Date, target2Date, commFields)
   const columnConfigs = getColumnConfigs(data)
   const dataColumns = columnConfigs.filter(col => !col.isSpecial)
 
@@ -176,22 +209,6 @@ export function TeamCommunicationTable({
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage)
   const grandTotal = calculateGrandTotals(filteredData)
-
-  const handleSelectAll = () => {
-    const allSelected = paginatedData.every((row) => rowSelection[row.team_name])
-    const newSelection = { ...rowSelection }
-    if (allSelected) {
-      paginatedData.forEach((row) => { delete newSelection[row.team_name] })
-    } else {
-      paginatedData.forEach((row) => { newSelection[row.team_name] = true })
-    }
-    setRowSelection(newSelection)
-  }
-
-  const handleRowSelect = (row: TeamWithCounts) => {
-    const newSelection = { ...rowSelection, [row.team_name]: !rowSelection[row.team_name] }
-    setRowSelection(newSelection)
-  }
 
   const handlePrevious = () => { if (currentPage > 1) onPageChange(currentPage - 1) }
   const handleNext = () => { if (currentPage < totalPages) onPageChange(currentPage + 1) }
@@ -228,10 +245,9 @@ export function TeamCommunicationTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <BorderedTableHead rowSpan={2} className="w-10 align-middle whitespace-nowrap">
-                <Checkbox checked={paginatedData.length > 0 && paginatedData.every((row) => rowSelection[row.team_name])} onCheckedChange={handleSelectAll} aria-label="Select all" />
+              <BorderedTableHead className="align-middle whitespace-nowrap text-center min-w-[200px]" rowSpan={2}>
+                Team's Communication Improvement
               </BorderedTableHead>
-              <BorderedTableHead className="align-middle whitespace-nowrap text-center min-w-[200px]" rowSpan={2}>Team&apos;s Communication Improvement</BorderedTableHead>
               {columnGroups.map((group) => (
                 <BorderedTableHead key={group.id} className={cn("align-middle whitespace-nowrap text-center", group.width)} colSpan={group.colSpan}>
                   {group.header}
@@ -245,8 +261,14 @@ export function TeamCommunicationTable({
                     <span>{col.header}</span>
                     {col.tooltip && (
                       <Tooltip>
-                        <TooltipTrigger asChild><span className="cursor-help"><HugeiconsIcon icon={CircleIcon} strokeWidth={2} className="h-3 w-3 text-muted-foreground hover:text-foreground" /></span></TooltipTrigger>
-                        <TooltipContent className="max-w-xs"><p className="text-xs">{col.tooltip}</p></TooltipContent>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-help">
+                            <HugeiconsIcon icon={CircleIcon} strokeWidth={2} className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-xs">{col.tooltip}</p>
+                        </TooltipContent>
                       </Tooltip>
                     )}
                   </div>
@@ -257,20 +279,20 @@ export function TeamCommunicationTable({
 
           <TableBody>
             {paginatedData.length === 0 ? (
-              <TableRow><BorderedTableCell colSpan={columnConfigs.length + 1} className="py-8 text-center text-muted-foreground">No teams found</BorderedTableCell></TableRow>
+              <TableRow>
+                <BorderedTableCell colSpan={columnConfigs.length} className="py-8 text-center text-muted-foreground">
+                  No teams found
+                </BorderedTableCell>
+              </TableRow>
             ) : (
               <>
                 {paginatedData.map((row, index) => {
-                  const isSelected = !!rowSelection[row.team_name]
                   return (
                     <TableRow key={row.team_name || index}>
-                      <BorderedTableCell className="w-10" selected={isSelected}>
-                        <Checkbox checked={isSelected} onCheckedChange={() => handleRowSelect(row)} aria-label={`Select ${row.team_name}`} />
-                      </BorderedTableCell>
                       {columnConfigs.map((col) => {
                         const value: string | number | undefined = getValueForColumn(row, col)
                         return (
-                          <BorderedTableCell key={col.field} className={cn("text-center", col.width, col.isSpecial && "font-medium text-left")} selected={isSelected}>
+                          <BorderedTableCell key={col.field} className={cn("text-center", col.width, col.isSpecial && "font-medium text-left")}>
                             {value !== undefined && value !== null ? value : '-'}
                           </BorderedTableCell>
                         )
@@ -280,7 +302,6 @@ export function TeamCommunicationTable({
                 })}
                 {filteredData.length > 0 && Object.keys(grandTotal).length > 0 && (
                   <TableRow className="bg-muted/30 font-bold">
-                    <BorderedTableCell className="w-10" />
                     {columnConfigs.map((col) => {
                       let value: string | number | undefined
                       if (col.isSpecial) {
@@ -320,7 +341,11 @@ export function TeamCommunicationTable({
           <Select value={itemsPerPage.toString()} onValueChange={(value) => onItemsPerPageChange(Number(value))}>
             <SelectTrigger className="w-[70px]"><SelectValue /></SelectTrigger>
             <SelectContent align="start">
-              <SelectGroup><SelectItem value="15">15</SelectItem><SelectItem value="50">50</SelectItem><SelectItem value="100">100</SelectItem></SelectGroup>
+              <SelectGroup>
+                <SelectItem value="15">15</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -329,15 +354,33 @@ export function TeamCommunicationTable({
         </div>
         <Pagination className="mx-0 w-auto">
           <PaginationContent>
-            <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); handlePrevious() }} className={currentPage === 1 || filteredData.length === 0 ? "pointer-events-none opacity-50" : ""} /></PaginationItem>
+            <PaginationItem>
+              <PaginationPrevious 
+                href="#" 
+                onClick={(e) => { e.preventDefault(); handlePrevious() }} 
+                className={currentPage === 1 || filteredData.length === 0 ? "pointer-events-none opacity-50" : ""} 
+              />
+            </PaginationItem>
             {getPageNumbers().map((page, index) => (
               <PaginationItem key={index}>
                 {page === "..." ? <span className="px-2">...</span> : (
-                  <PaginationLink href="#" isActive={currentPage === page} onClick={(e) => { e.preventDefault(); onPageChange(page as number) }}>{page}</PaginationLink>
+                  <PaginationLink 
+                    href="#" 
+                    isActive={currentPage === page} 
+                    onClick={(e) => { e.preventDefault(); onPageChange(page as number) }}
+                  >
+                    {page}
+                  </PaginationLink>
                 )}
               </PaginationItem>
             ))}
-            <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); handleNext() }} className={currentPage === totalPages || filteredData.length === 0 ? "pointer-events-none opacity-50" : ""} /></PaginationItem>
+            <PaginationItem>
+              <PaginationNext 
+                href="#" 
+                onClick={(e) => { e.preventDefault(); handleNext() }} 
+                className={currentPage === totalPages || filteredData.length === 0 ? "pointer-events-none opacity-50" : ""} 
+              />
+            </PaginationItem>
           </PaginationContent>
         </Pagination>
       </div>

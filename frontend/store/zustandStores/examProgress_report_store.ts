@@ -1,220 +1,181 @@
-import type { 
-    DeptCertificationResponse,
-    TeamCertificationResponse,
+// store/zustandStores/examProgress_report_store.ts
+
+import type {
+    ApiResponse,
     DeptWithCounts,
-    TeamWithCounts
+    TeamWithCounts,
+    CommCapabilityData,
+    NoCertMemberData
 } from '@/types/exam_progress_report'
 import type { ExamProgressReport_StoreType } from '../types'
-
-const deptData = [
-    { id: 1, dept_name: "Offshore Development Division" },
-    { id: 2, dept_name: "Offshore Development Dept-1" },
-    { id: 3, dept_name: "Offshore Development Dept-2" },
-    { id: 4, dept_name: "Offshore Development Dept-3" },
-    { id: 5, dept_name: "Quality Assurance Division" },
-    { id: 6, dept_name: "IT Support Department" }
-]
-
-const mockDeptResponse: DeptCertificationResponse = {
-    "Offshore Development Division": {
-        "certified": { "N1": 0, "N2": 1, "N3": 0, "N4": 0, "N5": 0, "None": 0 }
-    },
-    "Offshore Development Dept-1": {
-        "certified": { "N1": 1, "N2": 3, "N3": 16, "N4": 6, "N5": 5, "None": 62 }
-    },
-    "Offshore Development Dept-2": {
-        "certified": { "N1": 1, "N2": 7, "N3": 16, "N4": 12, "N5": 8, "None": 63 }
-    },
-    "Offshore Development Dept-3": {
-        "certified": { "N1": 2, "N2": 4, "N3": 10, "N4": 5, "N5": 3, "None": 45 }
-    },
-    "Quality Assurance Division": {
-        "certified": { "N1": 0, "N2": 2, "N3": 5, "N4": 3, "N5": 1, "None": 20 }
-    },
-    "IT Support Department": {
-        "certified": { "N1": 1, "N2": 0, "N3": 3, "N4": 2, "N5": 0, "None": 15 }
-    }
-}
-
-
-
-
-const mockTeamResponse: TeamCertificationResponse = {
-    "BlockChain": {
-        "deptId": 1,
-        "certified": { "N1": 0, "N2": 0, "N3": 0, "N4": 0, "N5": 0, "None": 6 },
-        "target1": { "N1": 0, "N2": 0, "N3": 0, "N4": 5, "N5": 0, "None": 5 },
-        "target2": { "N1": 0, "N2": 0, "N3": 5, "N4": 1, "N5": 0, "None": 6 },
-        "currentCommunication": {
-            "Level 0 | None": 5,
-            "Level 1 | G1:Email writing-Chat with DIR and QA/bug/issues reporting using simple words": 3,
-            "Level 1 | G2:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool": 2,
-            "Level 1 | G3:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words": 1,
-            "Level 2 | G1:Email reading/writing/MS team chat, Daily team conversation": 2,
-            "Level 2 | G2:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese": 1,
-            "Level 2 | G3:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, Basic meeting participation": 0,
-            "Level 3:Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal": 0
-        },
-        "target1Communication": {
-            "Level 0 | None": 2,
-            "Level 1 | G1:Email writing-Chat with DIR and QA/bug/issues reporting using simple words": 4,
-            "Level 1 | G2:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool": 3,
-            "Level 1 | G3:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words": 2,
-            "Level 2 | G1:Email reading/writing/MS team chat, Daily team conversation": 3,
-            "Level 2 | G2:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese": 2,
-            "Level 2 | G3:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, Basic meeting participation": 1,
-            "Level 3:Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal": 0
-        },
-        "target2Communication": {
-            "Level 0 | None": 1,
-            "Level 1 | G1:Email writing-Chat with DIR and QA/bug/issues reporting using simple words": 3,
-            "Level 1 | G2:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool": 4,
-            "Level 1 | G3:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words": 3,
-            "Level 2 | G1:Email reading/writing/MS team chat, Daily team conversation": 4,
-            "Level 2 | G2:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese": 3,
-            "Level 2 | G3:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, Basic meeting participation": 1,
-            "Level 3:Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal": 1
-        }
-    },
-    "Cst_Navi, BT18": {
-        "deptId": 1,
-        "certified": { "N1": 0, "N2": 0, "N3": 0, "N4": 0, "N5": 1, "None": 4 },
-        "target1": { "N1": 0, "N2": 0, "N3": 2, "N4": 0, "N5": 2, "None": 5 },
-        "target2": { "N1": 0, "N2": 0, "N3": 2, "N4": 2, "N5": 1, "None": 5 },
-        "currentCommunication": {
-            "Level 0 | None": 3,
-            "Level 1 | G1:Email writing-Chat with DIR and QA/bug/issues reporting using simple words": 4,
-            "Level 1 | G2:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool": 2,
-            "Level 1 | G3:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words": 1,
-            "Level 2 | G1:Email reading/writing/MS team chat, Daily team conversation": 1,
-            "Level 2 | G2:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese": 1,
-            "Level 2 | G3:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, Basic meeting participation": 0,
-            "Level 3:Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal": 0
-        },
-        "target1Communication": {
-            "Level 0 | None": 1,
-            "Level 1 | G1:Email writing-Chat with DIR and QA/bug/issues reporting using simple words": 3,
-            "Level 1 | G2:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool": 4,
-            "Level 1 | G3:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words": 2,
-            "Level 2 | G1:Email reading/writing/MS team chat, Daily team conversation": 2,
-            "Level 2 | G2:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese": 1,
-            "Level 2 | G3:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, Basic meeting participation": 1,
-            "Level 3:Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal": 0
-        },
-        "target2Communication": {
-            "Level 0 | None": 0,
-            "Level 1 | G1:Email writing-Chat with DIR and QA/bug/issues reporting using simple words": 2,
-            "Level 1 | G2:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool": 3,
-            "Level 1 | G3:Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words": 4,
-            "Level 2 | G1:Email reading/writing/MS team chat, Daily team conversation": 3,
-            "Level 2 | G2:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese": 2,
-            "Level 2 | G3:Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, Basic meeting participation": 1,
-            "Level 3:Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal": 1
-        }
-    }
-}
 
 type StoreSet = (fn: (state: ExamProgressReport_StoreType) => Partial<ExamProgressReport_StoreType>) => void
 type StoreGet = () => ExamProgressReport_StoreType
 
-const transformDeptData = (response: DeptCertificationResponse): DeptWithCounts[] => {
-    return Object.entries(response).map(([deptName, data]) => {
-        const dept = deptData.find(d => d.dept_name === deptName)
-        return {
-            id: dept?.id || 0,
-            dept_name: deptName,
-            N1: data.certified.N1 || 0,
-            N2: data.certified.N2 || 0,
-            N3: data.certified.N3 || 0,
-            N4: data.certified.N4 || 0,
-            N5: data.certified.N5 || 0,
-            None: data.certified.None || 0,
+const transformDeptData = (response: ApiResponse): DeptWithCounts[] => {
+    return response.byDepartment
+        .filter(dept => dept.department !== "Grand Total" && dept.id !== null)
+        .map(dept => ({
+            id: dept.id,
+            dept_name: dept.department,
+            N1: dept.n1 || 0,
+            N2: dept.n2 || 0,
+            N3: dept.n3 || 0,
+            N4: dept.n4 || 0,
+            N5: dept.n5 || 0,
+            None: dept.none || 0,
+        }))
+}
+
+const transformTeamData = (response: ApiResponse): TeamWithCounts[] => {
+    const firstTeamComm = response.byTeamComm[0]
+    const commLabels: string[] = []
+
+    if (firstTeamComm) {
+        const keys = Object.keys(firstTeamComm.current)
+        const sortOrder: { [key: string]: number } = {
+            "Level 0 | None": 0,
+            "Level 1 | G1": 1,
+            "Level 1 | G2": 2,
+            "Level 1 | G3": 3,
+            "Level 2 | G1": 4,
+            "Level 2 | G2": 5,
+            "Level 2 | G3": 6,
+            "Level 3": 7
         }
-    })
+        commLabels.push(...keys.sort((a, b) => {
+            const orderA = sortOrder[a.split(':')[0].trim()] ?? 999
+            const orderB = sortOrder[b.split(':')[0].trim()] ?? 999
+            return orderA - orderB
+        }))
+    }
+
+    const teamMap = new Map<string, TeamWithCounts>()
+
+    response.byTeam
+        .filter(team => team.team !== "Grand Total")
+        .forEach(team => {
+            if (teamMap.has(team.team)) {
+                console.warn(`Duplicate team found: ${team.team}, skipping duplicate`)
+                return
+            }
+
+            const teamComm = response.byTeamComm.find(tc => tc.team === team.team)
+            const noCert = response.noCertMembers.find(nc => nc.team === team.team)
+
+            const result: TeamWithCounts = {
+                team_name: team.team,
+                deptId: team.deptId || 0,
+                N1: team.current.N1 || 0,
+                N2: team.current.N2 || 0,
+                N3: team.current.N3 || 0,
+                N4: team.current.N4 || 0,
+                N5: team.current.N5 || 0,
+                None: noCert?.current || 0,
+                target1_N1: team.target1.N1 || 0,
+                target1_N2: team.target1.N2 || 0,
+                target1_N3: team.target1.N3 || 0,
+                target1_N4: team.target1.N4 || 0,
+                target1_N5: team.target1.N5 || 0,
+                target1_None: noCert?.target1 || 0,
+                target2_N1: team.target2.N1 || 0,
+                target2_N2: team.target2.N2 || 0,
+                target2_N3: team.target2.N3 || 0,
+                target2_N4: team.target2.N4 || 0,
+                target2_N5: team.target2.N5 || 0,
+                target2_None: noCert?.target2 || 0,
+            }
+
+            commLabels.forEach((label, index) => {
+                const getValue = (commData: any, label: string): number => {
+                    const key = Object.keys(commData || {}).find(k => k.startsWith(label))
+                    return key ? commData[key] || 0 : 0
+                }
+                const currentVal = teamComm ? getValue(teamComm.current, label) : 0
+                const target1Val = teamComm ? getValue(teamComm.target1, label) : 0
+                const target2Val = teamComm ? getValue(teamComm.target2, label) : 0
+
+                result[`current_comm_${index}` as `current_comm_${number}`] = currentVal
+                result[`target1_comm_${index}` as `target1_comm_${number}`] = target1Val
+                result[`target2_comm_${index}` as `target2_comm_${number}`] = target2Val
+            })
+
+            teamMap.set(team.team, result)
+        })
+
+    return Array.from(teamMap.values())
 }
 
-const extractCommLabels = (response: TeamCertificationResponse): string[] => {
-    const firstTeam = Object.values(response)[0];
-    if (!firstTeam) return [];
-    const commKeys = Object.keys(firstTeam.currentCommunication || {});
-    const labels = commKeys.map(key => {
-        const parts = key.split(':');
-        return parts[0].trim();
-    });
-    const sortOrder: { [key: string]: number } = {
-        "Level 0 | None": 0,
-        "Level 1 | G1": 1,
-        "Level 1 | G2": 2,
-        "Level 1 | G3": 3,
-        "Level 2 | G1": 4,
-        "Level 2 | G2": 5,
-        "Level 2 | G3": 6,
-        "Level 3": 7
-    };
-    return labels.sort((a, b) => {
-        const orderA = sortOrder[a] ?? 999;
-        const orderB = sortOrder[b] ?? 999;
-        return orderA - orderB;
-    });
-}
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
-const transformTeamData = (response: TeamCertificationResponse): TeamWithCounts[] => {
-    const commLabels = extractCommLabels(response);
-    return Object.entries(response).map(([teamName, data]) => {
-        const result: TeamWithCounts = {
-            team_name: teamName,
-            deptId: data.deptId,
-            N1: data.certified.N1 || 0,
-            N2: data.certified.N2 || 0,
-            N3: data.certified.N3 || 0,
-            N4: data.certified.N4 || 0,
-            N5: data.certified.N5 || 0,
-            None: data.certified.None || 0,
-            target1_N1: data.target1.N1 || 0,
-            target1_N2: data.target1.N2 || 0,
-            target1_N3: data.target1.N3 || 0,
-            target1_N4: data.target1.N4 || 0,
-            target1_N5: data.target1.N5 || 0,
-            target1_None: data.target1.None || 0,
-            target2_N1: data.target2.N1 || 0,
-            target2_N2: data.target2.N2 || 0,
-            target2_N3: data.target2.N3 || 0,
-            target2_N4: data.target2.N4 || 0,
-            target2_N5: data.target2.N5 || 0,
-            target2_None: data.target2.None || 0,
-        };
-        const getValueByLabel = (obj: any, label: string): number => {
-            const key = Object.keys(obj).find(k => k.startsWith(label));
-            return key ? obj[key] || 0 : 0;
-        };
-        commLabels.forEach((label, index) => {
-            result[`current_comm_${index}`] = getValueByLabel(data.currentCommunication, label);
-            result[`target1_comm_${index}`] = getValueByLabel(data.target1Communication, label);
-            result[`target2_comm_${index}`] = getValueByLabel(data.target2Communication, label);
-        });
-        return result;
-    });
-}
-
+// ✅ Make sure this returns the full state object
 export const examProgressReport_Store = (set: StoreSet, get: StoreGet) => ({
-    deptData: undefined,
-    teamData: undefined,
-    deptDisplayData: [],
-    teamDisplayData: [],
+    // Raw data from API
+    apiResponse: undefined as ApiResponse | undefined,
 
-    fetch_DeptData: async () => {
-        const deptData = mockDeptResponse
-        const deptDisplayData = transformDeptData(deptData)
-        set(() => ({ deptData: deptData, deptDisplayData: deptDisplayData }))
+    // Processed data for display
+    deptDisplayData: [] as DeptWithCounts[],
+    teamDisplayData: [] as TeamWithCounts[],
+    commCapabilityData: [] as CommCapabilityData[],
+    noCertMembersData: [] as NoCertMemberData[],
+
+    // Target dates - initialized as null
+    target1Date: null as string | null,
+    target2Date: null as string | null,
+
+    // Loading state
+    isLoading: false,
+    error: null as string | null,
+
+    // Single fetch for all data
+    fetch_AllData: async () => {
+
+        try {
+            const response = await fetch(`${apiUrl}/api/japanese-dashboard`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                signal: AbortSignal.timeout(5000)
+            })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data: ApiResponse = await response.json()
+
+            console.log('API Response dates:', {
+                target1Date: data.target1Date,
+                target2Date: data.target2Date
+            })
+
+            const deptDisplayData = transformDeptData(data)
+            const teamDisplayData = transformTeamData(data)
+
+            // ✅ Set all state including dates
+            set(() => ({
+                apiResponse: data,
+                deptDisplayData: deptDisplayData,
+                teamDisplayData: teamDisplayData,
+                commCapabilityData: data.commCapability,
+                noCertMembersData: data.noCertMembers,
+                target1Date: data.target1Date || null,
+                target2Date: data.target2Date || null,
+                isLoading: false,
+                error: null
+            }))
+
+            // ✅ Log to verify state was set
+            console.log('State after set:', get().target1Date, get().target2Date)
+
+        } catch (error) {
+            console.error('Failed to fetch exam progress report data:', error)
+
+        }
     },
 
-    fetch_TeamData: async () => {
-        const teamData = mockTeamResponse
-        const teamDisplayData = transformTeamData(teamData)
-        set(() => ({ teamData: teamData, teamDisplayData: teamDisplayData }))
-    },
-
-
+    // Getters
     getDeptWithCounts: () => {
         return get().deptDisplayData || []
     },
@@ -227,4 +188,32 @@ export const examProgressReport_Store = (set: StoreSet, get: StoreGet) => ({
         const teams = get().teamDisplayData || []
         return teams.filter(team => team.deptId === deptId)
     },
+
+    getCommCapability: () => {
+        return get().commCapabilityData || []
+    },
+
+    getNoCertMembers: () => {
+        return get().noCertMembersData || []
+    },
+
+    getTargetDates: () => {
+        const state = get()
+        console.log('getTargetDates called:', {
+            target1Date: state.target1Date,
+            target2Date: state.target2Date
+        })
+        return {
+            target1Date: state.target1Date,
+            target2Date: state.target2Date
+        }
+    },
+
+    getIsLoading: () => {
+        return get().isLoading
+    },
+
+    getError: () => {
+        return get().error
+    }
 })

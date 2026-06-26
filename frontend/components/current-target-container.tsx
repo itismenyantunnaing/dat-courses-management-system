@@ -98,8 +98,12 @@ const BorderedTableHead = ({
   </TableHead>
 )
 
+// Search filter type
+type SearchFilter = 'all' | 'staff_id' | 'name' | 'team' | 'department'
+
 export function CurrentTargetContainer({ searchPlaceholder = "Search employees..." }) {
   const [searchTerm, setSearchTerm] = useState("")
+  const [searchFilter, setSearchFilter] = useState<SearchFilter>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(15)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -119,7 +123,6 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   const [isCreateTargetDatesDrawerOpen, setIsCreateTargetDatesDrawerOpen] = useState(false)
 
   // Column visibility state for Japanese data sections
-  // Using "all" as default, and individual section keys for single selection
   const [selectedSection, setSelectedSection] = useState<string>("all")
 
   const {
@@ -174,7 +177,6 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   // Update employees list when employee_data or map changes
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
-      // Only keep employees that have profiles in the map
       const filteredEmployees = employee_data.filter((employee) => {
         return employeeProfileMap.has(employee.id)
       })
@@ -235,7 +237,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     }
   }
 
-  // Employee Headers (will use rowSpan=2) - FIXED, no status
+  // Employee Headers
   const employeeHeaders = [
     { field: "select", header_name: "" },
     { field: "Sr", header_name: "Sr" },
@@ -327,12 +329,31 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   // Flatten for data mapping
   const flattenedJapaneseHeaders = visibleJapaneseHeaderGroups.flatMap(group => group.children);
 
+  // Enhanced search function with filter support
   const filteredEmployees = employees.filter((employee) => {
-    const matchesSearch =
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    return matchesSearch
+    if (!searchTerm.trim()) return true
+    
+    const searchLower = searchTerm.toLowerCase().trim()
+    
+    switch (searchFilter) {
+      case 'staff_id':
+        return employee.id.toLowerCase().includes(searchLower)
+      case 'name':
+        return employee.name.toLowerCase().includes(searchLower)
+      case 'team':
+        return (employee.team || '').toLowerCase().includes(searchLower)
+      case 'department':
+        return (employee.dept_dat || '').toLowerCase().includes(searchLower)
+      case 'all':
+      default:
+        return (
+          employee.id.toLowerCase().includes(searchLower) ||
+          employee.name.toLowerCase().includes(searchLower) ||
+          (employee.email && employee.email.toLowerCase().includes(searchLower)) ||
+          (employee.team && employee.team.toLowerCase().includes(searchLower)) ||
+          (employee.dept_dat && employee.dept_dat.toLowerCase().includes(searchLower))
+        )
+    }
   })
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
@@ -404,7 +425,6 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
 
     setIsDeleting(true)
     try {
-      // Get the profile IDs for selected employees using the map
       const profileIds: number[] = [];
 
       selectedEmployees.forEach((emp) => {
@@ -431,7 +451,6 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
 
-      // Fetch fresh data
       await fetch_EmployeeJapaneseLevel()
       await fetch_EmployeeData()
 
@@ -490,7 +509,6 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     if (sectionKey === "all") {
       setSelectedSection("all")
     } else {
-      // If clicking the already selected section, go back to "all"
       if (selectedSection === sectionKey) {
         setSelectedSection("all")
       } else {
@@ -498,6 +516,15 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       }
     }
   }
+
+  // Search filter options
+  const searchFilters = [
+    { value: 'all', label: 'All Fields' },
+    { value: 'staff_id', label: 'Staff ID' },
+    { value: 'name', label: 'Name' },
+    { value: 'team', label: 'Team' },
+    { value: 'department', label: 'Department' },
+  ]
 
   if (isLoading) {
     return (
@@ -515,18 +542,41 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       <div className="flex flex-col gap-4 py-6">
         <CardContent className="px-4">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative max-w-sm flex-1">
-              <HugeiconsIcon
-                icon={Search01Icon}
-                strokeWidth={STROKE_WIDTH}
-                className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-              />
-              <Input
-                placeholder={searchPlaceholder}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
+            <div className="flex flex-1 gap-2">
+              <div className="relative flex-1 max-w-sm">
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  strokeWidth={STROKE_WIDTH}
+                  className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
+                />
+                <Input
+                  placeholder={`Search by ${searchFilter === 'all' ? 'Staff ID, Name, Team, or Department' : searchFilters.find(f => f.value === searchFilter)?.label || '...'}`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <Select
+                value={searchFilter}
+                onValueChange={(value: SearchFilter) => {
+                  setSearchFilter(value)
+                  setSearchTerm("")
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Filter by..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {searchFilters.map((filter) => (
+                      <SelectItem key={filter.value} value={filter.value}>
+                        {filter.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2 flex-wrap">
               {/* Column Visibility Dropdown with Radio-style selection */}
@@ -545,7 +595,6 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                   </div>
                   <DropdownMenuSeparator />
                   
-                  {/* Show All Sections - acts as a toggle/reset */}
                   <DropdownMenuCheckboxItem
                     checked={selectedSection === "all"}
                     onCheckedChange={() => handleSectionSelect("all")}
@@ -556,7 +605,6 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                   
                   <DropdownMenuSeparator />
                   
-                  {/* Individual Sections - Radio button style */}
                   {Object.entries(sectionDisplayNames).map(([key, label]) => (
                     <DropdownMenuCheckboxItem
                       key={key}
@@ -669,7 +717,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                       colSpan={totalColumns}
                       className="py-8 text-center text-muted-foreground"
                     >
-                      No employees with Japanese profile data found
+                      {searchTerm ? `No employees found matching "${searchTerm}"` : "No employees with Japanese profile data found"}
                     </BorderedTableCell>
                   </TableRow>
                 ) : (

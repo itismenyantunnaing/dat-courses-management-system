@@ -25,11 +25,11 @@ const HEADER_NAMES = [
     "JLPT Highest Level (Certified)",
     "Other Highest Japanese Level (Certified) if any",
     "Preferred Joining Group & Level",
-    "Communication Level",                    // Current - Communication
-    "Communication Level",                    // Target 1 - Communication (Sep-2026)
-    "JLPT / NAT Test Level",                  // Target 1 - JLPT/NAT (Sep-2026)
-    "Communication Level",                    // Target 2 - Communication (Mar-2027)
-    "JLPT / NAT Test Level",                  // Target 2 - JLPT/NAT (Mar-2027)
+    "Communication Level",
+    "Communication Level",
+    "JLPT / NAT Test Level",
+    "Communication Level",
+    "JLPT / NAT Test Level",
     "Japanese Level (Current Learning)",
     "Learning Method",
     "Want to sit JLPT exam on Jul 2026",
@@ -45,48 +45,61 @@ const HEADER_KEYWORDS: { [key: string]: string[] } = {
     "Post": ['post', 'position', 'role'],
     "Team": ['team', 'group'],
     "Dept": ['dept', 'department', 'div', 'division'],
-    "JLPT / NAT Test": ['jlpt / nat test', 'jlpt/nat test', 'jlpt test', 'exam type', 'jpt/nat test'],
+    "JLPT / NAT Test": ['jlpt / nat test', 'jlpt/nat test', 'jpt/nat test', 'exam type', 'test type'],
     "JLPT Highest Level (Certified)": ['jlpt highest level (certified)', 'highest level', 'certified', 'jlpt highest'],
-    "Other Highest Japanese Level (Certified) if any": ['other highest japanese level (certified) if any', 'other japanese level'],
+    "Other Highest Japanese Level (Certified) if any": [
+        'other highest japanese level (certified) if any',
+        'other highest japanese level',
+        'other japanese level',
+        'other level',
+        'other highest level',
+        'other certified level',
+        'other japanese certified',
+        'additional japanese level',
+        'second japanese level',
+        'other jlpt level',
+        'other nat level',
+        'other topj level',
+        'other bjt level',
+        'other language level'
+    ],
     "Preferred Joining Group & Level": ['preferred joining group & level', 'preferred joining', 'joining group'],
-
-    // Column 1: Current - Communication Level
     "Communication Level": ['communication level', 'comm level', 'current comm'],
-
-    // Column 2: Target 1 - Communication Level (Sep-2026)
     "Target 1 Communication Level": ['communication level', 'target 1', 'sep-2026'],
-
-    // Column 3: Target 1 - JLPT / NAT Test Level (Sep-2026)
-    "Target 1 JLPT / NAT Test Level": ['jlpt / nat test level', 'jlpt level', 'nat level', 'target 1 jlpt', 'sep-2026 jlpt'],
-
-    // Column 4: Target 2 - Communication Level (Mar-2027)
+    "Target 1 JLPT / NAT Test Level": ['jlpt / nat test level', 'jlpt/nat test level', 'jlpt level', 'nat level', 'target 1 jlpt'],
     "Target 2 Communication Level": ['communication level', 'target 2', 'mar-2027'],
-
-    // Column 5: Target 2 - JLPT / NAT Test Level (Mar-2027)
-    "Target 2 JLPT / NAT Test Level": ['jlpt / nat test level', 'jlpt level', 'nat level', 'target 2 jlpt', 'mar-2027 jlpt'],
-
+    "Target 2 JLPT / NAT Test Level": ['jlpt / nat test level', 'jlpt/nat test level', 'jlpt level', 'nat level', 'target 2 jlpt'],
     "Japanese Level (Current Learning)": ['japanese level (current learning)', 'current learning', 'learning level'],
     "If you are studying Japanese, Learning Method (Online/Zoom, In-person, Video Record, Mobile App or Web)": [
-        'learning method',
-        'study method',
-        'online/zoom',
-        'in-person',
-        'video record',
-        'mobile app',
-        'web',
-        'learning',
-        'method',
-        'studying japanese',
-        'online zoom',
-        'in person',
-        'video',
-        'mobile',
-        'app'
+        'learning method', 'study method', 'online/zoom', 'in-person', 'video record', 'mobile app', 'web',
+        'learning', 'method', 'studying japanese', 'online zoom', 'in person', 'video', 'mobile', 'app'
     ],
     "Want to sit JLPT exam on Jul 2026": ['want to sit jlpt exam on jul 2026', 'sit jlpt', 'exam jul 2026'],
     "If Yes, Which Level?": ['if yes, which level?', 'which level', 'exam level'],
     "Confidence Level to Pass Exam": ['confidence level to pass exam', 'confidence', 'confidence level']
 };
+
+// ✅ Helper to map JLPT/NAT values to match Enum
+function normalizeJlptNatTest(value: string | null | undefined): string | null {
+    if (!value) return null;
+
+    const trimmed = value.trim();
+    const upper = trimmed.toUpperCase();
+
+    // Map to exact Enum values
+    if (upper === 'JLPT') {
+        return 'JLPT';
+    } else if (upper === 'NAT' || upper === 'NAT_TEST') {
+        return 'NAT';
+    } else if (upper === 'TOPJ' || upper === 'TOP_J' || upper === 'TOP J' || upper === 'TOP-J') {
+        return 'TopJ';
+    } else if (upper === 'BJT') {
+        return 'BJT';
+    }
+
+    // Return as-is if no mapping found
+    return trimmed;
+}
 
 function getCellValue(cell: ExcelJS.Cell): string {
     const value = cell.value;
@@ -122,7 +135,6 @@ function findCurrentTargetSheet(workbook: ExcelJS.Workbook): ExcelJS.Worksheet |
     for (const worksheet of workbook.worksheets) {
         const name = worksheet.name.toLowerCase().trim().replace(/[\s-]/g, '_');
         if (name === targetName || name.includes(targetName)) {
-            console.log(`✅ Found target sheet: "${worksheet.name}"`);
             return worksheet;
         }
     }
@@ -130,7 +142,6 @@ function findCurrentTargetSheet(workbook: ExcelJS.Workbook): ExcelJS.Worksheet |
     for (const worksheet of workbook.worksheets) {
         const name = worksheet.name.toLowerCase().trim();
         if (name.includes('current') || name.includes('target') || name.includes('jlpt') || name.includes('japanese')) {
-            console.log(`📋 Found sheet (fuzzy): "${worksheet.name}"`);
             return worksheet;
         }
     }
@@ -162,8 +173,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
     let maxFoundCount = 0;
     let bestRowAllHeaders: string[] = [];
 
-    console.log('🔍 Searching for header row...');
-
     for (let rowIndex = 1; rowIndex <= Math.min(20, worksheet.rowCount); rowIndex++) {
         const row = worksheet.getRow(rowIndex);
         const currentColumnMap: { [key: string]: number } = {};
@@ -179,14 +188,13 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
             currentFoundHeaders.push(value);
             allHeaderValues[colNumber] = value;
 
-            // SPECIAL: Direct detection for Learning Method
-            if (lowerValue.includes('learning method') || 
+            // Direct detection for Learning Method
+            if (lowerValue.includes('learning method') ||
                 lowerValue.includes('studying japanese') ||
                 lowerValue.includes('online/zoom') ||
                 lowerValue.includes('in-person') ||
                 lowerValue.includes('video record') ||
                 lowerValue.includes('mobile app')) {
-                console.log(`  Row ${rowIndex}: Found Learning Method: "${value}" at column ${colNumber}`);
                 if (!currentColumnMap["Learning Method"]) {
                     currentColumnMap["Learning Method"] = colNumber;
                     foundCount++;
@@ -199,33 +207,96 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                 }
             }
 
-            // SPECIAL: Direct detection for JLPT/NAT
-            if (lowerValue.includes('jlpt') || lowerValue.includes('nat') || lowerValue.includes('jpt')) {
-                console.log(`  Row ${rowIndex}: Found JLPT/NAT related: "${value}" at column ${colNumber}`);
-                if (!currentColumnMap["JLPT / NAT Test Level"]) {
-                    currentColumnMap["JLPT / NAT Test Level"] = colNumber;
+            // 🔧 FIX: Detect JLPT / NAT Test (TYPE) - Column 9
+            // Only match if it's exactly "JLPT / NAT Test" or similar without "Level"
+            const isTestType = 
+                lowerValue === 'jlpt / nat test' ||
+                lowerValue === 'jlpt/nat test' ||
+                lowerValue === 'jpt/nat test' ||
+                (lowerValue.includes('jlpt') && lowerValue.includes('test') && !lowerValue.includes('level')) ||
+                (lowerValue.includes('nat') && lowerValue.includes('test') && !lowerValue.includes('level'));
+            
+            if (isTestType) {
+                if (!currentColumnMap["JLPT / NAT Test"]) {
+                    currentColumnMap["JLPT / NAT Test"] = colNumber;
                     foundCount++;
                 }
-                if (!currentPositions["JLPT / NAT Test Level"]) {
-                    currentPositions["JLPT / NAT Test Level"] = [];
+                if (!currentPositions["JLPT / NAT Test"]) {
+                    currentPositions["JLPT / NAT Test"] = [];
                 }
-                if (!currentPositions["JLPT / NAT Test Level"].includes(colNumber)) {
-                    currentPositions["JLPT / NAT Test Level"].push(colNumber);
+                if (!currentPositions["JLPT / NAT Test"].includes(colNumber)) {
+                    currentPositions["JLPT / NAT Test"].push(colNumber);
                 }
             }
 
-            // SPECIAL: Direct detection for Communication Level
+            // 🔧 FIX: Detect JLPT / NAT Test Level - ONLY columns 14 and 16
+            // Map by exact column position since we know the Excel structure
+            if (colNumber === 14 || colNumber === 16) {
+                // These are the Target 1 and Target 2 JLPT/NAT Test Level columns
+                if (colNumber === 14) {
+                    if (!currentColumnMap["Target 1 JLPT / NAT Test Level"]) {
+                        currentColumnMap["Target 1 JLPT / NAT Test Level"] = colNumber;
+                        foundCount++;
+                    }
+                    if (!currentPositions["Target 1 JLPT / NAT Test Level"]) {
+                        currentPositions["Target 1 JLPT / NAT Test Level"] = [];
+                    }
+                    if (!currentPositions["Target 1 JLPT / NAT Test Level"].includes(colNumber)) {
+                        currentPositions["Target 1 JLPT / NAT Test Level"].push(colNumber);
+                    }
+                } else if (colNumber === 16) {
+                    if (!currentColumnMap["Target 2 JLPT / NAT Test Level"]) {
+                        currentColumnMap["Target 2 JLPT / NAT Test Level"] = colNumber;
+                        foundCount++;
+                    }
+                    if (!currentPositions["Target 2 JLPT / NAT Test Level"]) {
+                        currentPositions["Target 2 JLPT / NAT Test Level"] = [];
+                    }
+                    if (!currentPositions["Target 2 JLPT / NAT Test Level"].includes(colNumber)) {
+                        currentPositions["Target 2 JLPT / NAT Test Level"].push(colNumber);
+                    }
+                }
+            }
+
+            // Direct detection for Communication Level
             if (lowerValue.includes('communication') || lowerValue.includes('comm')) {
-                console.log(`  Row ${rowIndex}: Found Communication: "${value}" at column ${colNumber}`);
-                if (!currentColumnMap["Communication Level"]) {
-                    currentColumnMap["Communication Level"] = colNumber;
-                    foundCount++;
-                }
-                if (!currentPositions["Communication Level"]) {
-                    currentPositions["Communication Level"] = [];
-                }
-                if (!currentPositions["Communication Level"].includes(colNumber)) {
-                    currentPositions["Communication Level"].push(colNumber);
+                // Map by column position
+                if (colNumber === 13) {
+                    // Current Communication Level
+                    if (!currentColumnMap["Communication Level"]) {
+                        currentColumnMap["Communication Level"] = colNumber;
+                        foundCount++;
+                    }
+                    if (!currentPositions["Communication Level"]) {
+                        currentPositions["Communication Level"] = [];
+                    }
+                    if (!currentPositions["Communication Level"].includes(colNumber)) {
+                        currentPositions["Communication Level"].push(colNumber);
+                    }
+                } else if (colNumber === 15) {
+                    // Target 1 Communication Level
+                    if (!currentColumnMap["Target 1 Communication Level"]) {
+                        currentColumnMap["Target 1 Communication Level"] = colNumber;
+                        foundCount++;
+                    }
+                    if (!currentPositions["Target 1 Communication Level"]) {
+                        currentPositions["Target 1 Communication Level"] = [];
+                    }
+                    if (!currentPositions["Target 1 Communication Level"].includes(colNumber)) {
+                        currentPositions["Target 1 Communication Level"].push(colNumber);
+                    }
+                } else if (colNumber === 17) {
+                    // Target 2 Communication Level
+                    if (!currentColumnMap["Target 2 Communication Level"]) {
+                        currentColumnMap["Target 2 Communication Level"] = colNumber;
+                        foundCount++;
+                    }
+                    if (!currentPositions["Target 2 Communication Level"]) {
+                        currentPositions["Target 2 Communication Level"] = [];
+                    }
+                    if (!currentPositions["Target 2 Communication Level"].includes(colNumber)) {
+                        currentPositions["Target 2 Communication Level"].push(colNumber);
+                    }
                 }
             }
 
@@ -233,6 +304,14 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
             for (const headerName of HEADER_NAMES) {
                 const lowerHeader = headerName.toLowerCase();
                 if (lowerValue === lowerHeader || lowerValue.includes(lowerHeader) || lowerHeader.includes(lowerValue)) {
+                    // Skip if already matched by specific detection
+                    if (headerName === "JLPT / NAT Test" && currentColumnMap["JLPT / NAT Test"]) continue;
+                    if (headerName === "Target 1 JLPT / NAT Test Level" && currentColumnMap["Target 1 JLPT / NAT Test Level"]) continue;
+                    if (headerName === "Target 2 JLPT / NAT Test Level" && currentColumnMap["Target 2 JLPT / NAT Test Level"]) continue;
+                    if (headerName === "Communication Level" && currentColumnMap["Communication Level"]) continue;
+                    if (headerName === "Target 1 Communication Level" && currentColumnMap["Target 1 Communication Level"]) continue;
+                    if (headerName === "Target 2 Communication Level" && currentColumnMap["Target 2 Communication Level"]) continue;
+                    
                     if (!currentColumnMap[headerName]) {
                         currentColumnMap[headerName] = colNumber;
                         foundCount++;
@@ -243,7 +322,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                     if (!currentPositions[headerName].includes(colNumber)) {
                         currentPositions[headerName].push(colNumber);
                     }
-                    console.log(`  Row ${rowIndex}: Found "${headerName}" at column ${colNumber}`);
                     break;
                 }
             }
@@ -251,6 +329,9 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
             // If not found, try keywords
             if (!Object.values(currentColumnMap).includes(colNumber)) {
                 for (const [headerName, keywords] of Object.entries(HEADER_KEYWORDS)) {
+                    // Skip if already matched
+                    if (currentColumnMap[headerName]) continue;
+                    
                     if (keywords.some(keyword => lowerValue.includes(keyword.toLowerCase()))) {
                         if (!currentColumnMap[headerName]) {
                             currentColumnMap[headerName] = colNumber;
@@ -262,7 +343,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                         if (!currentPositions[headerName].includes(colNumber)) {
                             currentPositions[headerName].push(colNumber);
                         }
-                        console.log(`  Row ${rowIndex}: Found "${headerName}" via keyword at column ${colNumber}`);
                         break;
                     }
                 }
@@ -278,14 +358,9 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
         }
 
         if (foundCount >= 6) {
-            console.log(`  ✅ Found ${foundCount} headers at row ${rowIndex}, stopping search`);
             break;
         }
     }
-
-    console.log(`📍 Header row detected at row ${headerRow} (found ${maxFoundCount} known headers)`);
-    console.log(`📊 Detected headers:`, Object.keys(columnMap));
-    console.log(`📊 Column positions:`, columnPositions);
 
     return { columnMap, headerRow, allFoundHeaders: bestRowAllHeaders, columnPositions, allHeaderValues };
 }
@@ -307,14 +382,12 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
             };
         }
 
-        console.log(`📋 Using sheet: "${worksheet.name}"`);
-        console.log(`📋 Total rows: ${worksheet.rowCount}, Columns: ${worksheet.columnCount}`);
-
         const { columnMap, headerRow, allFoundHeaders, columnPositions, allHeaderValues } = findHeaders(worksheet);
-        console.log(`📋 Header row: ${headerRow}`);
+
+        console.log('🔍 Found column map:', columnMap);
 
         let dataStartRow = -1;
-        const staffIdCol = columnMap["Staff ID"] || 1;
+        const staffIdCol = columnMap["Staff ID"] || 3; // Column 3 is Staff ID
 
         for (let r = headerRow + 1; r <= Math.min(headerRow + 50, worksheet.rowCount); r++) {
             const row = worksheet.getRow(r);
@@ -322,13 +395,11 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
 
             if (/^\d{2}-\d{3,5}$/.test(staffId) || (staffId && staffId.length >= 5 && staffId.includes('-'))) {
                 dataStartRow = r;
-                console.log(`📍 Data starts at row ${dataStartRow} (found Staff ID: ${staffId})`);
                 break;
             }
         }
 
         if (dataStartRow === -1) {
-            console.log('🔍 No Staff ID pattern found, looking for rows with data...');
             for (let r = headerRow + 1; r <= Math.min(headerRow + 30, worksheet.rowCount); r++) {
                 const row = worksheet.getRow(r);
                 let dataCount = 0;
@@ -341,7 +412,6 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
 
                 if (dataCount >= 3) {
                     dataStartRow = r;
-                    console.log(`📍 Data starts at row ${dataStartRow} (found ${dataCount} data points)`);
                     break;
                 }
             }
@@ -349,60 +419,81 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
 
         if (dataStartRow === -1) {
             dataStartRow = headerRow + 1;
-            console.log(`📍 Using default data start row: ${dataStartRow}`);
         }
 
         const data: CurrentTargetRow[] = [];
 
-        // Build fullColumnMap
+        // 🔧 FIX: Build fullColumnMap with direct column mappings
         const fullColumnMap: { [key: string]: number } = {};
 
-        // Map columns based on their positions
-        // Communication Level appears 3 times: Current, Target 1, Target 2
-        if (columnPositions['Communication Level']) {
-            const positions = columnPositions['Communication Level'];
-            if (positions.length >= 1) {
-                fullColumnMap['Communication Level'] = positions[0];  // Current
-                console.log(`✅ Mapped Current Communication Level to column ${positions[0]}`);
-            }
-            if (positions.length >= 2) {
-                fullColumnMap['Target 1 Communication Level'] = positions[1];  // Target 1
-                console.log(`✅ Mapped Target 1 Communication Level to column ${positions[1]}`);
-            }
-            if (positions.length >= 3) {
-                fullColumnMap['Target 2 Communication Level'] = positions[2];  // Target 2
-                console.log(`✅ Mapped Target 2 Communication Level to column ${positions[2]}`);
-            }
-        }
+        // Direct mapping based on Excel structure
+        // Staff ID is column 3
+        fullColumnMap["Staff ID"] = columnMap["Staff ID"] || 3;
+        
+        // Name is column 4
+        fullColumnMap["Name"] = columnMap["Name"] || 4;
+        
+        // Email is column 5
+        fullColumnMap["Email"] = columnMap["Email"] || 5;
+        
+        // Post is column 6
+        fullColumnMap["Post"] = columnMap["Post"] || 6;
+        
+        // Team is column 7
+        fullColumnMap["Team"] = columnMap["Team"] || 7;
+        
+        // Dept is column 8
+        fullColumnMap["Dept"] = columnMap["Dept"] || 8;
+        
+        // JLPT / NAT Test is column 9 (TEST TYPE)
+        fullColumnMap["JLPT / NAT Test"] = columnMap["JLPT / NAT Test"] || 9;
+        
+        // JLPT Highest Level (Certified) is column 10
+        fullColumnMap["JLPT Highest Level (Certified)"] = columnMap["JLPT Highest Level (Certified)"] || 10;
+        
+        // Other Highest Japanese Level (Certified) if any is column 11
+        fullColumnMap["Other Highest Japanese Level (Certified) if any"] = columnMap["Other Highest Japanese Level (Certified) if any"] || 11;
+        
+        // Preferred Joining Group & Level is column 12
+        fullColumnMap["Preferred Joining Group & Level"] = columnMap["Preferred Joining Group & Level"] || 12;
+        
+        // Communication Level (Current) is column 13
+        fullColumnMap["Communication Level"] = columnMap["Communication Level"] || 13;
+        
+        // Target 1 JLPT / NAT Test Level is column 14
+        fullColumnMap["Target 1 JLPT / NAT Test Level"] = columnMap["Target 1 JLPT / NAT Test Level"] || 14;
+        
+        // Target 1 Communication Level is column 15
+        fullColumnMap["Target 1 Communication Level"] = columnMap["Target 1 Communication Level"] || 15;
+        
+        // Target 2 JLPT / NAT Test Level is column 16
+        fullColumnMap["Target 2 JLPT / NAT Test Level"] = columnMap["Target 2 JLPT / NAT Test Level"] || 16;
+        
+        // Target 2 Communication Level is column 17
+        fullColumnMap["Target 2 Communication Level"] = columnMap["Target 2 Communication Level"] || 17;
+        
+        // Japanese Level (Current Learning) is column 18
+        fullColumnMap["Japanese Level (Current Learning)"] = columnMap["Japanese Level (Current Learning)"] || 18;
+        
+        // Learning Method is column 19
+        fullColumnMap["Learning Method"] = columnMap["Learning Method"] || 19;
+        
+        // Want to sit JLPT exam on Jul 2026 is column 20
+        fullColumnMap["Want to sit JLPT exam on Jul 2026"] = columnMap["Want to sit JLPT exam on Jul 2026"] || 20;
+        
+        // If Yes, Which Level? is column 21
+        fullColumnMap["If Yes, Which Level?"] = columnMap["If Yes, Which Level?"] || 21;
+        
+        // Confidence Level to Pass Exam is column 22
+        fullColumnMap["Confidence Level to Pass Exam"] = columnMap["Confidence Level to Pass Exam"] || 22;
 
-        // JLPT / NAT Test Level appears 2 times: Target 1, Target 2
-        if (columnPositions['JLPT / NAT Test Level']) {
-            const positions = columnPositions['JLPT / NAT Test Level'];
-            if (positions.length >= 1) {
-                fullColumnMap['Target 1 JLPT / NAT Test Level'] = positions[0];  // Target 1
-                console.log(`✅ Mapped Target 1 JLPT/NAT Test Level to column ${positions[0]}`);
-            }
-            if (positions.length >= 2) {
-                fullColumnMap['Target 2 JLPT / NAT Test Level'] = positions[1];  // Target 2
-                console.log(`✅ Mapped Target 2 JLPT/NAT Test Level to column ${positions[1]}`);
-            }
-        }
-
-        // Also add any other headers from columnMap
-        for (const [key, value] of Object.entries(columnMap)) {
-            if (!fullColumnMap[key] && !key.includes('Communication Level') && !key.includes('JLPT / NAT Test Level')) {
-                fullColumnMap[key] = value;
-            }
-        }
-
-        console.log('📋 Final column mapping:', fullColumnMap);
+        console.log('📋 Final column map:', fullColumnMap);
 
         for (let r = dataStartRow; r <= worksheet.rowCount; r++) {
             const row = worksheet.getRow(r);
             const rowData: CurrentTargetRow = {};
             let hasAnyData = false;
 
-            // Extract using the mapped columns
             for (const [headerName, col] of Object.entries(fullColumnMap)) {
                 const value = getCellValue(row.getCell(col));
                 rowData[headerName] = value;
@@ -410,22 +501,8 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
             }
 
             // Clean up Staff ID
-            const staffIdKey = Object.keys(rowData).find(k =>
-                k.toLowerCase().includes('staff id') ||
-                k.toLowerCase() === 'staff' ||
-                k.toLowerCase().includes('id')
-            );
-            if (staffIdKey && rowData[staffIdKey]) {
-                rowData["Staff ID"] = rowData[staffIdKey].replace(/[^0-9-]/g, '');
-            }
-
-            // Try to find Name
-            const nameKey = Object.keys(rowData).find(k =>
-                k.toLowerCase().includes('name') ||
-                k.toLowerCase().includes('employee')
-            );
-            if (nameKey && rowData[nameKey]) {
-                rowData["Name"] = rowData[nameKey];
+            if (rowData["Staff ID"]) {
+                rowData["Staff ID"] = rowData["Staff ID"].replace(/[^0-9-]/g, '');
             }
 
             if (hasAnyData) {
@@ -433,12 +510,6 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
             }
         }
 
-        console.log(`✅ Extracted ${data.length} records`);
-        if (data.length > 0) {
-            console.log('📋 Sample record (keys):', Object.keys(data[0]));
-            console.log('📋 Sample record:', data[0]);
-        }
-        logExtractedData(data, Object.keys(fullColumnMap));
         return {
             success: true,
             headers: Object.keys(fullColumnMap),
@@ -446,7 +517,6 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
         };
 
     } catch (err) {
-        console.error("Extraction error:", err);
         return {
             success: false,
             headers: [],
@@ -522,7 +592,6 @@ export function validateCurrentTargetData(data: CurrentTargetRow[]): {
         }
     }
 
-    console.log(`✅ Validation: ${valid.length} valid, ${invalid.length} invalid`);
     return { valid, invalid };
 }
 
@@ -559,32 +628,35 @@ export function validateCurrentTargetDataWithEmployees(
         }
     }
 
-    console.log(`✅ Employee validation: ${valid.length} valid, ${invalid.length} invalid`);
     return { valid, invalid };
 }
+
+
 
 export function transformToApiFormat(data: CurrentTargetRow[]): any[] {
     return data.map((row) => {
         const wantToSit = row["Want to sit JLPT exam on Jul 2026"]?.trim()?.toLowerCase() || '';
         const wantToSitBool = wantToSit === 'yes' || wantToSit === 'y';
 
-        // Try both the shortened and full header names
-        const learningMethod = 
+        const learningMethod =
             row["Learning Method"]?.trim() ||
             row["If you are studying Japanese, Learning Method (Online/Zoom, In-person, Video Record, Mobile App or Web)"]?.trim() ||
             null;
 
+        // ✅ Normalize JLPT/NAT Test value to match Enum (this is the TEST TYPE)
+        const jlptNatTest = normalizeJlptNatTest(row["JLPT / NAT Test"]);
+
         return {
             employeeId: row["Staff ID"]?.trim() || '',
-            jlptNatTest: row["JLPT / NAT Test"]?.trim() || null,
+            jlptNatTest: jlptNatTest,  // ← TEST TYPE (JLPT, NAT, TopJ, BJT)
             jlptHighestLevel: row["JLPT Highest Level (Certified)"]?.trim() || null,
             otherJapaneseLevel: row["Other Highest Japanese Level (Certified) if any"]?.trim() || null,
             preferredLearningGroup: row["Preferred Joining Group & Level"]?.trim() || null,
             currentCommunicationLevel: row["Communication Level"]?.trim() || null,
             target1CommunicationLevel: row["Target 1 Communication Level"]?.trim() || null,
-            target1JlptNatLevel: row["Target 1 JLPT / NAT Test Level"]?.trim() || null,
+            target1JlptNatLevel: row["Target 1 JLPT / NAT Test Level"]?.trim() || null,  // ← TEST LEVEL (N1, N2, etc.)
             target2CommunicationLevel: row["Target 2 Communication Level"]?.trim() || null,
-            target2JlptNatLevel: row["Target 2 JLPT / NAT Test Level"]?.trim() || null,
+            target2JlptNatLevel: row["Target 2 JLPT / NAT Test Level"]?.trim() || null,  // ← TEST LEVEL (N1, N2, etc.)
             currentLearningLevel: row["Japanese Level (Current Learning)"]?.trim() || null,
             learningMethod: learningMethod,
             wantToSitExam: wantToSitBool,

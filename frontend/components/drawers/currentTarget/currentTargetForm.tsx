@@ -61,8 +61,9 @@ interface CurrentTargetFormProps {
   employeeOptions?: { value: string; label: string }[]
 }
 
-// Options for dropdowns (only for select fields)
+// Options for dropdowns with empty option
 const JLPT_LEVELS = [
+  { value: "None", label: "None" },
   { value: "N1", label: "N1" },
   { value: "N2", label: "N2" },
   { value: "N3", label: "N3" },
@@ -71,6 +72,7 @@ const JLPT_LEVELS = [
 ]
 
 const EXAM_TYPES = [
+  { value: "", label: "None" },
   { value: "JLPT", label: "JLPT" },
   { value: "NAT_TEST", label: "NAT_TEST" },
   { value: "TOP_J", label: "TOP_J" },
@@ -78,6 +80,7 @@ const EXAM_TYPES = [
 ]
 
 const CONFIDENCE_LEVELS = [
+  { value: "None", label: "None" },
   { value: "High", label: "High" },
   { value: "Medium", label: "Medium" },
   { value: "Low", label: "Low" },
@@ -132,12 +135,11 @@ export function CurrentTargetForm({
     })
   }
 
-  //  Handle switch change - auto clear exam fields when set to false
+  // Handle switch change - auto clear exam fields when set to false
   const handleWantToSitExamChange = (checked: boolean) => {
     onChange({
       ...data,
       wantToSitExam: checked,
-      // ✅ Auto clear fields when unchecked
       examTargetLevel: checked ? data.examTargetLevel : "",
       confidenceLevel: checked ? data.confidenceLevel : "",
     })
@@ -234,7 +236,7 @@ export function CurrentTargetForm({
           <div className="min-w-0 space-y-2">
             <Label htmlFor="jlptNatTest">JLPT / NAT Test</Label>
             <Select
-              value={data.jlptNatTest}
+              value={data.jlptNatTest || ""}
               onValueChange={(value) => handleInputChange("jlptNatTest", value)}
             >
               <SelectTrigger className="w-full">
@@ -255,7 +257,7 @@ export function CurrentTargetForm({
           <div className="min-w-0 space-y-2">
             <Label htmlFor="jlptHighestLevel">JLPT Highest Level (Certified)</Label>
             <Select
-              value={data.jlptHighestLevel}
+              value={data.jlptHighestLevel || ""}
               onValueChange={(value) => handleInputChange("jlptHighestLevel", value)}
             >
               <SelectTrigger className="w-full">
@@ -273,7 +275,7 @@ export function CurrentTargetForm({
             </Select>
           </div>
 
-          <div className="min-w-0 space-y-2">
+          {/* <div className="min-w-0 space-y-2">
             <Label htmlFor="otherJapaneseLevel">Other Japanese Level (Certified)</Label>
             <Input
               id="otherJapaneseLevel"
@@ -282,6 +284,27 @@ export function CurrentTargetForm({
               placeholder="e.g., Business Japanese, etc."
               className="w-full"
             />
+          </div> */}
+
+           <div className="min-w-0 space-y-2">
+            <Label htmlFor="jlptHighestLevel">Other Japanese Level (Certified)</Label>
+            <Select
+              value={data.otherJapaneseLevel || ""}
+              onValueChange={(value) => handleInputChange("otherJapaneseLevel", value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select JLPT level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {JLPT_LEVELS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="min-w-0 space-y-2">
@@ -325,7 +348,7 @@ export function CurrentTargetForm({
           <div className="min-w-0 space-y-2">
             <Label htmlFor="target1JlptNatLevel">JLPT / NAT Test Level</Label>
             <Select
-              value={data.target1JlptNatLevel}
+              value={data.target1JlptNatLevel || ""}
               onValueChange={(value) => handleInputChange("target1JlptNatLevel", value)}
             >
               <SelectTrigger className="w-full">
@@ -365,7 +388,7 @@ export function CurrentTargetForm({
           <div className="min-w-0 space-y-2">
             <Label htmlFor="target2JlptNatLevel">JLPT / NAT Test Level</Label>
             <Select
-              value={data.target2JlptNatLevel}
+              value={data.target2JlptNatLevel || ""}
               onValueChange={(value) => handleInputChange("target2JlptNatLevel", value)}
             >
               <SelectTrigger className="w-full">
@@ -405,7 +428,7 @@ export function CurrentTargetForm({
           <div className="min-w-0 space-y-2">
             <Label htmlFor="currentLearningLevel">Japanese Level (Current Learning)</Label>
             <Select
-              value={data.currentLearningLevel}
+              value={data.currentLearningLevel || ""}
               onValueChange={(value) => handleInputChange("currentLearningLevel", value)}
             >
               <SelectTrigger className="w-full">

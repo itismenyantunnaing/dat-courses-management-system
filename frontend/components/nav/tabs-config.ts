@@ -300,9 +300,6 @@ export const allTabs = [
     icon: TrendingUp,
     maxSize: 500,
     onImport: async (file: File) => {
-      console.log("📤 Importing current target data from:", file.name);
-      console.log("=".repeat(60));
-
       try {
         const startTime = performance.now();
 
@@ -314,13 +311,12 @@ export const allTabs = [
           return { success: false, message: extractedData.error || 'No data found' };
         }
 
-        console.log(`📊 Extracted ${extractedData.data.length} records in ${(performance.now() - startTime).toFixed(0)}ms`);
-
         // Access store via window
         const store = (window as any).mainStore?.getState();
         if (!store || !store.bulkCreate_CurrentTargetData) {
           throw new Error('System store not initialized. Please refresh and try again.');
         }
+
 
         // ===== FETCH EMPLOYEE DATA FIRST =====
         let existingEmployeeIds = new Set<string>();
@@ -487,8 +483,6 @@ export const allTabs = [
         let importedCount = 0;
         const totalBatches = Math.ceil(filteredApiData.length / BATCH_SIZE);
 
-        console.log(`🔄 Starting import with ${totalBatches} batches of ${BATCH_SIZE} records each`);
-        console.log("=".repeat(60));
 
         for (let i = 0; i < filteredApiData.length; i += BATCH_SIZE) {
           const batch = filteredApiData.slice(i, i + BATCH_SIZE);

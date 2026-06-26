@@ -1,4 +1,3 @@
-// components/examProgress-report-container.tsx
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
@@ -14,9 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  Search01Icon,
-} from "@hugeicons/core-free-icons"
+import { Search01Icon } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
 import { DepartmentTable } from '@/components/examProgressTables/DepartmentTable'
@@ -46,27 +43,26 @@ export function ExamProgressReportContainer() {
   const [viewType, setViewType] = useState<ViewType>("department")
   const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  
+
   // Row selection state
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [selectedCount, setSelectedCount] = useState(0)
-  
+
   const [deptData, setDeptData] = useState<any[]>([])
   const [teamData, setTeamData] = useState<any[]>([])
   const [capabilityData, setCapabilityData] = useState<any[]>([])
-  
+
   const isDataLoadedRef = useRef(false)
 
+  // Get store methods
   const {
-    fetch_DeptData,
-    fetch_TeamData,
-    fetch_TargetDates,
+    fetch_AllData,
     getDeptWithCounts,
     getTeamWithCounts,
-    deptDisplayData,
-    japaneseTargetDates_Data,
+    getCommCapability,
+    getTargetDates,
   } = mainStore()
 
   // Transform data to pivot format for capability table
@@ -97,12 +93,12 @@ export function ExamProgressReportContainer() {
         target1Total += (row[`target1_comm_${idx}`] as number) || 0
         target2Total += (row[`target2_comm_${idx}`] as number) || 0
       })
-      pivotRows.push({ 
-        id: fullTexts[idx] || key, 
-        level_full: fullTexts[idx] || key, 
-        current: currentTotal, 
-        target1: target1Total, 
-        target2: target2Total 
+      pivotRows.push({
+        id: fullTexts[idx] || key,
+        level_full: fullTexts[idx] || key,
+        current: currentTotal,
+        target1: target1Total,
+        target2: target2Total
       })
     })
     return pivotRows
@@ -112,26 +108,26 @@ export function ExamProgressReportContainer() {
   useEffect(() => {
     const loadAllData = async () => {
       setIsLoading(true)
-      await Promise.all([
-        fetch_DeptData(),
-        fetch_TeamData(),
-        fetch_TargetDates(),
-      ])
-      
+      await fetch_AllData()
+
       const depts = getDeptWithCounts() || []
       setDeptData(depts)
-      
+
       const teams = getTeamWithCounts() || []
       setTeamData(teams)
-      
+
       const pivoted = transformToPivot(teams)
       setCapabilityData(pivoted)
-      
+
+      // Log the dates after loading
+      const dates = getTargetDates()
+      console.log('Dates after loading:', dates)
+
       isDataLoadedRef.current = true
       setIsLoading(false)
     }
     loadAllData()
-  }, [fetch_DeptData, fetch_TeamData, fetch_TargetDates, getDeptWithCounts, getTeamWithCounts])
+  }, [fetch_AllData, getDeptWithCounts, getTeamWithCounts, getTargetDates])
 
   // Update selected count when rowSelection changes
   useEffect(() => {
@@ -147,7 +143,7 @@ export function ExamProgressReportContainer() {
     setRowSelection({})
   }
 
-  // ✅ Dynamic placeholder based on view type
+  // Dynamic placeholder based on view type
   const getPlaceholder = () => {
     switch (viewType) {
       case 'department':
@@ -173,18 +169,13 @@ export function ExamProgressReportContainer() {
     setIsDeleting(true)
     try {
       const selectedIds = Object.keys(rowSelection).filter(key => rowSelection[key])
-      
-      console.log('=== DELETE CONFIRMED ===')
-      console.log('View Type:', viewType)
-      console.log('Selected IDs:', selectedIds)
-      
+
       // Delete from the appropriate data source based on view type
       switch (viewType) {
         case 'department': {
           const newData = deptData.filter((item) => {
             return !selectedIds.includes(item.dept_name)
           })
-          console.log('New dept data:', newData.map(d => d.dept_name))
           setDeptData(newData)
           break
         }
@@ -194,7 +185,6 @@ export function ExamProgressReportContainer() {
           const newData = teamData.filter((item) => {
             return !selectedIds.includes(item.team_name)
           })
-          console.log('New team data:', newData.map(d => d.team_name))
           setTeamData(newData)
           // Also update capability data
           const newCapData = transformToPivot(newData)
@@ -205,15 +195,14 @@ export function ExamProgressReportContainer() {
           const newData = capabilityData.filter((item) => {
             return !selectedIds.includes(item.id)
           })
-          console.log('New capability data:', newData.map(d => d.id))
           setCapabilityData(newData)
           break
         }
       }
-      
+
       setRowSelection({})
       setDeleteDialogOpen(false)
-      
+
     } catch (error) {
       console.error("Delete failed:", error)
     } finally {
@@ -249,6 +238,7 @@ export function ExamProgressReportContainer() {
   }
 
   const currentData = getCurrentData()
+  const targetDates = getTargetDates()
 
   return (
     <>
@@ -276,10 +266,10 @@ export function ExamProgressReportContainer() {
                 </Button>
               )}
 
-              {/* ✅ Show department filter only for team views that support it (exclude Communication Capability) */}
-              {(viewType !== 'department' && viewType !== 'teamCommunicationCapability') && deptDisplayData && deptDisplayData.length > 0 && (
-                <Select 
-                  value={selectedDeptId?.toString() || "all"} 
+              {/* Show department filter only for team views that support it (exclude Communication Capability) */}
+              {(viewType !== 'department' && viewType !== 'teamCommunicationCapability') && deptData && deptData.length > 0 && (
+                <Select
+                  value={selectedDeptId?.toString() || "all"}
                   onValueChange={(value) => {
                     setSelectedDeptId(value === "all" ? null : Number(value))
                     setCurrentPage(1)
@@ -292,11 +282,13 @@ export function ExamProgressReportContainer() {
                   <SelectContent align="center" sideOffset={5}>
                     <SelectGroup>
                       <SelectItem value="all">All Departments</SelectItem>
-                      {deptDisplayData.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id.toString()}>
-                          {dept.dept_name}
-                        </SelectItem>
-                      ))}
+                      {deptData
+                        .filter((dept) => dept.id !== null && dept.id !== undefined)
+                        .map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.dept_name}
+                          </SelectItem>
+                        ))}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -343,9 +335,8 @@ export function ExamProgressReportContainer() {
               onItemsPerPageChange={setItemsPerPage}
               selectedDeptId={selectedDeptId}
               data={currentData}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              targetDates={japaneseTargetDates_Data}
+              target1Date={targetDates.target1Date}
+              target2Date={targetDates.target2Date}
             />
           )}
 
@@ -359,9 +350,8 @@ export function ExamProgressReportContainer() {
               onItemsPerPageChange={setItemsPerPage}
               selectedDeptId={selectedDeptId}
               data={currentData}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              targetDates={japaneseTargetDates_Data}
+              target1Date={targetDates.target1Date}
+              target2Date={targetDates.target2Date}
             />
           )}
 
@@ -375,8 +365,8 @@ export function ExamProgressReportContainer() {
               onItemsPerPageChange={setItemsPerPage}
               selectedDeptId={selectedDeptId}
               data={currentData}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
+              target1Date={targetDates.target1Date}
+              target2Date={targetDates.target2Date}
             />
           )}
 
@@ -390,9 +380,8 @@ export function ExamProgressReportContainer() {
               onItemsPerPageChange={setItemsPerPage}
               selectedDeptId={selectedDeptId}
               data={currentData}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              targetDates={japaneseTargetDates_Data}
+              target1Date={targetDates.target1Date}
+              target2Date={targetDates.target2Date}
             />
           )}
         </CardContent>

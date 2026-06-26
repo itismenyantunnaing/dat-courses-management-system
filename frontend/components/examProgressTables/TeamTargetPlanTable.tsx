@@ -25,10 +25,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import type { TeamWithCounts } from "@/types/exam_progress_report"
-import type { TargetDates } from "@/types/current_target"
 
 type ColumnConfig = {
   field: string;
@@ -45,20 +43,19 @@ type ColumnGroupConfig = {
   width?: string;
 }
 
-const formatDate = (date: Date | string | undefined): string => {
+const formatDate = (date: string | null | undefined): string => {
   if (!date) return "TBD"
-  const dateObj = typeof date === 'string' ? new Date(date) : date
-  return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+  return date // Date is already formatted as "MMM-yyyy" from backend
 }
 
-const getColumnGroups = (targetDate?: TargetDates): ColumnGroupConfig[] => {
-  const target1Date = targetDate?.target_1_date ? formatDate(targetDate.target_1_date) : "Sep-2026"
-  const target2Date = targetDate?.target_2_date ? formatDate(targetDate.target_2_date) : "Mar-2027"
+const getColumnGroups = (target1Date?: string | null, target2Date?: string | null): ColumnGroupConfig[] => {
+  const date1 = target1Date ? formatDate(target1Date) : "Target 1"
+  const date2 = target2Date ? formatDate(target2Date) : "Target 2"
 
   return [
     { id: "current", header: "Current", colSpan: 5, fields: ["N1", "N2", "N3", "N4", "N5"], width: "w-[100px]" },
-    { id: "target1", header: target1Date, colSpan: 5, fields: ["target1_N1", "target1_N2", "target1_N3", "target1_N4", "target1_N5"], width: "w-[100px]" },
-    { id: "target2", header: target2Date, colSpan: 5, fields: ["target2_N1", "target2_N2", "target2_N3", "target2_N4", "target2_N5"], width: "w-[100px]" }
+    { id: "target1", header: date1, colSpan: 5, fields: ["target1_N1", "target1_N2", "target1_N3", "target1_N4", "target1_N5"], width: "w-[100px]" },
+    { id: "target2", header: date2, colSpan: 5, fields: ["target2_N1", "target2_N2", "target2_N3", "target2_N4", "target2_N5"], width: "w-[100px]" }
   ]
 }
 
@@ -76,10 +73,9 @@ const getColumnConfigs = (): ColumnConfig[] => {
 const BorderedTableCell = ({
   children,
   className = "",
-  selected = false,
   ...props
-}: React.ComponentProps<typeof TableCell> & { selected?: boolean }) => (
-  <TableCell className={cn("border-r border-l", selected && "bg-muted/50", className)} {...props}>{children}</TableCell>
+}: React.ComponentProps<typeof TableCell>) => (
+  <TableCell className={cn("border-r border-l", className)} {...props}>{children}</TableCell>
 )
 
 const BorderedTableHead = ({
@@ -102,9 +98,8 @@ interface TeamTargetPlanTableProps {
   onItemsPerPageChange: (value: number) => void;
   selectedDeptId?: number | null;
   data: TeamWithCounts[];
-  rowSelection?: Record<string, boolean>;
-  onRowSelectionChange?: (selection: Record<string, boolean>) => void;
-  targetDates?: TargetDates[];
+  target1Date?: string | null;
+  target2Date?: string | null;
 }
 
 export function TeamTargetPlanTable({
@@ -115,15 +110,11 @@ export function TeamTargetPlanTable({
   onItemsPerPageChange,
   selectedDeptId,
   data,
-  rowSelection: externalRowSelection = {},
-  onRowSelectionChange,
-  targetDates,
+  target1Date,
+  target2Date,
 }: TeamTargetPlanTableProps) {
-  const rowSelection = externalRowSelection
-  const setRowSelection = onRowSelectionChange
 
-  const firstTargetDate = targetDates?.[0]
-  const columnGroups = getColumnGroups(firstTargetDate)
+  const columnGroups = getColumnGroups(target1Date, target2Date)
   const columnConfigs = getColumnConfigs()
   const dataColumns = columnConfigs.filter(col => !col.isSpecial)
 
@@ -151,32 +142,6 @@ export function TeamTargetPlanTable({
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage)
   const grandTotal = calculateGrandTotals(filteredData)
-
-  const handleSelectAll = () => {
-    const allSelected = paginatedData.every(
-      (row) => rowSelection[row.team_name]
-    )
-
-    const newSelection = { ...rowSelection }
-    if (allSelected) {
-      paginatedData.forEach((row) => {
-        delete newSelection[row.team_name]
-      })
-    } else {
-      paginatedData.forEach((row) => {
-        newSelection[row.team_name] = true
-      })
-    }
-    setRowSelection(newSelection)
-  }
-
-  const handleRowSelect = (row: TeamWithCounts) => {
-    const newSelection = {
-      ...rowSelection,
-      [row.team_name]: !rowSelection[row.team_name],
-    }
-    setRowSelection(newSelection)
-  }
 
   const handlePrevious = () => {
     if (currentPage > 1) onPageChange(currentPage - 1)
@@ -215,14 +180,9 @@ export function TeamTargetPlanTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <BorderedTableHead rowSpan={2} className="w-10 align-middle whitespace-nowrap">
-                <Checkbox
-                  checked={paginatedData.length > 0 && paginatedData.every((row) => rowSelection[row.team_name])}
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Select all"
-                />
+              <BorderedTableHead className="align-middle whitespace-nowrap text-center min-w-[200px]" rowSpan={2}>
+                By Team
               </BorderedTableHead>
-              <BorderedTableHead className="align-middle whitespace-nowrap text-center min-w-[200px]" rowSpan={2}>By Team</BorderedTableHead>
               {columnGroups.map((group) => (
                 <BorderedTableHead key={group.id} className={cn("align-middle whitespace-nowrap text-center", group.width)} colSpan={group.colSpan}>
                   {group.header}
@@ -240,20 +200,20 @@ export function TeamTargetPlanTable({
 
           <TableBody>
             {paginatedData.length === 0 ? (
-              <TableRow><BorderedTableCell colSpan={columnConfigs.length + 1} className="py-8 text-center text-muted-foreground">No teams found</BorderedTableCell></TableRow>
+              <TableRow>
+                <BorderedTableCell colSpan={columnConfigs.length} className="py-8 text-center text-muted-foreground">
+                  No teams found
+                </BorderedTableCell>
+              </TableRow>
             ) : (
               <>
                 {paginatedData.map((row, index) => {
-                  const isSelected = !!rowSelection[row.team_name]
                   return (
                     <TableRow key={row.team_name || index}>
-                      <BorderedTableCell className="w-10" selected={isSelected}>
-                        <Checkbox checked={isSelected} onCheckedChange={() => handleRowSelect(row)} aria-label={`Select ${row.team_name}`} />
-                      </BorderedTableCell>
                       {columnConfigs.map((col) => {
                         const value: string | number | undefined = row[col.field as keyof TeamWithCounts]
                         return (
-                          <BorderedTableCell key={col.field} className={cn("text-center", col.width, col.isSpecial && "font-medium text-left")} selected={isSelected}>
+                          <BorderedTableCell key={col.field} className={cn("text-center", col.width, col.isSpecial && "font-medium text-left")}>
                             {value !== undefined && value !== null ? value : '-'}
                           </BorderedTableCell>
                         )
@@ -263,11 +223,13 @@ export function TeamTargetPlanTable({
                 })}
                 {filteredData.length > 0 && Object.keys(grandTotal).length > 0 && (
                   <TableRow className="bg-muted/30 font-bold">
-                    <BorderedTableCell className="w-10" />
                     {columnConfigs.map((col) => {
                       let value: string | number | undefined
-                      if (col.isSpecial) value = col.field === "team_name" ? "Grand Total" : grandTotal[col.field as keyof typeof grandTotal]
-                      else value = grandTotal[col.field as keyof typeof grandTotal]
+                      if (col.isSpecial) {
+                        value = col.field === "team_name" ? "Grand Total" : grandTotal[col.field as keyof typeof grandTotal]
+                      } else {
+                        value = grandTotal[col.field as keyof typeof grandTotal]
+                      }
                       return (
                         <BorderedTableCell key={col.field} className={cn("text-center", col.width, col.isSpecial && "font-bold text-left")}>
                           {value !== undefined && value !== null ? value : '-'}
@@ -285,27 +247,77 @@ export function TeamTargetPlanTable({
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Rows per page</span>
-          <Select value={itemsPerPage.toString()} onValueChange={(value) => onItemsPerPageChange(Number(value))}>
-            <SelectTrigger className="w-[70px]"><SelectValue /></SelectTrigger>
+          <Select 
+            value={itemsPerPage.toString()} 
+            onValueChange={(value) => onItemsPerPageChange(Number(value))}
+          >
+            <SelectTrigger className="w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent align="start">
-              <SelectGroup><SelectItem value="15">15</SelectItem><SelectItem value="50">50</SelectItem><SelectItem value="100">100</SelectItem></SelectGroup>
+              <SelectGroup>
+                <SelectItem value="15">15</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
+
         <div className="text-sm text-muted-foreground">
-          Showing {filteredData.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredData.length)} of {filteredData.length} teams
+          Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
+          {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
+          {filteredData.length} teams
         </div>
+
         <Pagination className="mx-0 w-auto">
           <PaginationContent>
-            <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); handlePrevious() }} className={currentPage === 1 || filteredData.length === 0 ? "pointer-events-none opacity-50" : ""} /></PaginationItem>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handlePrevious()
+                }}
+                className={
+                  currentPage === 1 || filteredData.length === 0
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              />
+            </PaginationItem>
             {getPageNumbers().map((page, index) => (
               <PaginationItem key={index}>
-                {page === "..." ? <span className="px-2">...</span> : (
-                  <PaginationLink href="#" isActive={currentPage === page} onClick={(e) => { e.preventDefault(); onPageChange(page as number) }}>{page}</PaginationLink>
+                {page === "..." ? (
+                  <span className="px-2">...</span>
+                ) : (
+                  <PaginationLink
+                    href="#"
+                    isActive={currentPage === page}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      onPageChange(page as number)
+                    }}
+                  >
+                    {page}
+                  </PaginationLink>
                 )}
               </PaginationItem>
             ))}
-            <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); handleNext() }} className={currentPage === totalPages || filteredData.length === 0 ? "pointer-events-none opacity-50" : ""} /></PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleNext()
+                }}
+                className={
+                  currentPage === totalPages || filteredData.length === 0
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              />
+            </PaginationItem>
           </PaginationContent>
         </Pagination>
       </div>

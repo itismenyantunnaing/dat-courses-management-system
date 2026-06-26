@@ -53,8 +53,8 @@ public class EmployeeJapaneseProfile {
 
     public enum JapaneseExamType {
         JLPT,
-        NAT_TEST,
-        TOP_J,
+        NAT,
+        TopJ,
         BJT
     }
 }

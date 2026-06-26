@@ -25,7 +25,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import type { DeptWithCounts } from "@/types/exam_progress_report"
 
@@ -37,6 +36,7 @@ type ColumnConfig = {
 }
 
 type ColumnGroupConfig = {
+  id: string;  // Add unique id
   header: string;
   colSpan: number;
   fields: string[];
@@ -46,18 +46,21 @@ type ColumnGroupConfig = {
 
 const columnGroups: ColumnGroupConfig[] = [
   {
+    id: "certified",
     header: "Certified",
     colSpan: 5,
     fields: ["N1", "N2", "N3", "N4", "N5"],
     width: "w-[100px]"
   },
   {
+    id: "not-certified",
     header: "Not Certified",
     colSpan: 1,
     fields: ["None"],
     width: "w-[100px]"
   },
   {
+    id: "total",
     header: "Total",
     colSpan: 1,
     fields: ["total"],
@@ -77,17 +80,15 @@ const columnConfigs: ColumnConfig[] = [
   { field: "total", header: "Total", width: "w-[150px]", isSpecial: true },
 ]
 
-const specialColumns = columnConfigs.filter(col => col.isSpecial)
 const dataColumns = columnConfigs.filter(col => !col.isSpecial)
 
 const BorderedTableCell = ({
   children,
   className = "",
-  selected = false,
   ...props
-}: React.ComponentProps<typeof TableCell> & { selected?: boolean }) => (
+}: React.ComponentProps<typeof TableCell>) => (
   <TableCell
-    className={cn("border-r border-l", selected && "bg-muted/50", className)}
+    className={cn("border-r border-l", className)}
     {...props}
   >
     {children}
@@ -113,8 +114,6 @@ interface DepartmentTableProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: number) => void;
   data: DeptWithCounts[];
-  rowSelection?: Record<string, boolean>;
-  onRowSelectionChange?: (selection: Record<string, boolean>) => void;
 }
 
 export function DepartmentTable({
@@ -124,11 +123,7 @@ export function DepartmentTable({
   onPageChange,
   onItemsPerPageChange,
   data,
-  rowSelection: externalRowSelection = {},
-  onRowSelectionChange,
 }: DepartmentTableProps) {
-  const rowSelection = externalRowSelection
-  const setRowSelection = onRowSelectionChange
 
   const calculateRowTotal = (row: DeptWithCounts) => {
     return row.N1 + row.N2 + row.N3 + row.N4 + row.N5 + row.None
@@ -161,32 +156,6 @@ export function DepartmentTable({
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage)
   const grandTotal = calculateGrandTotals(filteredData)
-
-  const handleSelectAll = () => {
-    const allSelected = paginatedData.every(
-      (row) => rowSelection[row.dept_name]
-    )
-
-    const newSelection = { ...rowSelection }
-    if (allSelected) {
-      paginatedData.forEach((row) => {
-        delete newSelection[row.dept_name]
-      })
-    } else {
-      paginatedData.forEach((row) => {
-        newSelection[row.dept_name] = true
-      })
-    }
-    setRowSelection(newSelection)
-  }
-
-  const handleRowSelect = (row: DeptWithCounts) => {
-    const newSelection = {
-      ...rowSelection,
-      [row.dept_name]: !rowSelection[row.dept_name],
-    }
-    setRowSelection(newSelection)
-  }
 
   const handlePrevious = () => {
     if (currentPage > 1) onPageChange(currentPage - 1)
@@ -225,16 +194,6 @@ export function DepartmentTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <BorderedTableHead rowSpan={2} className="w-10 align-middle whitespace-nowrap">
-                <Checkbox
-                  checked={
-                    paginatedData.length > 0 &&
-                    paginatedData.every((row) => rowSelection[row.dept_name])
-                  }
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Select all"
-                />
-              </BorderedTableHead>
               <BorderedTableHead
                 className="align-middle whitespace-nowrap text-center min-w-[200px]"
                 rowSpan={2}
@@ -244,7 +203,7 @@ export function DepartmentTable({
 
               {columnGroups.map((group) => (
                 <BorderedTableHead
-                  key={group.header}
+                  key={group.id}
                   className={cn(
                     "align-middle whitespace-nowrap text-center",
                     group.width,
@@ -277,7 +236,7 @@ export function DepartmentTable({
             {paginatedData.length === 0 ? (
               <TableRow>
                 <BorderedTableCell
-                  colSpan={columnConfigs.length + 1}
+                  colSpan={columnConfigs.length}
                   className="py-8 text-center text-muted-foreground"
                 >
                   No departments found
@@ -287,16 +246,8 @@ export function DepartmentTable({
               <>
                 {paginatedData.map((row, index) => {
                   const rowTotal = calculateRowTotal(row)
-                  const isSelected = !!rowSelection[row.dept_name]
                   return (
                     <TableRow key={row.id || index}>
-                      <BorderedTableCell className="w-10" selected={isSelected}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => handleRowSelect(row)}
-                          aria-label={`Select ${row.dept_name}`}
-                        />
-                      </BorderedTableCell>
                       {columnConfigs.map((col) => {
                         let value: string | number | undefined
 
@@ -317,7 +268,6 @@ export function DepartmentTable({
                               col.field === "dept_name" && "font-medium text-left",
                               col.field === "total" && "font-bold"
                             )}
-                            selected={isSelected}
                           >
                             {value}
                           </BorderedTableCell>
@@ -329,7 +279,6 @@ export function DepartmentTable({
 
                 {filteredData.length > 0 && (
                   <TableRow className="bg-muted/30 font-bold">
-                    <BorderedTableCell className="w-10" />
                     {columnConfigs.map((col) => {
                       let value: string | number | undefined
 

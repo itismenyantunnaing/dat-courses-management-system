@@ -285,7 +285,7 @@ export default function ChangePassword({
 
         try {
             // Using direct fetch to maintain session for the two-step change process
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/verify-current-password`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/security/api/auth/verify-current-password`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -397,7 +397,7 @@ export default function ChangePassword({
                 }
             } else {
                 // For change password flow, use direct fetch to maintain session
-                const changeResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/change-password`, {
+                const changeResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/security/api/auth/change-password`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

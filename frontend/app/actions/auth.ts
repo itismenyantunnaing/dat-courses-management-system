@@ -211,7 +211,7 @@ async function parseResponse(response: Response): Promise<any> {
 // Login action
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        const response = await fetch(`${API_BASE_URL}/security/api/auth/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -394,7 +394,7 @@ export async function verifyCurrentPassword(currentPassword: string): Promise<{ 
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/verify-current-password`, {
+        const response = await fetch(`${API_BASE_URL}/security/api/auth/verify-current-password`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -432,7 +432,7 @@ export async function changePassword(
 
     try {
         // Verify current password
-        const verifyResponse = await fetch(`${API_BASE_URL}/api/auth/verify-current-password`, {
+        const verifyResponse = await fetch(`${API_BASE_URL}/security/api/auth/verify-current-password`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -446,7 +446,7 @@ export async function changePassword(
         }
 
         // Change password
-        const changeResponse = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+        const changeResponse = await fetch(`${API_BASE_URL}/security/api/auth/change-password`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,

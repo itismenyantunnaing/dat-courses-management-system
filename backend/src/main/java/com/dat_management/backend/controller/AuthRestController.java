@@ -21,8 +21,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
+@RequestMapping("/security/api/auth")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true", allowedHeaders = "*", exposedHeaders = {
+                "Authorization", "Content-Type" }, methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT,
+                                RequestMethod.DELETE, RequestMethod.OPTIONS })
 public class AuthRestController {
 
         private final AuthenticationManager authenticationManager;
@@ -104,8 +106,8 @@ public class AuthRestController {
                                 "userId", employee.getId(),
                                 "role", employee.getRole().getRoleName(),
                                 "name", employee.getName(),
-                                "email", employee.getEmail(), 
-                                "status", employee.getStatus(), 
+                                "email", employee.getEmail(),
+                                "status", employee.getStatus(),
                                 "message", "Login successful"));
         }
 
