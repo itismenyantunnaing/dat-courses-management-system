@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -32,22 +32,53 @@ import { deleteOptions, allTabs } from "../nav/nav-group"
 interface DeleteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  preselectedItems?: string[]
 }
 
-export function DeleteDialog({ open, onOpenChange }: DeleteDialogProps) {
+export function DeleteDialog({
+  open,
+  onOpenChange,
+  preselectedItems = [],
+}: DeleteDialogProps) {
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteComboboxOpen, setIsDeleteComboboxOpen] = useState(false)
   const [isAllSelected, setIsAllSelected] = useState(false)
 
+  // Use ref to track if we've already set preselected items for the current dialog session
+  const hasSetPreselectedForSession = useRef(false)
+  const previousOpenState = useRef(false)
 
-   useEffect(() => {
-    if (open) {
-      setSelectedItems([])
+  // Reset state when dialog opens and set preselected items
+  useEffect(() => {
+    // Check if dialog just opened (was closed and now open)
+    const justOpened = open && !previousOpenState.current
+
+    if (justOpened) {
       setIsDeleting(false)
       setIsDeleteComboboxOpen(false)
+      hasSetPreselectedForSession.current = false
+
+      // Set preselected items if any exist
+      if (preselectedItems.length > 0) {
+        setSelectedItems(preselectedItems)
+        hasSetPreselectedForSession.current = true
+      } else {
+        setSelectedItems([])
+      }
     }
-  }, [open]) 
+
+    // If dialog just closed, reset everything
+    if (!open && previousOpenState.current) {
+      setSelectedItems([])
+      setIsDeleteComboboxOpen(false)
+      setIsDeleting(false)
+      hasSetPreselectedForSession.current = false
+    }
+
+    // Update previous open state for next render
+    previousOpenState.current = open
+  }, [open, preselectedItems])
 
   useEffect(() => {
     setIsAllSelected(
@@ -91,7 +122,17 @@ export function DeleteDialog({ open, onOpenChange }: DeleteDialogProps) {
       setIsDeleting(false)
       onOpenChange(false)
       setSelectedItems([])
+      hasSetPreselectedForSession.current = false
+      previousOpenState.current = false
     }, 1500)
+  }
+
+  const handleCancel = () => {
+    onOpenChange(false)
+    setSelectedItems([])
+    setIsDeleteComboboxOpen(false)
+    hasSetPreselectedForSession.current = false
+    previousOpenState.current = false
   }
 
   return (
@@ -203,14 +244,7 @@ export function DeleteDialog({ open, onOpenChange }: DeleteDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => {
-              onOpenChange(false)
-              setSelectedItems([])
-              setIsDeleteComboboxOpen(false)
-            }}
-          >
+          <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
           <Button

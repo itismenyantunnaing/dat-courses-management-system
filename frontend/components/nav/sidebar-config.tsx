@@ -16,7 +16,11 @@ import {
   CourseIcon,
   DocumentValidationIcon,
   Time02Icon,
-  ChartHistogramIcon
+  ChartHistogramIcon,
+  UserGroupIcon,
+  CodeIcon,
+  TrendingUp,
+  CalendarIcon,
 } from "@hugeicons/core-free-icons"
 import { importTabs } from "./tabs-config"
 
@@ -26,13 +30,21 @@ const STROKE_WIDTH = 2
 export interface NavItem {
   title: string
   tabId?: string
-  type: "primary" | "dropdown"
+  type: "primary" | "dropdown" | "primary-action"
   icon?: React.ReactNode
   isActive?: boolean
   items?: Array<{
     title: string
     tabId?: string
     action?: "import" | "export" | "delete"
+    destructive?: boolean
+  }>
+  actions?: Array<{
+    label: string
+    icon?: React.ReactNode
+    tabId?: string
+    action?: "import" | "export" | "delete"
+    onClick?: () => void
     destructive?: boolean
   }>
 }
@@ -86,6 +98,7 @@ export const adminData: SidebarConfig = {
     {
       groupLabel: "Manage",
       items: [
+        // Master Data - Keep as dropdown
         {
           title: "Master Data",
           tabId: "master",
@@ -106,15 +119,139 @@ export const adminData: SidebarConfig = {
             {
               title: "Delete data",
               action: "delete",
+              destructive: true,
             },
           ],
         },
-        ...importTabs.map((tab) => ({
-          title: tab.label,
-          tabId: tab.id,
-          type: "primary" as const,
-          icon: <HugeiconsIcon icon={tab.icon} strokeWidth={STROKE_WIDTH} />,
-        })),
+        // Employees - Changed to primary-action
+        {
+          title: "Employees",
+          tabId: "employees",
+          type: "primary-action",
+          icon: (
+            <HugeiconsIcon icon={UserGroupIcon} strokeWidth={STROKE_WIDTH} />
+          ),
+          actions: [
+            {
+              label: "Import data",
+              tabId: "employees",
+              action: "import",
+            },
+            {
+              label: "Export data",
+              tabId: "employees",
+              action: "export",
+            },
+            {
+              label: "Delete data",
+              tabId: "employees",
+              action: "delete",
+              destructive: true,
+            },
+          ],
+        },
+        // Courses - Changed to primary-action
+        {
+          title: "Courses",
+          tabId: "courses",
+          type: "primary-action",
+          icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
+          actions: [
+            {
+              label: "Import data",
+              tabId: "courses",
+              action: "import",
+            },
+            {
+              label: "Export data",
+              tabId: "courses",
+              action: "export",
+            },
+            {
+              label: "Delete data",
+              tabId: "courses",
+              action: "delete",
+              destructive: true,
+            },
+          ],
+        },
+        // Skills - Changed to primary-action
+        {
+          title: "Skills",
+          tabId: "skills",
+          type: "primary-action",
+          icon: <HugeiconsIcon icon={CodeIcon} strokeWidth={STROKE_WIDTH} />,
+          actions: [
+            {
+              label: "Import data",
+              tabId: "skills",
+              action: "import",
+            },
+            {
+              label: "Export data",
+              tabId: "skills",
+              action: "export",
+            },
+            {
+              label: "Delete data",
+              tabId: "skills",
+              action: "delete",
+              destructive: true,
+            },
+          ],
+        },
+        // Current Target - Changed to primary-action
+        {
+          title: "Current target",
+          tabId: "current_target_data",
+          type: "primary-action",
+          icon: <HugeiconsIcon icon={TrendingUp} strokeWidth={STROKE_WIDTH} />,
+          actions: [
+            {
+              label: "Import data",
+              tabId: "current_target_data",
+              action: "import",
+            },
+            {
+              label: "Export data",
+              tabId: "current_target_data",
+              action: "export",
+            },
+            {
+              label: "Delete data",
+              tabId: "current_target_data",
+              action: "delete",
+              destructive: true,
+            },
+          ],
+        },
+        // Holidays - Changed to primary-action
+        {
+          title: "Holidays",
+          tabId: "holidays",
+          type: "primary-action",
+          icon: (
+            <HugeiconsIcon icon={CalendarIcon} strokeWidth={STROKE_WIDTH} />
+          ),
+          actions: [
+            {
+              label: "Import data",
+              tabId: "holidays",
+              action: "import",
+            },
+            {
+              label: "Export data",
+              tabId: "holidays",
+              action: "export",
+            },
+            {
+              label: "Delete data",
+              tabId: "holidays",
+              action: "delete",
+              destructive: true,
+            },
+          ],
+        },
       ],
     },
     {
