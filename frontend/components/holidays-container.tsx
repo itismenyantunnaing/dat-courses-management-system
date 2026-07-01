@@ -399,7 +399,7 @@ export function HolidaysContainer({
           {/* Table */}
           <div
             className={cn(
-              "relative overflow-x-auto rounded-md border",
+              "relative overflow-x-auto rounded-md border-y",
               isSelectionActive && "pointer-events-none"
             )}
             style={{ zIndex: 1 }}
@@ -496,7 +496,7 @@ export function HolidaysContainer({
             <>
               {/* Overlay - Click to clear selection */}
               <div
-                className="pointer-events-auto absolute inset-0 z-40 cursor-pointer bg-black/2"
+                className="pointer-events-auto absolute inset-0 z-40 cursor-pointer bg-black/4"
                 onClick={handleClearSelection}
               />
 
@@ -511,7 +511,8 @@ export function HolidaysContainer({
                         aria-label="Select all"
                       />
                       <span className="text-sm font-medium whitespace-nowrap">
-                        {selectedCount} holidays are Selected
+                        {selectedCount} holiday
+                        {selectedCount > 1 ? "s are" : " is"} selected
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
