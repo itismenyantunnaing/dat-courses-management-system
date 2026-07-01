@@ -45,6 +45,7 @@ public class Course {
     private LocalDate registrationDeadline;
 
     private String selfStudyType; //JLPT,Other
+    
 
     private String targetLevel;
 
@@ -62,6 +63,9 @@ public class Course {
     private LocalDateTime updatedAt;
 
     private Boolean isDeleted = false;
+
+    @Column(name = "image_path")
+    private String imagePath;
 
     @PrePersist
     protected void onCreate() {

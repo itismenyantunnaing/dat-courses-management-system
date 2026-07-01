@@ -18,6 +18,7 @@ import {
 } from "@/types/exam_progress_report"
 import type { JapaneseCertificate } from "@/types/certificate"
 import type { SessionData } from "@/types/session";
+import type { CategoryItem, Course, CourseCategoryData } from "@/types/course"
 
 export interface Employee_StoreType {
   employee_data: Employee[]
@@ -93,8 +94,8 @@ export interface ExamProgressReport_StoreType {
   teamData?: TeamCertificationResponse;
   deptDisplayData?: DeptWithCounts[];
   teamDisplayData?: TeamWithCounts[];
-  fetch_DeptData: () => Promise<void>;
-  fetch_TeamData: () => Promise<void>;
+  fetch_DeptData?: () => Promise<void>;
+  fetch_TeamData?: () => Promise<void>;
   getDeptWithCounts: () => DeptWithCounts[];
   getTeamWithCounts: () => TeamWithCounts[];
   getTeamsByDept: (deptId: number) => TeamWithCounts[];
@@ -121,4 +122,97 @@ export interface Session_StoreType {
   getUserName: () => string | null
   getUserEmail: () => string | null
   getUserId: () => string | null
+}
+
+export interface Course_StoreType {
+  // State
+  courses: Course[];
+  error: string | null;
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
+  courseCategory_data: CourseCategoryData;
+  isFormVisible: boolean;
+  editingCourse: Course | null;
+  // Session methods (required for auth)
+  getToken: () => string | null;
+  // Optional: add other session methods if needed
+  getUserRole?: () => string | null;
+  getUserName?: () => string | null;
+  getUserEmail?: () => string | null;
+  getUserId?: () => string | null;
+
+  // Helper methods
+  getAuthHeaders: () => HeadersInit;
+  getMultipartAuthHeaders: () => HeadersInit;
+  transformBackendCourseToFrontend: (course: import("@/types/course").BackendCourseDto) => Course;
+
+  // Course API methods
+  fetchAll_CourseData: () => Promise<void>;
+  fetch_CourseData: (id: number | string) => Promise<{
+    success: boolean;
+    course?: Course;
+    message?: string;
+  }>;
+  add_CourseData: (formData: FormData) => Promise<{
+    success: boolean;
+    message?: string;
+    course?: Course;
+  }>;
+  update_CourseData: (id: number | string, courseData: Partial<Course>) => Promise<{
+    success: boolean;
+    message?: string;
+    course?: Course;
+  }>;
+  upload_CourseImage: (id: number | string, formData: FormData) => Promise<{
+    success: boolean;
+    message?: string;
+    course?: Course;
+  }>;
+  delete_CourseImage: (id: number | string) => Promise<{
+    success: boolean;
+    message?: string;
+    course?: Course;
+  }>;
+  delete_CourseData: (id: number | string) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+
+  // Course Category API methods
+  fetch_courseCategories: () => Promise<void>;
+  add_courseCategories: (categoryName: string, courseType: 'trainer' | 'self-study') => Promise<{
+    success: boolean;
+    message?: string;
+    category?: CourseCategoryData;
+  }>;
+  update_courseCategories: (categoryId: number, categoryName: string, courseType: 'trainer' | 'self-study') => Promise<{
+    success: boolean;
+    message?: string;
+    category?: CourseCategoryData;
+  }>;
+  delete_courseCategories: (categoryId: number) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+
+  // Helper functions for categories
+  getAllCategories: () => CategoryItem[];
+  getCategoryByValue: (value: string) => CategoryItem | undefined;
+  getCategoryByIdFromStore: (id: number) => CategoryItem | undefined;
+  getCategoryType: (value: string) => string | null;
+  getSelfStudyType: (value: string) => string;
+
+  // Legacy/Utility course operations
+  setCourses: (courses: Course[]) => void;
+  addCourse: (course: Course) => void;
+  updateCourse: (id: string, data: Partial<Course>) => void;
+  deleteCourse: (id: string) => void;
+  getCourse: (id: string) => Course | undefined;
+  initializeCourses: () => void;
+
+  // UI State methods
+  setIsFormVisible: (visible: boolean) => void;
+  setEditingCourse: (course: Course | null) => void;
+  resetForm: () => void;
 }

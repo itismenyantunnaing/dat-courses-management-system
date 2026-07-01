@@ -16,7 +16,7 @@ public class CourseCategory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "course_category_name", nullable = false, unique = true)
+    @Column(name = "course_category_name", nullable = false)
     private String courseCategoryName;
 
     @Enumerated(EnumType.STRING)
