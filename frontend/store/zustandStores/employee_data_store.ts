@@ -8,7 +8,7 @@ type StoreSet = (
 ) => void
 type StoreGet = () => Employee_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
 
 // Helper functions to extract unique values
 export const getUniqueDivisions = (employees: Employee[]) => {

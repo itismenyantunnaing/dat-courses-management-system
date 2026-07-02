@@ -300,20 +300,20 @@ public class CourseController {
     // =========================================================
     // API 10 — GET /api/courses/:id/enrollments
     // =========================================================
-    @GetMapping("/api/courses/{id}/enrollments")
-    public ResponseEntity<Map<String, Object>> getCourseEnrollments(@PathVariable Integer id) {
-        try {
-            List<CourseEnrollmentDto> enrollments = courseService.getCourseEnrollments(id);
-            Map<String, Object> res = new HashMap<>();
-            res.put("enrollments", enrollments);
-            return ResponseEntity.ok(res);
-        } catch (RuntimeException e) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("success", false);
-            err.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err);
-        }
-    }
+    // @GetMapping("/api/courses/{id}/enrollments")
+    // public ResponseEntity<Map<String, Object>> getCourseEnrollments(@PathVariable Integer id) {
+    //     try {
+    //         List<CourseEnrollmentDto> enrollments = courseService.getCourseEnrollments(id);
+    //         Map<String, Object> res = new HashMap<>();
+    //         res.put("enrollments", enrollments);
+    //         return ResponseEntity.ok(res);
+    //     } catch (RuntimeException e) {
+    //         Map<String, Object> err = new HashMap<>();
+    //         err.put("success", false);
+    //         err.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err);
+    //     }
+    // }
 
     // =========================================================
     // API 21 — GET /api/courses/:id/groups/:groupId/sessions

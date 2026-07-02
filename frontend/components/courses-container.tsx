@@ -63,6 +63,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
     isDeleting,
     upload_CourseImage,
     delete_CourseImage,
+    
   } = mainStore()
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -75,7 +76,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
     fetch_courseCategories()
   }, [fetchAll_CourseData, fetch_courseCategories])
 
-  const userRole = "ADMIN" // getUserRole()
+  const userRole = "LEARNER" // getUserRole()
 
   const canEditTrainerCourses = userRole === "ADMIN" || userRole === "APPROVER"
   const isLearner = userRole === "LEARNER"

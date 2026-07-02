@@ -1,0 +1,30 @@
+package com.dat_management.backend.dto;
+
+import lombok.Builder;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+public class EnrollmentResponseDTO {
+
+    private Integer id;
+
+    private String employeeId;
+    private String employeeName;
+    private String email;
+    private String position;
+
+    private Integer teamId;
+    private String teamName;
+
+    private Integer departmentId;
+    private String departmentName;
+
+    private Integer courseGroupId;
+    private String courseGroupName;
+
+    private String enrollmentStatus;
+    private LocalDateTime enrolledAt;
+}

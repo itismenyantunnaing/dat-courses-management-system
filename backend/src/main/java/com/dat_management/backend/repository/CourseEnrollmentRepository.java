@@ -2,6 +2,9 @@ package com.dat_management.backend.repository;
 
 import com.dat_management.backend.entity.CourseEnrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 
 public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollment, Integer> {
@@ -13,4 +16,14 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
 
     // Duplicate-enroll guard
     boolean existsByEmployeeIdAndCourseId(String employeeId, Integer courseId);
+
+    @Query("""
+        SELECT COUNT(ce) > 0
+        FROM CourseEnrollment ce
+        WHERE ce.employee.id = :employeeId
+        AND ce.course.id = :courseId
+    """)
+    boolean existsEnrollment(
+            @Param("employeeId") String employeeId,
+            @Param("courseId") Integer courseId);
 }

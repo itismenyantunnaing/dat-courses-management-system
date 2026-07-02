@@ -7,7 +7,7 @@ type StoreSet = (
   fn: (state: Holiday_StoreType) => Partial<Holiday_StoreType>
 ) => void
 type StoreGet = () => Holiday_StoreType
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
 
 export const holidayDataStore = (set: StoreSet, get: StoreGet) => ({
   holiday_data: [],

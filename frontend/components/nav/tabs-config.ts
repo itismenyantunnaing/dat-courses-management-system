@@ -321,15 +321,10 @@ export const allTabs = [
         // ===== FETCH EMPLOYEE DATA FIRST =====
         let existingEmployeeIds = new Set<string>();
         try {
-          console.log('📋 Checking employee data in store...');
 
           // Check if employee_data is empty
           if (!store.employee_data || store.employee_data.length === 0) {
-            console.log('📋 Employee data is empty. Fetching from API...');
 
-            // Show loading message
-            const loadingMessage = 'Fetching employee data from system. Please wait...';
-            console.log(loadingMessage);
 
             // Fetch employee data
             await store.fetch_EmployeeData();

@@ -1037,7 +1037,7 @@ const managementScoresData = [
 type StoreSet = (fn: (state: SkillSet_StoreType) => Partial<SkillSet_StoreType>) => void;
 type StoreGet = () => SkillSet_StoreType;
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
 
 
 export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({

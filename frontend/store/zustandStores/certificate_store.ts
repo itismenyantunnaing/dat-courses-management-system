@@ -4,7 +4,7 @@ import type { Certificates_StoreType } from "../types"
 type StoreSet = (fn: (state: Certificates_StoreType) => Partial<Certificates_StoreType>) => void
 type StoreGet = () => Certificates_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
 
 // Helper function to transform file path to URL
 const getImageUrl = (filePath: string): string => {

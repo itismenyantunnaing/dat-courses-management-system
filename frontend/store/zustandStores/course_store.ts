@@ -12,6 +12,8 @@ import {
   BackendCategoryDto
 } from "@/types/course"
 import type { Course_StoreType } from "../types"
+import { courseCategoryStore } from "./course_category_store"
+import { courseEnrollmentStore } from "./course_enrollment_store"
 
 type StoreSet = (
   fn: (state: Course_StoreType) => Partial<Course_StoreType>
@@ -22,6 +24,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 // Define the course store as a function that takes set and get
 export const courseStore = (set: StoreSet, get: StoreGet) => ({
+  // ========== INITIAL STATE ==========
   courses: [],
   error: null,
   isCreating: false,
@@ -31,6 +34,12 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     trainer: [],
     selfStudy: []
   },
+
+  // ========== UI STATE ==========
+  isFormVisible: false,
+  editingCourse: null,
+
+  // ========== HELPER FUNCTIONS ==========
 
   // Helper to get auth headers
   getAuthHeaders: () => {
@@ -168,7 +177,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // ==================== COURSE API ENDPOINTS ====================
+  // ========== COURSE API ENDPOINTS ==========
 
   // GET /api/courses - Fetch all courses
   fetchAll_CourseData: async () => {
@@ -251,71 +260,69 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
+  // POST /api/courses - Create a new course (with optional image)
+  add_CourseData: async (formData: FormData) => {
+    set((state: Course_StoreType) => ({ ...state, isCreating: true, error: null }))
 
-
-// POST /api/courses - Create a new course (with optional image)
-add_CourseData: async (formData: FormData) => {
-  set((state: Course_StoreType) => ({ ...state, isCreating: true, error: null }))
-
-  try {
-    // ❗ HARD CHECK
-    if (!(formData instanceof FormData)) {
-      throw new Error("Body is NOT FormData")
-    }
-
-    const response = await fetch(`${apiUrl}/api/courses`, {
-      method: "POST",
-      body: formData,
-    })
-
-    let result
-    const contentType = response.headers.get("content-type")
-    if (contentType && contentType.includes("application/json")) {
-      result = await response.json()
-    } else {
-      const text = await response.text()
-      result = { message: text || `Error: ${response.status} ${response.statusText}` }
-    }
-
-    if (response.ok) {
-      const transformedCourse = get().transformBackendCourseToFrontend(result.course as BackendCourseDto)
-      
-      set((state: Course_StoreType) => ({
-        ...state,
-        courses: [transformedCourse, ...state.courses],
-        isCreating: false,
-        error: null
-      }))
-
-      return {
-        success: true,
-        message: result.message || 'Course created successfully',
-        course: transformedCourse
+    try {
+      // ❗ HARD CHECK
+      if (!(formData instanceof FormData)) {
+        throw new Error("Body is NOT FormData")
       }
-    } else {
+
+      const response = await fetch(`${apiUrl}/api/courses`, {
+        method: "POST",
+        body: formData,
+      })
+
+      let result
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        result = await response.json()
+      } else {
+        const text = await response.text()
+        result = { message: text || `Error: ${response.status} ${response.statusText}` }
+      }
+
+      if (response.ok) {
+        const transformedCourse = get().transformBackendCourseToFrontend(result.course as BackendCourseDto)
+        
+        set((state: Course_StoreType) => ({
+          ...state,
+          courses: [transformedCourse, ...state.courses],
+          isCreating: false,
+          error: null
+        }))
+
+        return {
+          success: true,
+          message: result.message || 'Course created successfully',
+          course: transformedCourse
+        }
+      } else {
+        set((state: Course_StoreType) => ({
+          ...state,
+          isCreating: false,
+          error: result.message || 'Failed to create course'
+        }))
+        return {
+          success: false,
+          message: result.message || 'Failed to create course',
+        }
+      }
+    } catch (error) {
+      console.error("UPLOAD FAILED:", error)
       set((state: Course_StoreType) => ({
         ...state,
         isCreating: false,
-        error: result.message || 'Failed to create course'
+        error: error instanceof Error ? error.message : 'Upload failed'
       }))
       return {
         success: false,
-        message: result.message || 'Failed to create course',
+        message: error instanceof Error ? error.message : "Upload failed",
       }
     }
-  } catch (error) {
-    console.error("UPLOAD FAILED:", error)
-    set((state: Course_StoreType) => ({
-      ...state,
-      isCreating: false,
-      error: error instanceof Error ? error.message : 'Upload failed'
-    }))
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Upload failed",
-    }
-  }
-},
+  },
 
   // PUT /api/courses/:id - Update an existing course
   update_CourseData: async (id: number | string, courseData: Partial<Course>) => {
@@ -562,439 +569,12 @@ add_CourseData: async (formData: FormData) => {
     }
   },
 
-  // ==================== COURSE CATEGORY API ENDPOINTS ====================
+  // ========== CATEGORY METHODS (delegated to courseCategoryStore) ==========
+  ...courseCategoryStore(set, get),
+  ...courseEnrollmentStore(set, get),
 
-  // Fetch course categories from API
-  fetch_courseCategories: async () => {
-    set((state: Course_StoreType) => ({ ...state, error: null }))
-    try {
-      const headers = get().getAuthHeaders()
-      
-      const response = await fetch(`${apiUrl}/api/course-categories`, {
-        headers: headers
-      })
+  // ========== LEGACY/UTILITY COURSE OPERATIONS ==========
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      const transformedData: CourseCategoryData = {
-        trainer: [],
-        selfStudy: []
-      }
-
-      if (data.categories && Array.isArray(data.categories)) {
-        data.categories.forEach((category: BackendCategoryDto) => {
-          if (category.is_deleted) return
-
-          let selfStudyType: 'jlpt' | 'other' | undefined = undefined
-          const nameLower = category.course_category_name.toLowerCase()
-
-          if (nameLower.includes('jlpt') ||
-            nameLower.includes('n5') ||
-            nameLower.includes('n4') ||
-            nameLower.includes('n3') ||
-            nameLower.includes('n2') ||
-            nameLower.includes('n1')) {
-            selfStudyType = 'jlpt'
-          } else {
-            selfStudyType = 'other'
-          }
-
-          const categoryItem: CategoryItem = {
-            id: category.id,
-            value: category.course_category_name.toLowerCase().replace(/\s+/g, '-'),
-            label: category.course_category_name,
-            type: category.course_type === 'TRAINER_PROVIDED' ? 'trainer' : 'self-study',
-            ...(category.course_type === 'SELF_STUDY' && {
-              selfStudyType: selfStudyType
-            })
-          }
-
-          if (category.course_type === 'TRAINER_PROVIDED') {
-            transformedData.trainer.push(categoryItem)
-          } else if (category.course_type === 'SELF_STUDY') {
-            transformedData.selfStudy.push(categoryItem)
-          }
-        })
-      }
-
-      set((state: Course_StoreType) => ({
-        ...state,
-        courseCategory_data: transformedData,
-        error: null
-      }))
-    } catch (error) {
-      console.error('Error fetching course categories:', error)
-      set((state: Course_StoreType) => ({
-        ...state,
-        error: error instanceof Error ? error.message : 'Failed to fetch categories',
-        courseCategory_data: { trainer: [], selfStudy: [] }
-      }))
-    }
-  },
-
-  // POST /api/course-categories - Create a new category
-  add_courseCategories: async (categoryName: string, courseType: 'trainer' | 'self-study') => {
-    const previousData = get().courseCategory_data
-    const apiCourseType = courseType === 'trainer' ? 'TRAINER_PROVIDED' : 'SELF_STUDY'
-
-    const optimisticCategory: CategoryItem = {
-      value: categoryName.toLowerCase().replace(/\s+/g, '-'),
-      label: categoryName,
-      type: courseType,
-      ...(courseType === 'self-study' && {
-        selfStudyType: categoryName.toLowerCase().includes('jlpt') ? 'jlpt' : 'other'
-      })
-    }
-
-    const categoryKey = courseType === 'trainer' ? 'trainer' : 'selfStudy'
-    set((state: Course_StoreType) => ({
-      ...state,
-      courseCategory_data: {
-        ...state.courseCategory_data,
-        [categoryKey]: [...state.courseCategory_data[categoryKey], optimisticCategory]
-      },
-      isCreating: true,
-      error: null
-    }))
-
-    try {
-      const headers = get().getAuthHeaders()
-      
-      const response = await fetch(`${apiUrl}/api/course-categories`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          course_category_name: categoryName,
-          course_type: apiCourseType
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        set((state: Course_StoreType) => ({
-          ...state,
-          courseCategory_data: previousData,
-          isCreating: false,
-          error: result.message || 'Failed to create category'
-        }))
-        throw new Error(result.message || 'Failed to create category')
-      }
-
-      await get().fetch_courseCategories()
-
-      set((state: Course_StoreType) => ({
-        ...state,
-        isCreating: false,
-        error: null
-      }))
-
-      return {
-        success: true,
-        message: 'Category created successfully',
-        category: result.category
-      }
-
-    } catch (error) {
-      console.error('Error creating category:', error)
-      set((state: Course_StoreType) => ({
-        ...state,
-        courseCategory_data: previousData,
-        isCreating: false,
-        error: error instanceof Error ? error.message : 'Failed to create category'
-      }))
-
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to create category'
-      }
-    }
-  },
-
-  // PUT /api/course-categories/:id - Update an existing category
-  update_courseCategories: async (categoryId: number, categoryName: string, courseType: 'trainer' | 'self-study') => {
-    const previousData = get().courseCategory_data
-    const categoryKey = courseType === 'trainer' ? 'trainer' : 'selfStudy'
-
-    const currentCategory = previousData[categoryKey].find(
-      (cat: CategoryItem) => cat.id === categoryId
-    )
-
-    if (!currentCategory) {
-      return {
-        success: false,
-        message: 'Category not found'
-      }
-    }
-
-    const apiCourseType = courseType === 'trainer' ? 'TRAINER_PROVIDED' : 'SELF_STUDY'
-
-    const updatedCategory: CategoryItem = {
-      ...currentCategory,
-      value: categoryName.toLowerCase().replace(/\s+/g, '-'),
-      label: categoryName,
-      type: courseType,
-      ...(courseType === 'self-study' && {
-        selfStudyType: categoryName.toLowerCase().includes('jlpt') ? 'jlpt' : 'other'
-      })
-    }
-
-    set((state: Course_StoreType) => ({
-      ...state,
-      courseCategory_data: {
-        ...state.courseCategory_data,
-        [categoryKey]: state.courseCategory_data[categoryKey].map((cat: CategoryItem) =>
-          cat.id === categoryId ? updatedCategory : cat
-        )
-      },
-      isUpdating: true,
-      error: null
-    }))
-
-    try {
-      const headers = get().getAuthHeaders()
-      
-      const response = await fetch(`${apiUrl}/api/course-categories/${categoryId}`, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify({
-          course_category_name: categoryName,
-          course_type: apiCourseType
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        set((state: Course_StoreType) => ({
-          ...state,
-          courseCategory_data: previousData,
-          isUpdating: false,
-          error: result.message || 'Failed to update category'
-        }))
-        throw new Error(result.message || 'Failed to update category')
-      }
-
-      await get().fetch_courseCategories()
-
-      set((state: Course_StoreType) => ({
-        ...state,
-        isUpdating: false,
-        error: null
-      }))
-
-      return {
-        success: true,
-        message: 'Category updated successfully',
-        category: result.category
-      }
-
-    } catch (error) {
-      console.error('Error updating category:', error)
-      set((state: Course_StoreType) => ({
-        ...state,
-        courseCategory_data: previousData,
-        isUpdating: false,
-        error: error instanceof Error ? error.message : 'Failed to update category'
-      }))
-
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to update category'
-      }
-    }
-  },
-
-  // DELETE /api/course-categories/:id - Delete a category
-  delete_courseCategories: async (categoryId: number) => {
-    const previousData = get().courseCategory_data
-    
-    let categoryKey: 'trainer' | 'selfStudy' | '' = ''
-
-    const trainerCat = previousData.trainer.find((cat: CategoryItem) => cat.id === categoryId)
-    if (trainerCat) {
-      categoryKey = 'trainer'
-    } else {
-      const selfStudyCat = previousData.selfStudy.find((cat: CategoryItem) => cat.id === categoryId)
-      if (selfStudyCat) {
-        categoryKey = 'selfStudy'
-      }
-    }
-
-    if (!categoryKey) {
-      return {
-        success: false,
-        message: 'Category not found'
-      }
-    }
-
-    set((state: Course_StoreType) => ({
-      ...state,
-      courseCategory_data: {
-        ...state.courseCategory_data,
-        [categoryKey]: state.courseCategory_data[categoryKey].filter(
-          (cat: CategoryItem) => cat.id !== categoryId
-        )
-      },
-      isDeleting: true,
-      error: null
-    }))
-
-    try {
-      const headers = get().getAuthHeaders()
-      
-      const response = await fetch(`${apiUrl}/api/course-categories/${categoryId}`, {
-        method: 'DELETE',
-        headers: headers,
-      })
-
-      if (response.status === 403) {
-        const errorMessage = 'You do not have permission to delete categories. Only administrators and approvers can perform this action.'
-        
-        set((state: Course_StoreType) => ({
-          ...state,
-          courseCategory_data: previousData,
-          isDeleting: false,
-          error: errorMessage
-        }))
-        
-        return {
-          success: false,
-          message: errorMessage
-        }
-      }
-
-      if (!response.ok) {
-        let errorMessage = `HTTP error! status: ${response.status}`
-        try {
-          const result = await response.json()
-          if (result.message) {
-            errorMessage = result.message
-          }
-        } catch (e) {
-          errorMessage = response.statusText || errorMessage
-        }
-        
-        set((state: Course_StoreType) => ({
-          ...state,
-          courseCategory_data: previousData,
-          isDeleting: false,
-          error: errorMessage
-        }))
-        
-        return {
-          success: false,
-          message: errorMessage
-        }
-      }
-
-      let result = null
-      try {
-        result = await response.json()
-      } catch (e) {
-        result = { success: true, message: 'Category deleted successfully' }
-      }
-
-      await get().fetch_courseCategories()
-
-      set((state: Course_StoreType) => ({
-        ...state,
-        isDeleting: false,
-        error: null
-      }))
-
-      return {
-        success: true,
-        message: result?.message || 'Category deleted successfully'
-      }
-
-    } catch (error) {
-      console.error('Error deleting category:', error)
-      set((state: Course_StoreType) => ({
-        ...state,
-        courseCategory_data: previousData,
-        isDeleting: false,
-        error: error instanceof Error ? error.message : 'Failed to delete category'
-      }))
-
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to delete category'
-      }
-    }
-  },
-
-  // Helper function to get all categories as a flat array
-  getAllCategories: () => {
-    try {
-      const state = get()
-      const all: CategoryItem[] = []
-      if (state.courseCategory_data) {
-        state.courseCategory_data.trainer.forEach((cat: CategoryItem) => {
-          all.push({ ...cat, type: 'trainer' })
-        })
-        state.courseCategory_data.selfStudy.forEach((cat: CategoryItem) => {
-          all.push({ ...cat, type: 'self-study' })
-        })
-      }
-      return all
-    } catch (error) {
-      console.error('Error getting all categories:', error)
-      return []
-    }
-  },
-
-  // Helper function to get category by value
-  getCategoryByValue: (value: string) => {
-    try {
-      const state = get()
-      const all = state.getAllCategories()
-      return all.find((cat: CategoryItem) => cat.value === value)
-    } catch (error) {
-      console.error('Error getting category by value:', error)
-      return undefined
-    }
-  },
-
-  // Helper function to get category by ID
-  getCategoryByIdFromStore: (id: number) => {
-    try {
-      const state = get()
-      const all = state.getAllCategories()
-      return all.find((cat: CategoryItem) => cat.id === id)
-    } catch (error) {
-      console.error('Error getting category by ID:', error)
-      return undefined
-    }
-  },
-
-  // Helper function to get category type
-  getCategoryType: (value: string) => {
-    try {
-      const category = get().getCategoryByValue(value)
-      return category?.type || null
-    } catch (error) {
-      console.error('Error getting category type:', error)
-      return null
-    }
-  },
-
-  // Helper function to get self-study type
-  getSelfStudyType: (value: string) => {
-    try {
-      const category = get().getCategoryByValue(value)
-      return category?.selfStudyType || 'other'
-    } catch (error) {
-      console.error('Error getting self-study type:', error)
-      return 'other'
-    }
-  },
-
-  // Legacy course operations (kept for backward compatibility)
   setCourses: (courses: Course[]) =>
     set((state: Course_StoreType) => ({ ...state, courses })),
 
@@ -1034,8 +614,6 @@ add_CourseData: async (formData: FormData) => {
     try {
       set((state: Course_StoreType) => {
         if (state.courses.length === 0) {
-          // You might want to remove mockCourses or define it properly if needed
-          // For now, I'll just keep the structure
           return state
         }
         return state
@@ -1045,9 +623,7 @@ add_CourseData: async (formData: FormData) => {
     }
   },
 
-  // UI State
-  isFormVisible: false,
-  editingCourse: null,
+  // ========== UI STATE METHODS ==========
 
   setIsFormVisible: (visible: boolean) =>
     set((state: Course_StoreType) => ({ ...state, isFormVisible: visible })),

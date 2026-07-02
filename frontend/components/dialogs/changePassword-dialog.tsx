@@ -138,7 +138,7 @@ export default function ChangePassword({
 
         try {
             // Using direct fetch instead of server action to maintain session
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/forgot-password`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085"}/api/auth/forgot-password`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -186,7 +186,7 @@ export default function ChangePassword({
         setError("")
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/verify-otp`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085"}/api/auth/verify-otp`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -233,7 +233,7 @@ export default function ChangePassword({
 
         try {
             // Using direct fetch to maintain session
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/forgot-password`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085"}/api/auth/forgot-password`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -364,7 +364,7 @@ export default function ChangePassword({
                 }
 
                 // Reset password for forgot flow
-                const resetResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/reset-password`, {
+                const resetResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085"}/api/auth/reset-password`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

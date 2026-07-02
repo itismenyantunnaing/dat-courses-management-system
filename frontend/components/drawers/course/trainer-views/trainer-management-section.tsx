@@ -43,6 +43,7 @@ import {
     UserGroupIcon,
     Calendar03Icon,
     ArrowDown01Icon,
+    User02Icon,
 } from "@hugeicons/core-free-icons"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
@@ -54,6 +55,7 @@ import {
     DAYS_OF_WEEK,
 } from "@/types/course"
 import { cn } from "@/lib/utils"
+import { mainStore } from "@/store/mainStore"
 
 // Status colors and labels for learners
 const statusColors: Record<string, string> = {
@@ -61,6 +63,10 @@ const statusColors: Record<string, string> = {
     pending: "bg-yellow-500",
     completed: "bg-blue-500",
     inactive: "bg-gray-500",
+    APPROVED: "bg-green-500",
+    PENDING: "bg-yellow-500",
+    CANCELLED: "bg-gray-500",
+    COMPLETED: "bg-blue-500",
 }
 
 const statusLabels: Record<string, string> = {
@@ -68,6 +74,10 @@ const statusLabels: Record<string, string> = {
     pending: "Pending",
     completed: "Completed",
     inactive: "Inactive",
+    APPROVED: "Approved",
+    PENDING: "Pending",
+    CANCELLED: "Cancelled",
+    COMPLETED: "Completed",
 }
 
 const DEFAULT_SESSION_DAYS = [4, 5]
@@ -90,6 +100,22 @@ export const formatGroupsForAPI = (groups: CourseGroup[]) => {
   }))
 }
 
+interface EnrolledEmployee {
+  id: number
+  employeeId: string
+  employeeName: string
+  email: string
+  departmentId: number
+  departmentName: string
+  teamId: number
+  teamName: string
+  position: string
+  courseGroupId: number
+  courseGroupName: string
+  enrollmentStatus: string
+  enrolledAt: string
+  pfImage?: string
+}
 
 interface TrainerSectionProps {
     groups: CourseGroup[]
@@ -148,6 +174,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     mode,
 }) => {
     const previousTotalSessionsRef = React.useRef<{ [key: string]: number }>({})
+    const { enrollments } = mainStore()
 
     // State for available learners - track how many to show
     const [visibleLearnersCount, setVisibleLearnersCount] = useState(AVAILABLE_LEARNERS_PER_PAGE)
@@ -161,66 +188,29 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         }
     }, [learnersCommandOpen])
 
-    // DEBUG: Log the data to check if it's being passed correctly
-    useEffect(() => {
-        if (learnersCommandOpen) {
-            console.log("=== LEARNER SEARCH DEBUG ===")
-            console.log("allEmployees count:", allEmployees.length)
-            console.log("availableLearners count:", availableLearners.length)
-            console.log("mentionedLearners count:", mentionedLearners.length)
-            console.log("searchQuery:", searchQuery)
-            if (allEmployees.length > 0) {
-                console.log("Sample employee name:", allEmployees[0]?.name)
-                console.log("Sample employee email:", allEmployees[0]?.email)
-                console.log("Sample employee department:", allEmployees[0]?.department)
-                console.log("Sample employee team:", allEmployees[0]?.team)
-            }
-            console.log("=== END DEBUG ===")
-        }
-    }, [learnersCommandOpen, allEmployees, availableLearners, mentionedLearners, searchQuery])
-
     // Get the list of learners to display based on search
     const displayedLearners = React.useMemo(() => {
         const mentionedIds = new Set(mentionedLearners.map((l) => l.id))
 
-        // If no search query, use availableLearners (already filtered)
         if (!searchQuery.trim()) {
             return availableLearners
         }
 
-        // Search across ALL employees
         const query = searchQuery.toLowerCase().trim()
+        const results = allEmployees.filter((learner) => {
+            if (mentionedIds.has(learner.id)) return false
 
-        const results = allEmployees.filter(
-            (learner) => {
-                // Skip if already mentioned
-                if (mentionedIds.has(learner.id)) {
-                    return false
-                }
+            const searchableFields = [
+                learner.name || '',
+                learner.email || '',
+                learner.department || '',
+                learner.team || ''
+            ]
 
-                // Search in all fields with null safety
-                const searchableFields = [
-                    learner.name || '',
-                    learner.email || '',
-                    learner.department || '',
-                    learner.team || ''
-                ]
-
-                // Check if any field contains the search query
-                return searchableFields.some(field =>
-                    field.toLowerCase().includes(query)
-                )
-            }
-        )
-
-        // DEBUG: Log search results
-        if (searchQuery.trim()) {
-            console.log(`Search query: "${query}"`)
-            console.log(`Found ${results.length} matching learners`)
-            if (results.length > 0) {
-                console.log("First match:", results[0].name)
-            }
-        }
+            return searchableFields.some(field =>
+                field.toLowerCase().includes(query)
+            )
+        })
 
         return results
     }, [allEmployees, searchQuery, availableLearners, mentionedLearners])
@@ -232,7 +222,6 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
 
     const hasMoreLearners = visibleLearnersCount < displayedLearners.length
 
-    // Handle "See More" click - add 10 more
     const handleSeeMore = () => {
         setVisibleLearnersCount(prev => prev + AVAILABLE_LEARNERS_PER_PAGE)
     }
@@ -404,7 +393,6 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
 
     const lastUpdateRef = React.useRef<string>("")
 
-    // Auto-generate sessions for each group when settings change
     useEffect(() => {
         let updatedGroups = groups.map((group) => {
             const totalSessions = group.sessions.length
@@ -447,7 +435,6 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             return group
         })
 
-        // Check if groups changed using a signature to avoid infinite loops
         const updateSignature = JSON.stringify(updatedGroups.map(g => ({
             id: g.id,
             sessionCount: g.sessions.length,
@@ -479,7 +466,6 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             <div className="space-y-6">
                 {groupError && <p className="text-sm text-red-500">{groupError}</p>}
 
-                {/* Group Name & Capacity */}
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                         <Label>Group Name</Label>
@@ -525,35 +511,24 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                     </div>
                 </div>
 
-                {/* Start Date & End Date & Start Time & End Time */}
                 <div className="grid gap-4 sm:grid-cols-4">
                     <div className="space-y-2">
-                        <Label>
-                            Start Date <span className="text-red-500">*</span>
-                        </Label>
+                        <Label>Start Date <span className="text-red-500">*</span></Label>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
                                     className="w-full justify-between text-left font-normal"
                                 >
-                                    {group.startDate
-                                        ? format(group.startDate, "PPP")
-                                        : "Pick a date"}
-                                    <HugeiconsIcon
-                                        icon={Calendar03Icon}
-                                        strokeWidth={1.5}
-                                        className="h-4 w-4 opacity-50"
-                                    />
+                                    {group.startDate ? format(group.startDate, "PPP") : "Pick a date"}
+                                    <HugeiconsIcon icon={Calendar03Icon} strokeWidth={1.5} className="h-4 w-4 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                                 <Calendar
                                     mode="single"
                                     selected={group.startDate}
-                                    onSelect={(date) =>
-                                        updateGroup(group.id, "startDate", date || undefined)
-                                    }
+                                    onSelect={(date) => updateGroup(group.id, "startDate", date || undefined)}
                                     defaultMonth={group.startDate}
                                 />
                             </PopoverContent>
@@ -567,14 +542,8 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                     variant="outline"
                                     className="w-full justify-between text-left font-normal"
                                 >
-                                    {group.endDate
-                                        ? format(group.endDate, "PPP")
-                                        : "Pick a date"}
-                                    <HugeiconsIcon
-                                        icon={Calendar03Icon}
-                                        strokeWidth={1.5}
-                                        className="h-4 w-4 opacity-50"
-                                    />
+                                    {group.endDate ? format(group.endDate, "PPP") : "Pick a date"}
+                                    <HugeiconsIcon icon={Calendar03Icon} strokeWidth={1.5} className="h-4 w-4 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
@@ -582,8 +551,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                     mode="single"
                                     selected={group.endDate}
                                     onSelect={(date) => {
-                                        if (date && group.startDate && date < group.startDate)
-                                            return
+                                        if (date && group.startDate && date < group.startDate) return
                                         updateGroup(group.id, "endDate", date || undefined)
                                     }}
                                     defaultMonth={group.endDate || group.startDate}
@@ -596,15 +564,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                         </Popover>
                     </div>
                     <div className="space-y-2">
-                        <Label>
-                            Start Time <span className="text-red-500">*</span>
-                        </Label>
+                        <Label>Start Time <span className="text-red-500">*</span></Label>
                         <div className="relative">
-                            <HugeiconsIcon
-                                icon={Time02Icon}
-                                strokeWidth={1.5}
-                                className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                            />
+                            <HugeiconsIcon icon={Time02Icon} strokeWidth={1.5} className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 type="time"
                                 value={group.startTime || ""}
@@ -623,15 +585,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label>
-                            End Time <span className="text-red-500">*</span>
-                        </Label>
+                        <Label>End Time <span className="text-red-500">*</span></Label>
                         <div className="relative">
-                            <HugeiconsIcon
-                                icon={Time02Icon}
-                                strokeWidth={1.5}
-                                className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                            />
+                            <HugeiconsIcon icon={Time02Icon} strokeWidth={1.5} className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 type="time"
                                 value={group.endTime || ""}
@@ -651,51 +607,24 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                     </div>
                 </div>
 
-                {/* Sessions Per Week & Total Sessions */}
                 <div className="grid gap-4 sm:grid-cols-3">
                     <div className="col-span-2 space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label>
-                                Sessions Per Week <span className="text-red-500">*</span>
-                            </Label>
+                            <Label>Sessions Per Week <span className="text-red-500">*</span></Label>
                         </div>
                         <div className="flex justify-between">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-3"
-                                onClick={() => {
-                                    const allDays = DAYS_OF_WEEK.map((d) => d.value)
-                                    updateGroup(group.id, "sessionsPerWeek", allDays)
-                                }}
-                            >
-                                All
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-3"
-                                onClick={() => {
-                                    const weekdays = [1, 2, 3, 4, 5]
-                                    updateGroup(group.id, "sessionsPerWeek", weekdays)
-                                }}
-                            >
-                                Weekday
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-3"
-                                onClick={() => {
-                                    const weekend = [0, 6]
-                                    updateGroup(group.id, "sessionsPerWeek", weekend)
-                                }}
-                            >
-                                Weekend
-                            </Button>
+                            <Button type="button" variant="outline" size="sm" className="h-8 px-3" onClick={() => {
+                                const allDays = DAYS_OF_WEEK.map((d) => d.value)
+                                updateGroup(group.id, "sessionsPerWeek", allDays)
+                            }}>All</Button>
+                            <Button type="button" variant="outline" size="sm" className="h-8 px-3" onClick={() => {
+                                const weekdays = [1, 2, 3, 4, 5]
+                                updateGroup(group.id, "sessionsPerWeek", weekdays)
+                            }}>Weekday</Button>
+                            <Button type="button" variant="outline" size="sm" className="h-8 px-3" onClick={() => {
+                                const weekend = [0, 6]
+                                updateGroup(group.id, "sessionsPerWeek", weekend)
+                            }}>Weekend</Button>
                             {DAYS_OF_WEEK.map((day) => (
                                 <Button
                                     key={day.value}
@@ -715,23 +644,19 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                         </div>
                         {group.sessionsPerWeek && group.sessionsPerWeek.length > 0 && (
                             <p className="text-xs text-green-600">
-                                ✓ {group.sessionsPerWeek.length} day
-                                {group.sessionsPerWeek.length > 1 ? "s" : ""} selected
+                                ✓ {group.sessionsPerWeek.length} day{group.sessionsPerWeek.length > 1 ? "s" : ""} selected
                             </p>
                         )}
                     </div>
                     <div className="space-y-2">
-                        <Label>
-                            Total Sessions <span className="text-red-500">*</span>
-                        </Label>
+                        <Label>Total Sessions <span className="text-red-500">*</span></Label>
                         <Input
                             type="number"
                             value={group.sessions?.length ?? 0}
                             onChange={(e) => {
                                 const value = parseInt(e.target.value) || 0
                                 const startDate = group.startDate || new Date()
-                                const sessionDays =
-                                    group.sessionsPerWeek || DEFAULT_SESSION_DAYS
+                                const sessionDays = group.sessionsPerWeek || DEFAULT_SESSION_DAYS
                                 const sortedDays = [...sessionDays].sort((a, b) => a - b)
                                 const startTime = group.startTime || "09:00"
                                 const endTime = group.endTime || "10:00"
@@ -755,9 +680,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                     currentDate.setDate(currentDate.getDate() + 1)
                                 }
                                 
-                                // Reset the signature to ensure the change is accepted
                                 lastUpdateRef.current = ""
-                                
                                 updateGroup(group.id, "sessions", newSessions)
                                 onSetTrainerSessionPage(1)
                             }}
@@ -766,155 +689,67 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                             required
                         />
                         {group.sessions.length > 0 && (
-                            <p className="text-xs text-green-600">
-                                ✓ {group.sessions.length} sessions configured
-                            </p>
+                            <p className="text-xs text-green-600">✓ {group.sessions.length} sessions configured</p>
                         )}
                     </div>
                 </div>
 
-                {/* Sessions List */}
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <Label>Sessions</Label>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => addGroupSession(group.id)}
-                            className="gap-1"
-                        >
-                            <HugeiconsIcon
-                                icon={PlusSignIcon}
-                                strokeWidth={2}
-                                className="h-4 w-4"
-                            />
+                        <Button type="button" variant="ghost" size="sm" onClick={() => addGroupSession(group.id)} className="gap-1">
+                            <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="h-4 w-4" />
                             Add Session
                         </Button>
                     </div>
                     {group.sessions.length === 0 ? (
                         <div className="rounded-lg border-2 border-dashed py-4 text-center text-sm text-muted-foreground">
-                            No sessions added yet. Enter "Total Sessions" above or click
-                            "Add Session" to create one.
+                            No sessions added yet. Enter "Total Sessions" above or click "Add Session" to create one.
                         </div>
                     ) : (
                         <>
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                                 {paginatedTrainerSessions.map((session, idx) => {
-                                    const globalIndex =
-                                        (trainerSessionPage - 1) * trainerItemsPerPage + idx
+                                    const globalIndex = (trainerSessionPage - 1) * trainerItemsPerPage + idx
                                     return (
-                                        <div
-                                            key={session.id}
-                                            className="space-y-1 rounded-lg border bg-muted/5 p-2"
-                                        >
+                                        <div key={session.id} className="space-y-1 rounded-lg border bg-muted/5 p-2">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs font-medium">
-                                                    Session #{globalIndex + 1}
-                                                </span>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 text-destructive hover:text-destructive"
-                                                    onClick={() =>
-                                                        removeGroupSession(group.id, session.id)
-                                                    }
-                                                >
-                                                    <HugeiconsIcon
-                                                        icon={Delete02Icon}
-                                                        strokeWidth={2}
-                                                        className="h-3 w-3"
-                                                    />
+                                                <span className="text-xs font-medium">Session #{globalIndex + 1}</span>
+                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeGroupSession(group.id, session.id)}>
+                                                    <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-3 w-3" />
                                                 </Button>
                                             </div>
-
                                             <div className="flex items-center gap-2">
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="flex-1 justify-start text-left font-normal"
-                                                        >
-                                                            <HugeiconsIcon
-                                                                icon={Calendar03Icon}
-                                                                strokeWidth={1.5}
-                                                                className="mr-1 h-3 w-3"
-                                                            />
-                                                            {session.date ? (
-                                                                format(session.date, "MMM d, yyyy")
-                                                            ) : (
-                                                                <span className="text-muted-foreground">
-                                                                    Pick date
-                                                                </span>
-                                                            )}
+                                                        <Button variant="outline" size="sm" className="flex-1 justify-start text-left font-normal">
+                                                            <HugeiconsIcon icon={Calendar03Icon} strokeWidth={1.5} className="mr-1 h-3 w-3" />
+                                                            {session.date ? format(session.date, "MMM d, yyyy") : <span className="text-muted-foreground">Pick date</span>}
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent
-                                                        className="w-auto p-0"
-                                                        align="start"
-                                                    >
+                                                    <PopoverContent className="w-auto p-0" align="start">
                                                         <Calendar
                                                             mode="single"
                                                             selected={session.date}
-                                                            onSelect={(date) =>
-                                                                handleGroupSessionDateChange(
-                                                                    group.id,
-                                                                    session.id,
-                                                                    date
-                                                                )
-                                                            }
+                                                            onSelect={(date) => handleGroupSessionDateChange(group.id, session.id, date)}
                                                             defaultMonth={session.date || group.startDate}
                                                             disabled={(date) => {
                                                                 if (date < group.startDate) return true
-                                                                if (group.endDate && date > group.endDate)
-                                                                    return true
+                                                                if (group.endDate && date > group.endDate) return true
                                                                 return false
                                                             }}
                                                         />
                                                     </PopoverContent>
                                                 </Popover>
-                                                {session.date && (
-                                                    <span className="text-[14px] text-muted-foreground">
-                                                        {format(session.date, "EEE")}
-                                                    </span>
-                                                )}
+                                                {session.date && <span className="text-[14px] text-muted-foreground">{format(session.date, "EEE")}</span>}
                                             </div>
-
                                             <div className="flex items-center gap-1">
                                                 <div className="relative flex-1">
-                                                    <Input
-                                                        type="time"
-                                                        value={session.startTime || ""}
-                                                        onChange={(e) =>
-                                                            updateGroupSession(
-                                                                group.id,
-                                                                session.id,
-                                                                "startTime",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="h-7 text-xs"
-                                                    />
+                                                    <Input type="time" value={session.startTime || ""} onChange={(e) => updateGroupSession(group.id, session.id, "startTime", e.target.value)} className="h-7 text-xs" />
                                                 </div>
-                                                <span className="text-[10px] text-muted-foreground">
-                                                    to
-                                                </span>
+                                                <span className="text-[10px] text-muted-foreground">to</span>
                                                 <div className="relative flex-1">
-                                                    <Input
-                                                        type="time"
-                                                        value={session.endTime || ""}
-                                                        onChange={(e) =>
-                                                            updateGroupSession(
-                                                                group.id,
-                                                                session.id,
-                                                                "endTime",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="h-7 text-xs"
-                                                    />
+                                                    <Input type="time" value={session.endTime || ""} onChange={(e) => updateGroupSession(group.id, session.id, "endTime", e.target.value)} className="h-7 text-xs" />
                                                 </div>
                                             </div>
                                         </div>
@@ -925,20 +760,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                             {totalTrainerPages > 1 && (
                                 <div className="mt-4 flex items-center justify-between gap-4">
                                     <Field orientation="horizontal" className="w-fit">
-                                        <FieldLabel
-                                            htmlFor="select-trainer-rows-per-page"
-                                            className="text-sm whitespace-nowrap text-foreground"
-                                        >
-                                            Rows per page
-                                        </FieldLabel>
-                                        <Select
-                                            value={trainerItemsPerPage.toString()}
-                                            onValueChange={handleTrainerItemsPerPageChange}
-                                        >
-                                            <SelectTrigger
-                                                className="w-15"
-                                                id="select-trainer-rows-per-page"
-                                            >
+                                        <FieldLabel htmlFor="select-trainer-rows-per-page" className="text-sm whitespace-nowrap text-foreground">Rows per page</FieldLabel>
+                                        <Select value={trainerItemsPerPage.toString()} onValueChange={handleTrainerItemsPerPageChange}>
+                                            <SelectTrigger className="w-15" id="select-trainer-rows-per-page">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent align="start">
@@ -953,53 +777,15 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                     <Pagination className="justify-end">
                                         <PaginationContent>
                                             <PaginationItem>
-                                                <PaginationPrevious
-                                                    href="#"
-                                                    onClick={(e) => {
-                                                        e.preventDefault()
-                                                        if (trainerSessionPage > 1) {
-                                                            onSetTrainerSessionPage(trainerSessionPage - 1)
-                                                        }
-                                                    }}
-                                                    className={
-                                                        trainerSessionPage === 1
-                                                            ? "pointer-events-none opacity-50"
-                                                            : ""
-                                                    }
-                                                />
+                                                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (trainerSessionPage > 1) onSetTrainerSessionPage(trainerSessionPage - 1) }} className={trainerSessionPage === 1 ? "pointer-events-none opacity-50" : ""} />
                                             </PaginationItem>
-                                            {Array.from(
-                                                { length: totalTrainerPages },
-                                                (_, i) => i + 1
-                                            ).map((page) => (
+                                            {Array.from({ length: totalTrainerPages }, (_, i) => i + 1).map((page) => (
                                                 <PaginationItem key={page}>
-                                                    <PaginationLink
-                                                        href="#"
-                                                        onClick={(e) => {
-                                                            e.preventDefault()
-                                                            onSetTrainerSessionPage(page)
-                                                        }}
-                                                        isActive={trainerSessionPage === page}
-                                                    >
-                                                        {page}
-                                                    </PaginationLink>
+                                                    <PaginationLink href="#" onClick={(e) => { e.preventDefault(); onSetTrainerSessionPage(page) }} isActive={trainerSessionPage === page}>{page}</PaginationLink>
                                                 </PaginationItem>
                                             ))}
                                             <PaginationItem>
-                                                <PaginationNext
-                                                    href="#"
-                                                    onClick={(e) => {
-                                                        e.preventDefault()
-                                                        if (trainerSessionPage < totalTrainerPages) {
-                                                            onSetTrainerSessionPage(trainerSessionPage + 1)
-                                                        }
-                                                    }}
-                                                    className={
-                                                        trainerSessionPage === totalTrainerPages
-                                                            ? "pointer-events-none opacity-50"
-                                                            : ""
-                                                    }
-                                                />
+                                                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (trainerSessionPage < totalTrainerPages) onSetTrainerSessionPage(trainerSessionPage + 1) }} className={trainerSessionPage === totalTrainerPages ? "pointer-events-none opacity-50" : ""} />
                                             </PaginationItem>
                                         </PaginationContent>
                                     </Pagination>
@@ -1012,69 +798,38 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         )
     }
 
+    // Get enrolled employees for the current group from store
+    const currentGroupEnrolledEmployees = React.useMemo(() => {
+        if (!enrollments || enrollments.length === 0) return []
+        
+        const activeGroup = groups.find(g => g.id === activeGroupTab)
+        if (!activeGroup) return []
+        
+        const groupId = parseInt(activeGroup.id)
+        return enrollments.filter((emp: any) => emp.courseGroupId === groupId)
+    }, [enrollments, activeGroupTab, groups])
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">
-                    Groups <span className="text-red-500">*</span>
-                </h3>
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addGroup}
-                    className="gap-1"
-                >
-                    <HugeiconsIcon
-                        icon={PlusSignIcon}
-                        strokeWidth={2}
-                        className="h-4 w-4"
-                    />
+                <h3 className="text-lg font-semibold">Groups <span className="text-red-500">*</span></h3>
+                <Button type="button" variant="outline" size="sm" onClick={addGroup} className="gap-1">
+                    <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="h-4 w-4" />
                     Add Group
                 </Button>
             </div>
 
-            <Tabs
-                value={activeGroupTab}
-                onValueChange={onSetActiveGroupTab}
-                className="w-full"
-            >
+            <Tabs value={activeGroupTab} onValueChange={onSetActiveGroupTab} className="w-full">
                 <TabsList className="flex-wrap justify-start">
                     {groups.map((group) => (
-                        <div
-                            key={group.id}
-                            className="relative inline-flex items-center"
-                        >
-                            <TabsTrigger
-                                value={group.id}
-                                className={cn(
-                                    "flex items-center gap-2",
-                                    groups.length > 1 && "pr-8"
-                                )}
-                            >
-                                <HugeiconsIcon
-                                    icon={UserGroupIcon}
-                                    strokeWidth={2}
-                                    className="h-4 w-4"
-                                />
+                        <div key={group.id} className="relative inline-flex items-center">
+                            <TabsTrigger value={group.id} className={cn("flex items-center gap-2", groups.length > 1 && "pr-8")}>
+                                <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} className="h-4 w-4" />
                                 {group.name}
                             </TabsTrigger>
                             {groups.length > 1 && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-1 h-5 w-5 text-destructive hover:text-destructive"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        removeGroup(group.id)
-                                    }}
-                                >
-                                    <HugeiconsIcon
-                                        icon={Delete02Icon}
-                                        strokeWidth={2}
-                                        className="h-3 w-3"
-                                    />
+                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 h-5 w-5 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); removeGroup(group.id) }}>
+                                    <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-3 w-3" />
                                 </Button>
                             )}
                         </div>
@@ -1087,217 +842,152 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                 ))}
             </Tabs>
 
-            {/* Mention Learners Section */}
-            <div className="space-y-3 pt-6">
-                <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">
-                        Mention Learners
-                        <span className="ml-2 text-sm font-normal text-muted-foreground">
-                            ({mentionedLearners.length} mentioned)
-                        </span>
-                    </Label>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onSetLearnersCommandOpen(true)}
-                        className="gap-2"
-                    >
-                        <HugeiconsIcon
-                            icon={PlusSignIcon}
-                            strokeWidth={2}
-                            className="h-4 w-4"
-                        />
-                        Mention Learners
-                    </Button>
-                </div>
-
-                {mentionedLearners.length === 0 ? (
-                    <div className="rounded-lg border-2 border-dashed py-8 text-center text-sm text-muted-foreground">
-                        No learners mentioned yet. Click "Mention Learners" to add.
+            {/* Two Column Layout with 2 items per column (4 total per row) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
+                {/* Left Column - Mention Learners (2 per row) */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold flex items-center gap-2">
+                            <HugeiconsIcon icon={User02Icon} strokeWidth={1.5} className="h-4 w-4" />
+                            Mention Learners
+                            <span className="ml-1 text-sm font-normal text-muted-foreground">({mentionedLearners.length})</span>
+                        </Label>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => onSetLearnersCommandOpen(true)} className="gap-2">
+                            <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="h-4 w-4" />
+                            Add
+                        </Button>
                     </div>
-                ) : (
-                    <>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+                    {mentionedLearners.length === 0 ? (
+                        <div className="rounded-lg border-2 border-dashed py-8 text-center text-sm text-muted-foreground">
+                            No learners mentioned yet
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {mentionedLearners
-                                .slice(
-                                    (learnersPage - 1) * learnersItemsPerPage,
-                                    learnersPage * learnersItemsPerPage
-                                )
+                                .slice((learnersPage - 1) * learnersItemsPerPage, learnersPage * learnersItemsPerPage)
                                 .map((learner) => (
-                                    <div
-                                        key={learner.id}
-                                        className="flex items-center gap-3 rounded-lg border bg-muted/5 p-3 transition-colors hover:bg-muted/10"
-                                    >
-                                        <Avatar className="h-10 w-10 rounded-lg">
-                                            <AvatarImage
-                                                src={learner.avatar}
-                                                alt={learner.name}
-                                            />
+                                    <div key={learner.id} className="flex items-center gap-3 rounded-lg border bg-muted/5 p-3 transition-colors hover:bg-muted/10">
+                                        <Avatar className="h-10 w-10 rounded-lg shrink-0">
+                                            <AvatarImage src={learner.avatar} alt={learner.name} />
                                             <AvatarFallback className="rounded-lg">
-                                                {learner.name
-                                                    .split(" ")
-                                                    .map((n) => n[0])
-                                                    .join("")
-                                                    .toUpperCase()
-                                                    .slice(0, 2)}
+                                                {learner.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
-                                                <span className="truncate text-sm font-medium">
-                                                    {learner.name}
-                                                </span>
-                                                <Badge
-                                                    variant="outline"
-                                                    className={cn(
-                                                        "h-4 px-1.5 py-0 text-[10px]",
-                                                        statusColors[learner.status],
-                                                        "bg-opacity-10"
-                                                    )}
-                                                >
+                                                <span className="truncate text-sm font-medium">{learner.name}</span>
+                                                <Badge variant="outline" className={cn("h-4 px-1.5 py-0 text-[10px]", statusColors[learner.status], "bg-opacity-10")}>
                                                     {statusLabels[learner.status]}
                                                 </Badge>
                                             </div>
-                                            <div className="truncate text-xs text-muted-foreground">
-                                                {learner.email}
-                                            </div>
+                                            <div className="truncate text-xs text-muted-foreground">{learner.email}</div>
                                             <div className="flex gap-2 text-xs text-muted-foreground">
-                                                {learner.department && (
-                                                    <span>{learner.department}</span>
-                                                )}
-                                                {learner.department && learner.team && (
-                                                    <span>•</span>
-                                                )}
-                                                {learner.team && <span>{learner.team}</span>}
+                                                {learner.department && <span className="truncate">{learner.department}</span>}
+                                                {learner.department && learner.team && <span>•</span>}
+                                                {learner.team && <span className="truncate">{learner.team}</span>}
                                             </div>
                                         </div>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
-                                            onClick={() => onRemoveLearner(learner.id)}
-                                        >
-                                            <HugeiconsIcon
-                                                icon={Delete02Icon}
-                                                strokeWidth={2}
-                                                className="h-4 w-4"
-                                            />
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive hover:text-destructive" onClick={() => onRemoveLearner(learner.id)}>
+                                            <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
                                         </Button>
                                     </div>
                                 ))}
                         </div>
+                    )}
 
-                        {Math.ceil(mentionedLearners.length / learnersItemsPerPage) > 1 && (
-                            <div className="mt-4 flex items-center justify-between gap-4">
-                                <Field orientation="horizontal" className="w-fit">
-                                    <FieldLabel
-                                        htmlFor="select-learners-rows-per-page"
-                                        className="text-sm whitespace-nowrap text-foreground"
-                                    >
-                                        Rows per page
-                                    </FieldLabel>
-                                    <Select
-                                        value={learnersItemsPerPage.toString()}
-                                        onValueChange={handleLearnersItemsPerPageChange}
-                                    >
-                                        <SelectTrigger
-                                            className="w-15"
-                                            id="select-learners-rows-per-page"
-                                        >
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent align="start">
-                                            <SelectGroup>
-                                                <SelectItem value="6">6</SelectItem>
-                                                <SelectItem value="12">12</SelectItem>
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
-                                </Field>
+                    {Math.ceil(mentionedLearners.length / learnersItemsPerPage) > 1 && (
+                        <div className="mt-4 flex items-center justify-between gap-4">
+                            <Field orientation="horizontal" className="w-fit">
+                                <FieldLabel htmlFor="select-learners-rows-per-page" className="text-sm whitespace-nowrap text-foreground">Rows per page</FieldLabel>
+                                <Select value={learnersItemsPerPage.toString()} onValueChange={handleLearnersItemsPerPageChange}>
+                                    <SelectTrigger className="w-15" id="select-learners-rows-per-page">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent align="start">
+                                        <SelectGroup>
+                                            <SelectItem value="6">6</SelectItem>
+                                            <SelectItem value="12">12</SelectItem>
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            </Field>
 
-                                <Pagination className="justify-end">
-                                    <PaginationContent>
-                                        <PaginationItem>
-                                            <PaginationPrevious
-                                                href="#"
-                                                onClick={(e) => {
-                                                    e.preventDefault()
-                                                    if (learnersPage > 1) {
-                                                        onSetLearnersPage(learnersPage - 1)
-                                                    }
-                                                }}
-                                                className={
-                                                    learnersPage === 1
-                                                        ? "pointer-events-none opacity-50"
-                                                        : ""
-                                                }
-                                            />
+                            <Pagination className="justify-end">
+                                <PaginationContent>
+                                    <PaginationItem>
+                                        <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (learnersPage > 1) onSetLearnersPage(learnersPage - 1) }} className={learnersPage === 1 ? "pointer-events-none opacity-50" : ""} />
+                                    </PaginationItem>
+                                    {Array.from({ length: Math.ceil(mentionedLearners.length / learnersItemsPerPage) }, (_, i) => i + 1).map((page) => (
+                                        <PaginationItem key={page}>
+                                            <PaginationLink href="#" onClick={(e) => { e.preventDefault(); onSetLearnersPage(page) }} isActive={learnersPage === page}>{page}</PaginationLink>
                                         </PaginationItem>
-                                        {Array.from(
-                                            {
-                                                length: Math.ceil(
-                                                    mentionedLearners.length / learnersItemsPerPage
-                                                ),
-                                            },
-                                            (_, i) => i + 1
-                                        ).map((page) => (
-                                            <PaginationItem key={page}>
-                                                <PaginationLink
-                                                    href="#"
-                                                    onClick={(e) => {
-                                                        e.preventDefault()
-                                                        onSetLearnersPage(page)
-                                                    }}
-                                                    isActive={learnersPage === page}
-                                                >
-                                                    {page}
-                                                </PaginationLink>
-                                            </PaginationItem>
-                                        ))}
-                                        <PaginationItem>
-                                            <PaginationNext
-                                                href="#"
-                                                onClick={(e) => {
-                                                    e.preventDefault()
-                                                    const totalPages = Math.ceil(
-                                                        mentionedLearners.length / learnersItemsPerPage
-                                                    )
-                                                    if (learnersPage < totalPages) {
-                                                        onSetLearnersPage(learnersPage + 1)
-                                                    }
-                                                }}
-                                                className={
-                                                    learnersPage ===
-                                                        Math.ceil(
-                                                            mentionedLearners.length / learnersItemsPerPage
-                                                        )
-                                                        ? "pointer-events-none opacity-50"
-                                                        : ""
-                                                }
-                                            />
-                                        </PaginationItem>
-                                    </PaginationContent>
-                                </Pagination>
-                            </div>
-                        )}
-                    </>
-                )}
+                                    ))}
+                                    <PaginationItem>
+                                        <PaginationNext href="#" onClick={(e) => { e.preventDefault(); const totalPages = Math.ceil(mentionedLearners.length / learnersItemsPerPage); if (learnersPage < totalPages) onSetLearnersPage(learnersPage + 1) }} className={learnersPage === Math.ceil(mentionedLearners.length / learnersItemsPerPage) ? "pointer-events-none opacity-50" : ""} />
+                                    </PaginationItem>
+                                </PaginationContent>
+                            </Pagination>
+                        </div>
+                    )}
+                </div>
+
+                {/* Right Column - Enrolled Employees (2 per row) */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold flex items-center gap-2">
+                            <HugeiconsIcon icon={User02Icon} strokeWidth={1.5} className="h-4 w-4" />
+                            Enrolled Employees
+                            <span className="ml-1 text-sm font-normal text-muted-foreground">({currentGroupEnrolledEmployees.length})</span>
+                        </Label>
+                    </div>
+
+                    {currentGroupEnrolledEmployees.length === 0 ? (
+                        <div className="rounded-lg border-2 border-dashed py-8 text-center text-sm text-muted-foreground">
+                            No employees enrolled in this group yet
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {currentGroupEnrolledEmployees.map((employee: any) => (
+                                <div key={employee.id} className="flex items-center gap-3 rounded-lg border bg-muted/5 p-3 transition-colors hover:bg-muted/10">
+                                    <Avatar className="h-10 w-10 rounded-lg shrink-0">
+                                        <AvatarImage src={employee.pfImage || ""} />
+                                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-medium">
+                                            {getInitials(employee.employeeName)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="truncate text-sm font-medium">{employee.employeeName}</span>
+                                            <Badge variant="outline" className={cn("h-4 px-1.5 py-0 text-[10px]", statusColors[employee.enrollmentStatus], "bg-opacity-10")}>
+                                                {statusLabels[employee.enrollmentStatus] || employee.enrollmentStatus}
+                                            </Badge>
+                                        </div>
+                                        <div className="truncate text-xs text-muted-foreground">{employee.email}</div>
+                                        <div className="flex gap-2 text-xs text-muted-foreground">
+                                            <span className="truncate">{employee.departmentName}</span>
+                                            {employee.departmentName && employee.teamName && <span>•</span>}
+                                            {employee.teamName && <span className="truncate">{employee.teamName}</span>}
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground shrink-0">
+                                        {format(new Date(employee.enrolledAt), "MMM d, yyyy")}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Learners Command Dialog with "See More" Button */}
-            <CommandDialog
-                open={learnersCommandOpen}
-                onOpenChange={onSetLearnersCommandOpen}
-            >
+            {/* Learners Command Dialog */}
+            <CommandDialog open={learnersCommandOpen} onOpenChange={onSetLearnersCommandOpen}>
                 <Command className="gap-3" shouldFilter={false}>
                     <CommandInput
                         placeholder="Search learners by name, email, department..."
                         value={searchQuery}
                         onValueChange={(value) => {
                             setSearchQuery(value)
-                            // Reset visible count when searching to show results from beginning
                             setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
                         }}
                     />
@@ -1325,58 +1015,29 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                 >
                                     <Avatar className="h-8 w-8 rounded-lg">
                                         <AvatarImage src={learner.avatar} alt={learner.name} />
-                                        <AvatarFallback className=" rounded-lg">
-                                            {learner.name
-                                                .split(" ")
-                                                .map((n) => n[0])
-                                                .join("")
-                                                .toUpperCase()
-                                                .slice(0, 2)}
+                                        <AvatarFallback className="rounded-lg">
+                                            {learner.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
-                                        <span className="truncate font-medium">
-                                            {learner.name}
-                                        </span>
-                                        <span className="truncate text-xs text-muted-foreground">
-                                            {learner.department} • {learner.team}
-                                        </span>
+                                        <span className="truncate font-medium">{learner.name}</span>
+                                        <span className="truncate text-xs text-muted-foreground">{learner.department} • {learner.team}</span>
                                     </div>
                                     <CommandShortcut>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 shrink-0"
-                                        >
-                                            <HugeiconsIcon
-                                                icon={PlusSignIcon}
-                                                strokeWidth={2}
-                                                className="h-4 w-4"
-                                            />
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                                            <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="h-4 w-4" />
                                         </Button>
                                     </CommandShortcut>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
 
-                        {/* See More Button - Show when there are more learners to load */}
                         {hasMoreLearners && (
                             <div className="border-t p-3">
                                 <div className="flex flex-col items-center gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="default"
-                                        onClick={handleSeeMore}
-                                        className="w-full gap-2"
-                                    >
+                                    <Button type="button" variant="outline" size="default" onClick={handleSeeMore} className="w-full gap-2">
                                         <span>See More</span>
-                                        <HugeiconsIcon
-                                            icon={ArrowDown01Icon}
-                                            strokeWidth={2}
-                                            className="h-4 w-4"
-                                        />
+                                        <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} className="h-4 w-4" />
                                     </Button>
                                     <span className="text-xs text-muted-foreground">
                                         Showing {visibleLearners.length} of {displayedLearners.length} learners
@@ -1389,4 +1050,12 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             </CommandDialog>
         </div>
     )
+}
+
+// Helper function to get initials from name
+const getInitials = (name: string) => {
+  if (!name) return "??"
+  const parts = name.split(" ")
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }

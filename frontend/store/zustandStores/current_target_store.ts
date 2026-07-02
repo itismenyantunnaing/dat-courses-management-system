@@ -4,7 +4,7 @@ import { CurrentTarget_StoreType } from "../types"
 type StoreSet = (fn: (state: CurrentTarget_StoreType) => Partial<CurrentTarget_StoreType>) => void;
 type StoreGet = () => CurrentTarget_StoreType;
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
 
 export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
   japaneseTargetDates_Data: [],

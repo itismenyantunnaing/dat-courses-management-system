@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input"
 import ChangePassword from "./dialogs/changePassword-dialog"
 import { login, sendOtp, verifyOtp, resetPassword } from "@/app/actions/auth"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085"
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [credentials, setCredentials] = useState({ staff_Id: "", password: "" });
