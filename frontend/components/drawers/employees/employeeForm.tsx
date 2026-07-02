@@ -8,10 +8,14 @@ import {
   SelectGroup,
   SelectItem,
   SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { PlusSignIcon } from "@hugeicons/core-free-icons"
 import { useEffect, useState } from "react"
 import { mainStore } from "@/store/mainStore"
 
@@ -31,12 +35,20 @@ interface EmployeeFormProps {
   data: EmployeeFormData
   onChange: (data: EmployeeFormData) => void
   isEdit?: boolean
+  onAddDivision?: () => void
+  onAddDepartment?: () => void
+  onAddTeam?: () => void
+  onDropdownOpenChange?: (isOpen: boolean) => void
 }
 
 export function EmployeeForm({
   data,
   onChange,
   isEdit = false,
+  onAddDivision,
+  onAddDepartment,
+  onAddTeam,
+  onDropdownOpenChange,
 }: EmployeeFormProps) {
   const [isLoading, setIsLoading] = useState(true)
 
@@ -117,7 +129,7 @@ export function EmployeeForm({
               className="w-full"
             />
           </div>
-          <div className="min-w-0 space-y-2">
+          <div className="min-w-0 space-y-2 sm:col-span-2">
             <Label htmlFor="email">
               Email Address <span className="text-red-500">*</span>
             </Label>
@@ -148,6 +160,7 @@ export function EmployeeForm({
             <Select
               value={data.div}
               onValueChange={(value) => handleInputChange("div", value)}
+              onOpenChange={onDropdownOpenChange}
               required
             >
               <SelectTrigger className="w-full">
@@ -163,6 +176,25 @@ export function EmployeeForm({
                     )
                   )}
                 </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-sm font-normal"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onAddDivision?.()
+                    }}
+                  >
+                    <HugeiconsIcon
+                      icon={PlusSignIcon}
+                      strokeWidth={2}
+                      className="mr-2 h-4 w-4"
+                    />
+                    Add New Division
+                  </Button>
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -175,6 +207,7 @@ export function EmployeeForm({
             <Select
               value={data.dept_dat}
               onValueChange={(value) => handleInputChange("dept_dat", value)}
+              onOpenChange={onDropdownOpenChange}
               required
             >
               <SelectTrigger className="w-full">
@@ -191,6 +224,25 @@ export function EmployeeForm({
                     )
                   )}
                 </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-sm font-normal"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onAddDepartment?.()
+                    }}
+                  >
+                    <HugeiconsIcon
+                      icon={PlusSignIcon}
+                      strokeWidth={2}
+                      className="mr-2 h-4 w-4"
+                    />
+                    Add New Department
+                  </Button>
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -201,6 +253,7 @@ export function EmployeeForm({
             <Select
               value={data.team}
               onValueChange={(value) => handleInputChange("team", value)}
+              onOpenChange={onDropdownOpenChange}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select team" />
@@ -216,6 +269,25 @@ export function EmployeeForm({
                     )
                   )}
                 </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-sm font-normal"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onAddTeam?.()
+                    }}
+                  >
+                    <HugeiconsIcon
+                      icon={PlusSignIcon}
+                      strokeWidth={2}
+                      className="mr-2 h-4 w-4"
+                    />
+                    Add New Team
+                  </Button>
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -228,6 +300,7 @@ export function EmployeeForm({
             <Select
               value={data.role}
               onValueChange={(value) => handleInputChange("role", value)}
+              onOpenChange={onDropdownOpenChange}
               required
             >
               <SelectTrigger className="w-full">
@@ -255,6 +328,7 @@ export function EmployeeForm({
             <Select
               value={data.emp_status}
               onValueChange={(value) => handleInputChange("emp_status", value)}
+              onOpenChange={onDropdownOpenChange}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select status" />

@@ -80,7 +80,6 @@ export function HolidayForm({
       {/* Basic Information Section */}
       <div>
         <h3 className="mb-4 text-lg font-semibold">Basic Information</h3>
-        <div className="flex gap-3">
           <div className="flex-1 space-y-4">
             <div className="min-w-0 space-y-2">
               <Label htmlFor="name">
@@ -96,7 +95,7 @@ export function HolidayForm({
               />
             </div>
           </div>
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 space-y-4 mt-4">
             <div className="min-w-0 space-y-2">
               <Label htmlFor="date">
                 Date <span className="text-red-500">*</span>
@@ -134,7 +133,6 @@ export function HolidayForm({
               )}
             </div>
           </div>
-        </div>
       </div>
 
     </div>

@@ -10,12 +10,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "../../components/ui/sidebar"
-import { Upload05Icon, Download05Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ImportDialog } from "@/components/dialogs/import-dialog"
-import { ExportDialog } from "@/components/dialogs/export-dialog"
-import { CreateEmployeeDrawer } from "@/components/drawers/employees/createEmployee-drawer"
 import { EmployeeContainer } from "@/components/employee-container"
 import { CoursesContainer } from "@/components/courses-container"
 import { SeminarContainer } from "@/components/seminar-container"
@@ -46,11 +41,8 @@ interface DashboardClientProps {
 export default function DashboardPage({ userData }: DashboardClientProps) {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [mounted, setMounted] = useState(false)
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
-  const [isNewEmployeeDrawerOpen, setIsNewEmployeeDrawerOpen] = useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
-  
+
   // Get session store actions
   const { setSession } = mainStore()
   const initialized = useRef(false)
@@ -66,8 +58,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   useEffect(() => {
     setMounted(true)
     // Attach store to window for global access in non-hook files
-    if (typeof window !== 'undefined') {
-      (window as any).mainStore = mainStore;
+    if (typeof window !== "undefined") {
+      ;(window as any).mainStore = mainStore
     }
   }, [])
 
@@ -77,15 +69,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       setIsChangePasswordOpen(true)
     }
   }, [userData.status])
-
-  const handleImport = () => {
-    setIsImportDialogOpen(true)
-  }
-
-  const handleExport = () => {
-    setIsExportDialogOpen(true)
-  }
-
 
   const getCurrentLabel = () => {
     switch (activeTab) {
@@ -128,16 +111,13 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     <>
       <SidebarProvider className="w-full overflow-hidden">
         <AppSidebar
-          userRole={
-            // userData.role.toLowerCase() as "admin" | "learner" | "approver"
-            "admin"
-          }
+          userRole="admin"
           userData={{ name: userData.name, email: userData.email }}
           onTabChange={setActiveTab}
           activeTab={activeTab}
         />
         <SidebarInset className="overflow-x-auto">
-          <header className="flex h-16 items-center justify-between gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <header className="flex h-16 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex w-full items-center justify-between px-4">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="-ml-1" />
@@ -146,30 +126,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                   className="mr-2 data-vertical:h-4 data-vertical:self-auto"
                 />
                 <p>{getCurrentLabel()}</p>
-              </div>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex gap-2">
-                  {activeTab !== "dashboard" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleImport}
-                      >
-                        <HugeiconsIcon icon={Upload05Icon} strokeWidth={2} />
-                        Import
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleExport}
-                      >
-                        <HugeiconsIcon icon={Download05Icon} strokeWidth={2} />
-                        Export
-                      </Button>
-                    </>
-                  )}
-                </div>
               </div>
             </div>
           </header>
@@ -208,27 +164,10 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         </SidebarInset>
       </SidebarProvider>
 
-      <ImportDialog
-        open={isImportDialogOpen}
-        onOpenChange={setIsImportDialogOpen}
-        label={activeTab}
-      />
-      <ExportDialog
-        open={isExportDialogOpen}
-        onOpenChange={setIsExportDialogOpen}
-        label={activeTab}
-      />
-
-      <CreateEmployeeDrawer
-        open={isNewEmployeeDrawerOpen}
-        onOpenChange={setIsNewEmployeeDrawerOpen}
-      />
-
       {/* Forced Password Change Dialog for New Users */}
       <Dialog
         open={isChangePasswordOpen}
         onOpenChange={(open) => {
-          // Prevent closing if user status is still "default"
           if (userData.status === "default" && !open) return
           setIsChangePasswordOpen(open)
         }}
@@ -236,11 +175,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         <DialogContent
           className="sm:max-w-[425px]"
           onPointerDownOutside={(e) => {
-            // Prevent closing by clicking outside if user status is still "default"
             if (userData.status === "default") e.preventDefault()
           }}
           onEscapeKeyDown={(e) => {
-            // Prevent closing by pressing escape if user status is still "default"
             if (userData.status === "default") e.preventDefault()
           }}
         >

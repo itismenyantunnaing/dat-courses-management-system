@@ -360,7 +360,7 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isExporting}>
+          <Button className="flex-1" variant="outline" onClick={handleCancel} disabled={isExporting}>
             Cancel
           </Button>
         </DialogFooter>

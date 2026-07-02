@@ -25,7 +25,7 @@ interface CreateHolidayDrawerProps {
 
 const getDayName = (dateString: string): string => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { weekday: 'long' })
+  return date.toLocaleDateString("en-US", { weekday: "long" })
 }
 
 export function CreateHolidayDrawer({
@@ -47,16 +47,18 @@ export function CreateHolidayDrawer({
     setIsSubmitting(true)
 
     try {
-
       // Create new holiday
       const newHoliday: Holiday = {
         holidayName: formData.holidayName,
         holidayDate: formData.holidayDate,
       }
 
-      const result = await add_HolidayData(newHoliday);
+      const result = await add_HolidayData(newHoliday)
 
-      if (result && (result.includes("already exists") || result.includes("Failed"))) {
+      if (
+        result &&
+        (result.includes("already exists") || result.includes("Failed"))
+      ) {
         alert(result)
         return
       } else {
@@ -83,7 +85,7 @@ export function CreateHolidayDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
+      <DrawerContent className="right-0 left-auto h-full w-[75%] sm:w-[60%] md:w-[50%] lg:w-[40%] xl:w-[30%]">
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>Add New Holiday</DrawerTitle>
         </DrawerHeader>
@@ -96,13 +98,6 @@ export function CreateHolidayDrawer({
 
         <DrawerFooter className="shrink-0 border-t">
           <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !formData.holidayName || !formData.holidayDate}
-            >
-              {isSubmitting ? "Creating..." : "Create Holiday"}
-            </Button>
             <DrawerClose asChild>
               <Button
                 variant="outline"
@@ -112,6 +107,15 @@ export function CreateHolidayDrawer({
                 Cancel
               </Button>
             </DrawerClose>
+            <Button
+              className="flex-1"
+              onClick={handleSubmit}
+              disabled={
+                isSubmitting || !formData.holidayName || !formData.holidayDate
+              }
+            >
+              {isSubmitting ? "Creating..." : "Create Holiday"}
+            </Button>
           </div>
         </DrawerFooter>
       </DrawerContent>

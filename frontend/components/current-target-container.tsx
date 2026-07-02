@@ -744,7 +744,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                           />
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>{globalIndex}</BorderedTableCell>
-                        <BorderedTableCell selected={isSelected} className="font-mono text-sm">
+                        <BorderedTableCell selected={isSelected} className="text-sm">
                           {employee.id || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected} className="font-medium">

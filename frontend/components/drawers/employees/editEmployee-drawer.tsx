@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Drawer,
   DrawerClose,
@@ -11,7 +11,11 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
-import { EmployeeForm, EmployeeFormData } from "@/components/drawers/employees/employeeForm"
+import {
+  EmployeeForm,
+  EmployeeFormData,
+} from "@/components/drawers/employees/employeeForm"
+import { AddDivDeptTeamDialog } from "@/components/dialogs/createDivDeptTeam-dialog"
 import type { Employee } from "@/types/employee"
 import { mainStore } from "@/store/mainStore"
 
@@ -29,8 +33,17 @@ export function EditEmployeeDrawer({
   onSuccess,
 }: EditEmployeeDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
   const { update_EmployeeData } = mainStore()
-  
+
+  // State for Add Item Dialog
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [addItemType, setAddItemType] = useState<
+    "division" | "department" | "team"
+  >("division")
+
   const [formData, setFormData] = useState<EmployeeFormData>({
     div: "",
     staff_id: "",
@@ -78,31 +91,54 @@ export function EditEmployeeDrawer({
     }
   }, [employee, open])
 
+  const handleAddItem = (type: "division" | "department" | "team") => {
+    setAddItemType(type)
+    setAddDialogOpen(true)
+  }
+
+  const handleItemAdded = (name: string) => {
+    console.log(`Added new ${addItemType}: ${name}`)
+    alert(
+      `✅ ${addItemType.charAt(0).toUpperCase() + addItemType.slice(1)} "${name}" added successfully!`
+    )
+
+    // Auto-select the newly added item in the form
+    if (addItemType === "division") {
+      setFormData((prev) => ({ ...prev, div: name }))
+      setOriginalFormData((prev) => ({ ...prev, div: name }))
+    } else if (addItemType === "department") {
+      setFormData((prev) => ({ ...prev, dept_dat: name }))
+      setOriginalFormData((prev) => ({ ...prev, dept_dat: name }))
+    } else if (addItemType === "team") {
+      setFormData((prev) => ({ ...prev, team: name }))
+      setOriginalFormData((prev) => ({ ...prev, team: name }))
+    }
+  }
+
   const handleSubmit = async () => {
-
-
     if (!hasChanges()) {
       console.log("No changes to save")
       return
     }
 
     // Validate required fields
-    if (!formData.staff_id || !formData.name || !formData.email || 
-        !formData.div || !formData.dept_dat || !formData.role || 
-        !formData.doorlog || !formData.emp_status) {
+    if (
+      !formData.staff_id ||
+      !formData.name ||
+      !formData.email ||
+      !formData.div ||
+      !formData.dept_dat ||
+      !formData.role ||
+      !formData.doorlog ||
+      !formData.emp_status
+    ) {
       console.error("Please fill in all required fields")
       return
     }
 
-
     setIsSubmitting(true)
 
     try {
-
-      // TODO: Replace with your actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Employee updated:", { id: employee?.id, ...formData })
-
       // Map form data to Employee type - PRESERVE ALL ORIGINAL FIELDS
       const updatedEmployee: Employee = {
         // Keep all original employee data
@@ -127,15 +163,14 @@ export function EditEmployeeDrawer({
         profile_photo_path: employee?.profile_photo_path || "",
       }
 
-
-      // Call the store's update method
-      await update_EmployeeData(employee!.id, updatedEmployee)
-
-    
-
       // Call the store's update method
       const result = await update_EmployeeData(employee!.id, updatedEmployee)
-      if (result && (result.includes("not found") || result.includes("already exists") || result.includes("Failed"))) {
+      if (
+        result &&
+        (result.includes("not found") ||
+          result.includes("already exists") ||
+          result.includes("Failed"))
+      ) {
         alert(result)
         return
       } else {
@@ -144,7 +179,6 @@ export function EditEmployeeDrawer({
 
       onOpenChange(false)
       onSuccess?.()
-      
     } catch (error) {
       console.error("Failed to update employee:", error)
     } finally {
@@ -152,40 +186,112 @@ export function EditEmployeeDrawer({
     }
   }
 
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent drawer from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when drawer closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - only prevent if clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
+
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
-        <DrawerHeader className="shrink-0 border-b">
-          <DrawerTitle>Edit Employee</DrawerTitle>
-        </DrawerHeader>
+    <>
+      <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
+        <DrawerContent
+          className="right-0 left-auto h-full w-[85%] sm:w-[70%] md:w-[60%] lg:w-[50%] xl:w-[40%]"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            // Prevent escape key from closing when dropdown is open
+            if (isInteractingWithDropdown) {
+              e.preventDefault()
+            }
+          }}
+        >
+          <DrawerHeader className="shrink-0 border-b">
+            <DrawerTitle>Edit Employee</DrawerTitle>
+          </DrawerHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-6 py-4">
-            <EmployeeForm data={formData} onChange={setFormData} isEdit />
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-6 py-4">
+              <EmployeeForm
+                data={formData}
+                onChange={setFormData}
+                isEdit
+                onAddDivision={() => handleAddItem("division")}
+                onAddDepartment={() => handleAddItem("department")}
+                onAddTeam={() => handleAddItem("team")}
+                onDropdownOpenChange={handleDropdownOpenChange}
+              />
+            </div>
           </div>
-        </div>
 
-        <DrawerFooter className="shrink-0 border-t">
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !hasChanges()}
-            >
-              {isSubmitting ? "Saving..." : "Save Changes"}
-            </Button>
-            <DrawerClose asChild>
+          <DrawerFooter className="shrink-0 border-t">
+            <div className="flex gap-2">
+              <DrawerClose asChild>
+                <Button
+                  variant="outline"
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </DrawerClose>
               <Button
-                variant="outline"
-                disabled={isSubmitting}
                 className="flex-1"
+                onClick={handleSubmit}
+                disabled={isSubmitting || !hasChanges()}
               >
-                Cancel
+                {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
-            </DrawerClose>
-          </div>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Add Item Dialog */}
+      <AddDivDeptTeamDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        itemType={addItemType}
+        onAdd={handleItemAdded}
+      />
+    </>
   )
 }

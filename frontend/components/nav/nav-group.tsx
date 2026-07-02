@@ -19,6 +19,9 @@ import {
 import {
   MoreHorizontalCircle01Icon,
   ArrowRight01Icon,
+  Upload05Icon,
+  Download05Icon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -44,7 +47,7 @@ export {
 
 type BaseNavItem = {
   title: string
-  tabId?: string   
+  tabId?: string
   icon?: React.ReactNode
 }
 
@@ -57,7 +60,8 @@ type NavPrimaryActionItem = BaseNavItem & {
   actions?: {
     label: string
     icon?: React.ReactNode
-    tabId?: string   
+    tabId?: string
+    action?: "import" | "export" | "delete"
     onClick?: () => void
     destructive?: boolean
   }[]
@@ -68,7 +72,7 @@ type NavDropdownItem = BaseNavItem & {
   isActive?: boolean
   items: {
     title: string
-    tabId?: string   
+    tabId?: string
     action?: "import" | "export" | "delete"
     destructive?: boolean
   }[]
@@ -80,36 +84,152 @@ export function NavGroup({
   items,
   sidebarGroupLabel,
   onTabChange,
-  activeTab
+  activeTab,
 }: {
   items: MixedNavItem[]
   sidebarGroupLabel?: string
-  onTabChange?: (tab: string) => void 
-  activeTab?: string                  
+  onTabChange?: (tab: string) => void
+  activeTab?: string
 }) {
   const { isMobile } = useSidebar()
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [dialogTabId, setDialogTabId] = React.useState<string>("all")
+  const [deletePreselectedItems, setDeletePreselectedItems] = React.useState<
+    string[]
+  >([])
 
+  // Get icon for action
+  const getActionIcon = (label: string) => {
+    switch (label) {
+      case "Import data":
+        return (
+          <HugeiconsIcon
+            icon={Upload05Icon}
+            strokeWidth={2}
+            className="h-4 w-4"
+          />
+        )
+      case "Export data":
+        return (
+          <HugeiconsIcon
+            icon={Download05Icon}
+            strokeWidth={2}
+            className="h-4 w-4"
+          />
+        )
+      case "Delete data":
+        return (
+          <HugeiconsIcon
+            icon={Delete02Icon}
+            strokeWidth={2}
+            className="h-4 w-4"
+          />
+        )
+      default:
+        return null
+    }
+  }
+
+  // Wrap actions to handle dialog opening
   const getWrappedActions = (actions?: NavPrimaryActionItem["actions"]) => {
     if (!actions) return []
 
     return actions.map((action) => {
+      // Add icon to action if not already present
+      const actionWithIcon = {
+        ...action,
+        icon: action.icon || getActionIcon(action.label),
+      }
+
+      // If action has tabId, we handle it differently
+      if (action.tabId) {
+        return {
+          ...actionWithIcon,
+          onClick: () => {
+            // Set the tab ID for the dialog
+            setDialogTabId(action.tabId || "all")
+
+            // For delete action, set preselected items
+            if (action.action === "delete" && action.tabId) {
+              setDeletePreselectedItems([action.tabId])
+            } else {
+              setDeletePreselectedItems([])
+            }
+
+            // Then open the appropriate dialog
+            switch (action.action) {
+              case "import":
+                setIsImportDialogOpen(true)
+                break
+              case "export":
+                setIsExportDialogOpen(true)
+                break
+              case "delete":
+                setIsDeleteDialogOpen(true)
+                break
+              default:
+                // If no specific action, just navigate
+                if (action.tabId) {
+                  onTabChange?.(action.tabId)
+                }
+                break
+            }
+          },
+        }
+      }
+
+      // If no tabId, use the existing logic
       if (action.label === "Import data") {
-        return { ...action, onClick: () => setIsImportDialogOpen(true) }
+        return {
+          ...actionWithIcon,
+          onClick: () => {
+            setDialogTabId("all")
+            setDeletePreselectedItems([])
+            setIsImportDialogOpen(true)
+          },
+        }
       }
       if (action.label === "Export data") {
-        return { ...action, onClick: () => setIsExportDialogOpen(true) }
+        return {
+          ...actionWithIcon,
+          onClick: () => {
+            setDialogTabId("all")
+            setDeletePreselectedItems([])
+            setIsExportDialogOpen(true)
+          },
+        }
       }
       if (action.label === "Delete data") {
-        return { ...action, onClick: () => setIsDeleteDialogOpen(true) }
+        return {
+          ...actionWithIcon,
+          onClick: () => {
+            setDialogTabId("all")
+            setDeletePreselectedItems([])
+            setIsDeleteDialogOpen(true)
+          },
+        }
       }
-      return action
+      return actionWithIcon
     })
   }
 
-  const handleDropdownItemClick = (action?: "import" | "export" | "delete", tabId?: string) => {
+  const handleDropdownItemClick = (
+    action?: "import" | "export" | "delete",
+    tabId?: string
+  ) => {
+    // Set the tab ID for the dialog
+    setDialogTabId(tabId || "all")
+
+    // For delete action, only set preselected items if there's a tabId
+    // (Master Data doesn't have a tabId, so it won't preselect anything)
+    if (action === "delete" && tabId) {
+      setDeletePreselectedItems([tabId])
+    } else {
+      setDeletePreselectedItems([])
+    }
+
     // If tabId exists, navigate first
     if (tabId) {
       onTabChange?.(tabId)
@@ -130,6 +250,16 @@ export function NavGroup({
     }
   }
 
+  // Clean up function for delete dialog
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open)
+    if (!open) {
+      // Reset preselected items when dialog closes
+      setDeletePreselectedItems([])
+      setDialogTabId("all")
+    }
+  }
+
   const renderMenuItem = (item: MixedNavItem) => {
     switch (item.type) {
       case "primary":
@@ -138,8 +268,10 @@ export function NavGroup({
             <SidebarMenuButton
               tooltip={item.title}
               isActive={activeTab === item.tabId}
-              onClick={() => onTabChange?.(item.tabId || item.title.toLowerCase())}
-              className={cn("transition-all duration-200 cursor-pointer")}
+              onClick={() =>
+                onTabChange?.(item.tabId || item.title.toLowerCase())
+              }
+              className={cn("cursor-pointer transition-all duration-200")}
             >
               {item.icon}
               <span>{item.title}</span>
@@ -155,8 +287,10 @@ export function NavGroup({
             <SidebarMenuButton
               tooltip={item.title}
               isActive={activeTab === item.tabId}
-              onClick={() => onTabChange?.(item.tabId || item.title.toLowerCase())}
-              className={cn("transition-all duration-200 cursor-pointer")}
+              onClick={() =>
+                onTabChange?.(item.tabId || item.title.toLowerCase())
+              }
+              className={cn("cursor-pointer transition-all duration-200")}
             >
               {item.icon}
               <span>{item.title}</span>
@@ -179,49 +313,35 @@ export function NavGroup({
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
-                {wrappedActions.slice(0, -1).map((action, idx) => (
-                  <DropdownMenuItem
-                    key={idx}
-                    onSelect={() => {
-                      if (action.tabId) {
-                        onTabChange?.(action.tabId)
-                      } else if (action.onClick) {
-                        action.onClick()
-                      }
-                    }}
-                    variant={action.destructive ? "destructive" : "default"}
-                  >
-                    {action.icon}
-                    <span>{action.label}</span>
-                  </DropdownMenuItem>
-                ))}
-                {wrappedActions.length > 1 && <DropdownMenuSeparator />}
-                {wrappedActions.length > 0 && (
-                  <DropdownMenuItem
-                    key="last"
-                    onSelect={() => {
-                      const lastAction = wrappedActions[wrappedActions.length - 1]
-                      if (lastAction.tabId) {
-                        onTabChange?.(lastAction.tabId)
-                      } else if (lastAction.onClick) {
-                        lastAction.onClick()
-                      }
-                    }}
-                    variant="destructive"
-                  >
-                    {wrappedActions[wrappedActions.length - 1].icon}
-                    <span>
-                      {wrappedActions[wrappedActions.length - 1].label}
-                    </span>
-                  </DropdownMenuItem>
-                )}
+                {wrappedActions.map((action, idx) => {
+                  const isDelete = action.label === "Delete data"
+
+                  return (
+                    <div key={idx}>
+                      {isDelete && <DropdownMenuSeparator />}
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          if (action.onClick) {
+                            action.onClick()
+                          } else if (action.tabId) {
+                            onTabChange?.(action.tabId)
+                          }
+                        }}
+                        variant={action.destructive ? "destructive" : "default"}
+                        className="gap-2"
+                      >
+                        {action.icon}
+                        <span>{action.label}</span>
+                      </DropdownMenuItem>
+                    </div>
+                  )
+                })}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         )
 
       case "dropdown":
-        // Check if this is the Master Data dropdown (has items with actions)
         const hasActions = item.items.some((subItem) => subItem.action)
 
         if (hasActions) {
@@ -250,22 +370,34 @@ export function NavGroup({
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <ul className="ml-4 border-l px-4">
-                    {item.items.map((subItem) => (
-                      <SidebarMenuItem key={subItem.title}>
-                        <SidebarMenuButton
-                          tooltip={subItem.title}
-                          isActive={activeTab === subItem.tabId}
-                          onClick={() => handleDropdownItemClick(subItem.action, subItem.tabId)}
-                          className={cn(
-                            "transition-all duration-200 cursor-pointer",
-                            subItem.destructive &&
-                              "text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          )}
-                        >
-                          <span>{subItem.title}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                    {item.items.map((subItem, subIndex) => {
+                      const actionIcon = getActionIcon(subItem.title)
+
+                      return (
+                        <div key={subItem.title}>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton
+                              tooltip={subItem.title}
+                              isActive={activeTab === subItem.tabId}
+                              onClick={() =>
+                                handleDropdownItemClick(
+                                  subItem.action,
+                                  subItem.tabId
+                                )
+                              }
+                              className={cn(
+                                "cursor-pointer gap-2 transition-all duration-200",
+                                subItem.destructive &&
+                                  "text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              )}
+                            >
+                              {actionIcon}
+                              <span>{subItem.title}</span>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        </div>
+                      )
+                    })}
                   </ul>
                 </CollapsibleContent>
               </SidebarMenuItem>
@@ -303,7 +435,11 @@ export function NavGroup({
                       <SidebarMenuButton
                         tooltip={subItem.title}
                         isActive={activeTab === subItem.tabId}
-                        onClick={() => onTabChange?.(subItem.tabId || subItem.title.toLowerCase())}
+                        onClick={() =>
+                          onTabChange?.(
+                            subItem.tabId || subItem.title.toLowerCase()
+                          )
+                        }
                         className="cursor-pointer"
                       >
                         <span>{subItem.title}</span>
@@ -333,14 +469,17 @@ export function NavGroup({
       <ImportDialog
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
+        label={dialogTabId}
       />
       <ExportDialog
         open={isExportDialogOpen}
         onOpenChange={setIsExportDialogOpen}
+        label={dialogTabId}
       />
       <DeleteDialog
         open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        preselectedItems={deletePreselectedItems}
       />
     </>
   )
