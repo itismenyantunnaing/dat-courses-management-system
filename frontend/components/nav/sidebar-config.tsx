@@ -22,7 +22,6 @@ import {
   TrendingUp,
   CalendarIcon,
 } from "@hugeicons/core-free-icons"
-import { importTabs } from "./tabs-config"
 
 const STROKE_WIDTH = 2
 
@@ -98,7 +97,6 @@ export const adminData: SidebarConfig = {
     {
       groupLabel: "Manage",
       items: [
-        // Master Data - Keep as dropdown
         {
           title: "Master Data",
           tabId: "master",
@@ -123,7 +121,6 @@ export const adminData: SidebarConfig = {
             },
           ],
         },
-        // Employees - Changed to primary-action
         {
           title: "Employees",
           tabId: "employees",
@@ -150,32 +147,12 @@ export const adminData: SidebarConfig = {
             },
           ],
         },
-        // Courses - Changed to primary-action
         {
           title: "Courses",
           tabId: "courses",
-          type: "primary-action",
+          type: "primary",
           icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
-          actions: [
-            {
-              label: "Import data",
-              tabId: "courses",
-              action: "import",
-            },
-            {
-              label: "Export data",
-              tabId: "courses",
-              action: "export",
-            },
-            {
-              label: "Delete data",
-              tabId: "courses",
-              action: "delete",
-              destructive: true,
-            },
-          ],
         },
-        // Skills - Changed to primary-action
         {
           title: "Skills",
           tabId: "skills",
@@ -200,7 +177,6 @@ export const adminData: SidebarConfig = {
             },
           ],
         },
-        // Current Target - Changed to primary-action
         {
           title: "Current target",
           tabId: "current_target_data",
@@ -225,7 +201,6 @@ export const adminData: SidebarConfig = {
             },
           ],
         },
-        // Holidays - Changed to primary-action
         {
           title: "Holidays",
           tabId: "holidays",
