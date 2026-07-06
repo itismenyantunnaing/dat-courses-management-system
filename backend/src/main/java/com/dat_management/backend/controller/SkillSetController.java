@@ -1,6 +1,7 @@
 package com.dat_management.backend.controller;
 
 import com.dat_management.backend.dto.skillset.*;
+import com.dat_management.backend.entity.DevelopmentType;
 import com.dat_management.backend.service.SkillSetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,13 +20,14 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/skills")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class SkillSetController {
 
     private final SkillSetService skillSetService;
 
-// =============================================== LANGUAGE SKILLS ===============================================
-    
+    // =============================================== LANGUAGE SKILLS
+    // ===============================================
+
     // Create a new language skill for an employee
     @PostMapping("/language")
     public ResponseEntity<?> saveLanguageSkill(@Valid @RequestBody LanguageSkillDto dto, BindingResult result) {
@@ -34,47 +37,45 @@ public class SkillSetController {
         try {
             LanguageSkillDto savedSkill = skillSetService.saveLanguageSkill(dto);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Language skill created successfully",
-                    "data", savedSkill
-                ));
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Language skill created successfully",
+                            "data", savedSkill));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
     // Create multiple language skills for multiple employees
     @PostMapping("/language/bulk")
-    public ResponseEntity<?> saveBulkLanguageSkills(@Valid @RequestBody List<LanguageSkillDto> dtos, BindingResult result) {
+    public ResponseEntity<?> saveBulkLanguageSkills(@Valid @RequestBody List<LanguageSkillDto> dtos,
+            BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
         }
         try {
             List<LanguageSkillDto> savedSkills = skillSetService.saveBulkLanguageSkills(dtos);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Bulk language skills created successfully",
-                    "data", savedSkills
-                ));
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Bulk language skills created successfully",
+                            "data", savedSkills));
         } catch (RuntimeException e) {
             // Check if it's an employee not found error
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of(
-                    "success", false,
-                    "message", "Bulk operation failed",
-                    "errors", e.getMessage()
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "message", "Bulk operation failed",
+                            "errors", e.getMessage()));
         }
     }
 
@@ -82,7 +83,7 @@ public class SkillSetController {
     @PutMapping("/language/{id}")
     public ResponseEntity<?> updateLanguageSkill(
             @PathVariable Integer id,
-            @Valid @RequestBody LanguageSkillDto dto, 
+            @Valid @RequestBody LanguageSkillDto dto,
             BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
@@ -91,21 +92,20 @@ public class SkillSetController {
             dto.setId(id);
             LanguageSkillDto updatedSkill = skillSetService.updateLanguageSkill(dto);
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Language skill updated successfully",
-                "data", updatedSkill
-            ));
+                    "success", true,
+                    "message", "Language skill updated successfully",
+                    "data", updatedSkill));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Language profile not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -117,7 +117,7 @@ public class SkillSetController {
             return ResponseEntity.ok(skill);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -130,10 +130,10 @@ public class SkillSetController {
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -143,8 +143,9 @@ public class SkillSetController {
         return ResponseEntity.ok(skillSetService.getAllLanguageSkills());
     }
 
-// ======================================== MANAGEMENT SKILLS ================================================
-    
+    // ======================================== MANAGEMENT SKILLS
+    // ================================================
+
     // Create a new management skill for an employee
     @PostMapping("/management")
     public ResponseEntity<?> saveManagementSkill(@Valid @RequestBody ManagementSkillDto dto, BindingResult result) {
@@ -154,46 +155,44 @@ public class SkillSetController {
         try {
             ManagementSkillDto savedSkill = skillSetService.saveManagementSkill(dto);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Management skill created successfully",
-                    "data", savedSkill
-                ));
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Management skill created successfully",
+                            "data", savedSkill));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
     // Create multiple management skills for multiple employees
     @PostMapping("/management/bulk")
-    public ResponseEntity<?> saveBulkManagementSkills(@Valid @RequestBody List<ManagementSkillDto> dtos, BindingResult result) {
+    public ResponseEntity<?> saveBulkManagementSkills(@Valid @RequestBody List<ManagementSkillDto> dtos,
+            BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
         }
         try {
             List<ManagementSkillDto> savedSkills = skillSetService.saveBulkManagementSkills(dtos);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Bulk management skills created successfully",
-                    "data", savedSkills
-                ));
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Bulk management skills created successfully",
+                            "data", savedSkills));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of(
-                    "success", false,
-                    "message", "Bulk operation failed",
-                    "errors", e.getMessage()
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "message", "Bulk operation failed",
+                            "errors", e.getMessage()));
         }
     }
 
@@ -201,7 +200,7 @@ public class SkillSetController {
     @PutMapping("/management/{id}")
     public ResponseEntity<?> updateManagementSkill(
             @PathVariable Integer id,
-            @Valid @RequestBody ManagementSkillDto dto, 
+            @Valid @RequestBody ManagementSkillDto dto,
             BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
@@ -210,21 +209,20 @@ public class SkillSetController {
             dto.setId(id);
             ManagementSkillDto updatedSkill = skillSetService.updateManagementSkill(dto);
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Management skill updated successfully",
-                "data", updatedSkill
-            ));
+                    "success", true,
+                    "message", "Management skill updated successfully",
+                    "data", updatedSkill));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Management score not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -236,7 +234,7 @@ public class SkillSetController {
             return ResponseEntity.ok(skill);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -249,10 +247,10 @@ public class SkillSetController {
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -262,8 +260,9 @@ public class SkillSetController {
         return ResponseEntity.ok(skillSetService.getAllManagementSkills());
     }
 
-// =========================================== DEVELOPMENT SKILLS ======================================
-    
+    // =========================================== DEVELOPMENT SKILLS
+    // ======================================
+
     // Create a new development skill for an employee
     @PostMapping("/development")
     public ResponseEntity<?> saveDevelopmentSkill(@Valid @RequestBody DevelopmentSkillDto dto, BindingResult result) {
@@ -273,54 +272,89 @@ public class SkillSetController {
         try {
             DevelopmentSkillDto savedSkill = skillSetService.saveDevelopmentSkill(dto);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Development skill created successfully",
-                    "data", savedSkill
-                ));
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Development skill created successfully",
+                            "data", savedSkill));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
     // Create multiple development skills for multiple employees
     @PostMapping("/development/bulk")
-    public ResponseEntity<?> saveBulkDevelopmentSkills(@Valid @RequestBody List<DevelopmentSkillDto> dtos, BindingResult result) {
+    public ResponseEntity<?> saveBulkDevelopmentSkills(@Valid @RequestBody List<DevelopmentSkillDto> dtos,
+            BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
         }
         try {
             List<DevelopmentSkillDto> savedSkills = skillSetService.saveBulkDevelopmentSkills(dtos);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Bulk development skills created successfully",
-                    "data", savedSkills
-                ));
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Bulk development skills created successfully",
+                            "data", savedSkills));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of(
-                    "success", false,
-                    "message", "Bulk operation failed",
-                    "errors", e.getMessage()
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "message", "Bulk operation failed",
+                            "errors", e.getMessage()));
         }
+    }
+
+    @PostMapping("/development/types/bulk")
+    public ResponseEntity<List<DevelopmentType>> createDevelopmentTypes(
+            @RequestBody List<Map<String, String>> requests) {
+        List<DevelopmentType> createdTypes = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+
+        for (Map<String, String> request : requests) {
+            try {
+                String name = request.get("developmentTypeName");
+                DevelopmentType created = skillSetService.createDevelopmentType(name);
+                createdTypes.add(created);
+            } catch (RuntimeException e) {
+                errors.add("Error creating development type '" + request.get("developmentTypeName") + "': "
+                        + e.getMessage());
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            // If all failed, throw exception
+            if (createdTypes.isEmpty()) {
+                throw new RuntimeException("All bulk operations failed: " + String.join("; ", errors));
+            }
+            // If some succeeded, return partial success with warning (you might want to
+            // handle this differently)
+            // For now, we'll just return the successful ones and log errors
+            System.err.println("Partial success - errors: " + String.join("; ", errors));
+        }
+
+        return new ResponseEntity<>(createdTypes, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/development/types/active")
+    public ResponseEntity<List<DevelopmentType>> getAllActiveDevelopmentTypes() {
+        List<DevelopmentType> activeTypes = skillSetService.getAllActiveDevelopmentTypes();
+        return ResponseEntity.ok(activeTypes);
     }
 
     // Update an existing development skill by its ID
     @PutMapping("/development/{id}")
     public ResponseEntity<?> updateDevelopmentSkill(
             @PathVariable Integer id,
-            @Valid @RequestBody DevelopmentSkillDto dto, 
+            @Valid @RequestBody DevelopmentSkillDto dto,
             BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
@@ -329,21 +363,20 @@ public class SkillSetController {
             dto.setId(id);
             DevelopmentSkillDto updatedSkill = skillSetService.updateDevelopmentSkill(dto);
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Development skill updated successfully",
-                "data", updatedSkill
-            ));
+                    "success", true,
+                    "message", "Development skill updated successfully",
+                    "data", updatedSkill));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Development experience not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -355,7 +388,7 @@ public class SkillSetController {
             return ResponseEntity.ok(skill);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -368,10 +401,10 @@ public class SkillSetController {
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -381,8 +414,9 @@ public class SkillSetController {
         return ResponseEntity.ok(skillSetService.getAllDevelopmentSkills());
     }
 
-// ============================================ TECHNICAL SKILLS =================================================
-    
+    // ============================================ TECHNICAL SKILLS
+    // =================================================
+
     // Create a new technical skill for an employee
     @PostMapping("/technical")
     public ResponseEntity<?> saveTechnicalSkill(@Valid @RequestBody TechnicalSkillDto dto, BindingResult result) {
@@ -392,46 +426,44 @@ public class SkillSetController {
         try {
             TechnicalSkillDto savedSkill = skillSetService.saveTechnicalSkill(dto);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Technical skill created successfully",
-                    "data", savedSkill
-                ));
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Technical skill created successfully",
+                            "data", savedSkill));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
     // Create multiple technical skills for multiple employees
     @PostMapping("/technical/bulk")
-    public ResponseEntity<?> saveBulkTechnicalSkills(@Valid @RequestBody List<TechnicalSkillDto> dtos, BindingResult result) {
+    public ResponseEntity<?> saveBulkTechnicalSkills(@Valid @RequestBody List<TechnicalSkillDto> dtos,
+            BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
         }
         try {
             List<TechnicalSkillDto> savedSkills = skillSetService.saveBulkTechnicalSkills(dtos);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Bulk technical skills created successfully",
-                    "data", savedSkills
-                ));
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Bulk technical skills created successfully",
+                            "data", savedSkills));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of(
-                    "success", false,
-                    "message", "Bulk operation failed",
-                    "errors", e.getMessage()
-                ));
+                    .body(Map.of(
+                            "success", false,
+                            "message", "Bulk operation failed",
+                            "errors", e.getMessage()));
         }
     }
 
@@ -439,7 +471,7 @@ public class SkillSetController {
     @PutMapping("/technical/{id}")
     public ResponseEntity<?> updateTechnicalSkill(
             @PathVariable Integer id,
-            @Valid @RequestBody TechnicalSkillDto dto, 
+            @Valid @RequestBody TechnicalSkillDto dto,
             BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
@@ -448,21 +480,20 @@ public class SkillSetController {
             dto.setId(id);
             TechnicalSkillDto updatedSkill = skillSetService.updateTechnicalSkill(dto);
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Technical skill updated successfully",
-                "data", updatedSkill
-            ));
+                    "success", true,
+                    "message", "Technical skill updated successfully",
+                    "data", updatedSkill));
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Technical skill not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.badRequest()
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -474,7 +505,41 @@ public class SkillSetController {
             return ResponseEntity.ok(skill);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/technical/categories")
+    public ResponseEntity<?> saveCategoryWithSkills(@RequestBody TechnicalSkillCategoryResponseDto dto) {
+        try {
+            TechnicalSkillCategoryResponseDto saved = skillSetService.saveCategoryWithSkills(dto);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Category structure saved successfully",
+                            "data", saved));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/technical/categories/bulk")
+    public ResponseEntity<?> saveBulkCategoriesWithSkills(@RequestBody List<TechnicalSkillCategoryResponseDto> dtos) {
+        try {
+            List<TechnicalSkillCategoryResponseDto> savedCategories = skillSetService
+                    .saveBulkCategoriesWithSkills(dtos);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of(
+                            "success", true,
+                            "message", "Bulk categories saved successfully",
+                            "data", savedCategories));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of(
+                            "success", false,
+                            "message", "Bulk operation failed",
+                            "errors", e.getMessage()));
         }
     }
 
@@ -487,10 +552,10 @@ public class SkillSetController {
         } catch (RuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                        .body(Map.of("success", false, "message", e.getMessage()));
             }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -507,16 +572,15 @@ public class SkillSetController {
     }
 
     // ==================== HELPER METHODS ====================
-    
+
     // Generate error response for validation failures
     private ResponseEntity<Map<String, Object>> getErrorResponse(BindingResult result) {
         Map<String, String> errors = result.getFieldErrors().stream()
-            .collect(Collectors.toMap(
-                FieldError::getField,
-                FieldError::getDefaultMessage,
-                (existing, replacement) -> existing + "; " + replacement
-            ));
-        
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        FieldError::getDefaultMessage,
+                        (existing, replacement) -> existing + "; " + replacement));
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
         response.put("message", "Validation failed");

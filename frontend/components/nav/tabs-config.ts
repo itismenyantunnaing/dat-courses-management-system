@@ -8,6 +8,7 @@ import {
 import { extractHolidayDataFromExcel } from "@/lib/Excel-extractor-Holiday"
 import { extractEmployeeDataFromExcel, validateEmployeeData, EmployeeExcelData } from "@/lib/Excel-extractor-Employee"
 import { extractCurrentTargetDataFromExcel, transformToApiFormat, validateCurrentTargetData, validateCurrentTargetDataWithEmployees, type CurrentTargetRow } from "@/lib/Excel-extractor-currentTarget";
+import { extractEmployeesFromExcel, parseTechnicalHeader, TECHNICAL_ABILITY_CONFIG, isYearsHeader, isExperienceHeader } from "@/lib/Excel-extractor-Skillset";
 import { exportEmployeesToExcel, exportEmployeesToCSV, exportEmployeesToPDF } from "@/lib/export/Export-employeesData";
 import { exportSkillsToCSV, exportSkillsToExcel, exportSkillsToPDF } from "@/lib/export/Export-skillsetData";
 import { exportHolidaysToExcel, exportHolidaysToCSV, exportHolidaysToPDF } from "@/lib/export/Export-holidayData";
@@ -157,7 +158,6 @@ export const allTabs = [
       }
     },
     onExport: async (format: string) => {
-      console.log(`📤 Exporting employees data as ${format}`);
 
       // Get data from store
       const store = (window as any).mainStore?.getState();
@@ -221,13 +221,792 @@ export const allTabs = [
     accept: ".csv,.json,.xlsx,.xls",
     icon: CodeIcon,
     maxSize: 500,
-    onImport: (file: File) => {
-      console.log("📤 Importing skills data:", file.name)
-      alert('Skills import coming soon!')
-      return { success: true, message: 'Skills import coming soon!' }
+    onImport: async (file: File) => {
+      try {
+        const startTime = performance.now();
+        const store = (window as any).mainStore?.getState();
+
+        if (!store) {
+          throw new Error('System store not initialized. Please refresh and try again.');
+        }
+
+        await Promise.all([
+          store.fetch_EmployeeData(),
+          store.fetch_languageSkillData(),
+          store.fetch_managementScoreData(),
+          store.fetch_devCapData(),
+          store.fetch_SkillData(),
+          store.fetch_SkillHeaders()
+        ]);
+
+        const currentStore = (window as any).mainStore?.getState();
+        const extractionResult = await extractEmployeesFromExcel(file, currentStore.skill_headers || []);
+
+        // ===== SEE FULL HEADERS =====
+        console.log('📊 Full Headers:', extractionResult.headers);
+        console.log('📊 Total Headers Count:', extractionResult.headers.length);
+
+        if (!extractionResult.success) {
+          alert(`❌ Extraction failed: ${extractionResult.error}`);
+          return { success: false, message: extractionResult.error };
+        }
+
+        const employees = extractionResult.employees;
+        if (employees.length === 0) {
+          alert('⚠️ No data found in the Excel file.');
+          return { success: false, message: 'No data found' };
+        }
+
+        const normalizeId = (id: any) => id?.toString().trim() || '';
+        const normalizeString = (str: any) => str?.toString().trim().toLowerCase() || '';
+
+        // ===== FETCH EXISTING DEVELOPMENT HEADERS (NO CREATION) =====
+        console.log('🔄 Fetching existing development types from database...');
+
+        try {
+          await store.fetch_devCapHeaders();
+          console.log('✅ Development types fetched successfully');
+        } catch (fetchError) {
+          console.error('❌ Failed to fetch development types:', fetchError);
+        }
+
+        await store.fetch_devCapData();
+        const refreshedStore = (window as any).mainStore?.getState();
+
+        Object.assign(currentStore, {
+          devCap_data: refreshedStore.devCap_data || [],
+          devCap_headers: refreshedStore.devCap_headers || []
+        });
+
+        console.log('📊 Existing development types:', currentStore.devCap_headers);
+
+        // ===== SYNC TECHNICAL SKILL HEADERS =====
+        console.log('🔄 Syncing technical skill headers from local config...');
+
+        const formattedConfig = TECHNICAL_ABILITY_CONFIG.map(cat => ({
+          categoryName: cat.category_name,
+          skillSubCategories: cat.skill_sub_categories.map(sub => ({
+            subCategoryName: sub.sub_category_name,
+            skills: sub.skills.map(sk => ({
+              skillName: sk.skill_name
+            }))
+          }))
+        }));
+
+        try {
+          await store.add_BulkSkillCategories(formattedConfig);
+          console.log('✅ Technical skill headers synced successfully');
+        } catch (syncError) {
+          console.error('❌ Failed to sync technical skill headers:', syncError);
+        }
+
+        await store.fetch_SkillHeaders();
+        const refreshedStore2 = (window as any).mainStore?.getState();
+
+        Object.assign(currentStore, {
+          skill_headers: refreshedStore2.skill_headers || [],
+          skillData: refreshedStore2.skillData || []
+        });
+
+        // ===== BUILD skillIdLookup =====
+        const skillIdLookup = new Map<string, number>();
+        for (const cat of currentStore.skill_headers || []) {
+          const catName = normalizeString(cat.categoryName || cat.category_name);
+          for (const sub of cat.skillSubCategories || cat.skill_sub_categories || []) {
+            const subName = normalizeString(sub.subCategoryName || sub.sub_category_name);
+            for (const sk of sub.skills || []) {
+              const skName = normalizeString(sk.skillName || sk.skill_name);
+              const key = `${catName}|${subName}|${skName}`;
+              skillIdLookup.set(key, sk.id);
+            }
+          }
+        }
+        console.log(`📋 Built skillIdLookup with ${skillIdLookup.size} entries`);
+
+        // ===== DETECT AND CREATE NEW TECHNICAL SKILLS =====
+        console.log('🔍 Detecting new technical skills not in config...');
+
+        // Build a set of existing skill names from config (case insensitive)
+        const existingSkillNames = new Set<string>();
+        for (const cat of TECHNICAL_ABILITY_CONFIG) {
+          for (const sub of cat.skill_sub_categories) {
+            for (const sk of sub.skills) {
+              existingSkillNames.add(normalizeString(sk.skill_name));
+            }
+          }
+        }
+
+        // Build a map of existing categories and subcategories
+        const existingCategories = new Set<string>();
+        const existingSubCategories = new Set<string>();
+        for (const cat of TECHNICAL_ABILITY_CONFIG) {
+          existingCategories.add(normalizeString(cat.category_name));
+          for (const sub of cat.skill_sub_categories) {
+            existingSubCategories.add(normalizeString(sub.sub_category_name));
+          }
+        }
+
+        // Get all headers
+        const allHeaders = extractionResult.headers;
+
+        // Find new skill headers with their category and subcategory
+        const newSkillsMap = new Map<string, {
+          yearsHeader: string;
+          expHeader: string;
+          category: string;
+          subcategory: string
+        }>();
+
+        for (const header of allHeaders) {
+          // ✅ Use the helper functions (case-insensitive)
+          const isYear = isYearsHeader(header);
+          const isExp = isExperienceHeader(header);
+
+          // Skip if not a technical skill header
+          if (!isYear && !isExp && !header.includes('technical ability')) {
+            continue;
+          }
+
+          // Skip if it's a development header or other known headers
+          if (header.includes('Developer') || header.includes('administrator')) {
+            continue;
+          }
+
+          // Parse the header to extract skill name, category, subcategory
+          const parsed = parseTechnicalHeader(header);
+          if (!parsed.skill) continue;
+
+          const skillName = parsed.skill;
+          const skillNameNorm = normalizeString(skillName);
+          const categoryName = parsed.category || '';
+          const subcategoryName = parsed.subcategory || '';
+
+          // Check if this skill already exists in config
+          if (!existingSkillNames.has(skillNameNorm)) {
+            // This is a new skill!
+            const key = skillName;
+            if (!newSkillsMap.has(key)) {
+              newSkillsMap.set(key, {
+                yearsHeader: '',
+                expHeader: '',
+                category: categoryName,
+                subcategory: subcategoryName
+              });
+            }
+
+            const entry = newSkillsMap.get(key)!;
+            if (isYear) {
+              entry.yearsHeader = header;
+            } else if (isExp) {
+              entry.expHeader = header;
+            }
+          }
+        }
+
+        // Create new skills if any found
+        if (newSkillsMap.size > 0) {
+          console.log(`✅ Found ${newSkillsMap.size} new skills:`, Array.from(newSkillsMap.keys()));
+
+          // Group new skills by category and subcategory
+          const categoryMap = new Map<string, Map<string, string[]>>();
+
+          for (const [skillName, info] of newSkillsMap) {
+            // Helper function to generate random number
+            const getRandomNumber = () => Math.floor(Math.random() * 10000);
+
+            // Use the actual category/subcategory from the header, or generate empty-{randomNumber}
+            const categoryKey = info.category && info.category.trim() !== ''
+              ? info.category
+              : `empty-${getRandomNumber()}`;
+
+            const subcategoryKey = info.subcategory && info.subcategory.trim() !== ''
+              ? info.subcategory
+              : `empty-${getRandomNumber()}`;
+
+            if (!categoryMap.has(categoryKey)) {
+              categoryMap.set(categoryKey, new Map());
+            }
+            const subMap = categoryMap.get(categoryKey)!;
+            if (!subMap.has(subcategoryKey)) {
+              subMap.set(subcategoryKey, []);
+            }
+            subMap.get(subcategoryKey)!.push(skillName);
+          }
+
+          // Build the new skill categories based on existing structure
+          const newSkillCategories = [];
+
+          for (const [categoryName, subMap] of categoryMap) {
+            // Check if category already exists in config
+            const categoryExists = existingCategories.has(normalizeString(categoryName));
+
+            const skillSubCategories = [];
+            for (const [subcategoryName, skills] of subMap) {
+              // Check if subcategory already exists in config
+              const subcategoryExists = existingSubCategories.has(normalizeString(subcategoryName));
+
+              skillSubCategories.push({
+                subCategoryName: subcategoryName,
+                skills: skills.map(skillName => ({ skillName: skillName }))
+              });
+            }
+
+            newSkillCategories.push({
+              categoryName: categoryName,
+              skillSubCategories: skillSubCategories
+            });
+          }
+
+          try {
+            await store.add_BulkSkillCategories(newSkillCategories);
+            console.log(`✅ Created ${newSkillsMap.size} new skills in their respective categories`);
+
+            // Refresh skill headers to get new skill IDs
+            await store.fetch_SkillHeaders();
+            const refreshedStore3 = (window as any).mainStore?.getState();
+            Object.assign(currentStore, {
+              skill_headers: refreshedStore3.skill_headers || [],
+              skillData: refreshedStore3.skillData || []
+            });
+
+            // Rebuild skillIdLookup to include new skills
+            for (const cat of currentStore.skill_headers || []) {
+              const catName = normalizeString(cat.categoryName || cat.category_name);
+              for (const sub of cat.skillSubCategories || cat.skill_sub_categories || []) {
+                const subName = normalizeString(sub.subCategoryName || sub.sub_category_name);
+                for (const sk of sub.skills || []) {
+                  const skName = normalizeString(sk.skillName || sk.skill_name);
+                  const key = `${catName}|${subName}|${skName}`;
+                  skillIdLookup.set(key, sk.id);
+                }
+              }
+            }
+            console.log(`📋 Updated skillIdLookup with ${skillIdLookup.size} entries (including new skills)`);
+
+          } catch (error) {
+            console.error('❌ Failed to create new skills:', error);
+          }
+        } else {
+          console.log('ℹ️ No new skills detected');
+        }
+
+        // ===== EXISTING DATA =====
+        const existingEmployeeIds = new Set(
+          (currentStore?.employee_data || []).map((emp: any) => (emp.id || emp.employeeId || emp.staffId)?.toString().trim())
+        );
+
+        const existingLanguageSkills = currentStore?.languageSkill_data || [];
+        const existingManagementScores = currentStore?.managementScores_Data || [];
+        const existingDevExperience = currentStore?.devCap_data || [];
+        const existingTechnicalSkills = currentStore?.skillData || [];
+
+        // Maps for create/update operations
+        const managementToCreate = new Map<string, any>();
+        const managementToUpdate = new Map<string, { id: number; data: any }>();
+
+        const languageToCreate = new Map<string, any>();
+        const languageToUpdate = new Map<string, { id: number; data: any }>();
+
+        const developmentToCreate = new Map<string, any>();
+        const developmentToUpdate = new Map<string, { id: number; data: any }>();
+
+        const technicalToCreate = new Map<string, any>();
+        const technicalToUpdate = new Map<string, { id: number; data: any }>();
+
+        const skippedEmployees = new Set<string>();
+
+        // ===== PROCESS EACH EMPLOYEE =====
+        for (const emp of employees) {
+          const employeeId = emp["ID"]?.toString().trim();
+          if (!employeeId) continue;
+
+          if (existingEmployeeIds.size > 0 && !existingEmployeeIds.has(employeeId)) {
+            skippedEmployees.add(employeeId);
+            continue;
+          }
+
+          // 1. Management Skills
+          const mgmtExp = parseInt(emp["administrator - Management experience (Levels 1-5)"]);
+          const qcd = parseInt(emp["administrator - management ability - QCD (1-4 points)"]);
+          const report = parseInt(emp["administrator - management ability - Reporting, contacting, and consulting (1-4 points)"]);
+          const edu = parseInt(emp["administrator - management ability - Education (1-4 points)"]);
+
+          if (!isNaN(mgmtExp) || !isNaN(qcd) || !isNaN(report) || !isNaN(edu)) {
+            const mgmtData = {
+              employeeId,
+              managementExperienceLevel: isNaN(mgmtExp) ? 1 : Math.max(1, Math.min(5, mgmtExp)),
+              qcdScore: isNaN(qcd) ? 1 : Math.max(1, Math.min(4, qcd)),
+              reportConsultScore: isNaN(report) ? 1 : Math.max(1, Math.min(4, report)),
+              educationScore: isNaN(edu) ? 1 : Math.max(1, Math.min(4, edu)),
+            };
+
+            const existing = existingManagementScores.find((m: any) => normalizeId(m.employeeId || m.employee_id) === employeeId);
+            if (existing) {
+              const hasChanged =
+                (existing.managementExperienceLevel || existing.management_experience_level) !== mgmtData.managementExperienceLevel ||
+                (existing.qcdScore || existing.qcd_score) !== mgmtData.qcdScore ||
+                (existing.reportConsultScore || existing.report_consult_score) !== mgmtData.reportConsultScore ||
+                (existing.educationScore || existing.education_score) !== mgmtData.educationScore;
+
+              if (hasChanged) {
+                managementToUpdate.set(employeeId, { id: existing.id, data: mgmtData });
+              }
+            } else {
+              managementToCreate.set(employeeId, mgmtData);
+            }
+          }
+
+          // 2. Language Skills
+          const langLevel = parseInt(emp["Developer (DIR and YSX tasks only) - language skills - Level (Levels 1-5)"]);
+          if (!isNaN(langLevel)) {
+            const langData = {
+              employeeId,
+              languageSkillLevel: Math.max(1, Math.min(5, langLevel)),
+            };
+
+            const existing = existingLanguageSkills.find((l: any) => normalizeId(l.employeeId || l.employee_id) === employeeId);
+            if (existing) {
+              if ((existing.languageSkillLevel || existing.language_skill_level) !== langData.languageSkillLevel) {
+                languageToUpdate.set(employeeId, { id: existing.id, data: langData });
+              }
+            } else {
+              languageToCreate.set(employeeId, langData);
+            }
+          }
+
+          // 3. Development Skills
+          const devTypes = [
+            { name: "Host/Online", yearsHeader: "Developer (DIR and YSX tasks only) - Development capabilities - Host/Online - Years of experience", processHeader: "Developer (DIR and YSX tasks only) - Development capabilities - Host/Online - Experience Process" },
+            { name: "Host/Batch", yearsHeader: "Developer (DIR and YSX tasks only) - Development capabilities - Host/Batch - Years of experience", processHeader: "Developer (DIR and YSX tasks only) - Development capabilities - Host/Batch - Experience Process" },
+            { name: "Decentralized/Online", yearsHeader: "Developer (DIR and YSX tasks only) - Development capabilities - Decentralized/Online - Years of experience", processHeader: "Developer (DIR and YSX tasks only) - Development capabilities - Decentralized/Online - Experience Process" },
+            { name: "Distributed/Batch", yearsHeader: "Developer (DIR and YSX tasks only) - Development capabilities - Distributed/Batch - Years of experience", processHeader: "Developer (DIR and YSX tasks only) - Development capabilities - Distributed/Batch - Experience Process" },
+          ];
+
+          for (const type of devTypes) {
+            const years = parseFloat(emp[type.yearsHeader]);
+            const process = emp[type.processHeader];
+
+            if (isNaN(years) || years <= 0) continue;
+
+            const devData = {
+              employeeId: employeeId,
+              developmentTypeName: type.name,
+              processName: (process || "").toString().trim().substring(0, 255),
+              yearsOfExperience: Math.min(99.9, years),
+            };
+
+            const devKey = `${employeeId}|${normalizeString(type.name)}`;
+            const existing = existingDevExperience.find((d: any) =>
+              normalizeId(d.employeeId || d.employee_id) === employeeId &&
+              normalizeString(d.developmentTypeName || d.development_type_name) === normalizeString(type.name)
+            );
+
+            if (existing) {
+              const existingYears = existing.yearsOfExperience || 0;
+              const existingProcess = (existing.processName || existing.process_name || "").toString().trim();
+
+              const hasChanged =
+                Math.abs(existingYears - years) > 0.01 ||
+                normalizeString(existingProcess) !== normalizeString(process || "");
+
+              if (hasChanged) {
+                const updateData = {
+                  employeeId: employeeId,
+                  developmentTypeName: type.name,
+                  processName: (process || existingProcess).toString().trim().substring(0, 255),
+                  yearsOfExperience: Math.min(99.9, years),
+                };
+                developmentToUpdate.set(devKey, { id: existing.id, data: updateData });
+              }
+            } else {
+              if (!developmentToCreate.has(devKey)) {
+                developmentToCreate.set(devKey, devData);
+              }
+            }
+          }
+
+          // ===== 4. TECHNICAL SKILLS - FAST WITH RPA SPECIAL CASE =====
+          const technicalHeaders = Object.keys(emp).filter(key =>
+            isYearsHeader(key) || isExperienceHeader(key) || key.includes('technical ability')
+          );
+
+          const processedSkills = new Set<string>();
+
+          // Process existing skills from config
+          for (const cat of TECHNICAL_ABILITY_CONFIG) {
+            for (const sub of cat.skill_sub_categories) {
+              for (const sk of sub.skills) {
+                const skillKey = `${normalizeString(cat.category_name)}|${normalizeString(sub.sub_category_name)}|${normalizeString(sk.skill_name)}`;
+
+                if (processedSkills.has(skillKey)) {
+                  continue;
+                }
+
+                let yearsHeader = '';
+                let expHeader = '';
+                let foundYears = false;
+                let foundExp = false;
+
+                const skillLower = sk.skill_name.toLowerCase();
+                const isRPASkill = skillLower === 'rpa';
+
+                for (const header of technicalHeaders) {
+                  const headerLower = header.toLowerCase();
+                  let isMatch = false;
+
+                  if (isRPASkill) {
+                    isMatch = headerLower.endsWith(` - rpa - years`) ||
+                      headerLower.endsWith(` - rpa - experience`) ||
+                      headerLower.includes(` - rpa - `);
+                  } else {
+                    isMatch = headerLower.includes(skillLower);
+                  }
+
+                  if (isMatch) {
+                    if (isYearsHeader(header)) {
+                      yearsHeader = header;
+                      foundYears = true;
+                    } else if (isExperienceHeader(header)) {
+                      expHeader = header;
+                      foundExp = true;
+                    }
+                  }
+                }
+
+
+                if (!foundYears || !foundExp) {
+                  for (const header of technicalHeaders) {
+                    const headerLower = header.toLowerCase();
+
+                    if (isRPASkill) {
+                      break;
+                    }
+
+                    if (headerLower.includes(skillLower) ||
+                      headerLower.endsWith(skillLower) ||
+                      headerLower.includes(` - ${skillLower}`)) {
+                      if (headerLower.includes('years') || headerLower.includes('year')) {
+                        yearsHeader = header;
+                        foundYears = true;
+                      } else if (headerLower.includes('experience') || headerLower.includes('exp')) {
+                        expHeader = header;
+                        foundExp = true;
+                      }
+                    }
+                  }
+                }
+
+                const headerFormats = [
+                  `technical ability - ${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - Years`,
+                  `technical ability - ${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - experience`,
+                  `${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - Years`,
+                  `${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - experience`,
+                  `${cat.category_name} - ${sk.skill_name} - Years`,
+                  `${cat.category_name} - ${sk.skill_name} - experience`,
+                  `${sk.skill_name} - Years`,
+                  `${sk.skill_name} - experience`,
+                ];
+
+                if (!foundYears) {
+                  for (const format of headerFormats) {
+                    if (format.includes('Years') && emp[format] !== undefined) {
+                      yearsHeader = format;
+                      foundYears = true;
+                      break;
+                    }
+                  }
+                  if (!foundYears) {
+                    yearsHeader = `technical ability - ${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - Years`;
+                  }
+                }
+
+                if (!foundExp) {
+                  for (const format of headerFormats) {
+                    if (format.includes('experience') && emp[format] !== undefined) {
+                      expHeader = format;
+                      foundExp = true;
+                      break;
+                    }
+                  }
+                  if (!foundExp) {
+                    expHeader = `technical ability - ${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - experience`;
+                  }
+                }
+
+                const yearsRaw = emp[yearsHeader];
+                const experienceRaw = emp[expHeader];
+
+                const hasYears = yearsRaw !== undefined && yearsRaw !== null && yearsRaw !== '' && !isNaN(parseFloat(yearsRaw)) && parseFloat(yearsRaw) > 0;
+                const hasExperience = experienceRaw !== undefined && experienceRaw !== null && experienceRaw.toString().trim().length > 0;
+
+                if (hasYears || hasExperience) {
+                  const catNameNorm = normalizeString(cat.category_name);
+                  const subNameNorm = normalizeString(sub.sub_category_name);
+                  const skNameNorm = normalizeString(sk.skill_name);
+                  const lookupKey = `${catNameNorm}|${subNameNorm}|${skNameNorm}`;
+                  const skillId = skillIdLookup.get(lookupKey);
+
+                  if (!skillId) {
+                    processedSkills.add(skillKey);
+                    continue;
+                  }
+
+                  const techData = {
+                    employeeId: employeeId,
+                    skillId: skillId,
+                    skillName: sk.skill_name,
+                    categoryName: cat.category_name,
+                    subCategoryName: sub.sub_category_name,
+                    yearsOfExperience: hasYears ? parseFloat(yearsRaw) : 0,
+                    experienceLevel: hasExperience ? experienceRaw.toString().trim() : "",
+                  };
+
+                  const existing = existingTechnicalSkills.find((s: any) =>
+                    normalizeId(s.employeeId || s.employee_id) === employeeId &&
+                    (s.skillId === skillId ||
+                      (normalizeString(s.skillName || s.skill_name) === skNameNorm &&
+                        normalizeString(s.categoryName || s.category_name) === catNameNorm &&
+                        normalizeString(s.subCategoryName || s.sub_category_name) === subNameNorm))
+                  );
+
+                  const key = `${employeeId}|${skillId}`;
+                  if (existing) {
+                    const existingYears = existing.yearsOfExperience || existing.years_of_experience || 0;
+                    const existingExp = (existing.experienceLevel || existing.experience_level || "").toString().trim();
+
+                    const epsilon = 0.00001;
+                    const hasChanged =
+                      Math.abs(existingYears - techData.yearsOfExperience) > epsilon ||
+                      normalizeString(existingExp) !== normalizeString(techData.experienceLevel);
+
+                    if (hasChanged) {
+                      technicalToUpdate.set(key, { id: existing.id, data: techData });
+                    }
+                  } else {
+                    technicalToCreate.set(key, techData);
+                  }
+                }
+
+                processedSkills.add(skillKey);
+              }
+            }
+          }
+
+          // ===== PROCESS NEW SKILLS (AA, etc.) =====
+          if (newSkillsMap.size > 0) {
+            for (const [skillName, info] of newSkillsMap) {
+              const yearsRaw = emp[info.yearsHeader];
+              const experienceRaw = emp[info.expHeader];
+
+              const hasYears = yearsRaw !== undefined && yearsRaw !== null && yearsRaw !== '' && !isNaN(parseFloat(yearsRaw)) && parseFloat(yearsRaw) > 0;
+              const hasExperience = experienceRaw !== undefined && experienceRaw !== null && experienceRaw.toString().trim().length > 0;
+
+              if (hasYears || hasExperience) {
+                const skNameNorm = normalizeString(skillName);
+                let skillId = null;
+
+                for (const [key, id] of skillIdLookup) {
+                  if (key.includes(`|${skNameNorm}`)) {
+                    skillId = id;
+                    break;
+                  }
+                }
+
+                if (!skillId) {
+                  console.warn(`⚠️ Could not find ID for new skill: ${skillName}`);
+                  continue;
+                }
+
+                const techData = {
+                  employeeId: employeeId,
+                  skillId: skillId,
+                  skillName: skillName,
+                  categoryName: info.category || 'Uncategorized',
+                  subCategoryName: info.subcategory || 'Uncategorized',
+                  yearsOfExperience: hasYears ? parseFloat(yearsRaw) : 0,
+                  experienceLevel: hasExperience ? experienceRaw.toString().trim() : "",
+                };
+
+                const existing = existingTechnicalSkills.find((s: any) =>
+                  normalizeId(s.employeeId || s.employee_id) === employeeId &&
+                  normalizeString(s.skillName || s.skill_name) === skNameNorm
+                );
+
+                const key = `${employeeId}|${skillId}`;
+                if (existing) {
+                  const existingYears = existing.yearsOfExperience || existing.years_of_experience || 0;
+                  const existingExp = (existing.experienceLevel || existing.experience_level || "").toString().trim();
+
+                  const epsilon = 0.00001;
+                  const hasChanged =
+                    Math.abs(existingYears - techData.yearsOfExperience) > epsilon ||
+                    normalizeString(existingExp) !== normalizeString(techData.experienceLevel);
+
+                  if (hasChanged) {
+                    technicalToUpdate.set(key, { id: existing.id, data: techData });
+                  }
+                } else {
+                  technicalToCreate.set(key, techData);
+                }
+              }
+            }
+          }
+        }
+
+        // ===== PREPARE ARRAYS FOR BULK OPERATIONS =====
+        const mgmtCreateArr = Array.from(managementToCreate.values());
+        const langCreateArr = Array.from(languageToCreate.values());
+        const devCreateArr = Array.from(developmentToCreate.values());
+        const techCreateArr = Array.from(technicalToCreate.values());
+
+        const mgmtUpdateArr = Array.from(managementToUpdate.values());
+        const langUpdateArr = Array.from(languageToUpdate.values());
+        const devUpdateArr = Array.from(developmentToUpdate.values());
+        const techUpdateArr = Array.from(technicalToUpdate.values());
+
+        const totalCreate = mgmtCreateArr.length + langCreateArr.length + devCreateArr.length + techCreateArr.length;
+        const totalUpdate = mgmtUpdateArr.length + langUpdateArr.length + devUpdateArr.length + techUpdateArr.length;
+
+        if (totalCreate === 0 && totalUpdate === 0) {
+          let msg = '⚠️ No new or updated skill data to import.';
+          if (skippedEmployees.size > 0) {
+            msg += ` ${skippedEmployees.size} employees were skipped because they don't exist in the system.`;
+          }
+          alert(msg);
+          return { success: false, message: 'No data to import' };
+        }
+
+        let confirmMsg = `Import summary for ${employees.length - skippedEmployees.size} employees:\n\n` +
+          `Create New Records:\n` +
+          `- Management: ${mgmtCreateArr.length}\n` +
+          `- Language: ${langCreateArr.length}\n` +
+          `- Development: ${devCreateArr.length}\n` +
+          `- Technical: ${techCreateArr.length}\n\n` +
+          `Update Existing Records:\n` +
+          `- Management: ${mgmtUpdateArr.length}\n` +
+          `- Language: ${langUpdateArr.length}\n` +
+          `- Development: ${devUpdateArr.length}\n` +
+          `- Technical: ${techUpdateArr.length}\n`;
+
+        if (skippedEmployees.size > 0) {
+          confirmMsg += `\n⚠️ ${skippedEmployees.size} employees will be skipped (ID not found in system).`;
+        }
+
+        confirmMsg += `\n\nContinue?`;
+
+        const shouldProceed = confirm(confirmMsg);
+
+        if (!shouldProceed) return { success: false, message: 'Import cancelled' };
+
+        // ===== PERFORM OPERATIONS =====
+        let successCount = 0;
+
+        // 1. Bulk Creates
+        if (mgmtCreateArr.length > 0) {
+          try {
+            await store.add_BulkManagementSkills(mgmtCreateArr);
+            successCount += mgmtCreateArr.length;
+            console.log(`✅ Created ${mgmtCreateArr.length} management skills`);
+          } catch (error) {
+            console.error('❌ Failed to create management skills:', error);
+          }
+        }
+
+        if (langCreateArr.length > 0) {
+          try {
+            await store.add_BulkLanguageSkills(langCreateArr);
+            successCount += langCreateArr.length;
+            console.log(`✅ Created ${langCreateArr.length} language skills`);
+          } catch (error) {
+            console.error('❌ Failed to create language skills:', error);
+          }
+        }
+
+        if (devCreateArr.length > 0) {
+          try {
+            await store.add_BulkDevelopmentSkills(devCreateArr);
+            successCount += devCreateArr.length;
+            console.log(`✅ Created ${devCreateArr.length} development skills`);
+          } catch (error) {
+            console.error('❌ Failed to create development skills:', error);
+            for (const item of devCreateArr) {
+              try {
+                await store.add_devCapData(item);
+                successCount++;
+              } catch (indError) {
+                console.error(`❌ Failed to create development for employee ${item.employeeId}:`, indError);
+              }
+            }
+          }
+        }
+
+        if (techCreateArr.length > 0) {
+          try {
+            await store.add_BulkTechnicalSkills(techCreateArr);
+            successCount += techCreateArr.length;
+            console.log(`✅ Created ${techCreateArr.length} technical skills`);
+          } catch (error) {
+            console.error('❌ Failed to create technical skills:', error);
+            for (const item of techCreateArr) {
+              try {
+                await store.add_SkillData(item);
+                successCount++;
+              } catch (indError) {
+                console.error(`❌ Failed to create technical for employee ${item.employeeId}:`, indError);
+              }
+            }
+          }
+        }
+
+        // 2. Individual Updates
+        for (const item of mgmtUpdateArr) {
+          try {
+            await store.update_managementScoreData(item.id, item.data);
+            successCount++;
+          } catch (error) {
+            console.error(`❌ Failed to update management skill ${item.id}:`, error);
+          }
+        }
+
+        for (const item of langUpdateArr) {
+          try {
+            await store.update_japaneseLevel(item.id, item.data);
+            successCount++;
+          } catch (error) {
+            console.error(`❌ Failed to update language skill ${item.id}:`, error);
+          }
+        }
+
+        for (const item of devUpdateArr) {
+          try {
+            await store.update_devCapData(item.id, item.data);
+            successCount++;
+          } catch (error) {
+            console.error(`❌ Failed to update development skill ${item.id}:`, error);
+          }
+        }
+
+        for (const item of techUpdateArr) {
+          try {
+            await store.update_SkillData(item.id, item.data);
+            successCount++;
+          } catch (error) {
+            console.error(`❌ Failed to update technical skill ${item.id}:`, error);
+          }
+        }
+
+        const totalTime = ((performance.now() - startTime) / 1000).toFixed(1);
+        alert(`✅ Successfully processed ${successCount} skill records in ${totalTime}s!`);
+
+        return { success: true, message: `Processed ${successCount} records` };
+
+      } catch (error) {
+        console.error('❌ Skills import error:', error);
+        alert(`❌ Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
     },
     onExport: async (format: string) => {
-      console.log(`📤 Exporting skills data as ${format}`);
 
       // Get data from store
       const store = (window as any).mainStore?.getState();
@@ -279,7 +1058,6 @@ export const allTabs = [
           alert(`Export format "${format}" is not supported for skills data.`);
         }
 
-        console.log('✅ Skills exported successfully');
       } catch (error) {
         console.error('❌ Export failed:', error);
         alert(`Failed to export skills data: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -528,7 +1306,6 @@ export const allTabs = [
 
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1);
         const finalMessage = `Successfully imported ${importedCount} out of ${filteredApiData.length} records in ${totalTime}s.`;
-        console.log(`\n📊 Import completed: ${finalMessage}`);
         alert(`✅ ${finalMessage}`);
 
         return { success: true, message: finalMessage };

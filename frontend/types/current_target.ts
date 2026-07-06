@@ -11,7 +11,7 @@ export interface TargetDates {
 export interface EmployeeJapaneseLevel {
   id: number;
   employeeId?: string;
-  employee_id?: string;
+  employee_id: string;
 
   // Certified Levels
   jlptHighestLevel: string | null;

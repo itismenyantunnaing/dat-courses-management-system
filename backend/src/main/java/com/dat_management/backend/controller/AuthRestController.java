@@ -22,9 +22,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/security/api/auth")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true", allowedHeaders = "*", exposedHeaders = {
-                "Authorization", "Content-Type" }, methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT,
-                                RequestMethod.DELETE, RequestMethod.OPTIONS })
+@CrossOrigin(
+    origins = "http://localhost:3000",
+    allowCredentials = "true",
+    allowedHeaders = "*",
+    exposedHeaders = {"Authorization", "Content-Type"},
+    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS}
+)
 public class AuthRestController {
 
         private final AuthenticationManager authenticationManager;

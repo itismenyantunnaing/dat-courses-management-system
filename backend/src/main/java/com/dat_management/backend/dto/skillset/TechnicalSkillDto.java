@@ -18,7 +18,7 @@ public class TechnicalSkillDto {
     
     private String subCategoryName;
     
-    @DecimalMin(value = "0.0", message = "Years of experience must be at least 0")
+    @DecimalMin(value = "0.00", message = "Years of experience must be at least 0")
     private BigDecimal yearsOfExperience;
     
     private String experienceLevel;

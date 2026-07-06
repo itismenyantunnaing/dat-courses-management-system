@@ -42,7 +42,6 @@ public class SkillSetService {
         EmployeeJapaneseProfile profile = new EmployeeJapaneseProfile();
         profile.setEmployee(employee);
         profile.setLanguageSkillLevel(dto.getLanguageSkillLevel());
-        profile.setJlptHighestLevel(dto.getJlptHighestLevel());
 
         EmployeeJapaneseProfile saved = languageProfileRepository.save(profile);
         dto.setId(saved.getId());
@@ -58,7 +57,6 @@ public class SkillSetService {
             .orElseThrow(() -> new RuntimeException("Language profile not found for employee: " + dto.getEmployeeId()));
 
         profile.setLanguageSkillLevel(dto.getLanguageSkillLevel());
-        profile.setJlptHighestLevel(dto.getJlptHighestLevel());
 
         EmployeeJapaneseProfile saved = languageProfileRepository.save(profile);
         dto.setId(saved.getId());
@@ -95,7 +93,6 @@ public class SkillSetService {
         dto.setId(profile.getId());
         dto.setEmployeeId(profile.getEmployee().getId());
         dto.setLanguageSkillLevel(profile.getLanguageSkillLevel());
-        dto.setJlptHighestLevel(profile.getJlptHighestLevel());
         return dto;
     }
 
@@ -106,7 +103,6 @@ public class SkillSetService {
                 dto.setId(profile.getId());
                 dto.setEmployeeId(profile.getEmployee().getId());
                 dto.setLanguageSkillLevel(profile.getLanguageSkillLevel());
-                dto.setJlptHighestLevel(profile.getJlptHighestLevel());
                 return dto;
             })
             .collect(Collectors.toList());
@@ -120,7 +116,6 @@ public class SkillSetService {
         dto.setId(profile.getId());
         dto.setEmployeeId(profile.getEmployee().getId());
         dto.setLanguageSkillLevel(profile.getLanguageSkillLevel());
-        dto.setJlptHighestLevel(profile.getJlptHighestLevel());
         return dto;
     }
 
@@ -135,7 +130,7 @@ public class SkillSetService {
                 throw new RuntimeException("Management score already exists for employee: " + dto.getEmployeeId());
             });
 
-        Float totalLevel = calculateTotalLevel(dto);
+        Short totalLevel = calculateTotalLevel(dto);
 
         ManagementScore managementScore = new ManagementScore();
         managementScore.setEmployee(employee);
@@ -159,7 +154,7 @@ public class SkillSetService {
             .findByEmployeeId(dto.getEmployeeId())
             .orElseThrow(() -> new RuntimeException("Management score not found for employee: " + dto.getEmployeeId()));
 
-        Float totalLevel = calculateTotalLevel(dto);
+        Short totalLevel = calculateTotalLevel(dto);
 
         managementScore.setManagementExperienceLevel(dto.getManagementExperienceLevel());
         managementScore.setQcdScore(dto.getQcdScore());
@@ -193,29 +188,22 @@ public class SkillSetService {
         return savedSkills;
     }
 
-    private Float calculateTotalLevel(ManagementSkillDto dto) {
-        int count = 0;
-        float sum = 0;
-        
-        if (dto.getManagementExperienceLevel() != null) {
-            sum += dto.getManagementExperienceLevel();
-            count++;
-        }
-        if (dto.getQcdScore() != null) {
-            sum += dto.getQcdScore();
-            count++;
-        }
-        if (dto.getReportConsultScore() != null) {
-            sum += dto.getReportConsultScore();
-            count++;
-        }
-        if (dto.getEducationScore() != null) {
-            sum += dto.getEducationScore();
-            count++;
-        }
-        
-        return count > 0 ? sum / count : 0f;
+    private Short calculateTotalLevel(ManagementSkillDto dto) {
+        int sum = 0;
+
+        if (dto.getQcdScore() != null) sum += dto.getQcdScore();
+        if (dto.getReportConsultScore() != null) sum += dto.getReportConsultScore();
+        if (dto.getEducationScore() != null) sum += dto.getEducationScore();
+
+        if (sum >= 11) return 5;
+        if (sum >= 9) return 4;
+        if (sum >= 7) return 3;
+        if (sum >= 5) return 2;
+        if (sum >= 3) return 1;
+        if (sum < 2) return 0;
+        return 0;
     }
+
 
     public ManagementSkillDto getManagementSkill(String employeeId) {
         getEmployee(employeeId);
@@ -520,6 +508,96 @@ public class SkillSetService {
         }
         
         return savedSkills;
+    }
+
+   @Transactional
+    public TechnicalSkillCategoryResponseDto saveCategoryWithSkills(TechnicalSkillCategoryResponseDto dto) {
+        // Get or create category
+        SkillCategory category;
+        if (dto.getId() != null) {
+            category = categoryRepository.findById(dto.getId())
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + dto.getId()));
+            category.setCategoryName(dto.getCategoryName());
+            category = categoryRepository.save(category);
+        } else {
+            category = getOrCreateCategory(dto.getCategoryName());
+        }
+        
+        // Process subcategories
+        List<SkillSubCategoryResponseDto> subCategoryDtos = new ArrayList<>();
+        
+        if (dto.getSkillSubCategories() != null) {
+            for (SkillSubCategoryResponseDto subDto : dto.getSkillSubCategories()) {
+                SkillSubCategory subCategory;
+                if (subDto.getId() != null) {
+                    // Update existing subcategory
+                    subCategory = subCategoryRepository.findById(subDto.getId())
+                        .orElseThrow(() -> new RuntimeException("SubCategory not found with id: " + subDto.getId()));
+                    subCategory.setSubCategoryName(subDto.getSubCategoryName());
+                    subCategory = subCategoryRepository.save(subCategory);
+                } else {
+                    // Create new subcategory
+                    subCategory = getOrCreateSubCategory(subDto.getSubCategoryName(), category);
+                }
+                
+                // Process skills
+                List<SkillResponseDto> skillDtos = new ArrayList<>();
+                if (subDto.getSkills() != null) {
+                    for (SkillResponseDto skillDto : subDto.getSkills()) {
+                        Skill skill;
+                        if (skillDto.getId() != null) {
+                            // Update existing skill
+                            skill = skillRepository.findById(skillDto.getId())
+                                .orElseThrow(() -> new RuntimeException("Skill not found with id: " + skillDto.getId()));
+                            skill.setSkillName(skillDto.getSkillName());
+                            skill = skillRepository.save(skill);
+                        } else {
+                            // Create new skill
+                            skill = getOrCreateSkill(skillDto.getSkillName(), subCategory);
+                        }
+                        
+                        SkillResponseDto savedSkillDto = new SkillResponseDto();
+                        savedSkillDto.setId(skill.getId());
+                        savedSkillDto.setSkillName(skill.getSkillName());
+                        skillDtos.add(savedSkillDto);
+                    }
+                }
+                
+                SkillSubCategoryResponseDto savedSubDto = new SkillSubCategoryResponseDto();
+                savedSubDto.setId(subCategory.getId());
+                savedSubDto.setSubCategoryName(subCategory.getSubCategoryName());
+                savedSubDto.setSkills(skillDtos);
+                subCategoryDtos.add(savedSubDto);
+            }
+        }
+        
+        TechnicalSkillCategoryResponseDto response = new TechnicalSkillCategoryResponseDto();
+        response.setId(category.getId());
+        response.setCategoryName(category.getCategoryName());
+        response.setSkillSubCategories(subCategoryDtos);
+        
+        return response;
+    }
+
+    @Transactional
+    public List<TechnicalSkillCategoryResponseDto> saveBulkCategoriesWithSkills(List<TechnicalSkillCategoryResponseDto> dtos) {
+        List<TechnicalSkillCategoryResponseDto> savedCategories = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        
+        for (TechnicalSkillCategoryResponseDto dto : dtos) {
+            try {
+                TechnicalSkillCategoryResponseDto saved = saveCategoryWithSkills(dto);
+                savedCategories.add(saved);
+            } catch (RuntimeException e) {
+                errors.add("Error for category '" + dto.getCategoryName() + "': " + e.getMessage());
+            }
+        }
+        
+        if (!errors.isEmpty()) {
+            throw new RuntimeException("Bulk operation failed: " + String.join("; ", errors));
+        }
+        
+        return savedCategories;
     }
 
     public List<TechnicalSkillDto> getTechnicalSkillsByEmployee(String employeeId) {
@@ -884,6 +962,36 @@ public class SkillSetService {
         
         return result;
     }
+
+    @Transactional
+public DevelopmentType createDevelopmentType(String developmentTypeName) {
+    // Validate input
+    if (developmentTypeName == null || developmentTypeName.trim().isEmpty()) {
+        throw new RuntimeException("Development type name cannot be null or empty");
+    }
+    
+    String trimmedName = developmentTypeName.trim();
+    
+    // Check if development type already exists (case-insensitive)
+    if (developmentTypeRepository.findByDevelopmentTypeNameIgnoreCase(trimmedName).isPresent()) {
+        throw new RuntimeException("Development type already exists: " + trimmedName);
+    }
+    
+    // Create new development type with isActive = true
+    DevelopmentType newType = new DevelopmentType();
+    newType.setDevelopmentTypeName(trimmedName);
+    newType.setIsActive(true);
+    
+    return developmentTypeRepository.save(newType);
+       }
+
+/**
+ * Gets all active development types
+ * @return List of active DevelopmentType entities
+ */
+public List<DevelopmentType> getAllActiveDevelopmentTypes() {
+    return developmentTypeRepository.findByIsActiveTrue();
+}
 
     // Get all employees with their skills
     public List<EmployeeWithSkillsResponseDTO> getAllEmployeesWithSkills() {

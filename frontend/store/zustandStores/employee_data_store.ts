@@ -348,7 +348,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   // bulk create employee
-  bulkCreate_EmployeeData: async (employees: Employee[]) => {
+  bulkCreate_EmployeeData: async (employees: any[]) => {
     const previousData = get().employee_data;
 
 
@@ -384,7 +384,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         // Generate a valid email if not provided
         let email = emp.email?.trim() || '';
         if (!email && emp.name) {
-          email = emp.name.toLowerCase().replace(/\s/g, '.') + '@company.com';
+          email = emp.name.toLowerCase().replace(/\s/g, '.') + '@diracetechnology.com';
         } else if (!email) {
           email = `employee${Date.now()}@company.com`;
         }
@@ -396,7 +396,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
           doorlog: emp.doorlog?.trim() || emp.doorlog?.trim() || null,
           position: emp.position?.trim() || '',
           emp_status: emp.emp_status?.trim() || 'active',
-          status: null,
+          status: 'default',
           is_core_personnel: emp.is_core_personnel || false,
           has_japan_business_trip: emp.has_japan_business_trip || false,
           noti_setting: emp.noti_setting !== undefined ? emp.noti_setting : true,

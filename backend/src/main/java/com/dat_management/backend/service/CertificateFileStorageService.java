@@ -18,13 +18,6 @@ public class CertificateFileStorageService {
     @Value("${file.upload-dir:../uploads/certificates}")
     private String uploadDir;
 
-    // Only allow image files - NO PDF
-    private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList(".jpg", ".jpeg", ".png");
-    private static final List<String> ALLOWED_CONTENT_TYPES = Arrays.asList(
-            "image/jpeg",
-            "image/jpg",
-            "image/png");
-
     public String storeFile(MultipartFile file, String employeeId, String certificateType, String japaneseLevel)
             throws IOException {
 

@@ -1,41 +1,44 @@
 // for technical ability
 export interface Skill {
   id: number;
-  skill_name: string;
+  skillName: string;
 }
 
 export interface SkillSubCategory {
   id: number;
-  sub_category_name: string;
+  subCategoryName: string;
   skills: Skill[];
 }
 
 export interface SkillCategory {
   id: number;
-  category_name: string;
-  skill_sub_categories: SkillSubCategory[];
+  categoryName: string;
+  skillSubCategories: SkillSubCategory[];
 }
 
 export interface EmployeeSkill {
-  employee_id: string;
-  skill_id: number;
-  skill_name: string;
+  employeeId: string;
+  id: number;
+  skillName: string;
   category_id: number;
   category_name: string;
   sub_category_id: number;
   sub_category_name: string;
-  years_of_experience: number | null;
-  experience_level: string | null;
+  yearsOfExperience: number | null;
+  experienceLevel: string | null;
 }
 
 // for development capability 
 export interface DevelopmentCapability {
-  id: number;
-  development_type: string;
+  id?: number;
+  employeeId: string;
+  developmentTypeName: string;
+  processName: string;
+  yearsOfExperience: number
 }
 
 export interface EmployeeDevelopmentExperience {
-  employee_id: string;
+  employeeId: string;
   development_type_id: number;
   development_type_name: string;  
   process_name: string | null;
@@ -44,14 +47,14 @@ export interface EmployeeDevelopmentExperience {
 
 // for language skills
 export interface LanguageSkill {
-  employee_id: string;
-  language_skill_level: number | null;
+  employeeId: string;
+  languageSkillLevel: string | number | null;
   jlpt_highest_level: string | null;
 }
 
 // for management ability
 export interface ManagementScore {
-  employee_id: string;
+  employeeId: string;
   management_experience_level: number | null;
   qcd_score: number | null;
   report_consult_score: number | null;

@@ -55,7 +55,7 @@ function EmployeeDataTable({ headers, employees }: EmployeeDataTableProps) {
   const filteredEmployees = useMemo(() => {
     if (!searchTerm.trim()) return sortedEmployees;
     const cleanSearch = searchTerm.toLowerCase();
-    return sortedEmployees.filter((emp) => 
+    return sortedEmployees.filter((emp) =>
       Object.values(emp).some((val) => String(val).toLowerCase().includes(cleanSearch))
     );
   }, [sortedEmployees, searchTerm]);
@@ -75,7 +75,7 @@ function EmployeeDataTable({ headers, employees }: EmployeeDataTableProps) {
           <h2 className="text-lg font-bold text-white">Extracted Dataset Workbench</h2>
           <p className="text-xs text-slate-400">Showing {filteredEmployees.length} of {employees.length} records parsed across {activeHeaders.length} valid active columns.</p>
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:flex-initial min-w-[240px]">
             {/* SVG Search Icon */}
@@ -93,11 +93,10 @@ function EmployeeDataTable({ headers, employees }: EmployeeDataTableProps) {
 
           <button
             onClick={() => setShowEmptyColumns(!showEmptyColumns)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border rounded-lg transition-all ${
-              showEmptyColumns 
-                ? "bg-indigo-600/20 text-indigo-400 border-indigo-500/30" 
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border rounded-lg transition-all ${showEmptyColumns
+                ? "bg-indigo-600/20 text-indigo-400 border-indigo-500/30"
                 : "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800"
-            }`}
+              }`}
           >
             {/* SVG Eye / EyeOff Icon */}
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -112,21 +111,22 @@ function EmployeeDataTable({ headers, employees }: EmployeeDataTableProps) {
       <div className="w-full overflow-hidden border border-slate-800 bg-slate-950 rounded-xl">
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[1200px]">
+
             <thead>
               <tr className="bg-slate-900 border-b border-slate-800 text-slate-300 text-xs font-semibold select-none">
-                {/* ✅ FIXED: Appended column index to ensure header key uniqueness */}
                 {activeHeaders.map((header, headerIdx) => {
                   const isFallbackKey = header.startsWith("Column_");
+                  // Create a unique key using both index and a hash of the header
+                  const uniqueKey = `${header}-${headerIdx}`;
                   return (
-                    <th 
-                      key={`${header}-${headerIdx}`}
+                    <th
+                      key={uniqueKey}
                       onClick={() => handleSort(header)}
-                      className={`px-4 py-3.5 cursor-pointer hover:bg-slate-800 transition-colors whitespace-nowrap group ${
-                        isFallbackKey ? "text-slate-500 font-mono" : "text-slate-200"
-                      }`}
+                      className={`px-4 py-3.5 cursor-pointer hover:bg-slate-800 transition-colors whitespace-nowrap group ${isFallbackKey ? "text-slate-500 font-mono" : "text-slate-200"
+                        }`}
                     >
-                      <div className="flex items-center gap-1.5 max-w-xs truncate" title={header}>
-                        <span>{header}</span>
+                      <div className="flex items-center gap-1.5" title={header}>
+                        <span className="whitespace-nowrap">{header}</span>
                         {/* SVG Sort Icon */}
                         <svg className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -146,11 +146,10 @@ function EmployeeDataTable({ headers, employees }: EmployeeDataTableProps) {
                       const value = emp[header] || "";
                       const isFallbackKey = header.startsWith("Column_");
                       return (
-                        <td 
+                        <td
                           key={`cell-${rowIdx}-${cellIdx}`}
-                          className={`px-4 py-3 truncate max-w-md ${
-                            isFallbackKey ? "text-xs font-mono text-slate-500" : "text-slate-300"
-                          } ${value === "" ? "italic text-slate-600" : ""}`}
+                          className={`px-4 py-3 truncate max-w-md ${isFallbackKey ? "text-xs font-mono text-slate-500" : "text-slate-300"
+                            } ${value === "" ? "italic text-slate-600" : ""}`}
                           title={value}
                         >
                           {value === "" ? "-" : value}
@@ -248,7 +247,7 @@ export default function TestExtractorPage() {
   return (
     <div className="min-h-screen bg-slate-955 text-slate-100 p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
-        
+
         {/* PAGE HEADER */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-5">
           <div>
@@ -308,7 +307,7 @@ export default function TestExtractorPage() {
                 )}
               </div>
             </div>
-            
+
             {file && (
               <button
                 onClick={runExtractionTest}
@@ -374,17 +373,15 @@ export default function TestExtractorPage() {
               <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
                 <button
                   onClick={() => setActiveTab("table")}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                    activeTab === "table" ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${activeTab === "table" ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                    }`}
                 >
                   Table View
                 </button>
                 <button
                   onClick={() => setActiveTab("json")}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                    activeTab === "json" ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${activeTab === "json" ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                    }`}
                 >
                   Raw JSON Payload
                 </button>
@@ -422,8 +419,8 @@ export default function TestExtractorPage() {
                             <span className="text-slate-400 font-medium truncate group-hover:text-slate-300" title={field}>{field}</span>
                             <span className="text-slate-500 md:col-span-2 text-slate-200">
                               : <span className={value === "" ? "text-slate-700 italic" : "text-amber-200"}>
-                                  {value === "" ? "empty" : `"${value}"`}
-                                </span>
+                                {value === "" ? "empty" : `"${value}"`}
+                              </span>
                             </span>
                           </div>
                         ))}

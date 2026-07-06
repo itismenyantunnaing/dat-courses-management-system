@@ -28,6 +28,7 @@ public class EmployeeDevelopmentExperience {
     @JoinColumn(name = "development_type_id", nullable = false)
     private DevelopmentType developmentType;
 
+    @Column(columnDefinition = "TEXT")
     private String processName;
 
     @Column(precision = 4, scale = 1)

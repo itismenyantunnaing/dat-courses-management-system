@@ -29,6 +29,18 @@ export interface SkillCategory {
   skill_sub_categories: SkillSubCategory[];
 }
 
+
+export function isYearsHeader(header: string): boolean {
+  const lower = header.toLowerCase();
+  return lower.includes('year') && !lower.includes('experience') && !lower.includes('exp');
+}
+
+export function isExperienceHeader(header: string): boolean {
+  const lower = header.toLowerCase();
+  return lower.includes('experience') || lower.includes('exp');
+}
+
+
 export const TECHNICAL_ABILITY_CONFIG: SkillCategory[] = [
   {
     id: 1,

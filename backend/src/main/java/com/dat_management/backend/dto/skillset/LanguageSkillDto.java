@@ -13,7 +13,4 @@ public class LanguageSkillDto {
     @Min(value = 1, message = "Language skill level must be at least 1")
     @Max(value = 5, message = "Language skill level must be at most 5")
     private Short languageSkillLevel;
-    
-    @Pattern(regexp = "N[1-5]", message = "JLPT level must be N1, N2, N3, N4, or N5")
-    private String jlptHighestLevel;
 }

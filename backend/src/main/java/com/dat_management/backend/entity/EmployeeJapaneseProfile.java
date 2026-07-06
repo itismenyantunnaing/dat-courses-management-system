@@ -57,4 +57,14 @@ public class EmployeeJapaneseProfile {
         TopJ,
         BJT
     }
+
+    public String getDevelopmentTypeName() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getDevelopmentTypeName'");
+    }
+
+    public Boolean getIsActive() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getIsActive'");
+    }
 }

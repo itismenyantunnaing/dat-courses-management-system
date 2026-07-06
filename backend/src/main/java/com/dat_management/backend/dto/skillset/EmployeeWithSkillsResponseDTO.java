@@ -63,7 +63,7 @@ public class EmployeeWithSkillsResponseDTO {
         private Short qcdScore;
         private Short reportConsultScore;
         private Short educationScore;
-        private Float totalLevel;
+        private Short totalLevel;
     }
     
     // ==================== DEVELOPMENT SKILL (without employeeId) ====================

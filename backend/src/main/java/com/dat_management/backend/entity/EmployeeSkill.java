@@ -28,7 +28,7 @@ public class EmployeeSkill {
     @JoinColumn(name = "skill_id", nullable = false)
     private Skill skill;
 
-    @Column(precision = 4, scale = 1)
+    @Column(precision = 4, scale = 2)
     private BigDecimal yearsOfExperience;
 
     private String experienceLevel;

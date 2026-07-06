@@ -22,5 +22,5 @@ public class ManagementScore {
     private Short qcdScore;
     private Short reportConsultScore;
     private Short educationScore;
-    private Float totalLevel;
+    private Short totalLevel;
 }
