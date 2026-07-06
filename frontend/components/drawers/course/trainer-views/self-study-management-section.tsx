@@ -26,10 +26,15 @@ import {
   PlusSignIcon,
   Delete02Icon,
   Link02Icon,
+  User02Icon,
 } from "@hugeicons/core-free-icons"
 import { format, addDays } from "date-fns"
 import { CourseSession } from "@/types/course"
 import { isJLPTType } from "@/types/course"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { mainStore } from "@/store/mainStore"
 
 // Helper to format self-study sessions for API
 export const formatSelfStudySessionsForAPI = (sessions: CourseSession[], isJLPT: boolean) => {
@@ -42,6 +47,38 @@ export const formatSelfStudySessionsForAPI = (sessions: CourseSession[], isJLPT:
     reading_minutes: isJLPT ? (session.readingMinutes || 0) : 0,
     listening_minutes: isJLPT ? (session.listeningMinutes || 0) : 0,
   }))
+}
+
+// Status colors and labels for enrolled employees
+const statusColors: Record<string, string> = {
+  APPROVED: "bg-green-500",
+  PENDING: "bg-yellow-500",
+  CANCELLED: "bg-gray-500",
+  COMPLETED: "bg-blue-500",
+}
+
+const statusLabels: Record<string, string> = {
+  APPROVED: "Approved",
+  PENDING: "Pending",
+  CANCELLED: "Cancelled",
+  COMPLETED: "Completed",
+}
+
+interface EnrolledEmployee {
+  id: number
+  employeeId: string
+  employeeName: string
+  email: string
+  departmentId: number
+  departmentName: string
+  teamId: number
+  teamName: string
+  position: string
+  courseGroupId: number
+  courseGroupName: string
+  enrollmentStatus: string
+  enrolledAt: string
+  pfImage?: string
 }
 
 interface LearnerSectionProps {
@@ -69,6 +106,8 @@ interface LearnerSectionProps {
   onSetItemsPerPage: (items: number) => void
   selfStudyBaseDate: Date | null
   onSetSelfStudyBaseDate: (date: Date | null) => void
+  courseId?: number | string
+  mode?: "add" | "edit" // Add mode prop
 }
 
 export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
@@ -90,20 +129,46 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
   onSetItemsPerPage,
   selfStudyBaseDate,
   onSetSelfStudyBaseDate,
+  courseId,
+  mode = "add",
 }) => {
   const isJLPT = isJLPTType(selfStudyType)
+  const { enrollments } = mainStore()
+
+  // Get enrolled employees for this course from store
+  // Only show when in edit mode and courseId is provided
+  const enrolledEmployees = React.useMemo(() => {
+    // Only show enrolled employees when in edit mode and courseId is provided
+    if (mode === "add" || !courseId) return []
+    
+    if (!enrollments || enrollments.length === 0) return []
+
+    console.log("=== SELF-STUDY ENROLLMENTS (EDIT MODE) ===")
+    console.log("courseId:", courseId)
+    console.log("All enrollments from store:", enrollments)
+    
+    // Return all enrollments (they are already filtered by course)
+    return enrollments
+  }, [enrollments, courseId, mode])
+
+  // Helper function to get initials from name
+  const getInitials = (name: string) => {
+    if (!name) return "??"
+    const parts = name.split(" ")
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+  }
 
   const handleItemsPerPageChange = (value: string) => {
     const newItemsPerPage = parseInt(value)
     onSetItemsPerPage(newItemsPerPage)
     onSetSessionPage(1)
   }
-  
 
   const addSelfStudySession = () => {
     const baseDate = selfStudyBaseDate || sessions[0]?.date || new Date()
     const newIndex = sessions.length
-    const daysPerSessionValue = daysPerSession || 1 // Fallback to 1 day if not specified
+    const daysPerSessionValue = daysPerSession || 1
 
     const newSession: CourseSession = {
       id: `s${Date.now()}`,
@@ -116,10 +181,7 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
       link: !isJLPT ? "" : undefined,
     }
     
-    // Disable the auto-calculation useEffect for this specific manual add
-    // by ensuring the signature will definitely change
     lastUpdateRef.current = ""
-    
     onUpdateSessions([...sessions, newSession])
     const totalPages = Math.ceil((sessions.length + 1) / itemsPerPage)
     onSetSessionPage(totalPages)
@@ -147,7 +209,6 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
     )
   }
 
-  // Ref to track last update to avoid infinite loops
   const lastUpdateRef = React.useRef<string>("")
 
   // Auto-calculate self-study session values from totals
@@ -182,7 +243,6 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
         listeningMinutes: avgListening + (index < extraListening ? 1 : 0),
       }))
 
-      // Create a signature of the change to avoid unnecessary updates
       const updateSignature = JSON.stringify({
         totalKanji, totalVocabulary, totalGrammar,
         totalReadingMinutes, totalListeningMinutes,
@@ -213,7 +273,6 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
         date: addDays(baseDate, index * daysPerSessionValue),
       }))
 
-      // Create a signature of the change to avoid unnecessary updates
       const updateSignature = JSON.stringify({
         sessionsLength: sessions.length,
         isJLPT,
@@ -697,6 +756,96 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
           </>
         )}
       </div>
+
+      {/* ================================================ */}
+      {/* ENROLLED EMPLOYEES - ONLY SHOW IN EDIT MODE */}
+      {/* ================================================ */}
+      {mode === "edit" && courseId && (
+        <>
+          {enrolledEmployees.length > 0 ? (
+            <div className="mt-6 pt-6 border-t">
+              <div className="flex items-center gap-2 mb-3">
+                <HugeiconsIcon
+                  icon={User02Icon}
+                  strokeWidth={1.5}
+                  className="h-5 w-5 text-muted-foreground"
+                />
+                <Label className="text-base font-semibold">
+                  Enrolled Employees
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    ({enrolledEmployees.length})
+                  </span>
+                </Label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {enrolledEmployees.map((employee: any) => (
+                  <div
+                    key={employee.id}
+                    className="flex items-center gap-3 rounded-lg border bg-muted/5 p-3 transition-colors hover:bg-muted/10"
+                  >
+                    <Avatar className="h-10 w-10 rounded-lg shrink-0">
+                      <AvatarImage src={employee.pfImage || ""} />
+                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-medium">
+                        {getInitials(employee.employeeName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium">
+                          {employee.employeeName}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "h-4 px-1.5 py-0 text-[10px]",
+                            statusColors[employee.enrollmentStatus],
+                            "bg-opacity-10"
+                          )}
+                        >
+                          {statusLabels[employee.enrollmentStatus] || employee.enrollmentStatus}
+                        </Badge>
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {employee.email}
+                      </div>
+                      <div className="flex gap-2 text-xs text-muted-foreground">
+                        <span className="truncate">{employee.departmentName}</span>
+                        {employee.departmentName && employee.teamName && <span>•</span>}
+                        {employee.teamName && <span className="truncate">{employee.teamName}</span>}
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground shrink-0">
+                      {format(new Date(employee.enrolledAt), "MMM d, yyyy")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 pt-6 border-t">
+              <div className="flex items-center gap-2 mb-3">
+                <HugeiconsIcon
+                  icon={User02Icon}
+                  strokeWidth={1.5}
+                  className="h-5 w-5 text-muted-foreground"
+                />
+                <Label className="text-base font-semibold">
+                  Enrolled Employees
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    (0)
+                  </span>
+                </Label>
+              </div>
+              <div className="flex items-center justify-center rounded-lg border border-dashed p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No employees enrolled in this course yet
+                </p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </>
   )
 }

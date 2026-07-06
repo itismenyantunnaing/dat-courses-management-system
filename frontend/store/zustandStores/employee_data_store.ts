@@ -27,7 +27,7 @@ export const getUniqueTeams = (employees: Employee[]) => {
 }
 
 export const getUniqueRoles = (employees: Employee[]) => {
-  const roles = employees.map((emp) => emp.role).filter(Boolean)
+  const roles = ["ADMIN", "LEARNER", "APPROVER", "OPERATOR"]
   return [...new Set(roles)].map((role) => ({ value: role, label: role }))
 }
 
@@ -35,7 +35,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   employee_data: [],
   isCreating: false,
   isDeleting: false,
-  isUpdating: false,
 
   // Dynamic options that will be populated from employee data
   division_options: [],

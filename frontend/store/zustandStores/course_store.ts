@@ -3,17 +3,16 @@ import {
   Course, 
   CourseGroup, 
   CourseSession, 
-  CategoryItem, 
-  CourseCategoryData,
   BackendCourseDto,
   BackendGroupDto,
   BackendSessionDto,
   BackendSelfStudySessionDto,
-  BackendCategoryDto
 } from "@/types/course"
 import type { Course_StoreType } from "../types"
-import { courseCategoryStore } from "./course_category_store"
-import { courseEnrollmentStore } from "./course_enrollment_store"
+import { courseCategoryStore } from "./course/course_category_store"
+import { courseEnrollmentStore } from "./course/course_enrollment_store"
+import { courseSelfStudyProgressStore } from "./course/course_selfStudy_progress_store"
+import { courseAttendanceStore } from "./course/course_attendance_store"
 
 type StoreSet = (
   fn: (state: Course_StoreType) => Partial<Course_StoreType>
@@ -569,9 +568,11 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // ========== CATEGORY METHODS (delegated to courseCategoryStore) ==========
+  // ========== course METHODS (delegated to courseCategoryStore) ==========
   ...courseCategoryStore(set, get),
   ...courseEnrollmentStore(set, get),
+  ...courseSelfStudyProgressStore(set, get),
+  ...courseAttendanceStore(set, get),
 
   // ========== LEGACY/UTILITY COURSE OPERATIONS ==========
 

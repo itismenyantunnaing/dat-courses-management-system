@@ -8,6 +8,8 @@ import java.util.List;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class GroupRequestDto {
 
+    private Integer id;
+    
     @NotBlank(message = "group_name is required")
     @JsonProperty("group_name")
     private String groupName;

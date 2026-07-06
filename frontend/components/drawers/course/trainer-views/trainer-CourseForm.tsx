@@ -209,11 +209,11 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           totalReadingMinutes: initialData.totalReadingMinutes || 0,
           totalListeningMinutes: initialData.totalListeningMinutes || 0,
         })
-        
+
         if (initialData.groups?.length > 0) {
           setActiveGroupTab(initialData.groups[0].id)
         }
-        
+
         initialFormDataRef.current = JSON.parse(JSON.stringify({
           title: initialData.title,
           imageUrl: initialData.imageUrl,
@@ -331,11 +331,11 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           // Relax time validation for existing data if needed, but usually it's fine
           const hasValidTimes =
             !group.startTime || !group.endTime || group.startTime < group.endTime
-          
+
           const hasValidDates =
             !group.endDate ||
             (group.startDate && group.endDate >= group.startDate)
-          
+
           // Relax session date range validation for existing data
           const sessionsValid = group.sessions.every(
             (session) => {
@@ -727,6 +727,8 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               onSetItemsPerPage={setItemsPerPage}
               selfStudyBaseDate={selfStudyBaseDate}
               onSetSelfStudyBaseDate={setSelfStudyBaseDate}
+              courseId={initialData?.id}
+              mode={mode}  
             />
           )}
 

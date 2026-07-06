@@ -8,6 +8,12 @@ import lombok.Setter;
 @Setter
 public class SelfStudySessionProgressRequest {
 
+    @JsonProperty("enrollment_id")
+    private Integer enrollmentId;
+
+    @JsonProperty("self_study_session_id")
+    private Integer selfStudySessionId;
+
     @JsonProperty("kanji_count")
     private Integer kanjiCount;
 
@@ -25,4 +31,7 @@ public class SelfStudySessionProgressRequest {
 
     @JsonProperty("completion_status")
     private String completionStatus;
+
+    @JsonProperty("remark")
+    private String remark;
 }

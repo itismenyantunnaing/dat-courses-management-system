@@ -63,7 +63,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
     isDeleting,
     upload_CourseImage,
     delete_CourseImage,
-    
+    fetch_courseEnrollments,
   } = mainStore()
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -76,10 +76,10 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
     fetch_courseCategories()
   }, [fetchAll_CourseData, fetch_courseCategories])
 
-  const userRole = "LEARNER" // getUserRole()
+  const userRole = "admin" // getUserRole()
 
-  const canEditTrainerCourses = userRole === "ADMIN" || userRole === "APPROVER"
-  const isLearner = userRole === "LEARNER"
+  const canEditTrainerCourses = userRole === "admin" || userRole === "approver"
+  const isLearner = userRole === "learner"
 
   const filteredCourses = useMemo(() => {
     const search = searchTerm.toLowerCase()
@@ -144,174 +144,280 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
   }
 
 
-  const handleSubmit = async (data: CourseCategory) => {
+const handleSubmit = async (data: CourseCategory) => {
     setIsSubmitting(true)
 
     try {
-      // Get the category from the store using the category value
-      const category = getCategoryByValue(data.category)
+        // Get the category from the store using the category value
+        const category = getCategoryByValue(data.category)
 
-      if (!category) {
-        alert('Please select a valid category')
-        setIsSubmitting(false)
-        return
-      }
-
-      // Map frontend status to backend status
-      const statusMap: Record<string, string> = {
-        'active': 'OPEN',
-        'upcoming': 'CLOSED',
-        'completed': 'COMPLETED',
-        'draft': 'DRAFT'
-      }
-      
-      // Use the status from the course if it's an edit, otherwise default to draft
-      const currentStatus = editingCourse?.status || 'draft'
-      const backendStatus = statusMap[currentStatus] || 'DRAFT'
-
-      // Prepare groups for API if applicable
-      let newGroups = null
-      if (data.courseType === 'trainer' && data.groups && data.groups.length > 0) {
-        newGroups = data.groups.map((group: any, index: number) => ({
-          group_name: group.name || `Group ${index + 1}`,
-          capacity: group.capacity === 'unlimited' ? null : (Number(group.capacity) || null),
-          sessions: (group.sessions || []).map((session: any, sIndex: number) => ({
-            session_no: sIndex + 1,
-            session_date: session.date instanceof Date ? session.date.toISOString().split('T')[0] : session.date,
-            start_time: session.startTime || "09:00",
-            end_time: session.endTime || "10:00",
-            session_status: 'PLANNED'
-          }))
-        }))
-      }
-
-      // Prepare self-study sessions for API if applicable
-      let newSelfStudySessions = null
-      if (data.courseType === 'self-study' && data.sessions && data.sessions.length > 0) {
-        const isJLPT = data.selfStudyType === 'jlpt'
-        newSelfStudySessions = data.sessions.map((session: any, index: number) => ({
-          session_no: index + 1,
-          session_deadline: session.date instanceof Date ? session.date.toISOString().split('T')[0] : session.date,
-          file_path: isJLPT ? null : (session.link || null),
-          filepath: isJLPT ? null : (session.link || null),
-          kanji_target: isJLPT ? (session.kanjiCount || 0) : 0,
-          vocabulary_target: isJLPT ? (session.vocabularyCount || 0) : 0,
-          grammar_target: isJLPT ? (session.grammarCount || 0) : 0,
-          reading_target_minutes: isJLPT ? (session.readingMinutes || 0) : 0,
-          listening_target_minutes: isJLPT ? (session.listeningMinutes || 0) : 0,
-          session_status: 'PLANNED'
-        }))
-      }
-
-      // Create the JSON data object for API
-      const courseData: any = {
-        course_name: data.title,
-        course_category_id: Number(category.id),
-        trainer_name: data.trainerName || null,
-        self_study_type: data.selfStudyType || null,
-        total_sessions: data.courseType === 'trainer'
-          ? data.groups?.reduce((total: number, g: any) => total + (g.sessions?.length || 0), 0)
-          : data.sessions?.length || 0,
-        registration_deadline: data.registrationDeadline instanceof Date 
-          ? data.registrationDeadline.toISOString().split('T')[0] 
-          : data.registrationDeadline || null,
-        status: backendStatus,
-      }
-
-      if (newGroups) courseData.groups = newGroups
-      if (newSelfStudySessions) courseData.self_study_sessions = newSelfStudySessions
-
-      console.log('=== COURSE DATA ===')
-      console.log('JSON being prepared:', JSON.stringify(courseData, null, 2))
-      console.log('===================')
-
-      let result
-      if (editingCourse) {
-        // --- HACK FOR BACKEND DUPLICATE ENTRY ISSUE ---
-        // The backend deletes and re-inserts groups/sessions. Hibernate's action queue
-        // often tries to INSERT before DELETE for entities with the same unique key
-        // in the same transaction, causing "Duplicate entry" errors.
-        // To fix this from the frontend, we send a preliminary update to clear the 
-        // existing groups/sessions in a separate transaction.
-        
-        const hasGroups = !!courseData.groups
-        const hasSessions = !!courseData.self_study_sessions
-        
-        if (hasGroups || hasSessions) {
-          console.log('Performing preliminary clear to avoid duplicate entry conflict...')
-          const clearPayload: any = { ...courseData }
-          if (hasGroups) clearPayload.groups = []
-          if (hasSessions) clearPayload.self_study_sessions = []
-          
-          await update_CourseData(editingCourse.id, clearPayload)
-          // Small delay to ensure backend transaction is fully committed if needed
-          // await new Promise(resolve => setTimeout(resolve, 100));
+        if (!category) {
+            alert('Please select a valid category')
+            setIsSubmitting(false)
+            return
         }
-        
-        result = await update_CourseData(editingCourse.id, courseData)
 
-        // Handle image changes during update
-        if (result.success) {
-          // Case 1: Image removed
-          if (!data.imageUrl && editingCourse.imageUrl) {
-            console.log('Deleting course image...')
-            await delete_CourseImage(editingCourse.id)
-          } 
-          // Case 2: Image changed to a new one
-          else if (data.imageUrl && data.imageUrl.startsWith("data:")) {
-            console.log('Uploading new course image...')
-            const res = await fetch(data.imageUrl)
-            const blob = await res.blob()
-            const file = new File(
-              [blob],
-              `course-${editingCourse.id}-${Date.now()}.jpg`,
-              { type: blob.type || "image/jpeg" }
-            )
+        // Map frontend status to backend status
+        const statusMap: Record<string, string> = {
+            'active': 'OPEN',
+            'upcoming': 'CLOSED',
+            'completed': 'COMPLETED',
+            'draft': 'DRAFT'
+        }
+
+        const currentStatus = editingCourse?.status || 'draft'
+        const backendStatus = statusMap[currentStatus] || 'DRAFT'
+
+        // Prepare groups for trainer courses
+        let newGroups = null
+        if (data.courseType === 'trainer' && data.groups && data.groups.length > 0) {
+            newGroups = data.groups.map((group: any, index: number) => {
+                const existingGroup = editingCourse?.groups?.find((g: any) => g.id === group.id)
+
+                return {
+                    // Include group ID if editing
+                    ...(editingCourse && existingGroup?.id && { id: parseInt(existingGroup.id) }),
+                    group_name: group.name || `Group ${index + 1}`,
+                    capacity: group.capacity === 'unlimited' ? null : (Number(group.capacity) || null),
+                    // Use group's own startDate/endDate
+                    start_date: group.startDate instanceof Date
+                        ? group.startDate.toISOString().split('T')[0]
+                        : group.startDate || null,
+                    end_date: group.endDate instanceof Date
+                        ? group.endDate.toISOString().split('T')[0]
+                        : group.endDate || null,
+                    sessions_per_week: group.sessionsPerWeek || [],
+                    group_status: group.status || "OPEN",
+                    sessions: (group.sessions || []).map((session: any, sIndex: number) => {
+                        const existingSession = existingGroup?.sessions?.find((s: any) => s.id === session.id)
+
+                        return {
+                            // Include session ID if editing
+                            ...(editingCourse && existingSession?.id && { id: parseInt(existingSession.id) }),
+                            session_no: sIndex + 1,
+                            session_date: session.date instanceof Date
+                                ? session.date.toISOString().split('T')[0]
+                                : session.date,
+                            start_time: session.startTime || group.startTime || "09:00",
+                            end_time: session.endTime || group.endTime || "10:00",
+                            session_status: session.status || 'PLANNED'
+                        }
+                    })
+                }
+            })
+        }
+
+        // Prepare self-study sessions
+        let newSelfStudySessions = null
+        if (data.courseType === 'self-study' && data.sessions && data.sessions.length > 0) {
+            const isJLPT = data.selfStudyType === 'jlpt'
+            newSelfStudySessions = data.sessions.map((session: any, index: number) => {
+                const existingSession = editingCourse?.self_study_sessions?.find((s: any) => s.id === session.id)
+
+                return {
+                    // Include session ID if editing
+                    ...(editingCourse && existingSession?.id && { id: parseInt(existingSession.id) }),
+                    session_no: index + 1,
+                    session_deadline: session.date instanceof Date 
+                        ? session.date.toISOString().split('T')[0] 
+                        : session.date,
+                    file_path: isJLPT ? null : (session.link || null),
+                    filepath: isJLPT ? null : (session.link || null),
+                    kanji_target: isJLPT ? (session.kanjiCount || 0) : 0,
+                    vocabulary_target: isJLPT ? (session.vocabularyCount || 0) : 0,
+                    grammar_target: isJLPT ? (session.grammarCount || 0) : 0,
+                    reading_target_minutes: isJLPT ? (session.readingMinutes || 0) : 0,
+                    listening_target_minutes: isJLPT ? (session.listeningMinutes || 0) : 0,
+                    session_status: session.status || 'PLANNED'
+                }
+            })
+        }
+
+        // Create the base course data
+        const courseData: any = {
+            course_name: data.title,
+            course_category_id: Number(category.id),
+            trainer_name: data.trainerName || null,
+            self_study_type: data.selfStudyType || null,
+            target_level: data.targetLevel || null,
+            total_sessions: data.courseType === 'trainer'
+                ? data.groups?.reduce((total: number, g: any) => total + (g.sessions?.length || 0), 0)
+                : data.sessions?.length || 0,
+            start_date: null,
+            end_date: null,
+            registration_deadline: data.registrationDeadline instanceof Date
+                ? data.registrationDeadline.toISOString().split('T')[0]
+                : data.registrationDeadline || null,
+            status: backendStatus,
+        }
+
+        // ============ ADD DEFAULT GROUP 1 FOR SELF-STUDY ============
+        if (data.courseType === 'self-study' && data.sessions && data.sessions.length > 0) {
+            const existingGroup = editingCourse?.groups?.[0]
+            const existingSessions = editingCourse?.self_study_sessions || []
             
-            const imageFormData = new FormData()
-            imageFormData.append("image", file)
+            // Get first and last session dates
+            const sessionDates = data.sessions.map((s: any) => s.date).filter((d: any) => d) || []
+            const firstSessionDate = sessionDates.length > 0 ? sessionDates[0] : new Date()
+            const lastSessionDate = sessionDates.length > 0 ? sessionDates[sessionDates.length - 1] : new Date()
+
+            // Set course start and end dates from sessions
+            courseData.start_date = firstSessionDate instanceof Date
+                ? firstSessionDate.toISOString().split('T')[0]
+                : firstSessionDate
+            courseData.end_date = lastSessionDate instanceof Date
+                ? lastSessionDate.toISOString().split('T')[0]
+                : lastSessionDate
+
+            courseData.groups = [{
+                ...(editingCourse && existingGroup?.id && { id: parseInt(existingGroup.id) }),
+                group_name: 'Group 1',
+                capacity: null,
+                start_date: firstSessionDate instanceof Date
+                    ? firstSessionDate.toISOString().split('T')[0]
+                    : firstSessionDate,
+                end_date: lastSessionDate instanceof Date
+                    ? lastSessionDate.toISOString().split('T')[0]
+                    : lastSessionDate,
+                sessions_per_week: [],
+                group_status: 'OPEN',
+                sessions: data.sessions.map((session: any, index: number) => ({
+                    ...(editingCourse && existingSessions[index]?.id && {
+                        id: parseInt(existingSessions[index].id)
+                    }),
+                    session_no: index + 1,
+                    session_date: session.date instanceof Date
+                        ? session.date.toISOString().split('T')[0]
+                        : session.date,
+                    start_time: null,
+                    end_time: null,
+                    session_status: session.status || 'PLANNED'
+                }))
+            }]
+        }
+
+        // Add trainer groups if applicable
+        if (newGroups && data.courseType === 'trainer') {
+            courseData.groups = newGroups
             
-            const imageResult = await upload_CourseImage(editingCourse.id, imageFormData)
-            if (!imageResult.success) {
-              console.error("Image upload failed during update:", imageResult.message)
+            // Set course start and end dates from groups
+            const allStartDates = newGroups
+                .map((g: any) => g.start_date)
+                .filter((d: any) => d)
+            const allEndDates = newGroups
+                .map((g: any) => g.end_date)
+                .filter((d: any) => d)
+            
+            if (allStartDates.length > 0) {
+                courseData.start_date = allStartDates.sort()[0]
             }
-          }
-        }
-      } else {
-        // Create FormData for new courses (to include image)
-        const formData = new FormData()
-        const jsonBlob = new Blob([JSON.stringify(courseData)], { type: 'application/json' })
-        formData.append('data', jsonBlob)
-
-        // Add image if selected
-        if (data.imageUrl && data.imageUrl.startsWith("data:")) {
-          const res = await fetch(data.imageUrl)
-          const blob = await res.blob()
-          const file = new File(
-            [blob],
-            `course-${Date.now()}.jpg`,
-            { type: blob.type || "image/jpeg" }
-          )
-          formData.append("image", file)
+            if (allEndDates.length > 0) {
+                courseData.end_date = allEndDates.sort()[allEndDates.length - 1]
+            }
         }
 
-        result = await add_CourseData(formData)
-      }
+        // Add self-study sessions
+        if (newSelfStudySessions && data.courseType === 'self-study') {
+            courseData.self_study_sessions = newSelfStudySessions
+        }
 
-      if (result.success) {
-        handleCancel()
-        await fetchAll_CourseData()
-      } else {
-        alert(result.message || 'Failed to save course')
-      }
+        console.log('=== COURSE DATA ===')
+        console.log('Course Type:', data.courseType)
+        console.log('Mode:', editingCourse ? 'UPDATE' : 'CREATE')
+        console.log('Start Date:', courseData.start_date)
+        console.log('End Date:', courseData.end_date)
+        console.log('Groups:', JSON.stringify(courseData.groups, null, 2))
+        console.log('Self-study sessions:', courseData.self_study_sessions)
+        console.log('===================')
+
+        let result
+        if (editingCourse) {
+            // ============ UPDATE MODE ============
+            console.log('🔄 Updating existing course:', editingCourse.id)
+
+            // For self-study, we need to handle the update carefully
+            if (data.courseType === 'self-study') {
+                // First, clear existing self-study sessions
+                const clearPayload: any = { 
+                    ...courseData,
+                    self_study_sessions: [],
+                    groups: courseData.groups ? [{
+                        ...courseData.groups[0],
+                        sessions: [] // Clear sessions in the group too
+                    }] : undefined
+                }
+                
+                await update_CourseData(editingCourse.id, clearPayload)
+                // Small delay to ensure transaction completes
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            result = await update_CourseData(editingCourse.id, courseData)
+
+            // Handle image changes during update
+            if (result.success) {
+                if (!data.imageUrl && editingCourse.imageUrl) {
+                    console.log('Deleting course image...')
+                    await delete_CourseImage(editingCourse.id)
+                }
+                else if (data.imageUrl && data.imageUrl.startsWith("data:")) {
+                    console.log('Uploading new course image...')
+                    const res = await fetch(data.imageUrl)
+                    const blob = await res.blob()
+                    const file = new File(
+                        [blob],
+                        `course-${editingCourse.id}-${Date.now()}.jpg`,
+                        { type: blob.type || "image/jpeg" }
+                    )
+
+                    const imageFormData = new FormData()
+                    imageFormData.append("image", file)
+
+                    const imageResult = await upload_CourseImage(editingCourse.id, imageFormData)
+                    if (!imageResult.success) {
+                        console.error("Image upload failed during update:", imageResult.message)
+                    }
+                }
+            }
+        } else {
+            // ============ CREATE MODE ============
+            console.log('✨ Creating new course')
+
+            const formData = new FormData()
+            const jsonBlob = new Blob([JSON.stringify(courseData)], { type: 'application/json' })
+            formData.append('data', jsonBlob)
+
+            if (data.imageUrl && data.imageUrl.startsWith("data:")) {
+                const res = await fetch(data.imageUrl)
+                const blob = await res.blob()
+                const file = new File(
+                    [blob],
+                    `course-${Date.now()}.jpg`,
+                    { type: blob.type || "image/jpeg" }
+                )
+                formData.append("image", file)
+            }
+
+            result = await add_CourseData(formData)
+        }
+
+        if (result.success) {
+            handleCancel()
+            await fetchAll_CourseData()
+            // Refresh enrollments if needed
+            if (editingCourse) {
+                await fetch_courseEnrollments(editingCourse.id)
+            }
+        } else {
+            alert(result.message || 'Failed to save course')
+        }
     } catch (error) {
-      console.error("Failed to save course:", error)
-      alert('An error occurred while saving the course')
+        console.error("Failed to save course:", error)
+        alert('An error occurred while saving the course')
     } finally {
-      setIsSubmitting(false)
+        setIsSubmitting(false)
     }
-  }
-
+}
 
   // Learner view
   if (isLearner) {

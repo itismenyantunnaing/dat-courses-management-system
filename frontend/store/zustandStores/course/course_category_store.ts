@@ -1,6 +1,5 @@
-// store/zustandStores/course_category_store.ts
 import { CategoryItem, CourseCategoryData, BackendCategoryDto } from "@/types/course"
-import type { Course_StoreType } from "../types"
+import type { Course_StoreType } from "../../types"
 
 type StoreSet = (
   fn: (state: Course_StoreType) => Partial<Course_StoreType>

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -16,7 +15,6 @@ import java.time.LocalDateTime;
 public class SelfStudySessionProgressResponse {
 
     private Boolean success;
-
     private Object progress;
 
     private Integer id;
@@ -65,4 +63,26 @@ public class SelfStudySessionProgressResponse {
 
     @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
+
+    @JsonProperty("remark")
+    private String remark;
+
+    // =========================
+    // NEW PERCENTAGE FIELDS
+    // =========================
+
+    @JsonProperty("kanji_progress_percent")
+    private Double kanjiProgressPercent;
+
+    @JsonProperty("vocabulary_progress_percent")
+    private Double vocabularyProgressPercent;
+
+    @JsonProperty("grammar_progress_percent")
+    private Double grammarProgressPercent;
+
+    @JsonProperty("reading_progress_percent")
+    private Double readingProgressPercent;
+
+    @JsonProperty("listening_progress_percent")
+    private Double listeningProgressPercent;
 }

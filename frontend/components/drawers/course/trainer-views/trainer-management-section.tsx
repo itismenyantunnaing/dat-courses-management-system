@@ -84,37 +84,37 @@ const DEFAULT_SESSION_DAYS = [4, 5]
 const AVAILABLE_LEARNERS_PER_PAGE = 10
 
 export const formatGroupsForAPI = (groups: CourseGroup[]) => {
-  return groups.map(group => ({
-    group_name: group.name,
-    capacity: group.capacity === 'unlimited' ? null : group.capacity,
-    start_date: group.startDate?.toISOString().split('T')[0] || null,
-    end_date: group.endDate?.toISOString().split('T')[0] || null,
-    sessions_per_week: group.sessionsPerWeek || [],
-    start_time: group.startTime,
-    end_time: group.endTime,
-    sessions: group.sessions.map(session => ({
-      session_date: session.date?.toISOString().split('T')[0],
-      start_time: session.startTime,
-      end_time: session.endTime,
-    })) || [],
-  }))
+    return groups.map(group => ({
+        group_name: group.name,
+        capacity: group.capacity === 'unlimited' ? null : group.capacity,
+        start_date: group.startDate?.toISOString().split('T')[0] || null,
+        end_date: group.endDate?.toISOString().split('T')[0] || null,
+        sessions_per_week: group.sessionsPerWeek || [],
+        start_time: group.startTime,
+        end_time: group.endTime,
+        sessions: group.sessions.map(session => ({
+            session_date: session.date?.toISOString().split('T')[0],
+            start_time: session.startTime,
+            end_time: session.endTime,
+        })) || [],
+    }))
 }
 
 interface EnrolledEmployee {
-  id: number
-  employeeId: string
-  employeeName: string
-  email: string
-  departmentId: number
-  departmentName: string
-  teamId: number
-  teamName: string
-  position: string
-  courseGroupId: number
-  courseGroupName: string
-  enrollmentStatus: string
-  enrolledAt: string
-  pfImage?: string
+    id: number
+    employeeId: string
+    employeeName: string
+    email: string
+    departmentId: number
+    departmentName: string
+    teamId: number
+    teamName: string
+    position: string
+    courseGroupId: number
+    courseGroupName: string
+    enrollmentStatus: string
+    enrolledAt: string
+    pfImage?: string
 }
 
 interface TrainerSectionProps {
@@ -227,17 +227,24 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     }
 
     const addGroup = () => {
+        // Find the last group to copy its data
+        const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null
+
+        // Create new group with data from the last group (if available)
         const newGroup: CourseGroup = {
             id: `g${Date.now()}`,
             name: `Group ${groups.length + 1}`,
-            capacity: "unlimited",
-            startDate: new Date(),
-            sessionsPerWeek: DEFAULT_SESSION_DAYS,
-            startTime: "09:00",
-            endTime: "10:00",
+            capacity: lastGroup?.capacity ?? "unlimited",
+            startDate: lastGroup?.startDate ? new Date(lastGroup.startDate) : new Date(),
+            sessionsPerWeek: lastGroup?.sessionsPerWeek ? [...lastGroup.sessionsPerWeek] : DEFAULT_SESSION_DAYS,
+            startTime: lastGroup?.startTime ?? "09:00",
+            endTime: lastGroup?.endTime ?? "10:00",
             sessions: [],
             registeredCount: 0,
+            status: lastGroup?.status,
+            endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
         }
+
         onUpdateGroups([...groups, newGroup])
         onSetActiveGroupTab(newGroup.id)
         onSetTrainerSessionPage(1)
@@ -269,11 +276,48 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                 "endTime",
             ].includes(field)
         ) {
-            const resetSessions = updatedGroups.map((group) =>
-                group.id === groupId ? { ...group, sessions: [] } : group
-            )
-            onUpdateGroups(resetSessions)
-            previousTotalSessionsRef.current[groupId] = 0
+            // When sessionsPerWeek changes, recalculate all session dates
+            const group = updatedGroups.find((g) => g.id === groupId)
+            if (group && field === "sessionsPerWeek") {
+                const startDate = group.startDate || new Date()
+                const sessionDays = group.sessionsPerWeek || DEFAULT_SESSION_DAYS
+                const sortedDays = [...sessionDays].sort((a, b) => a - b)
+                const startTime = group.startTime || "09:00"
+                const endTime = group.endTime || "10:00"
+
+                const newSessions: CourseSession[] = []
+                let currentDate = new Date(startDate)
+                let sessionCount = 0
+                const totalSessions = group.sessions.length
+
+                while (sessionCount < totalSessions) {
+                    const dayOfWeek = currentDate.getDay()
+                    if (sortedDays.includes(dayOfWeek)) {
+                        if (group.endDate && currentDate > group.endDate) break
+                        newSessions.push({
+                            id: `s${Date.now()}-${sessionCount}`,
+                            date: new Date(currentDate),
+                            startTime: startTime,
+                            endTime: endTime,
+                            status: 'PLANNED'
+                        })
+                        sessionCount++
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1)
+                }
+
+                const groupsWithRecalculatedSessions = updatedGroups.map((g) =>
+                    g.id === groupId ? { ...g, sessions: newSessions } : g
+                )
+                onUpdateGroups(groupsWithRecalculatedSessions)
+                onSetTrainerSessionPage(1)
+            } else {
+                const resetSessions = updatedGroups.map((group) =>
+                    group.id === groupId ? { ...group, sessions: [] } : group
+                )
+                onUpdateGroups(resetSessions)
+                previousTotalSessionsRef.current[groupId] = 0
+            }
         }
     }
 
@@ -300,11 +344,54 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         const group = groups.find((g) => g.id === groupId)
         if (!group) return
 
+        // Get the last session date or use start date
+        let lastDate: Date
+        if (group.sessions.length > 0) {
+            // Get the last session date
+            const lastSession = group.sessions[group.sessions.length - 1]
+            lastDate = lastSession.date || group.startDate || new Date()
+        } else {
+            lastDate = group.startDate || new Date()
+        }
+
+        // Calculate the next session date based on sessionsPerWeek
+        const sessionDays = group.sessionsPerWeek || DEFAULT_SESSION_DAYS
+        const sortedDays = [...sessionDays].sort((a, b) => a - b)
+
+        let nextDate = new Date(lastDate)
+        let foundNextDay = false
+        let attempts = 0
+        const maxAttempts = 30 // Prevent infinite loop
+
+        // Find the next day that matches the session days
+        while (!foundNextDay && attempts < maxAttempts) {
+            nextDate.setDate(nextDate.getDate() + 1)
+            const dayOfWeek = nextDate.getDay()
+            if (sortedDays.includes(dayOfWeek)) {
+                foundNextDay = true
+                break
+            }
+            attempts++
+        }
+
+        // If no next day found, use the last date + 1 day
+        if (!foundNextDay) {
+            nextDate = new Date(lastDate)
+            nextDate.setDate(nextDate.getDate() + 1)
+        }
+
+        // Check if the new session date exceeds the end date
+        if (group.endDate && nextDate > group.endDate) {
+            alert('Cannot add session: would exceed the group end date')
+            return
+        }
+
         const newSession: CourseSession = {
             id: `s${Date.now()}`,
-            date: new Date(),
+            date: nextDate,
             startTime: group.startTime || "09:00",
             endTime: group.endTime || "10:00",
+            status: 'PLANNED'
         }
 
         const updatedGroups = groups.map((g) =>
@@ -312,10 +399,10 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         )
         onUpdateGroups(updatedGroups)
         const totalPages = Math.ceil(
-            (groups.find((g) => g.id === groupId)?.sessions.length || 0 + 1) /
+            (updatedGroups.find((g) => g.id === groupId)?.sessions.length || 0) /
             trainerItemsPerPage
         )
-        onSetTrainerSessionPage(totalPages)
+        onSetTrainerSessionPage(totalPages > 0 ? totalPages : 1)
     }
 
     const removeGroupSession = (groupId: string, sessionId: string) => {
@@ -679,7 +766,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                     }
                                     currentDate.setDate(currentDate.getDate() + 1)
                                 }
-                                
+
                                 lastUpdateRef.current = ""
                                 updateGroup(group.id, "sessions", newSessions)
                                 onSetTrainerSessionPage(1)
@@ -801,10 +888,10 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     // Get enrolled employees for the current group from store
     const currentGroupEnrolledEmployees = React.useMemo(() => {
         if (!enrollments || enrollments.length === 0) return []
-        
+
         const activeGroup = groups.find(g => g.id === activeGroupTab)
         if (!activeGroup) return []
-        
+
         const groupId = parseInt(activeGroup.id)
         return enrollments.filter((emp: any) => emp.courseGroupId === groupId)
     }, [enrollments, activeGroupTab, groups])
@@ -1054,8 +1141,8 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
 
 // Helper function to get initials from name
 const getInitials = (name: string) => {
-  if (!name) return "??"
-  const parts = name.split(" ")
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+    if (!name) return "??"
+    const parts = name.split(" ")
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }

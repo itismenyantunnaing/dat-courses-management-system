@@ -1,5 +1,4 @@
-// store/zustandStores/course_enrollment_store.ts
-import type { Course_StoreType } from "../types"
+import type { Course_StoreType } from "../../types"
 
 type StoreSet = (
   fn: (state: Course_StoreType) => Partial<Course_StoreType>
@@ -47,6 +46,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         enrollments: data,
         enrollmentError: null
       }))
+      
 
       // Return the data directly so the component can use it
       return data
