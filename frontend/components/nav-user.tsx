@@ -43,8 +43,8 @@ import { Separator } from "@/components/ui/separator"
 import { CardContent } from "@/components/ui/card"
 import ChangePassword from "./dialogs/changePassword-dialog"
 import { NotificationsDrawer } from "./drawers/notifications-drawer"
-import { logout } from "@/app/actions/auth"  // ✅ Import logout action
-import { useRouter } from "next/navigation"   // ✅ Import useRouter
+import { logout } from "@/app/actions/auth" // ✅ Import logout action
+import { useRouter } from "next/navigation" // ✅ Import useRouter
 
 export function NavUser({
   user,
@@ -57,7 +57,7 @@ export function NavUser({
     team?: string
   }
 }) {
-  const router = useRouter()  // ✅ Initialize router
+  const router = useRouter() // ✅ Initialize router
   const { isMobile } = useSidebar()
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
@@ -373,12 +373,17 @@ export function NavUser({
 
           <DialogFooter className="border-t p-6 pt-4">
             <Button
+              className="flex-1"
               variant="outline"
               onClick={() => setPersonalInfoDialogOpen(false)}
             >
               Cancel
             </Button>
-            <Button onClick={handleSavePersonalInfo} disabled={isLoading}>
+            <Button
+              className="flex-1"
+              onClick={handleSavePersonalInfo}
+              disabled={isLoading}
+            >
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

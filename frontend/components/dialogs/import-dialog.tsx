@@ -29,7 +29,11 @@ interface ImportDialogProps {
   label?: string // Used ONLY for filtering which tabs to show
 }
 
-export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialogProps) {
+export function ImportDialog({
+  open,
+  onOpenChange,
+  label = "all",
+}: ImportDialogProps) {
   const [activeImportTab, setActiveImportTab] = useState("")
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -113,36 +117,37 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
   // Import logic based on tab config
   const handleImport = async () => {
     if (!currentTabData || !selectedFile) {
-      alert('Please select a file first');
-      return;
+      alert("Please select a file first")
+      return
     }
 
-    setIsProcessing(true);
+    setIsProcessing(true)
 
     try {
       // Use the centralized onImport function from tabs-config.ts
-      const result = await currentTabData.onImport(selectedFile);
-      
+      const result = await currentTabData.onImport(selectedFile)
+
       // Handle optional result object or simple success
-      if (result && typeof result === 'object') {
+      if (result && typeof result === "object") {
         if (result.success) {
-          onOpenChange(false);
+          onOpenChange(false)
         } else {
-          // Failure with message 
-          if (result.message) console.log(`ℹ️ ${result.message}`);
+          // Failure with message
+          if (result.message) console.log(`ℹ️ ${result.message}`)
         }
       } else {
-        alert(`✅ Successfully imported ${currentTabData.label} data!`);
-        onOpenChange(false);
+        alert(`✅ Successfully imported ${currentTabData.label} data!`)
+        onOpenChange(false)
       }
-      
     } catch (error) {
-      console.error('❌ Import error:', error);
-      alert(`❌ Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("❌ Import error:", error)
+      alert(
+        `❌ Failed to import: ${error instanceof Error ? error.message : "Unknown error"}`
+      )
     } finally {
-      setIsProcessing(false);
+      setIsProcessing(false)
     }
-  };
+  }
 
   const handleCancel = () => {
     onOpenChange(false)
@@ -180,7 +185,8 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
             </p>
             {selectedFile && (
               <p className="text-xs text-green-600">
-                ✓ File selected: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                ✓ File selected: {(selectedFile.size / 1024 / 1024).toFixed(2)}{" "}
+                MB
               </p>
             )}
           </div>
@@ -223,9 +229,24 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
   if (!showTabs) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent
+          className="sm:max-w-[550px]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={(e) => {
+            // Prevent dialog from closing when clicking inside dropdown
+            const target = e.target as HTMLElement
+            if (
+              target.closest('[role="menu"]') ||
+              target.closest('[role="listbox"]')
+            ) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>{currentTabData?.importTitle || "Import Data"}</DialogTitle>
+            <DialogTitle>
+              {currentTabData?.importTitle || "Import Data"}
+            </DialogTitle>
             <DialogDescription>
               {currentTabData?.importDescription ||
                 "Upload your data file to import it into the system."}
@@ -238,11 +259,13 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleImport} 
+            <Button
+              onClick={handleImport}
               disabled={!selectedFile || isProcessing}
             >
-              {isProcessing ? 'Processing...' : `Import ${currentTabData?.label || "Data"}`}
+              {isProcessing
+                ? "Processing..."
+                : `Import ${currentTabData?.label || "Data"}`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -256,16 +279,35 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent
+        className="sm:max-w-[550px]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          // Prevent dialog from closing when clicking inside dropdown
+          const target = e.target as HTMLElement
+          if (
+            target.closest('[role="menu"]') ||
+            target.closest('[role="listbox"]')
+          ) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DialogHeader>
-          <DialogTitle>{currentTabData?.importTitle || "Import Data"}</DialogTitle>
+          <DialogTitle>
+            {currentTabData?.importTitle || "Import Data"}
+          </DialogTitle>
           <DialogDescription>
             {currentTabData?.importDescription ||
               "Upload your data file to import it into the system."}
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeImportTab} onValueChange={handleTabChange} className="w-full">
+        <Tabs
+          value={activeImportTab}
+          onValueChange={handleTabChange}
+          className="w-full"
+        >
           <div className="flex items-center gap-2">
             <TabsList className="h-auto w-full">
               <div
@@ -275,9 +317,9 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
                 }}
               >
                 {visibleImportTabs.map((tab) => (
-                  <TabsTrigger 
-                    key={tab.id} 
-                    value={tab.id} 
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
                     className="w-full"
                     onClick={() => {
                       setSelectedFile(null)
@@ -292,11 +334,19 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
             </TabsList>
 
             {dropdownImportTabs.length > 0 && (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="shrink-0 whitespace-nowrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 whitespace-nowrap"
+                  >
                     More ({dropdownImportTabs.length})
-                    <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="ml-1 size-3" />
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      strokeWidth={2}
+                      className="ml-1 size-3"
+                    />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
@@ -333,11 +383,13 @@ export function ImportDialog({ open, onOpenChange, label = "all" }: ImportDialog
           <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleImport} 
+          <Button
+            onClick={handleImport}
             disabled={!selectedFile || isProcessing}
           >
-            {isProcessing ? 'Processing...' : `Import ${currentTabData?.label || "Data"}`}
+            {isProcessing
+              ? "Processing..."
+              : `Import ${currentTabData?.label || "Data"}`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -25,7 +25,7 @@ export interface CurrentTargetFormData {
   // Employee selection
   employeeId: string
   employeeName?: string
-  
+
   // Certified Levels
   jlptNatTest: string
   jlptHighestLevel: string
@@ -59,6 +59,7 @@ interface CurrentTargetFormProps {
   isEdit?: boolean
   showEmployeeSelect?: boolean
   employeeOptions?: { value: string; label: string }[]
+  onDropdownOpenChange?: (isOpen: boolean) => void
 }
 
 // Options for dropdowns with empty option
@@ -92,6 +93,7 @@ export function CurrentTargetForm({
   isEdit = false,
   showEmployeeSelect = true,
   employeeOptions = [],
+  onDropdownOpenChange,
 }: CurrentTargetFormProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState("")
@@ -116,19 +118,23 @@ export function CurrentTargetForm({
   }, [])
 
   // Generate employee options if not provided
-  const employeeSelectOptions = employeeOptions.length > 0 
-    ? employeeOptions 
-    : employee_data?.map((emp: Employee) => ({
-        value: emp.id,
-        label: `${emp.id} - ${emp.name}`,
-      })) || []
+  const employeeSelectOptions =
+    employeeOptions.length > 0
+      ? employeeOptions
+      : employee_data?.map((emp: Employee) => ({
+          value: emp.id,
+          label: `${emp.id} - ${emp.name}`,
+        })) || []
 
   // Filter employees based on search term
   const filteredEmployeeOptions = employeeSelectOptions.filter((option) =>
     option.label.toLowerCase().includes(employeeSearchTerm.toLowerCase())
   )
 
-  const handleInputChange = (field: keyof CurrentTargetFormData, value: any) => {
+  const handleInputChange = (
+    field: keyof CurrentTargetFormData,
+    value: any
+  ) => {
     onChange({
       ...data,
       [field]: value,
@@ -178,18 +184,19 @@ export function CurrentTargetForm({
                     }}
                     onOpenChange={(open) => {
                       setIsEmployeeDropdownOpen(open)
+                      onDropdownOpenChange?.(open)
                       if (!open) {
                         setEmployeeSearchTerm("")
                       }
                     }}
                     required
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full" data-dropdown-trigger>
                       <SelectValue placeholder="Search and select an employee..." />
                     </SelectTrigger>
                     <SelectContent className="max-h-80">
                       {/* Search Input inside dropdown */}
-                      <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+                      <div className="sticky top-0 z-10 border-b bg-popover p-2">
                         <div className="relative">
                           <HugeiconsIcon
                             icon={Search01Icon}
@@ -199,7 +206,9 @@ export function CurrentTargetForm({
                           <Input
                             placeholder="Search employees..."
                             value={employeeSearchTerm}
-                            onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                            onChange={(e) =>
+                              setEmployeeSearchTerm(e.target.value)
+                            }
                             className="pl-9"
                             onClick={(e) => e.stopPropagation()}
                           />
@@ -208,7 +217,7 @@ export function CurrentTargetForm({
                       <SelectGroup>
                         <SelectLabel>Employees</SelectLabel>
                         {filteredEmployeeOptions.length === 0 ? (
-                          <div className="py-2 px-2 text-sm text-muted-foreground text-center">
+                          <div className="px-2 py-2 text-center text-sm text-muted-foreground">
                             No employees found
                           </div>
                         ) : (
@@ -238,8 +247,9 @@ export function CurrentTargetForm({
             <Select
               value={data.jlptNatTest || ""}
               onValueChange={(value) => handleInputChange("jlptNatTest", value)}
+              onOpenChange={onDropdownOpenChange}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" data-dropdown-trigger>
                 <SelectValue placeholder="Select exam type" />
               </SelectTrigger>
               <SelectContent>
@@ -255,44 +265,17 @@ export function CurrentTargetForm({
           </div>
 
           <div className="min-w-0 space-y-2">
-            <Label htmlFor="jlptHighestLevel">JLPT Highest Level (Certified)</Label>
+            <Label htmlFor="jlptHighestLevel">
+              JLPT Highest Level (Certified)
+            </Label>
             <Select
               value={data.jlptHighestLevel || ""}
-              onValueChange={(value) => handleInputChange("jlptHighestLevel", value)}
+              onValueChange={(value) =>
+                handleInputChange("jlptHighestLevel", value)
+              }
+              onOpenChange={onDropdownOpenChange}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select JLPT level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {JLPT_LEVELS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* <div className="min-w-0 space-y-2">
-            <Label htmlFor="otherJapaneseLevel">Other Japanese Level (Certified)</Label>
-            <Input
-              id="otherJapaneseLevel"
-              value={data.otherJapaneseLevel || ""}
-              onChange={(e) => handleInputChange("otherJapaneseLevel", e.target.value)}
-              placeholder="e.g., Business Japanese, etc."
-              className="w-full"
-            />
-          </div> */}
-
-           <div className="min-w-0 space-y-2">
-            <Label htmlFor="jlptHighestLevel">Other Japanese Level (Certified)</Label>
-            <Select
-              value={data.otherJapaneseLevel || ""}
-              onValueChange={(value) => handleInputChange("otherJapaneseLevel", value)}
-            >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" data-dropdown-trigger>
                 <SelectValue placeholder="Select JLPT level" />
               </SelectTrigger>
               <SelectContent>
@@ -308,11 +291,41 @@ export function CurrentTargetForm({
           </div>
 
           <div className="min-w-0 space-y-2">
-            <Label htmlFor="preferredLearningGroup">Preferred Learning Group</Label>
+            <Label htmlFor="otherJapaneseLevel">
+              Other Japanese Level (Certified)
+            </Label>
+            <Select
+              value={data.otherJapaneseLevel || ""}
+              onValueChange={(value) =>
+                handleInputChange("otherJapaneseLevel", value)
+              }
+              onOpenChange={onDropdownOpenChange}
+            >
+              <SelectTrigger className="w-full" data-dropdown-trigger>
+                <SelectValue placeholder="Select JLPT level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {JLPT_LEVELS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-0 space-y-2">
+            <Label htmlFor="preferredLearningGroup">
+              Preferred Learning Group
+            </Label>
             <Input
               id="preferredLearningGroup"
               value={data.preferredLearningGroup || ""}
-              onChange={(e) => handleInputChange("preferredLearningGroup", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("preferredLearningGroup", e.target.value)
+              }
               placeholder="e.g., Morning Group, Evening Group, etc."
               className="w-full"
             />
@@ -327,11 +340,15 @@ export function CurrentTargetForm({
         <h3 className="mb-4 text-lg font-semibold">Current Level</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="min-w-0 space-y-2 sm:col-span-2">
-            <Label htmlFor="currentCommunicationLevel">Current Communication Level</Label>
+            <Label htmlFor="currentCommunicationLevel">
+              Current Communication Level
+            </Label>
             <Input
               id="currentCommunicationLevel"
               value={data.currentCommunicationLevel || ""}
-              onChange={(e) => handleInputChange("currentCommunicationLevel", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("currentCommunicationLevel", e.target.value)
+              }
               placeholder="e.g., Fluent, Business Level, Conversational, Basic, None"
               className="w-full"
             />
@@ -349,9 +366,12 @@ export function CurrentTargetForm({
             <Label htmlFor="target1JlptNatLevel">JLPT / NAT Test Level</Label>
             <Select
               value={data.target1JlptNatLevel || ""}
-              onValueChange={(value) => handleInputChange("target1JlptNatLevel", value)}
+              onValueChange={(value) =>
+                handleInputChange("target1JlptNatLevel", value)
+              }
+              onOpenChange={onDropdownOpenChange}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" data-dropdown-trigger>
                 <SelectValue placeholder="Select target JLPT level" />
               </SelectTrigger>
               <SelectContent>
@@ -367,11 +387,15 @@ export function CurrentTargetForm({
           </div>
 
           <div className="min-w-0 space-y-2">
-            <Label htmlFor="target1CommunicationLevel">Communication Level</Label>
+            <Label htmlFor="target1CommunicationLevel">
+              Communication Level
+            </Label>
             <Input
               id="target1CommunicationLevel"
               value={data.target1CommunicationLevel || ""}
-              onChange={(e) => handleInputChange("target1CommunicationLevel", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("target1CommunicationLevel", e.target.value)
+              }
               placeholder="e.g., Fluent, Business Level, Conversational, Basic, None"
               className="w-full"
             />
@@ -389,9 +413,12 @@ export function CurrentTargetForm({
             <Label htmlFor="target2JlptNatLevel">JLPT / NAT Test Level</Label>
             <Select
               value={data.target2JlptNatLevel || ""}
-              onValueChange={(value) => handleInputChange("target2JlptNatLevel", value)}
+              onValueChange={(value) =>
+                handleInputChange("target2JlptNatLevel", value)
+              }
+              onOpenChange={onDropdownOpenChange}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" data-dropdown-trigger>
                 <SelectValue placeholder="Select target JLPT level" />
               </SelectTrigger>
               <SelectContent>
@@ -407,11 +434,15 @@ export function CurrentTargetForm({
           </div>
 
           <div className="min-w-0 space-y-2">
-            <Label htmlFor="target2CommunicationLevel">Communication Level</Label>
+            <Label htmlFor="target2CommunicationLevel">
+              Communication Level
+            </Label>
             <Input
               id="target2CommunicationLevel"
               value={data.target2CommunicationLevel || ""}
-              onChange={(e) => handleInputChange("target2CommunicationLevel", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("target2CommunicationLevel", e.target.value)
+              }
               placeholder="e.g., Fluent, Business Level, Conversational, Basic, None"
               className="w-full"
             />
@@ -423,15 +454,22 @@ export function CurrentTargetForm({
 
       {/* Current Learning Section */}
       <div>
-        <h3 className="mb-4 text-lg font-semibold">Current Learning Level and Method</h3>
+        <h3 className="mb-4 text-lg font-semibold">
+          Current Learning Level and Method
+        </h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="min-w-0 space-y-2">
-            <Label htmlFor="currentLearningLevel">Japanese Level (Current Learning)</Label>
+            <Label htmlFor="currentLearningLevel">
+              Japanese Level (Current Learning)
+            </Label>
             <Select
               value={data.currentLearningLevel || ""}
-              onValueChange={(value) => handleInputChange("currentLearningLevel", value)}
+              onValueChange={(value) =>
+                handleInputChange("currentLearningLevel", value)
+              }
+              onOpenChange={onDropdownOpenChange}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" data-dropdown-trigger>
                 <SelectValue placeholder="Select current learning level" />
               </SelectTrigger>
               <SelectContent>
@@ -451,7 +489,9 @@ export function CurrentTargetForm({
             <Input
               id="learningMethod"
               value={data.learningMethod || ""}
-              onChange={(e) => handleInputChange("learningMethod", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("learningMethod", e.target.value)
+              }
               placeholder="e.g., Self-study, Group Class, Private Tutor, Online Course, etc."
               className="w-full"
             />
@@ -466,7 +506,9 @@ export function CurrentTargetForm({
         <h3 className="mb-4 text-lg font-semibold">JLPT Exam Target</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="min-w-0 space-y-2">
-            <Label htmlFor="wantToSitExam">Want to sit JLPT exam on Jul 2026</Label>
+            <Label htmlFor="wantToSitExam">
+              Want to sit JLPT exam on Jul 2026
+            </Label>
             <div className="flex items-center space-x-2 pt-2">
               <Switch
                 id="wantToSitExam"
@@ -483,11 +525,18 @@ export function CurrentTargetForm({
             <Label htmlFor="examTargetLevel">If Yes, Which Level?</Label>
             <Select
               value={data.examTargetLevel || ""}
-              onValueChange={(value) => handleInputChange("examTargetLevel", value)}
+              onValueChange={(value) =>
+                handleInputChange("examTargetLevel", value)
+              }
+              onOpenChange={onDropdownOpenChange}
               disabled={!data.wantToSitExam}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={data.wantToSitExam ? "Select target level" : "Disabled"} />
+              <SelectTrigger className="w-full" data-dropdown-trigger>
+                <SelectValue
+                  placeholder={
+                    data.wantToSitExam ? "Select target level" : "Disabled"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -502,14 +551,23 @@ export function CurrentTargetForm({
           </div>
 
           <div className="min-w-0 space-y-2 sm:col-span-2">
-            <Label htmlFor="confidenceLevel">Confidence Level to Pass Exam</Label>
+            <Label htmlFor="confidenceLevel">
+              Confidence Level to Pass Exam
+            </Label>
             <Select
               value={data.confidenceLevel || ""}
-              onValueChange={(value) => handleInputChange("confidenceLevel", value)}
+              onValueChange={(value) =>
+                handleInputChange("confidenceLevel", value)
+              }
+              onOpenChange={onDropdownOpenChange}
               disabled={!data.wantToSitExam}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={data.wantToSitExam ? "Select confidence level" : "Disabled"} />
+              <SelectTrigger className="w-full" data-dropdown-trigger>
+                <SelectValue
+                  placeholder={
+                    data.wantToSitExam ? "Select confidence level" : "Disabled"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>

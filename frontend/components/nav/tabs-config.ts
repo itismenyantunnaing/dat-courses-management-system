@@ -1,7 +1,6 @@
 import {
   UserGroupIcon,
   CodeIcon,
-  CourseIcon,
   CalendarIcon,
   TrendingUp,
 } from "@hugeicons/core-free-icons"
@@ -222,29 +221,6 @@ export const allTabs = [
     },
     onDelete: (selectedItems: string[]) => {
       console.log("Deleting employees data", selectedItems)
-    },
-  },
-  {
-    id: "courses",
-    label: "Courses",
-    importTitle: "Import Courses Data",
-    importDescription: "Upload course data file to import into the system.",
-    exportTitle: "Export Courses Data",
-    exportDescription: "Export course data from the system.",
-    accept: ".csv,.json,.xlsx,.xls",
-    icon: CourseIcon,
-    maxSize: 500,
-    onImport: (file: File) => {
-      console.log("📤 Importing courses data:", file.name)
-      alert("Course import coming soon!")
-      return { success: true, message: "Course import coming soon!" }
-    },
-    onExport: (format: string) => {
-      console.log(`📤 Exporting courses data as ${format}`)
-      alert("Course export coming soon!")
-    },
-    onDelete: (selectedItems: string[]) => {
-      console.log("Deleting courses data", selectedItems)
     },
   },
   {

@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Drawer,
   DrawerClose,
@@ -33,9 +33,11 @@ export function EditCurrentTargetDrawer({
   onSuccess,
 }: EditCurrentTargetDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  // ✅ Fix: Get the correct function name from the store
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
   const { edit_EmployeeJapaneseLevel } = mainStore()
-  
+
   const [formData, setFormData] = useState<CurrentTargetFormData>({
     employeeId: "",
     employeeName: "",
@@ -55,24 +57,25 @@ export function EditCurrentTargetDrawer({
     confidenceLevel: "",
   })
 
-  const [originalFormData, setOriginalFormData] = useState<CurrentTargetFormData>({
-    employeeId: "",
-    employeeName: "",
-    jlptNatTest: "",
-    jlptHighestLevel: "",
-    otherJapaneseLevel: "",
-    preferredLearningGroup: "",
-    currentCommunicationLevel: "",
-    target1JlptNatLevel: "",
-    target1CommunicationLevel: "",
-    target2JlptNatLevel: "",
-    target2CommunicationLevel: "",
-    currentLearningLevel: "",
-    learningMethod: "",
-    wantToSitExam: false,
-    examTargetLevel: "",
-    confidenceLevel: "",
-  })
+  const [originalFormData, setOriginalFormData] =
+    useState<CurrentTargetFormData>({
+      employeeId: "",
+      employeeName: "",
+      jlptNatTest: "",
+      jlptHighestLevel: "",
+      otherJapaneseLevel: "",
+      preferredLearningGroup: "",
+      currentCommunicationLevel: "",
+      target1JlptNatLevel: "",
+      target1CommunicationLevel: "",
+      target2JlptNatLevel: "",
+      target2CommunicationLevel: "",
+      currentLearningLevel: "",
+      learningMethod: "",
+      wantToSitExam: false,
+      examTargetLevel: "",
+      confidenceLevel: "",
+    })
 
   // Check if form has changes
   const hasChanges = () => {
@@ -105,6 +108,50 @@ export function EditCurrentTargetDrawer({
     }
   }, [profile, open])
 
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent drawer from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when drawer closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    onOpenChange(newOpen)
+  }
+
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
+
   const handleSubmit = async () => {
     if (!hasChanges()) {
       console.log("No changes to save")
@@ -119,7 +166,6 @@ export function EditCurrentTargetDrawer({
     setIsSubmitting(true)
 
     try {
-      // Map form data to the API request format
       const requestData = {
         employeeId: formData.employeeId,
         jlptNatTest: formData.jlptNatTest || null,
@@ -143,7 +189,6 @@ export function EditCurrentTargetDrawer({
 
       onOpenChange(false)
       onSuccess?.()
-      
     } catch (error) {
       console.error("Failed to update Japanese profile:", error)
     } finally {
@@ -152,32 +197,34 @@ export function EditCurrentTargetDrawer({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
+    <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
+      <DrawerContent
+        className="right-0 left-auto h-full w-full max-w-2xl"
+        onPointerDownOutside={handlePointerDownOutside}
+        onEscapeKeyDown={(e) => {
+          if (isInteractingWithDropdown) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>Edit Japanese Profile</DrawerTitle>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 py-4">
-            <CurrentTargetForm 
-              data={formData} 
-              onChange={setFormData} 
+            <CurrentTargetForm
+              data={formData}
+              onChange={setFormData}
               isEdit={true}
               showEmployeeSelect={false}
+              onDropdownOpenChange={handleDropdownOpenChange}
             />
           </div>
         </div>
 
         <DrawerFooter className="shrink-0 border-t">
           <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !hasChanges()}
-            >
-              {isSubmitting ? "Saving..." : "Save Changes"}
-            </Button>
             <DrawerClose asChild>
               <Button
                 variant="outline"
@@ -187,6 +234,13 @@ export function EditCurrentTargetDrawer({
                 Cancel
               </Button>
             </DrawerClose>
+            <Button
+              className="flex-1"
+              onClick={handleSubmit}
+              disabled={isSubmitting || !hasChanges()}
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </DrawerFooter>
       </DrawerContent>

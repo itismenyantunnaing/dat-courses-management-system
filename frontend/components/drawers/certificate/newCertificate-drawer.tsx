@@ -11,10 +11,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
-import {
-  CERTIFICATE_TYPES,
-  CERTIFICATE_LEVELS,
-} from "@/types/certificate"
+import { CERTIFICATE_TYPES, CERTIFICATE_LEVELS } from "@/types/certificate"
 import { CertificateForm } from "@/components/drawers/certificate/certificateForm"
 import { mainStore } from "@/store/mainStore"
 
@@ -30,7 +27,11 @@ export function NewCertificateDrawer({
   const formRef = useRef<HTMLFormElement>(null)
   const [hasChanges, setHasChanges] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const {add_CertificateData, fetch_CertificateData, certificateData} = mainStore()
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
+  const { add_CertificateData, fetch_CertificateData, certificateData } =
+    mainStore()
 
   useEffect(() => {
     if (open) {
@@ -39,38 +40,36 @@ export function NewCertificateDrawer({
   }, [open])
 
   const handleSubmit = async (data: {
-    certificateType: typeof CERTIFICATE_TYPES[number]
-    level: typeof CERTIFICATE_LEVELS[number]
+    certificateType: (typeof CERTIFICATE_TYPES)[number]
+    level: (typeof CERTIFICATE_LEVELS)[number]
     imageUrl?: string
     file?: File
   }) => {
     if (!data.file) {
-      alert('Please select an image file')
+      alert("Please select an image file")
       return
     }
 
     setIsSubmitting(true)
 
     try {
-
       const result = await add_CertificateData({
         certificateType: data.certificateType,
         japaneseLevel: data.level,
         file: data.file,
-        id: ""
+        id: "",
       })
 
-
-      if (result.includes('successfully')) {
-        alert('✅ Certificate added successfully!')
+      if (result.includes("successfully")) {
+        alert("✅ Certificate added successfully!")
         onOpenChange(false)
         await fetch_CertificateData()
       } else {
-        alert('❌ ' + result)
+        alert("❌ " + result)
       }
     } catch (error) {
-      console.error('❌ Error adding certificate:', error)
-      alert('❌ Failed to add certificate')
+      console.error("❌ Error adding certificate:", error)
+      alert("❌ Failed to add certificate")
     } finally {
       setIsSubmitting(false)
     }
@@ -86,9 +85,64 @@ export function NewCertificateDrawer({
     }
   }
 
+  // Add dropdown interaction handlers
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent drawer from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when drawer closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - only prevent if clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
+
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
+    <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
+      <DrawerContent
+        className="right-0 left-auto h-full w-full max-w-2xl"
+        onPointerDownOutside={handlePointerDownOutside}
+        onEscapeKeyDown={(e) => {
+          // Prevent escape key from closing when dropdown is open
+          if (isInteractingWithDropdown) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>Add New Certificate</DrawerTitle>
         </DrawerHeader>
@@ -102,19 +156,13 @@ export function NewCertificateDrawer({
               onCancel={() => onOpenChange(false)}
               isSubmitting={isSubmitting}
               onChanges={handleChanges}
+              onDropdownOpenChange={handleDropdownOpenChange} // Pass this down
             />
           </div>
         </div>
 
         <DrawerFooter className="shrink-0 border-t">
           <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={handleFormSubmit}
-              disabled={isSubmitting || !hasChanges}
-            >
-              {isSubmitting ? "Adding..." : "Add Certificate"}
-            </Button>
             <DrawerClose asChild>
               <Button
                 variant="outline"
@@ -124,6 +172,13 @@ export function NewCertificateDrawer({
                 Cancel
               </Button>
             </DrawerClose>
+            <Button
+              className="flex-1"
+              onClick={handleFormSubmit}
+              disabled={isSubmitting || !hasChanges}
+            >
+              {isSubmitting ? "Adding..." : "Add Certificate"}
+            </Button>
           </div>
         </DrawerFooter>
       </DrawerContent>

@@ -12,13 +12,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Search01Icon, DiplomaIcon } from "@hugeicons/core-free-icons"
+import {
+  Search01Icon,
+  DiplomaIcon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons"
 import { JapaneseCertificate } from "@/types/certificate"
 import { CertificateCard } from "../components/cards/certificate-card"
 import { NewCertificateDrawer } from "../components/drawers/certificate/newCertificate-drawer"
 import { EditCertificateDrawer } from "../components/drawers/certificate/editCertificate-drawer"
 import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 const STROKE_WIDTH = 2
 
@@ -28,22 +33,42 @@ const statusLabels = {
   rejected: "Rejected",
 }
 
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
+
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
+}
+
 export function JapaneseCertificateContainer() {
-  const {
-    certificateData,
-    fetch_CertificateData,
-    getUserId,
-    isLoading,
-  } = mainStore()
+  const { certificateData, fetch_CertificateData, getUserId, isLoading } =
+    mainStore()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isNewDrawerOpen, setIsNewDrawerOpen] = useState(false)
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
-  const [editingCertificate, setEditingCertificate] = useState<JapaneseCertificate | null>(null)
+  const [editingCertificate, setEditingCertificate] =
+    useState<JapaneseCertificate | null>(null)
 
   const searchPlaceholder = "Search certificates..."
-  
+
   // Fetch certificates on mount
   useEffect(() => {
     const userId = getUserId()
@@ -59,7 +84,8 @@ export function JapaneseCertificateContainer() {
       const matchesSearch =
         cert.certificateType.toLowerCase().includes(search) ||
         cert.japaneseLevel.toLowerCase().includes(search) ||
-        (cert.verifiedAt && format(cert.verifiedAt, "MMM yyyy").toLowerCase().includes(search)) ||
+        (cert.verifiedAt &&
+          format(cert.verifiedAt, "MMM yyyy").toLowerCase().includes(search)) ||
         cert.verificationStatus?.toLowerCase().includes(search)
 
       const matchesStatus =
@@ -72,6 +98,16 @@ export function JapaneseCertificateContainer() {
   const handleEdit = (certificate: JapaneseCertificate) => {
     setEditingCertificate(certificate)
     setIsEditDrawerOpen(true)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <LoadingSpinner text="Loading certificates..." />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -120,11 +156,7 @@ export function JapaneseCertificateContainer() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-muted-foreground">Loading certificates...</div>
-        </div>
-      ) : filteredCertificates.length > 0 ? (
+      {filteredCertificates.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredCertificates.map((certificate) => (
             <CertificateCard
@@ -144,7 +176,6 @@ export function JapaneseCertificateContainer() {
         </div>
       )}
 
-      {/* Drawers - No callback functions needed */}
       <NewCertificateDrawer
         open={isNewDrawerOpen}
         onOpenChange={setIsNewDrawerOpen}

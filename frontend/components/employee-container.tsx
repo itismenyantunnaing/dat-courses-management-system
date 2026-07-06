@@ -67,6 +67,8 @@ import {
   ArrowRight01Icon,
   ArrowLeft01Icon,
   Edit03Icon,
+  Loading03Icon,
+  FilterMailIcon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -78,8 +80,46 @@ import { CreateEmployeeDrawer } from "@/components/drawers/employees/createEmplo
 import { AddDivDeptTeamDialog } from "@/components/dialogs/createDivDeptTeam-dialog"
 import { EditDivDeptTeamDialog } from "@/components/dialogs/editDivDeptTeam-dialog"
 import { Employee } from "@/types/employee"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuShortcut,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
+} from "./ui/dropdown-menu"
 
 const STROKE_WIDTH = 2
+
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
+
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
+}
 
 // Status badge styling
 const getStatusBadge = (status: string) => {
@@ -134,6 +174,15 @@ type ViewTab = (typeof VIEW_TABS)[number]["id"]
 
 type ViewMode = "list" | "card"
 
+// Filter state type
+type FilterState = {
+  division: string[]
+  department: string[]
+  team: string[]
+  status: string[]
+  role: string[]
+}
+
 // Helper function to get initials
 const getInitials = (name: string) => {
   return name
@@ -160,13 +209,24 @@ export function EmployeeContainer({
   const [activeView, setActiveView] = useState<ViewTab>("employees")
   const [viewMode, setViewMode] = useState<ViewMode>("list")
 
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    division: [],
+    department: [],
+    team: [],
+    status: [],
+    role: [],
+  })
+
   // State for drill-down view
   const [selectedItem, setSelectedItem] = useState<string>("")
   const [isDrillDown, setIsDrillDown] = useState(false)
   const [drillDownPage, setDrillDownPage] = useState(1)
+  const [drilldownSearchTerm, setDrilldownSearchTerm] = useState("")
 
-  // Search input ref for keyboard shortcut
+  // Search input refs for keyboard shortcut
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const drilldownSearchInputRef = useRef<HTMLInputElement>(null)
 
   // State for row selection
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
@@ -206,18 +266,49 @@ export function EmployeeContainer({
     loadData()
   }, [fetch_EmployeeData])
 
+  // Check if any filters are active
+  const hasActiveFilters =
+    Object.values(filters).some((filterArray) => filterArray.length > 0) ||
+    statusFilter !== "all"
+
   // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault()
-        searchInputRef.current?.focus()
+        // Focus the appropriate search input based on the current view
+        if (isDrillDown) {
+          drilldownSearchInputRef.current?.focus()
+        } else {
+          searchInputRef.current?.focus()
+        }
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [])
+  }, [isDrillDown])
+
+  // Keyboard shortcut for clearing filters (Escape key)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if not in an input field and not in drilldown
+      const target = e.target as HTMLElement
+      if (
+        e.key === "Escape" &&
+        !target.closest("input") &&
+        !target.closest("textarea") &&
+        !isDrillDown &&
+        hasActiveFilters
+      ) {
+        e.preventDefault()
+        clearAllFilters()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [isDrillDown, hasActiveFilters])
 
   // Column headers (only used for table view)
   const employeeHeaders = [
@@ -236,6 +327,43 @@ export function EmployeeContainer({
 
   // Get unique values for each view
   const getUniqueValues = (field: keyof Employee) => {
+    const values = new Set<string>()
+    employee_data.forEach((employee) => {
+      const value = employee[field] as string
+      if (value && value.trim()) {
+        values.add(value.trim())
+      }
+    })
+    return Array.from(values).sort()
+  }
+
+  // Helper to toggle filter values
+  const toggleFilter = (field: keyof FilterState, value: string) => {
+    setFilters((prev) => {
+      const current = prev[field]
+      if (current.includes(value)) {
+        return { ...prev, [field]: current.filter((v) => v !== value) }
+      } else {
+        return { ...prev, [field]: [...current, value] }
+      }
+    })
+    setCurrentPage(1)
+  }
+
+  // Helper to clear all filters
+  const clearAllFilters = () => {
+    setFilters({
+      division: [],
+      department: [],
+      team: [],
+      status: [],
+      role: [],
+    })
+    setCurrentPage(1)
+  }
+
+  // Get unique values for filter fields
+  const getFilterUniqueValues = (field: keyof Employee) => {
     const values = new Set<string>()
     employee_data.forEach((employee) => {
       const value = employee[field] as string
@@ -305,7 +433,7 @@ export function EmployeeContainer({
       return filteredTeams
     }
 
-    // Default: employees view - APPLY STATUS FILTER HERE
+    // Default: employees view - APPLY ALL FILTERS HERE
     return data.filter((employee) => {
       // First apply search filter
       let matchesSearch = true
@@ -334,11 +462,40 @@ export function EmployeeContainer({
           status.includes(searchLower)
       }
 
-      // Apply status filter
+      // Apply status filter (legacy)
       const matchesStatus =
         statusFilter === "all" || employee.emp_status === statusFilter
 
-      return matchesSearch && matchesStatus
+      // Apply custom filters
+      const filterMatch = Object.entries(filters).every(
+        ([field, selectedValues]) => {
+          if (selectedValues.length === 0) return true
+
+          let value: string = ""
+          switch (field) {
+            case "division":
+              value = employee.div_name || ""
+              break
+            case "department":
+              value = employee.dept_dat || ""
+              break
+            case "team":
+              value = employee.team || ""
+              break
+            case "status":
+              value = employee.emp_status || employee.status || ""
+              break
+            case "role":
+              value = employee.role || ""
+              break
+            default:
+              return true
+          }
+          return selectedValues.includes(value)
+        }
+      )
+
+      return matchesSearch && matchesStatus && filterMatch
     })
   }
 
@@ -454,6 +611,7 @@ export function EmployeeContainer({
     setIsDrillDown(true)
     setDrillDownPage(1)
     setRowSelection({})
+    setDrilldownSearchTerm("") // Reset drilldown search when opening
   }
 
   // Handle back button click
@@ -463,6 +621,7 @@ export function EmployeeContainer({
     setDrillDownPage(1)
     setCurrentPage(1)
     setRowSelection({})
+    setDrilldownSearchTerm("") // Reset drilldown search when going back
   }
 
   // Get selected employees count
@@ -545,8 +704,7 @@ export function EmployeeContainer({
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-muted-foreground">Loading employees...</p>
+          <LoadingSpinner text="Loading employees..." />
         </div>
       </div>
     )
@@ -713,7 +871,7 @@ export function EmployeeContainer({
     )
   }
 
-  // Get drill-down employees (filtered by selected category)
+  // Get drill-down employees (filtered by selected category and search term)
   const getDrillDownEmployees = () => {
     if (!selectedItem) return []
     const isOthers = selectedItem === "Others"
@@ -724,10 +882,42 @@ export function EmployeeContainer({
           ? "dept_dat"
           : "team"
 
+    let employees: Employee[]
     if (isOthers) {
-      return getEmployeesWithEmptyCategory(field)
+      employees = getEmployeesWithEmptyCategory(field)
+    } else {
+      employees = getEmployeesByCategory(selectedItem, field)
     }
-    return getEmployeesByCategory(selectedItem, field)
+
+    // Apply search filter for drilldown
+    if (drilldownSearchTerm.trim()) {
+      const searchLower = drilldownSearchTerm.toLowerCase()
+      employees = employees.filter((employee) => {
+        const name = (employee.name || "").toLowerCase()
+        const id = (employee.id || "").toLowerCase()
+        const email = (employee.email || "").toLowerCase()
+        const role = (employee.role || "").toLowerCase()
+        const status = (employee.emp_status || "").toLowerCase()
+        const doorlog = (employee.doorlog || "").toLowerCase()
+        const dept_dat = (employee.dept_dat || "").toLowerCase()
+        const team = (employee.team || "").toLowerCase()
+        const div_name = (employee.div_name || "").toLowerCase()
+
+        return (
+          name.includes(searchLower) ||
+          id.includes(searchLower) ||
+          email.includes(searchLower) ||
+          role.includes(searchLower) ||
+          status.includes(searchLower) ||
+          doorlog.includes(searchLower) ||
+          dept_dat.includes(searchLower) ||
+          team.includes(searchLower) ||
+          div_name.includes(searchLower)
+        )
+      })
+    }
+
+    return employees
   }
 
   const drillDownEmployees = isDrillDown ? getDrillDownEmployees() : []
@@ -778,6 +968,7 @@ export function EmployeeContainer({
                   setIsDrillDown(false)
                   setSelectedItem("")
                   setSearchTerm("")
+                  setDrilldownSearchTerm("")
                 }}
               >
                 <TabsList className="h-auto">
@@ -792,50 +983,33 @@ export function EmployeeContainer({
 
             {/* Actions - Search, View (list and card) and New Button */}
             <div className="flex items-center gap-1.5">
-              <InputGroup className="max-w-sm">
-                <InputGroupInput
-                  ref={searchInputRef}
-                  placeholder={
-                    isListView
-                      ? `Search ${activeView}...`
-                      : isDrillDown
-                        ? `Search in ${selectedItem}...`
-                        : searchPlaceholder
-                  }
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <InputGroupAddon>
-                  <HugeiconsIcon
-                    icon={Search01Icon}
-                    strokeWidth={2}
-                    className="h-4 w-4 text-muted-foreground"
+              {/* Only show main search when NOT in drilldown */}
+              {!isDrillDown && (
+                <InputGroup className="max-w-sm">
+                  <InputGroupInput
+                    ref={searchInputRef}
+                    placeholder={
+                      isListView ? `Search ${activeView}...` : searchPlaceholder
+                    }
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                </InputGroupAddon>
-                <InputGroupAddon align="inline-end">
-                  <Kbd>⌘K</Kbd>
-                </InputGroupAddon>
-              </InputGroup>
-
-              {!isListView && (
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-auto">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent align="center" sideOffset={5}>
-                    <SelectGroup>
-                      <SelectItem value="all">All Status</SelectItem>
-                      {Object.entries(statusLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                  <InputGroupAddon>
+                    <HugeiconsIcon
+                      icon={Search01Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4 text-muted-foreground"
+                    />
+                  </InputGroupAddon>
+                  <InputGroupAddon align="inline-end">
+                    <Kbd>Ctrl + K</Kbd>
+                  </InputGroupAddon>
+                </InputGroup>
               )}
-              {!isListView && (
+
+              {!isListView && !isDrillDown && (
                 <>
+                  {/* View Mode Toggle */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -875,8 +1049,168 @@ export function EmployeeContainer({
                       <p>Card View</p>
                     </TooltipContent>
                   </Tooltip>
+
+                  {/* Filter Dropdown */}
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="relative h-9 w-9"
+                          >
+                            <HugeiconsIcon
+                              icon={FilterMailIcon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
+                            {hasActiveFilters && (
+                              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Filter</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
+                      {/* Division Filter */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          Division
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {getFilterUniqueValues("div_name").map((value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.division.includes(value)}
+                                onCheckedChange={() =>
+                                  toggleFilter("division", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+
+                      {/* Department Filter */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          Department
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {getFilterUniqueValues("dept_dat").map((value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.department.includes(value)}
+                                onCheckedChange={() =>
+                                  toggleFilter("department", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+
+                      {/* Team Filter */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Team</DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent className="max-h-[500px] overflow-y-auto">
+                            {getFilterUniqueValues("team").map((value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.team.includes(value)}
+                                onCheckedChange={() =>
+                                  toggleFilter("team", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+
+                      {/* Status Filter */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Status</DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {Object.entries(statusLabels).map(
+                              ([value, label]) => (
+                                <DropdownMenuCheckboxItem
+                                  key={value}
+                                  checked={filters.status.includes(value)}
+                                  onCheckedChange={() =>
+                                    toggleFilter("status", value)
+                                  }
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {label}
+                                </DropdownMenuCheckboxItem>
+                              )
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+
+                      {/* Role Filter */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Role</DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {getFilterUniqueValues("role").map((value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.role.includes(value)}
+                                onCheckedChange={() =>
+                                  toggleFilter("role", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuSeparator />
+
+                      {/* Clear Filters Button - This should close the dropdown */}
+                      <DropdownMenuItem
+                        onClick={clearAllFilters}
+                        variant="destructive"
+                        className="gap-2"
+                      >
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                        Clear All Filters
+                        <DropdownMenuShortcut>
+                          <Kbd>Esc</Kbd>
+                        </DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </>
               )}
+
               {!isListView && !isDrillDown && (
                 <Button
                   variant="default"
@@ -924,9 +1258,9 @@ export function EmployeeContainer({
           ) : isDrillDown ? (
             // Drill Down View - Employees in selected category (Card View)
             <div className="mx-4">
-              <div className="mbs-8 mbe-4 flex items-center gap-3">
-                {/* Back Button for Drill Down */}
-                {isDrillDown && (
+              <div className="mbs-8 mbe-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Back Button for Drill Down */}
                   <Button
                     variant="ghost"
                     onClick={handleBack}
@@ -937,18 +1271,71 @@ export function EmployeeContainer({
                       strokeWidth={2}
                       className="h-4 w-4"
                     />
+                    Back
                   </Button>
-                )}
-                <h2 className="text-lg font-semibold">{selectedItem}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {drillDownEmployees.length} employee
-                  {drillDownEmployees.length > 1 ? "s" : ""}
-                </p>
+                  <h2 className="text-lg font-semibold">{selectedItem}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {drillDownEmployees.length} employee
+                    {drillDownEmployees.length > 1 ? "s" : ""}
+                  </p>
+                </div>
+
+                {/* Search bar for drilldown with Cmd+K */}
+                <div className="flex items-center gap-2">
+                  <InputGroup className="w-full sm:w-120">
+                    <InputGroupInput
+                      ref={drilldownSearchInputRef}
+                      placeholder={`Search employees in ${selectedItem}...`}
+                      value={drilldownSearchTerm}
+                      onChange={(e) => {
+                        setDrilldownSearchTerm(e.target.value)
+                        setDrillDownPage(1) // Reset to first page when searching
+                      }}
+                    />
+                    <InputGroupAddon>
+                      <HugeiconsIcon
+                        icon={Search01Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4 text-muted-foreground"
+                      />
+                    </InputGroupAddon>
+                    {drilldownSearchTerm && (
+                      <InputGroupAddon align="inline-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            setDrilldownSearchTerm("")
+                            setDrillDownPage(1)
+                          }}
+                        >
+                          <HugeiconsIcon
+                            icon={Cancel01Icon}
+                            strokeWidth={2}
+                            className="h-3 w-3"
+                          />
+                        </Button>
+                      </InputGroupAddon>
+                    )}
+                    <InputGroupAddon align="inline-end">
+                      <Kbd>⌘K</Kbd>
+                    </InputGroupAddon>
+                  </InputGroup>
+                </div>
               </div>
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {drillDownPaginated.length === 0 ? (
                   <div className="col-span-full py-8 text-center text-muted-foreground">
-                    No employees found in {selectedItem}
+                    {drilldownSearchTerm ? (
+                      <>
+                        No employees found matching "{drilldownSearchTerm}" in{" "}
+                        {selectedItem}
+                      </>
+                    ) : (
+                      <>No employees found in {selectedItem}</>
+                    )}
                   </div>
                 ) : (
                   drillDownPaginated.map((employee, index) => {
@@ -1093,7 +1480,16 @@ export function EmployeeContainer({
                         colSpan={totalColumns}
                         className="py-8 text-center text-muted-foreground"
                       >
-                        No employees found
+                        {searchTerm || hasActiveFilters ? (
+                          <>
+                            No employees found matching{" "}
+                            {searchTerm && `"${searchTerm}"`}
+                            {searchTerm && hasActiveFilters && " and "}
+                            {hasActiveFilters && "selected filters"}
+                          </>
+                        ) : (
+                          "No employees found"
+                        )}
                       </BorderedTableCell>
                     </TableRow>
                   ) : (
@@ -1195,7 +1591,16 @@ export function EmployeeContainer({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {paginatedEmployees.length === 0 ? (
                   <div className="col-span-full py-8 text-center text-muted-foreground">
-                    No employees found
+                    {searchTerm || hasActiveFilters ? (
+                      <>
+                        No employees found matching{" "}
+                        {searchTerm && `"${searchTerm}"`}
+                        {searchTerm && hasActiveFilters && " and "}
+                        {hasActiveFilters && "selected filters"}
+                      </>
+                    ) : (
+                      "No employees found"
+                    )}
                   </div>
                 ) : (
                   paginatedEmployees.map((employee, index) => {
