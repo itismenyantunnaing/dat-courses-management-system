@@ -179,7 +179,7 @@ export const adminData: SidebarConfig = {
         },
         {
           title: "Current target",
-          tabId: "current_target_data",
+          tabId: "current_target_level",
           type: "primary-action",
           icon: <HugeiconsIcon icon={TrendingUp} strokeWidth={STROKE_WIDTH} />,
           actions: [

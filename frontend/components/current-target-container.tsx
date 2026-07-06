@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Table,
   TableBody,
@@ -18,6 +18,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -43,12 +44,14 @@ import {
   Search01Icon,
   Delete02Icon,
   UserAdd02Icon,
-  CalendarAdd02Icon,
   ViewIcon,
+  Loading03Icon,
+  Cancel01Icon,
+  FilterMailIcon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
-import { Checkbox } from "@/components/ui/checkbox"
+
 import { cn } from "@/lib/utils"
 import type { Employee } from "@/types/employee"
 import type { TargetDates, EmployeeJapaneseLevel } from "@/types/current_target"
@@ -56,21 +59,58 @@ import { CreateCurrentTargetDrawer } from "@/components/drawers/currentTarget/cr
 import { EditCurrentTargetDrawer } from "@/components/drawers/currentTarget/editCurrentTarget-drawer"
 import { EditTargetDatesDrawer } from "@/components/drawers/currentTarget/editTargetDates-drawer"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { Kbd } from "@/components/ui/kbd"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuShortcut,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
+} from "./ui/dropdown-menu"
+import { Checkbox } from "./ui/checkbox"
 
 const STROKE_WIDTH = 2
+
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
+
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
+}
 
 const BorderedTableCell = ({
   children,
@@ -92,18 +132,46 @@ const BorderedTableHead = ({
   colSpan,
   rowSpan,
   ...props
-}: React.ComponentProps<typeof TableHead> & { colSpan?: number; rowSpan?: number }) => (
-  <TableHead className={`border-r border-l ${className}`} colSpan={colSpan} rowSpan={rowSpan} {...props}>
+}: React.ComponentProps<typeof TableHead> & {
+  colSpan?: number
+  rowSpan?: number
+}) => (
+  <TableHead
+    className={`border-r border-l ${className}`}
+    colSpan={colSpan}
+    rowSpan={rowSpan}
+    {...props}
+  >
     {children}
   </TableHead>
 )
 
 // Search filter type
-type SearchFilter = 'all' | 'staff_id' | 'name' | 'team' | 'department'
+type SearchFilter = "all" | "staff_id" | "name" | "team" | "department"
 
-export function CurrentTargetContainer({ searchPlaceholder = "Search employees..." }) {
+// Filter state type
+type FilterState = {
+  jlpt_nat_test: string[]
+  jlpt_highest_level: string[]
+  other_japanese_level: string[]
+  preferred_learning_group: string[]
+  current_communication_level: string[]
+  target_1_jlpt_nat_level: string[]
+  target_1_communication_level: string[]
+  target_2_jlpt_nat_level: string[]
+  target_2_communication_level: string[]
+  current_learning_level: string[]
+  learning_method: string[]
+  want_to_sit_exam: string[]
+  exam_target_level: string[]
+  confidence_level: string[]
+}
+
+export function CurrentTargetContainer({
+  searchPlaceholder = "Search employees...",
+}) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [searchFilter, setSearchFilter] = useState<SearchFilter>('all')
+  const [searchFilter, setSearchFilter] = useState<SearchFilter>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(15)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -111,19 +179,79 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   const [employees, setEmployees] = useState<Employee[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
 
+  // Row selection state - tracks ALL filtered employees, not just current page
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   // State for create/edit drawers
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
-  const [selectedProfile, setSelectedProfile] = useState<EmployeeJapaneseLevel | null>(null)
-  const [selectedEmployeeForProfile, setSelectedEmployeeForProfile] = useState<Employee | null>(null)
-  const [isEditTargetDatesDrawerOpen, setIsEditTargetDatesDrawerOpen] = useState(false)
-  const [isCreateTargetDatesDrawerOpen, setIsCreateTargetDatesDrawerOpen] = useState(false)
+  const [selectedProfile, setSelectedProfile] =
+    useState<EmployeeJapaneseLevel | null>(null)
+  const [selectedEmployeeForProfile, setSelectedEmployeeForProfile] =
+    useState<Employee | null>(null)
+  const [isEditTargetDatesDrawerOpen, setIsEditTargetDatesDrawerOpen] =
+    useState(false)
+  const [isCreateTargetDatesDrawerOpen, setIsCreateTargetDatesDrawerOpen] =
+    useState(false)
 
   // Column visibility state for Japanese data sections
   const [selectedSection, setSelectedSection] = useState<string>("all")
+
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    jlpt_nat_test: [],
+    jlpt_highest_level: [],
+    other_japanese_level: [],
+    preferred_learning_group: [],
+    current_communication_level: [],
+    target_1_jlpt_nat_level: [],
+    target_1_communication_level: [],
+    target_2_jlpt_nat_level: [],
+    target_2_communication_level: [],
+    current_learning_level: [],
+    learning_method: [],
+    want_to_sit_exam: [],
+    exam_target_level: [],
+    confidence_level: [],
+  })
+
+  // Helper to toggle filter values
+  const toggleFilter = (field: keyof FilterState, value: string) => {
+    setFilters((prev) => {
+      const current = prev[field]
+      if (current.includes(value)) {
+        return { ...prev, [field]: current.filter((v) => v !== value) }
+      } else {
+        return { ...prev, [field]: [...current, value] }
+      }
+    })
+    setCurrentPage(1)
+  }
+
+  // Helper to clear all filters
+  const clearAllFilters = () => {
+    setFilters({
+      jlpt_nat_test: [],
+      jlpt_highest_level: [],
+      other_japanese_level: [],
+      preferred_learning_group: [],
+      current_communication_level: [],
+      target_1_jlpt_nat_level: [],
+      target_1_communication_level: [],
+      target_2_jlpt_nat_level: [],
+      target_2_communication_level: [],
+      current_learning_level: [],
+      learning_method: [],
+      want_to_sit_exam: [],
+      exam_target_level: [],
+      confidence_level: [],
+    })
+    setCurrentPage(1)
+  }
+
+  // Search input ref for keyboard shortcut
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const {
     fetch_EmployeeData,
@@ -136,7 +264,9 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   } = mainStore()
 
   // Create a map for fast employee -> profile lookup
-  const [employeeProfileMap, setEmployeeProfileMap] = useState<Map<string, EmployeeJapaneseLevel>>(new Map())
+  const [employeeProfileMap, setEmployeeProfileMap] = useState<
+    Map<string, EmployeeJapaneseLevel>
+  >(new Map())
 
   useEffect(() => {
     const loadData = async () => {
@@ -144,7 +274,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       await Promise.all([
         fetch_EmployeeData(),
         fetch_TargetDates(),
-        fetch_EmployeeJapaneseLevel()
+        fetch_EmployeeJapaneseLevel(),
       ])
       setIsLoading(false)
     }
@@ -184,8 +314,48 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     }
   }, [employee_data, employeeProfileMap])
 
+  // Check if any filters are active
+  const hasActiveFilters = Object.values(filters).some(
+    (filterArray) => filterArray.length > 0
+  )
+
+  // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  // Keyboard shortcut for clearing filters (Escape key)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if not in an input field
+      const target = e.target as HTMLElement
+      if (
+        e.key === "Escape" &&
+        !target.closest("input") &&
+        !target.closest("textarea") &&
+        hasActiveFilters
+      ) {
+        e.preventDefault()
+        clearAllFilters()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [hasActiveFilters])
+
   // Helper function to get Japanese level data by employee ID
-  const getJapaneseLevelByEmployeeId = (employeeId: string): EmployeeJapaneseLevel | undefined => {
+  const getJapaneseLevelByEmployeeId = (
+    employeeId: string
+  ): EmployeeJapaneseLevel | undefined => {
     return employeeProfileMap.get(employeeId)
   }
 
@@ -200,14 +370,17 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   // Helper function to format date for group name
   const formatGroupDate = (date: Date | string | undefined): string => {
     if (!date) return "TBD"
-    const dateObj = typeof date === 'string' ? new Date(date) : date
+    const dateObj = typeof date === "string" ? new Date(date) : date
     if (isNaN(dateObj.getTime())) return "TBD"
-    return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+    return dateObj.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+    })
   }
 
   // Handle successful create/update
   const handleDataChanged = () => {
-    setRefreshKey(prev => prev + 1)
+    setRefreshKey((prev) => prev + 1)
     fetch_EmployeeJapaneseLevel()
     fetch_EmployeeData()
     fetch_TargetDates()
@@ -237,6 +410,21 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     }
   }
 
+  // Clear all selections
+  const handleClearSelection = () => {
+    setRowSelection({})
+  }
+
+  // Check if field needs truncation (communication fields + current_learning_level)
+  const isTruncatableField = (field: string): boolean => {
+    return [
+      "current_communication_level",
+      "target_1_communication_level",
+      "target_2_communication_level",
+      "current_learning_level", // Added this field
+    ].includes(field)
+  }
+
   // Employee Headers
   const employeeHeaders = [
     { field: "select", header_name: "" },
@@ -248,7 +436,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     { field: "team", header_name: "Team" },
     { field: "dept", header_name: "Dept" },
     { field: "jlpt_nat_test", header_name: "JLPT / NAT Test" },
-  ];
+  ]
 
   // Grouped Japanese Headers with section keys
   const getJapaneseHeaderGroups = (targetDate?: TargetDates) => {
@@ -267,41 +455,71 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
         groupName: "Certified Level",
         sectionKey: "certified_level",
         children: [
-          { field: "jlpt_highest_level", header_name: "JLPT Highest Level (Certified)" },
-          { field: "other_japanese_level", header_name: "Other Highest Japanese Level (Certified) if any" },
-          { field: "preferred_learning_group", header_name: "Preferred Joining Group & Level" },
-        ]
+          {
+            field: "jlpt_highest_level",
+            header_name: `JLPT Highest Level (Certified)`,
+          },
+          {
+            field: "other_japanese_level",
+            header_name: `Other Highest Japanese Level (Certified)`,
+          },
+          {
+            field: "preferred_learning_group",
+            header_name: "Preferred Joining Group & Level",
+          },
+        ],
       },
       {
         groupName: "Current",
         sectionKey: "current",
         children: [
-          { field: "current_communication_level", header_name: "Communication Level" },
-        ]
+          {
+            field: "current_communication_level",
+            header_name: "Communication Level",
+          },
+        ],
       },
       {
         groupName: `Target Level to be on ${target1Date}`,
         sectionKey: "target_levels",
         children: [
-          { field: "target_1_jlpt_nat_level", header_name: "JLPT / NAT Test Level" },
-          { field: "target_1_communication_level", header_name: "Communication Level" },
-        ]
+          {
+            field: "target_1_jlpt_nat_level",
+            header_name: "JLPT / NAT Test Level",
+          },
+          {
+            field: "target_1_communication_level",
+            header_name: "Communication Level",
+          },
+        ],
       },
       {
         groupName: `Target Level to be on ${target2Date}`,
         sectionKey: "target_levels",
         children: [
-          { field: "target_2_jlpt_nat_level", header_name: "JLPT / NAT Test Level" },
-          { field: "target_2_communication_level", header_name: "Communication Level" },
-        ]
+          {
+            field: "target_2_jlpt_nat_level",
+            header_name: "JLPT / NAT Test Level",
+          },
+          {
+            field: "target_2_communication_level",
+            header_name: "Communication Level",
+          },
+        ],
       },
       {
         groupName: "Current Learning Level and Method",
         sectionKey: "learning_method",
         children: [
-          { field: "current_learning_level", header_name: "Japanese Level (Current Learning)" },
-          { field: "learning_method", header_name: "If you are studying Japanese, Learning Method (Online/Zoom, In-person, Video Record, Mobile App or Web)" }
-        ]
+          {
+            field: "current_learning_level",
+            header_name: "Japanese Level (Current Learning)",
+          },
+          {
+            field: "learning_method",
+            header_name: "Learning Method",
+          },
+        ],
       },
       {
         groupName: `JLPT Exam Target (${examDateStr})`,
@@ -309,8 +527,11 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
         children: [
           { field: "want_to_sit_exam", header_name: `Want to sit JLPT exam` },
           { field: "exam_target_level", header_name: "If Yes, Which Level?" },
-          { field: "confidence_level", header_name: "Confidence Level to Pass Exam" },
-        ]
+          {
+            field: "confidence_level",
+            header_name: "Confidence Level to Pass Exam",
+          },
+        ],
       },
     ]
   }
@@ -320,40 +541,173 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
 
   // Filter visible Japanese header groups based on selected section
   const visibleJapaneseHeaderGroups = allJapaneseHeaderGroups.filter(
-    group => {
+    (group) => {
       if (selectedSection === "all") return true
       return group.sectionKey === selectedSection
     }
   )
 
   // Flatten for data mapping
-  const flattenedJapaneseHeaders = visibleJapaneseHeaderGroups.flatMap(group => group.children);
+  const flattenedJapaneseHeaders = visibleJapaneseHeaderGroups.flatMap(
+    (group) => group.children
+  )
 
-  // Enhanced search function with filter support
+  // Helper to get unique values for a field
+  const getUniqueValues = (field: keyof FilterState): string[] => {
+    const values = new Set<string>()
+    employees.forEach((employee) => {
+      const jpLevel = getJapaneseLevelByEmployeeId(employee.id)
+      let value: string | null = "-"
+      switch (field) {
+        case "jlpt_nat_test":
+          value = jpLevel?.jlptNatTest || "-"
+          break
+        case "jlpt_highest_level":
+          value = jpLevel?.jlptHighestLevel || "-"
+          break
+        case "other_japanese_level":
+          value = jpLevel?.otherJapaneseLevel || "-"
+          break
+        case "preferred_learning_group":
+          value = jpLevel?.preferredLearningGroup || "-"
+          break
+        case "target_1_jlpt_nat_level":
+          value = jpLevel?.target1JlptNatLevel || "-"
+          break
+        case "target_1_communication_level":
+          value = jpLevel?.target1CommunicationLevel || "-"
+          break
+        case "target_2_jlpt_nat_level":
+          value = jpLevel?.target2JlptNatLevel || "-"
+          break
+        case "target_2_communication_level":
+          value = jpLevel?.target2CommunicationLevel || "-"
+          break
+        case "current_communication_level":
+          value = jpLevel?.currentCommunicationLevel || "-"
+          break
+        case "current_learning_level":
+          value = jpLevel?.currentLearningLevel || "-"
+          break
+        case "learning_method":
+          value = jpLevel?.learningMethod || "-"
+          break
+        case "want_to_sit_exam":
+          value =
+            jpLevel?.wantToSitExam === true
+              ? "Yes"
+              : jpLevel?.wantToSitExam === false
+                ? "No"
+                : "-"
+          break
+        case "exam_target_level":
+          value = jpLevel?.examTargetLevel || "-"
+          break
+        case "confidence_level":
+          value = jpLevel?.confidenceLevel || "-"
+          break
+        default:
+          value = "-"
+      }
+      if (value) values.add(value)
+    })
+    return Array.from(values).sort()
+  }
+
+  // Enhanced search function with filter support - returns ALL filtered employees
   const filteredEmployees = employees.filter((employee) => {
-    if (!searchTerm.trim()) return true
-    
-    const searchLower = searchTerm.toLowerCase().trim()
-    
-    switch (searchFilter) {
-      case 'staff_id':
-        return employee.id.toLowerCase().includes(searchLower)
-      case 'name':
-        return employee.name.toLowerCase().includes(searchLower)
-      case 'team':
-        return (employee.team || '').toLowerCase().includes(searchLower)
-      case 'department':
-        return (employee.dept_dat || '').toLowerCase().includes(searchLower)
-      case 'all':
-      default:
-        return (
-          employee.id.toLowerCase().includes(searchLower) ||
-          employee.name.toLowerCase().includes(searchLower) ||
-          (employee.email && employee.email.toLowerCase().includes(searchLower)) ||
-          (employee.team && employee.team.toLowerCase().includes(searchLower)) ||
-          (employee.dept_dat && employee.dept_dat.toLowerCase().includes(searchLower))
-        )
-    }
+    const jpLevel = getJapaneseLevelByEmployeeId(employee.id)
+
+    // Apply search term filter first
+    const searchMatch = (() => {
+      if (!searchTerm.trim()) return true
+      const searchLower = searchTerm.toLowerCase().trim()
+      switch (searchFilter) {
+        case "staff_id":
+          return employee.id.toLowerCase().includes(searchLower)
+        case "name":
+          return employee.name.toLowerCase().includes(searchLower)
+        case "team":
+          return (employee.team || "").toLowerCase().includes(searchLower)
+        case "department":
+          return (employee.dept_dat || "").toLowerCase().includes(searchLower)
+        case "all":
+        default:
+          return (
+            employee.id.toLowerCase().includes(searchLower) ||
+            employee.name.toLowerCase().includes(searchLower) ||
+            (employee.email &&
+              employee.email.toLowerCase().includes(searchLower)) ||
+            (employee.team &&
+              employee.team.toLowerCase().includes(searchLower)) ||
+            (employee.dept_dat &&
+              employee.dept_dat.toLowerCase().includes(searchLower))
+          )
+      }
+    })()
+
+    // Apply custom filters
+    const filterMatch = Object.entries(filters).every(
+      ([field, selectedValues]) => {
+        if (selectedValues.length === 0) return true
+
+        let value: string | null = "-"
+        switch (field as keyof FilterState) {
+          case "jlpt_nat_test":
+            value = jpLevel?.jlptNatTest || "-"
+            break
+          case "jlpt_highest_level":
+            value = jpLevel?.jlptHighestLevel || "-"
+            break
+          case "other_japanese_level":
+            value = jpLevel?.otherJapaneseLevel || "-"
+            break
+          case "preferred_learning_group":
+            value = jpLevel?.preferredLearningGroup || "-"
+            break
+          case "target_1_jlpt_nat_level":
+            value = jpLevel?.target1JlptNatLevel || "-"
+            break
+          case "target_1_communication_level":
+            value = jpLevel?.target1CommunicationLevel || "-"
+            break
+          case "target_2_jlpt_nat_level":
+            value = jpLevel?.target2JlptNatLevel || "-"
+            break
+          case "target_2_communication_level":
+            value = jpLevel?.target2CommunicationLevel || "-"
+            break
+          case "current_communication_level":
+            value = jpLevel?.currentCommunicationLevel || "-"
+            break
+          case "current_learning_level":
+            value = jpLevel?.currentLearningLevel || "-"
+            break
+          case "learning_method":
+            value = jpLevel?.learningMethod || "-"
+            break
+          case "want_to_sit_exam":
+            value =
+              jpLevel?.wantToSitExam === true
+                ? "Yes"
+                : jpLevel?.wantToSitExam === false
+                  ? "No"
+                  : "-"
+            break
+          case "exam_target_level":
+            value = jpLevel?.examTargetLevel || "-"
+            break
+          case "confidence_level":
+            value = jpLevel?.confidenceLevel || "-"
+            break
+          default:
+            value = "-"
+        }
+        return selectedValues.includes(value)
+      }
+    )
+
+    return searchMatch && filterMatch
   })
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
@@ -372,26 +726,24 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
+  // Handle select all - selects ALL filtered employees across all pages
   const handleSelectAll = () => {
-    const allSelected = paginatedEmployees.every(
+    const allSelected = filteredEmployees.every(
       (employee) => rowSelection[employee.id.toString()]
     )
 
     if (allSelected) {
-      const newSelection = { ...rowSelection }
-      paginatedEmployees.forEach((employee) => {
-        delete newSelection[employee.id.toString()]
-      })
-      setRowSelection(newSelection)
+      setRowSelection({})
     } else {
-      const newSelection = { ...rowSelection }
-      paginatedEmployees.forEach((employee) => {
+      const newSelection: Record<string, boolean> = {}
+      filteredEmployees.forEach((employee) => {
         newSelection[employee.id.toString()] = true
       })
       setRowSelection(newSelection)
     }
   }
 
+  // Handle individual row selection
   const handleRowSelect = (employeeId: string) => {
     setRowSelection((prev) => ({
       ...prev,
@@ -402,14 +754,23 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
   const selectedCount = Object.values(rowSelection).filter(Boolean).length
 
   const getSelectedEmployees = (): Employee[] => {
-    const selectedIds = Object.keys(rowSelection).filter((key) => rowSelection[key] === true)
-    return employees.filter((employee) => selectedIds.includes(employee.id.toString()))
+    const selectedIds = Object.keys(rowSelection).filter(
+      (key) => rowSelection[key] === true
+    )
+    return employees.filter((employee) =>
+      selectedIds.includes(employee.id.toString())
+    )
   }
+
+  // Check if all filtered employees are selected (for the header checkbox)
+  const areAllFilteredSelected =
+    filteredEmployees.length > 0 &&
+    filteredEmployees.every((employee) => rowSelection[employee.id.toString()])
 
   const handleBulkDeleteClick = () => {
     const selected = getSelectedEmployees()
     if (selected.length === 0) {
-      alert('Please select at least one employee to delete.')
+      alert("Please select at least one employee to delete.")
       return
     }
     setBulkDeleteDialogOpen(true)
@@ -419,23 +780,23 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     const selectedEmployees = getSelectedEmployees()
 
     if (selectedEmployees.length === 0) {
-      alert('No employees selected.')
+      alert("No employees selected.")
       return
     }
 
     setIsDeleting(true)
     try {
-      const profileIds: number[] = [];
+      const profileIds: number[] = []
 
       selectedEmployees.forEach((emp) => {
         const profile = employeeProfileMap.get(emp.id)
         if (profile?.id) {
           profileIds.push(profile.id)
         }
-      });
+      })
 
       if (profileIds.length === 0) {
-        alert('No Japanese profile data found for the selected employees.')
+        alert("No Japanese profile data found for the selected employees.")
         setBulkDeleteDialogOpen(false)
         return
       }
@@ -454,9 +815,16 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       await fetch_EmployeeJapaneseLevel()
       await fetch_EmployeeData()
 
+      // Update pagination after deletion
+      const newTotalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages)
+      } else if (newTotalPages === 0) {
+        setCurrentPage(1)
+      }
     } catch (error) {
-      console.error('❌ Bulk delete failed:', error)
-      alert('Failed to delete Japanese profile data. Please try again.')
+      console.error("❌ Bulk delete failed:", error)
+      alert("Failed to delete Japanese profile data. Please try again.")
     } finally {
       setIsDeleting(false)
     }
@@ -504,34 +872,28 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
     exam_target: "JLPT Exam Target",
   }
 
-  // Handle section selection (radio button style)
-  const handleSectionSelect = (sectionKey: string) => {
-    if (sectionKey === "all") {
-      setSelectedSection("all")
-    } else {
-      if (selectedSection === sectionKey) {
-        setSelectedSection("all")
-      } else {
-        setSelectedSection(sectionKey)
-      }
-    }
+  // Section options for Select component
+  const sectionOptions = [
+    { value: "all", label: "All Sections" },
+    ...Object.entries(sectionDisplayNames).map(([key, label]) => ({
+      value: key,
+      label: label,
+    })),
+  ]
+
+  // Handle section selection with Select
+  const handleSectionSelect = (value: string) => {
+    setSelectedSection(value)
   }
 
-  // Search filter options
-  const searchFilters = [
-    { value: 'all', label: 'All Fields' },
-    { value: 'staff_id', label: 'Staff ID' },
-    { value: 'name', label: 'Name' },
-    { value: 'team', label: 'Team' },
-    { value: 'department', label: 'Department' },
-  ]
+  // Determine if selection bar is active
+  const isSelectionActive = selectedCount > 0
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-muted-foreground">Loading employees...</p>
+          <LoadingSpinner text="Loading current target data..." />
         </div>
       </div>
     )
@@ -539,101 +901,553 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
 
   return (
     <>
-      <div className="flex flex-col gap-4 py-6">
+      <div className="flex flex-col gap-4 pt-4 pb-6">
         <CardContent className="px-4">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  strokeWidth={STROKE_WIDTH}
-                  className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-                />
-                <Input
-                  placeholder={`Search by ${searchFilter === 'all' ? 'Staff ID, Name, Team, or Department' : searchFilters.find(f => f.value === searchFilter)?.label || '...'}`}
+              <InputGroup className="max-w-sm flex-1">
+                <InputGroupInput
+                  ref={searchInputRef}
+                  placeholder="Search by Staff ID, Name, Team, or Department"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
                 />
-              </div>
-              <Select
-                value={searchFilter}
-                onValueChange={(value: SearchFilter) => {
-                  setSearchFilter(value)
-                  setSearchTerm("")
-                  setCurrentPage(1)
-                }}
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Filter by..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {searchFilters.map((filter) => (
-                      <SelectItem key={filter.value} value={filter.value}>
-                        {filter.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+                <InputGroupAddon>
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    strokeWidth={STROKE_WIDTH}
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                </InputGroupAddon>
+                <InputGroupAddon align="inline-end">
+                  <Kbd>Ctrl + K</Kbd>
+                </InputGroupAddon>
+              </InputGroup>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {/* Column Visibility Dropdown with Radio-style selection */}
+            <div className="flex gap-2">
+              
+              {/* Filter Dropdown with indicator */}
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <HugeiconsIcon icon={ViewIcon} strokeWidth={2} className="h-4 w-4" />
-                    {selectedSection === "all" ? "All Sections" : sectionDisplayNames[selectedSection as keyof typeof sectionDisplayNames]}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
-                  <DropdownMenuLabel>Filter Japanese Data Sections</DropdownMenuLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="relative h-9 w-9"
+                      >
+                        <HugeiconsIcon
+                          icon={FilterMailIcon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                        {hasActiveFilters && (
+                          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Filter</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <DropdownMenuContent className="w-80">
+                  {/* Property Visibility */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Property Visibility
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {sectionOptions.map((option) => (
+                          <DropdownMenuCheckboxItem
+                            key={option.value}
+                            checked={selectedSection === option.value}
+                            onCheckedChange={() =>
+                              handleSectionSelect(option.value)
+                            }
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            {option.label}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  {/* JLPT / NAT Test */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      JLPT / NAT Test
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("jlpt_nat_test").map((value) => (
+                          <DropdownMenuCheckboxItem
+                            key={value}
+                            checked={filters.jlpt_nat_test.includes(value)}
+                            onCheckedChange={() =>
+                              toggleFilter("jlpt_nat_test", value)
+                            }
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            {value}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
                   <DropdownMenuSeparator />
-                  <div className="px-2 py-1 text-xs text-muted-foreground">
-                    Employee columns are always visible
-                  </div>
+
+                  {/* Certified Level */}
+                  <DropdownMenuLabel>Certified Level</DropdownMenuLabel>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      JLPT Highest Level (Certified)
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("jlpt_highest_level").map((value) => (
+                          <DropdownMenuCheckboxItem
+                            key={value}
+                            checked={filters.jlpt_highest_level.includes(value)}
+                            onCheckedChange={() =>
+                              toggleFilter("jlpt_highest_level", value)
+                            }
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            {value}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Other Highest Japanese Level (Certified)
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("other_japanese_level").map(
+                          (value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.other_japanese_level.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter("other_japanese_level", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          )
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Preferred Joining Group & Level
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("preferred_learning_group").map(
+                          (value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.preferred_learning_group.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter("preferred_learning_group", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          )
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
                   <DropdownMenuSeparator />
-                  
-                  <DropdownMenuCheckboxItem
-                    checked={selectedSection === "all"}
-                    onCheckedChange={() => handleSectionSelect("all")}
-                    className="font-medium"
+
+                  {/* Current */}
+                  <DropdownMenuLabel>Current</DropdownMenuLabel>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Communication Level
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent className="max-w-[250px]">
+                        {getUniqueValues("current_communication_level").map(
+                          (value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.current_communication_level.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter(
+                                  "current_communication_level",
+                                  value
+                                )
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value !== "-" ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="block truncate">
+                                        {value}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-sm">{value}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                value
+                              )}
+                            </DropdownMenuCheckboxItem>
+                          )
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSeparator />
+
+                  {/* Target Level to be on (Date 1) */}
+                  <DropdownMenuLabel>
+                    Target Level to be on{" "}
+                    {firstTargetDate?.target1Date
+                      ? formatGroupDate(firstTargetDate.target1Date)
+                      : "(Date 1)"}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      JLPT / NAT Test Level
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("target_1_jlpt_nat_level").map(
+                          (value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.target_1_jlpt_nat_level.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter("target_1_jlpt_nat_level", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          )
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Communication Level
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent className="max-w-[250px]">
+                        {getUniqueValues("target_1_communication_level").map(
+                          (value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.target_1_communication_level.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter(
+                                  "target_1_communication_level",
+                                  value
+                                )
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value !== "-" ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="block truncate">
+                                        {value}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-sm">{value}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                value
+                              )}
+                            </DropdownMenuCheckboxItem>
+                          )
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSeparator />
+
+                  {/* Target Level to be on (Date 2) */}
+                  <DropdownMenuLabel>
+                    Target Level to be on{" "}
+                    {firstTargetDate?.target2Date
+                      ? formatGroupDate(firstTargetDate.target2Date)
+                      : "(Date 2)"}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      JLPT / NAT Test Level
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("target_2_jlpt_nat_level").map(
+                          (value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.target_2_jlpt_nat_level.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter("target_2_jlpt_nat_level", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          )
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Communication Level
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent className="max-w-[250px]">
+                        {getUniqueValues("target_2_communication_level").map(
+                          (value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.target_2_communication_level.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter(
+                                  "target_2_communication_level",
+                                  value
+                                )
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value !== "-" ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="block truncate">
+                                        {value}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-sm">{value}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                value
+                              )}
+                            </DropdownMenuCheckboxItem>
+                          )
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSeparator />
+
+                  {/* Current Learning Level and Method */}
+                  <DropdownMenuLabel>
+                    Current Learning Level and Method
+                  </DropdownMenuLabel>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Japanese Level (Current Learning)
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent className="max-w-[250px]">
+                        {getUniqueValues("current_learning_level").map(
+                          (value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.current_learning_level.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter("current_learning_level", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value !== "-" ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="block truncate">
+                                        {value}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-sm">{value}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                value
+                              )}
+                            </DropdownMenuCheckboxItem>
+                          )
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Learning Method
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("learning_method").map((value) => (
+                          <DropdownMenuCheckboxItem
+                            key={value}
+                            checked={filters.learning_method.includes(value)}
+                            onCheckedChange={() =>
+                              toggleFilter("learning_method", value)
+                            }
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            {value}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSeparator />
+
+                  {/* JLPT Exam Target (Exam Date) */}
+                  <DropdownMenuLabel>
+                    JLPT Exam Target{" "}
+                    {firstTargetDate?.examDate
+                      ? `(${formatGroupDate(firstTargetDate.examDate)})`
+                      : "(Exam Date)"}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Want to sit JLPT exam
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("want_to_sit_exam").map((value) => (
+                          <DropdownMenuCheckboxItem
+                            key={value}
+                            checked={filters.want_to_sit_exam.includes(value)}
+                            onCheckedChange={() =>
+                              toggleFilter("want_to_sit_exam", value)
+                            }
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            {value}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      If Yes, Which Level?
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("exam_target_level").map((value) => (
+                          <DropdownMenuCheckboxItem
+                            key={value}
+                            checked={filters.exam_target_level.includes(value)}
+                            onCheckedChange={() =>
+                              toggleFilter("exam_target_level", value)
+                            }
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            {value}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Confidence Level to Pass Exam
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        {getUniqueValues("confidence_level").map((value) => (
+                          <DropdownMenuCheckboxItem
+                            key={value}
+                            checked={filters.confidence_level.includes(value)}
+                            onCheckedChange={() =>
+                              toggleFilter("confidence_level", value)
+                            }
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            {value}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSeparator />
+
+                  {/* Clear Filters Button - This will close the dropdown */}
+                  <DropdownMenuItem
+                    onClick={clearAllFilters}
+                    variant="destructive"
+                    className="gap-2"
                   >
-                    Show All Sections
-                  </DropdownMenuCheckboxItem>
-                  
-                  <DropdownMenuSeparator />
-                  
-                  {Object.entries(sectionDisplayNames).map(([key, label]) => (
-                    <DropdownMenuCheckboxItem
-                      key={key}
-                      checked={selectedSection === key}
-                      onCheckedChange={() => handleSectionSelect(key)}
-                      className="pl-6"
-                    >
-                      {label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                  
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-1.5">
-                    <div className="text-xs text-muted-foreground">
-                      {selectedSection === "all" 
-                        ? "Showing all sections" 
-                        : `Showing only: ${sectionDisplayNames[selectedSection as keyof typeof sectionDisplayNames]}`}
-                    </div>
-                  </div>
+                    <HugeiconsIcon
+                      icon={Delete02Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                    Clear All Filters
+                    <DropdownMenuShortcut>
+                      <Kbd>Esc</Kbd>
+                    </DropdownMenuShortcut>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {selectedCount > 0 && (
-                <Button variant="destructive" onClick={handleBulkDeleteClick}>
-                  <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} /> Delete (
-                  {selectedCount}) Employee
-                  {selectedCount > 1 ? "s" : ""}
-                </Button>
-              )}
               <Button
                 variant="default"
                 onClick={handleNewProfile}
@@ -646,7 +1460,10 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
           </div>
 
           <div
-            className="relative overflow-x-auto rounded-md border"
+            className={cn(
+              "relative overflow-x-auto rounded-md border",
+              isSelectionActive && "pointer-events-none"
+            )}
             style={{ zIndex: 1 }}
           >
             <Table key={refreshKey}>
@@ -657,19 +1474,14 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                     <BorderedTableHead
                       key={header.field}
                       className={cn(
-                        "align-middle whitespace-nowrap text-center",
+                        "text-center align-middle whitespace-nowrap",
                         header.field === "select" && "w-10 min-w-[40px]"
                       )}
                       rowSpan={2}
                     >
                       {header.field === "select" ? (
                         <Checkbox
-                          checked={
-                            paginatedEmployees.length > 0 &&
-                            paginatedEmployees.every(
-                              (employee) => rowSelection[employee.id.toString()]
-                            )
-                          }
+                          checked={areAllFilteredSelected}
                           onCheckedChange={handleSelectAll}
                           aria-label="Select all"
                         />
@@ -682,13 +1494,17 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                     <BorderedTableHead
                       key={group.groupName}
                       className={cn(
-                        "align-middle whitespace-nowrap text-center bg-muted/30",
-                        (group.groupName.includes("Target Level") || group.groupName.includes("JLPT Exam Target")) && 
-                        "cursor-pointer hover:bg-muted/50 transition-colors"
+                        "bg-muted/30 text-center align-middle whitespace-nowrap",
+                        (group.groupName.includes("Target Level") ||
+                          group.groupName.includes("JLPT Exam Target")) &&
+                          "cursor-pointer transition-colors hover:bg-muted/50"
                       )}
                       colSpan={group.children.length}
                       onClick={() => {
-                        if (group.groupName.includes("Target Level") || group.groupName.includes("JLPT Exam Target")) {
+                        if (
+                          group.groupName.includes("Target Level") ||
+                          group.groupName.includes("JLPT Exam Target")
+                        ) {
                           handleEditTargetDates()
                         }
                       }}
@@ -702,7 +1518,14 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                   {flattenedJapaneseHeaders.map((header) => (
                     <BorderedTableHead
                       key={header.field}
-                      className="align-middle whitespace-nowrap"
+                      className={cn(
+                        "align-middle whitespace-nowrap",
+                        (header.field === "current_communication_level" ||
+                          header.field === "target_1_communication_level" ||
+                          header.field === "target_2_communication_level" ||
+                          header.field === "current_learning_level") &&
+                          "w-48"
+                      )}
                     >
                       {header.header_name}
                     </BorderedTableHead>
@@ -717,7 +1540,9 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                       colSpan={totalColumns}
                       className="py-8 text-center text-muted-foreground"
                     >
-                      {searchTerm ? `No employees found matching "${searchTerm}"` : "No employees with Japanese profile data found"}
+                      {searchTerm
+                        ? `No employees found matching "${searchTerm}"`
+                        : "No employees with Japanese profile data found"}
                     </BorderedTableCell>
                   </TableRow>
                 ) : (
@@ -739,15 +1564,25 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                         >
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={() => handleRowSelect(employee.id.toString())}
+                            onCheckedChange={() =>
+                              handleRowSelect(employee.id.toString())
+                            }
                             aria-label={`Select ${employee.name}`}
                           />
                         </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>{globalIndex}</BorderedTableCell>
-                        <BorderedTableCell selected={isSelected} className="text-sm">
+                        <BorderedTableCell selected={isSelected}>
+                          {globalIndex}
+                        </BorderedTableCell>
+                        <BorderedTableCell
+                          selected={isSelected}
+                          className="text-sm"
+                        >
                           {employee.id || "-"}
                         </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected} className="font-medium">
+                        <BorderedTableCell
+                          selected={isSelected}
+                          className="font-medium"
+                        >
                           {employee.name}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
@@ -780,19 +1615,22 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                                 value = jpLevel?.preferredLearningGroup || "-"
                                 break
                               case "current_communication_level":
-                                value = jpLevel?.currentCommunicationLevel || "-"
+                                value =
+                                  jpLevel?.currentCommunicationLevel || "-"
                                 break
                               case "target_1_jlpt_nat_level":
                                 value = jpLevel?.target1JlptNatLevel || "-"
                                 break
                               case "target_1_communication_level":
-                                value = jpLevel?.target1CommunicationLevel || "-"
+                                value =
+                                  jpLevel?.target1CommunicationLevel || "-"
                                 break
                               case "target_2_jlpt_nat_level":
                                 value = jpLevel?.target2JlptNatLevel || "-"
                                 break
                               case "target_2_communication_level":
-                                value = jpLevel?.target2CommunicationLevel || "-"
+                                value =
+                                  jpLevel?.target2CommunicationLevel || "-"
                                 break
                               case "current_learning_level":
                                 value = jpLevel?.currentLearningLevel || "-"
@@ -801,7 +1639,12 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                                 value = jpLevel?.learningMethod || "-"
                                 break
                               case "want_to_sit_exam":
-                                value = jpLevel?.wantToSitExam === true ? "Yes" : jpLevel?.wantToSitExam === false ? "No" : "-"
+                                value =
+                                  jpLevel?.wantToSitExam === true
+                                    ? "Yes"
+                                    : jpLevel?.wantToSitExam === false
+                                      ? "No"
+                                      : "-"
                                 break
                               case "exam_target_level":
                                 value = jpLevel?.examTargetLevel || "-"
@@ -812,9 +1655,47 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                               default:
                                 value = "-"
                             }
+
+                            const displayValue = value || "-"
+                            const isTruncatable = isTruncatableField(
+                              header.field
+                            )
+
                             return (
-                              <BorderedTableCell key={header.field} selected={isSelected}>
-                                {value}
+                              <BorderedTableCell
+                                key={header.field}
+                                selected={isSelected}
+                                className={cn(
+                                  isTruncatable && "max-w-[192px]",
+                                  (header.field ===
+                                    "current_communication_level" ||
+                                    header.field ===
+                                      "target_1_communication_level" ||
+                                    header.field ===
+                                      "target_2_communication_level" ||
+                                    header.field ===
+                                      "current_learning_level") &&
+                                    "w-48"
+                                )}
+                              >
+                                {isTruncatable && displayValue !== "-" ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="block truncate">
+                                          {displayValue}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="text-sm">
+                                          {displayValue}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  displayValue
+                                )}
                               </BorderedTableCell>
                             )
                           })
@@ -827,7 +1708,67 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
             </Table>
           </div>
 
-          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Overlay and Selection Bar */}
+          {isSelectionActive && (
+            <>
+              <div
+                className="pointer-events-auto absolute inset-0 z-40 cursor-pointer bg-black/4"
+                onClick={handleClearSelection}
+              />
+
+              <div className="absolute top-40 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
+                <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={areAllFilteredSelected}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all"
+                      />
+                      <span className="text-sm font-medium whitespace-nowrap">
+                        {selectedCount} employee
+                        {selectedCount > 1 ? "s are" : " is"} selected
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDeleteClick}
+                        disabled={isDeleting}
+                      >
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          strokeWidth={2}
+                          className="mr-1 h-4 w-4"
+                        />
+                        Delete
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearSelection}
+                        className="px-2"
+                      >
+                        <HugeiconsIcon
+                          icon={Cancel01Icon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          <div
+            className={cn(
+              "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+              isSelectionActive && "pointer-events-none"
+            )}
+          >
             <Field orientation="horizontal" className="w-fit">
               <FieldLabel htmlFor="select-rows-per-page">
                 Rows per page
@@ -851,7 +1792,7 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
             <div className="text-sm text-muted-foreground">
               Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
               {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} of{" "}
-              {filteredEmployees.length} employees with Japanese data
+              {filteredEmployees.length} employees with Japanese language data
             </div>
             <Pagination className="mx-0 w-auto">
               <PaginationContent>
@@ -895,7 +1836,8 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
                       handleNext()
                     }}
                     className={
-                      currentPage === totalPages || filteredEmployees.length === 0
+                      currentPage === totalPages ||
+                      filteredEmployees.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -908,36 +1850,55 @@ export function CurrentTargetContainer({ searchPlaceholder = "Search employees..
       </div>
 
       {/* Bulk Delete Dialog */}
-      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+      <Dialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Delete Japanese Profile Data</DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  Are you sure you want to delete the <strong>Japanese profile data</strong> for <strong>{selectedCount}</strong> selected employee{selectedCount > 1 ? "s" : ""}?
+                  Are you sure you want to delete the{" "}
+                  <strong>Japanese profile data</strong> for{" "}
+                  <strong>{selectedCount}</strong> selected employee
+                  {selectedCount > 1 ? "s" : ""}?
                 </p>
-                <div className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 border border-yellow-200">
+                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
                   <p className="font-medium">⚠️ Important Note:</p>
                   <p className="mt-1">
-                    This action will <strong>only delete the Japanese language profile data</strong> (JLPT levels,
-                    communication levels, learning methods, exam targets, etc.).
+                    This action will{" "}
+                    <strong>
+                      only delete the Japanese language profile data
+                    </strong>{" "}
+                    (JLPT levels, communication levels, learning methods, exam
+                    targets, etc.).
                   </p>
                   <p className="mt-1">
-                    The <strong>employee information</strong> (name, ID, email, department, etc.) will <strong>remain unchanged</strong>.
+                    The <strong>employee information</strong> (name, ID, email,
+                    department, etc.) will <strong>remain unchanged</strong>.
                   </p>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  This action cannot be undone. The employees will no longer appear in this view until new Japanese profile data is added.
+                  This action cannot be undone. The employees will no longer
+                  appear in this view until new Japanese profile data is added.
                 </p>
               </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleBulkDeleteConfirm} disabled={isDeleting}>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDeleteConfirm}
+              disabled={isDeleting}
+            >
               {isDeleting ? "Deleting..." : "Delete Japanese Data Only"}
             </Button>
           </DialogFooter>

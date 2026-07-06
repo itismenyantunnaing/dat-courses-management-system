@@ -10,7 +10,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "../../components/ui/sidebar"
-import { Button } from "@/components/ui/button"
 import { EmployeeContainer } from "@/components/employee-container"
 import { CoursesContainer } from "@/components/courses-container"
 import { SeminarContainer } from "@/components/seminar-container"
@@ -76,6 +75,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         return "Employee Management"
       case "courses":
         return "Course Management"
+      case "current_target_level":
+        return "Current Target Level Management"
       case "seminar":
         return "Seminar Management"
       case "exams":
@@ -111,7 +112,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     <>
       <SidebarProvider className="w-full overflow-hidden">
         <AppSidebar
-          userRole="admin"
+          userRole="learner"
           userData={{ name: userData.name, email: userData.email }}
           onTabChange={setActiveTab}
           activeTab={activeTab}
@@ -148,7 +149,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             <TabsContent value="skills" className="m-0">
               <SkillContainer />
             </TabsContent>
-            <TabsContent value="current_target_data" className="m-0">
+            <TabsContent value="current_target_level" className="m-0">
               <CurrentTargetContainer />
             </TabsContent>
             <TabsContent value="holidays" className="m-0">

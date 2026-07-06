@@ -42,6 +42,7 @@ import {
   Delete02Icon,
   CalendarAdd01Icon,
   Cancel01Icon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -61,6 +62,29 @@ import {
 } from "./ui/select"
 
 const STROKE_WIDTH = 2
+
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
+
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
+}
 
 // Status badge styling
 const getStatusBadge = (date: string) => {
@@ -350,8 +374,7 @@ export function HolidaysContainer({
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-muted-foreground">Loading holidays...</p>
+          <LoadingSpinner text="Loading holidays..." />
         </div>
       </div>
     )
@@ -381,7 +404,7 @@ export function HolidaysContainer({
                 />
               </InputGroupAddon>
               <InputGroupAddon align="inline-end">
-                <Kbd>⌘K</Kbd>
+                <Kbd>Ctrl + K</Kbd>
               </InputGroupAddon>
             </InputGroup>
             <div className="flex flex-wrap gap-2">

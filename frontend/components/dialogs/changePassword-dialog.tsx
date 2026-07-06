@@ -889,11 +889,16 @@ export default function ChangePassword({
             </div>
             <DialogFooter>
               {!force && (
-                <Button variant="outline" onClick={handleClose}>
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={handleClose}
+                >
                   Cancel
                 </Button>
               )}
               <Button
+                className="flex-1"
                 onClick={handleOldPasswordSubmit}
                 disabled={!oldPassword || isLoading}
               >
