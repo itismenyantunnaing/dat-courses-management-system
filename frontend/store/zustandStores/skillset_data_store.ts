@@ -633,15 +633,18 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
 add_BulkTechnicalSkills: async (data: TechnicalSkillData[]) => {
   try {
-    // Remove skillId - backend doesn't need it
+    // Include skillId so backend can link to existing skill
     const formattedData = data.map(item => ({
       employeeId: item.employeeId,
-      skillName: item.skillName,  // ← ONLY required field!
+      skillId: item.skillId,  // ✅ CRITICAL: Include skillId
+      skillName: item.skillName,
       yearsOfExperience: item.yearsOfExperience || 0,
       experienceLevel: item.experienceLevel || "",
-      // NO categoryName, NO subCategoryName, NO skillId!
+      categoryName: item.categoryName,
+      subCategoryName: item.subCategoryName,
     }));
 
+    console.log('📤 Sending Bulk Technical Data with skillId:', formattedData);
 
     const response = await fetch(`${apiUrl}/api/skills/technical/bulk`, {
       method: 'POST',

@@ -27,11 +27,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private static final Set<String> PUBLIC_PATHS = Set.of(
-            "/security/api/auth",
-            "/security/api/auth/login",
-            "/security/api/auth/forgot-password",
-            "/security/api/auth/test-mail",
-            "/security/api/auth/verify-otp",
+            "/api/auth",
+            "/api/auth/login",
+            "/api/auth/forgot-password",
+            "/api/auth/test-mail",
+            "/api/auth/verify-otp",
             "/api/auth/reset-password",
             "/api/employee-japanese-profiles",
             "/api/target-terms/**",

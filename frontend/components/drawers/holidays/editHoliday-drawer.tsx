@@ -27,7 +27,7 @@ interface EditHolidayDrawerProps {
 
 const getDayName = (dateString: string): string => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { weekday: 'long' })
+  return date.toLocaleDateString("en-US", { weekday: "long" })
 }
 
 export function EditHolidayDrawer({
@@ -39,11 +39,11 @@ export function EditHolidayDrawer({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<HolidayFormData>({
     holidayName: "",
-    holidayDate: ""
+    holidayDate: "",
   })
   const [originalFormData, setOriginalFormData] = useState<HolidayFormData>({
     holidayName: "",
-    holidayDate: ""
+    holidayDate: "",
   })
 
   const { update_HolidayData } = mainStore()
@@ -78,7 +78,12 @@ export function EditHolidayDrawer({
       }
 
       const result = await update_HolidayData(holiday.id, updatedHoliday)
-      if (result && (result.includes("not found") || result.includes("already exists") || result.includes("Failed"))) {
+      if (
+        result &&
+        (result.includes("not found") ||
+          result.includes("already exists") ||
+          result.includes("Failed"))
+      ) {
         alert(result)
         return
       } else {
@@ -96,23 +101,28 @@ export function EditHolidayDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
+      <DrawerContent className="right-0 left-auto h-full w-[70%] sm:w-[55%] md:w-[45%] lg:w-[35%] xl:w-[25%]">
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>Edit Holiday</DrawerTitle>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 py-4">
-            <HolidayForm
-              data={formData}
-              onChange={setFormData}
-              isEdit
-            />
+            <HolidayForm data={formData} onChange={setFormData} isEdit />
           </div>
         </div>
 
         <DrawerFooter className="shrink-0 border-t">
           <div className="flex gap-2">
+            <DrawerClose asChild>
+              <Button
+                variant="outline"
+                disabled={isSubmitting}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </DrawerClose>
             <Button
               className="flex-1"
               onClick={handleSubmit}
@@ -125,15 +135,6 @@ export function EditHolidayDrawer({
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
-            <DrawerClose asChild>
-              <Button
-                variant="outline"
-                disabled={isSubmitting}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </DrawerClose>
           </div>
         </DrawerFooter>
       </DrawerContent>

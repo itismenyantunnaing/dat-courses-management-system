@@ -2,6 +2,7 @@ package com.dat_management.backend.service;
 
 import com.dat_management.backend.dto.EmployeeRequestDTO;
 import com.dat_management.backend.dto.EmployeeResponseDTO;
+import com.dat_management.backend.dto.skillset.EmployeeWithSkillsResponseDTO;
 import com.dat_management.backend.entity.*;
 import com.dat_management.backend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -20,21 +21,16 @@ import java.util.stream.Collectors;
 @Transactional
 public class EmployeeService {
 
-    private final EmployeeRepository employeeRepository;
-    private final TeamRepository teamRepository;
+    private final EmployeeRepository      employeeRepository;
+    private final TeamRepository          teamRepository;
     private final DepartmentDirRepository departmentDirRepository;
     private final DepartmentDatRepository departmentDatRepository;
-    private final DivisionRepository divisionRepository;
-    private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final SkillSetService skillSetService; // Add this
+    private final DivisionRepository      divisionRepository;
+    private final RoleRepository          roleRepository;
+    private final PasswordEncoder         passwordEncoder;
+    private final SkillSetService         skillSetService;  // Add this
 
     // ── Mapping ──────────────────────────────────────────────────────────────
-
-    public Employee getEmployeeById(String id) {
-        return employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
-    }
 
     private EmployeeResponseDTO toDTO(Employee e) {
         String divName = null;
@@ -85,6 +81,18 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
+    public EmployeeWithSkillsResponseDTO getEmployeeWithAllSkills(String id) {
+        Employee e = employeeRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + id));
+        return skillSetService.getEmployeeWithAllSkills(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EmployeeWithSkillsResponseDTO> getAllEmployeesWithSkills() {
+        return skillSetService.getAllEmployeesWithSkills();
+    }
+
+    @Transactional(readOnly = true)
     public List<EmployeeResponseDTO> getByStatus(String empStatus) {
         return employeeRepository.findByEmpStatusAndIsDeletedFalse(empStatus)
                 .stream().map(this::toDTO).collect(Collectors.toList());
@@ -108,7 +116,6 @@ public class EmployeeService {
         if (employeeRepository.existsByIdAndIsDeletedFalse(dto.getId())) {
             throw new RuntimeException("Staff ID already exists: " + dto.getId());
         }
-
         Employee e = new Employee();
         e.setId(dto.getId());
         applyDTO(e, dto);
@@ -122,7 +129,7 @@ public class EmployeeService {
         return toDTO(employeeRepository.save(e));
     }
 
-    // ── CREATE (bulk) — each row isolated in its own transaction ───────────────
+    // ── CREATE (bulk) ────────────────────────────────────────────────────────
 
     public Map<String, Object> createBulk(List<EmployeeRequestDTO> dtos) {
         List<EmployeeResponseDTO> created = new ArrayList<>();
@@ -135,7 +142,8 @@ public class EmployeeService {
             } catch (Exception ex) {
                 failed.add(Map.of(
                         "id", dto.getId() != null ? dto.getId() : "(unknown)",
-                        "reason", ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
+                        "reason", ex.getMessage() != null ? ex.getMessage() : "Unknown error"
+                ));
             }
         }
 
@@ -144,7 +152,8 @@ public class EmployeeService {
                 "successCount", created.size(),
                 "failedCount", failed.size(),
                 "created", created,
-                "failed", failed);
+                "failed", failed
+        );
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -155,9 +164,9 @@ public class EmployeeService {
         if (dto.getName() == null || dto.getName().isBlank()) {
             throw new IllegalArgumentException("Missing name");
         }
-        if (employeeRepository.existsByIdAndIsDeletedFalse(dto.getId())) {
-            throw new IllegalArgumentException("Staff ID already exists");
-        }
+        // if (employeeRepository.existsByIdAndIsDeletedFalse(dto.getId())) {
+        //     throw new IllegalArgumentException("Staff ID already exists");
+        // }
 
         Employee e = new Employee();
         e.setId(dto.getId());
@@ -208,21 +217,6 @@ public class EmployeeService {
         return toDTO(employeeRepository.save(e));
     }
 
-    private Role resolveOrCreateRole(String roleName) {
-        if (roleName == null || roleName.isBlank()) {
-            return null;
-        }
-
-        return roleRepository.findByRoleName(roleName)
-                .orElseGet(() -> {
-                    Role newRole = new Role();
-                    newRole.setRoleName(roleName);
-                    // You might want to set additional fields like description
-                    // newRole.setDescription("Auto-created role: " + roleName);
-                    return roleRepository.saveAndFlush(newRole);
-                });
-    }
-
     // ── Apply DTO fields to entity ───────────────────────────────────────────
 
     private void applyDTO(Employee e, EmployeeRequestDTO dto) {
@@ -238,27 +232,22 @@ public class EmployeeService {
         e.setDob(dto.getDob());
         e.setProfilePhotoPath(dto.getProfilePhotoPath());
 
-        // Team resolution: prefer name-based cascade, fallback to raw team_id
         if (dto.getTeamName() != null && !dto.getTeamName().isBlank()) {
             Team resolvedTeam = resolveOrCreateTeamChain(
                     dto.getDivisionName(),
                     dto.getDepartmentDatName(),
-                    dto.getTeamName());
+                    dto.getTeamName()
+            );
             if (resolvedTeam != null) {
                 e.setTeam(resolvedTeam);
             }
-        }
-        if (dto.getRoleName() != null && !dto.getRoleName().isBlank()) {
-            Role resolvedRole = resolveOrCreateRole(dto.getRoleName());
-            if (resolvedRole != null) {
-                e.setRole(resolvedRole);
-            }
+        } 
+        if (dto.getName() != null) {
+            roleRepository.findByRoleName(dto.getName()).ifPresent(e::setRole);
         }
     }
 
-    // ── Cascade find-or-create: Division -> DepartmentDat -> Team ───────────────
-    // Uses saveAndFlush so each create is immediately visible to the next
-    // lookup within the same bulk loop (avoids duplicate-insert races).
+    // ── Cascade find-or-create ───────────────────────────────────────────────
 
     private Team resolveOrCreateTeamChain(String divisionName, String departmentDatName, String teamName) {
         if (teamName == null || teamName.isBlank()) {
@@ -277,7 +266,6 @@ public class EmployeeService {
                 .orElseGet(() -> {
                     Division newDivision = new Division();
                     newDivision.setDivisionName(divisionName);
-                    newDivision.setDivisionCode(generateCode(divisionName));
                     newDivision.setIsDeleted(false);
                     return divisionRepository.saveAndFlush(newDivision);
                 });
@@ -287,7 +275,6 @@ public class EmployeeService {
                 .orElseGet(() -> {
                     DepartmentDat newDept = new DepartmentDat();
                     newDept.setDeptName(departmentDatName);
-                    newDept.setDeptCode(generateCode(departmentDatName));
                     newDept.setDivision(division);
                     newDept.setIsDeleted(false);
                     return departmentDatRepository.saveAndFlush(newDept);
@@ -301,19 +288,5 @@ public class EmployeeService {
                     newTeam.setIsDeleted(false);
                     return teamRepository.saveAndFlush(newTeam);
                 });
-    }
-
-    private String generateCode(String name) {
-        if (name == null || name.isBlank()) {
-            return "AUTO" + System.nanoTime();
-        }
-        String base = name.trim().toUpperCase().replaceAll("[^A-Z0-9]", "");
-        if (base.length() > 6) {
-            base = base.substring(0, 6);
-        }
-        if (base.isEmpty()) {
-            base = "DEPT";
-        }
-        return base + (System.nanoTime() % 100000);
     }
 }

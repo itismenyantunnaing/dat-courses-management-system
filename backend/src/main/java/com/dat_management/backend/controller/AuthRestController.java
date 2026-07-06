@@ -22,13 +22,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/security/api/auth")
-@CrossOrigin(
-    origins = "http://localhost:3000",
-    allowCredentials = "true",
-    allowedHeaders = "*",
-    exposedHeaders = {"Authorization", "Content-Type"},
-    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS}
-)
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true", allowedHeaders = "*", exposedHeaders = {
+                "Authorization", "Content-Type" }, methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT,
+                                RequestMethod.DELETE, RequestMethod.OPTIONS })
 public class AuthRestController {
 
         private final AuthenticationManager authenticationManager;
@@ -166,13 +162,13 @@ public class AuthRestController {
 
                 Boolean verified = (Boolean) session.getAttribute("pwd_verified");
 
-                if (verified == null || !verified) {
+                Employee employee = employeeRepository.findById(authentication.getName())
+                                .orElseThrow();
+                                
+                if ((verified == null || !verified) && !(employee.getStatus().equals("default"))) {
                         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                                         .body(Map.of("message", "Verify current password first"));
                 }
-
-                Employee employee = employeeRepository.findById(authentication.getName())
-                                .orElseThrow();
 
                 if (!request.getNewPassword().equals(request.getConfirmPassword())) {
                         return ResponseEntity.badRequest()

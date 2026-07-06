@@ -1,4 +1,4 @@
-// lib/export/Export-skillset.ts - Complete fixed version
+// lib/export/Export-skillset.ts
 
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -11,6 +11,7 @@ export interface ExportSkillData {
   devCap_data: any[];
   languageSkill_data: any[];
   managementScores_Data: any[];
+  employeeJapaneseLevel_Data?: any[];
 }
 
 export interface ExportSkillOptions {
@@ -19,6 +20,12 @@ export interface ExportSkillOptions {
   showTechnicalAbility?: boolean;
   fileName?: string;
 }
+
+type GroupedSkill = {
+  skill_id: number;
+  skill_name: string;
+  sub_category_name: string;
+};
 
 /**
  * Build the data structure for export - mirrors the UI table exactly
@@ -37,47 +44,64 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     devCap_headers,
     devCap_data,
     languageSkill_data,
-    managementScores_Data
+    managementScores_Data,
+    employeeJapaneseLevel_Data = []
   } = data;
 
+  // Build Japanese level map
+  const japaneseLevelMap = new Map<string, string | null>();
+  if (employeeJapaneseLevel_Data) {
+    employeeJapaneseLevel_Data.forEach((item: any) => {
+      japaneseLevelMap.set(item.employee_id, item.jlptHighestLevel || null);
+    });
+  }
+
   // Build maps for quick lookup
-  const skillMap = new Map<string, Map<number, { years: number | null; level: string | null }>>();
+  const skillMap = new Map<string, Map<string, { years: number | null; level: string | null }>>();
   if (skillData) {
     skillData.forEach((skill: any) => {
-      const employeeId = skill.employee_id;
+      const employeeId = skill.employee_id || skill.employeeId;
+      if (!employeeId) return;
+      
       if (!skillMap.has(employeeId)) {
         skillMap.set(employeeId, new Map());
       }
       const employeeSkillMap = skillMap.get(employeeId)!;
-      employeeSkillMap.set(skill.skill_id, {
-        years: skill.years_of_experience,
-        level: skill.experience_level
+      const skillName = skill.skill_name || skill.skillName;
+      employeeSkillMap.set(skillName, {
+        years: skill.years_of_experience || skill.yearsOfExperience || 0,
+        level: skill.experience_level || skill.experienceLevel || null
       });
     });
   }
 
-  const devCapMap = new Map<string, Map<number, { years: number | null; experience: string | null; process_name: string | null }>>();
+  const devCapMap = new Map<string, Map<string, { years: number | null; experience_process: string | null }>>();
   if (devCap_data) {
     devCap_data.forEach((devCap: any) => {
-      const employeeId = devCap.employee_id;
+      const employeeId = devCap.employee_id || devCap.employeeId;
+      if (!employeeId) return;
+      
       if (!devCapMap.has(employeeId)) {
         devCapMap.set(employeeId, new Map());
       }
       const employeeDevCapMap = devCapMap.get(employeeId)!;
-      employeeDevCapMap.set(devCap.development_type_id, {
-        years: devCap.years_of_experience,
-        experience: devCap.development_type_name,
-        process_name: devCap.process_name
+      const typeName = devCap.development_type_name || devCap.developmentTypeName;
+      employeeDevCapMap.set(typeName, {
+        years: devCap.years_of_experience || devCap.yearsOfExperience || 0,
+        experience_process: devCap.process_name || devCap.processName || null
       });
     });
   }
 
-  const languageSkillMap = new Map<string, { language_skill_level: number | null; jlpt_highest_level: string | null }>();
+  const languageSkillMap = new Map<string, { language_skill_level: string | number | null; jlpt_highest_level: string | null }>();
   if (languageSkill_data) {
     languageSkill_data.forEach((skill: any) => {
-      languageSkillMap.set(skill.employee_id, {
-        language_skill_level: skill.language_skill_level,
-        jlpt_highest_level: skill.jlpt_highest_level
+      const employeeId = skill.employee_id || skill.employeeId;
+      if (!employeeId) return;
+      
+      languageSkillMap.set(employeeId, {
+        language_skill_level: skill.language_skill_level || skill.languageSkillLevel || null,
+        jlpt_highest_level: skill.jlpt_highest_level || null
       });
     });
   }
@@ -85,44 +109,57 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
   const managementScoresMap = new Map<string, any>();
   if (managementScores_Data) {
     managementScores_Data.forEach((score: any) => {
-      managementScoresMap.set(score.employee_id, score);
-    });
-  }
-
-  // Build dynamic skills list - preserve the exact order from skill_headers
-  const dynamicSkillsList: { id: number; name: string; category: string; sub_category: string }[] = [];
-  if (skill_headers) {
-    skill_headers.forEach((category: any) => {
-      category.skill_sub_categories?.forEach((subCategory: any) => {
-        subCategory.skills?.forEach((skill: any) => {
-          dynamicSkillsList.push({
-            id: skill.id,
-            name: skill.skill_name,
-            category: category.category_name,
-            sub_category: subCategory.sub_category_name,
-          });
-        });
-      });
-    });
-  }
-
-  // Group skills by category
-  const dynamicSkillsByCategory: Record<string, any[]> = {};
-  if (skill_headers) {
-    skill_headers.forEach((category: any) => {
-      const categoryName = category.category_name || "empty";
-      if (!dynamicSkillsByCategory[categoryName]) {
-        dynamicSkillsByCategory[categoryName] = [];
+      const employeeId = score.employee_id || score.employeeId;
+      if (employeeId) {
+        managementScoresMap.set(employeeId, score);
       }
-      category.skill_sub_categories?.forEach((subCategory: any) => {
-        subCategory.skills?.forEach((skill: any) => {
-          dynamicSkillsByCategory[categoryName].push({
-            skill_id: skill.id,
-            skill_name: skill.skill_name,
-            sub_category_name: subCategory.sub_category_name || "empty",
-          });
+    });
+  }
+
+  // Build dynamic skills list from skill_headers (same as UI)
+  const dynamicSkillsList: { id: number; name: string; category: string; sub_category: string }[] = [];
+  if (skill_headers && skill_headers.length > 0) {
+    skill_headers.forEach((category: any) => {
+      const subCategories = category.skillSubCategories || category.skill_sub_categories || [];
+      if (Array.isArray(subCategories)) {
+        subCategories.forEach((subCategory: any) => {
+          const skills = subCategory.skills || [];
+          if (Array.isArray(skills)) {
+            skills.forEach((skill: any) => {
+              dynamicSkillsList.push({
+                id: skill.id,
+                name: skill.skillName || skill.skill_name || 'Unnamed Skill',
+                category: category.categoryName || category.category_name || 'Uncategorized',
+                sub_category: subCategory.subCategoryName || subCategory.sub_category_name || '',
+              });
+            });
+          }
         });
-      });
+      }
+    });
+  }
+
+  // Group skills by category (same as UI's dynamicSkillsByCategory)
+  const dynamicSkillsByCategory: Record<string, GroupedSkill[]> = {};
+  if (skill_headers && skill_headers.length > 0) {
+    skill_headers.forEach((category: any) => {
+      const categoryName = category.categoryName || category.category_name || 'Uncategorized';
+      dynamicSkillsByCategory[categoryName] = [];
+      const subCategories = category.skillSubCategories || category.skill_sub_categories || [];
+      if (Array.isArray(subCategories)) {
+        subCategories.forEach((subCategory: any) => {
+          const skills = subCategory.skills || [];
+          if (Array.isArray(skills)) {
+            skills.forEach((skill: any) => {
+              dynamicSkillsByCategory[categoryName].push({
+                skill_id: skill.id,
+                skill_name: skill.skillName || skill.skill_name || 'Unnamed Skill',
+                sub_category_name: subCategory.subCategoryName || subCategory.sub_category_name || '',
+              });
+            });
+          }
+        });
+      }
     });
   }
 
@@ -133,15 +170,15 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     { field: "name", header_name: "Name" },
     { field: "dept", header_name: "Name of the commissioning department *Select from the dropdown menu" },
     { field: "is_core_personnel", header_name: "Core personnel *FPT only" },
-    { field: "has_japan_business_trip", header_name: " Whether or not you have a business trip to Japan" },
+    { field: "has_japan_business_trip", header_name: "Whether or not you have a business trip to Japan" },
   ];
 
   const administratorHeaders = [
-    { field: "management_experience_level", header_name: "Management experience (Levels 1-5)" },
-    { field: "qcd_score", header_name: "QCD (1-4 points)" },
-    { field: "report_consult_score", header_name: "Reporting, contacting, and consulting (1-4 points)" },
-    { field: "education_score", header_name: "Education (1-4 points)" },
-    { field: "total_level", header_name: "Total (Levels 1-5)" },
+    { field: "managementExperienceLevel", header_name: "Management experience (Levels 1-5)" },
+    { field: "qcdScore", header_name: "QCD (1-4 points)" },
+    { field: "reportConsultScore", header_name: "Reporting, contacting, and consulting (1-4 points)" },
+    { field: "educationScore", header_name: "Education (1-4 points)" },
+    { field: "totalLevel", header_name: "Total (Levels 1-5)" },
   ];
 
   const languageSkillHeaders = [
@@ -150,146 +187,248 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
   ];
 
   // ============================================================
-  // BUILD HEADER ROWS - EXACTLY MATCHING UI TABLE
+  // CALCULATE TOTAL COLUMNS - must match UI exactly
   // ============================================================
-  const headerRows: any[][] = [];
-  
-  // ROW 1: Main Categories
-  const row1: any[] = [];
-  employeeHeaders.forEach((header) => row1.push(header.header_name));
-  if (showAdministrator) row1.push('Administrator');
-  if (showDeveloper) row1.push('Developer (DIR and YSX tasks only)');
-  if (showTechnicalAbility) row1.push('Technical Ability');
-  row1.push('Actions');
-  headerRows.push(row1);
-  
-  // ROW 2: Sub-categories
-  const row2: any[] = [];
-  employeeHeaders.forEach(() => row2.push(''));
+  const empColCount = employeeHeaders.length; // 6
+  const adminColCount = showAdministrator ? administratorHeaders.length : 0; // 5
+  const devCapHeadersList = devCap_headers || [];
+  const langColCount = showDeveloper ? languageSkillHeaders.length : 0; // 2
+  const devCapColCount = showDeveloper ? devCapHeadersList.length * 2 : 0;
+  const techColCount = showTechnicalAbility ? dynamicSkillsList.length * 2 : 0;
+  const totalCols = empColCount + adminColCount + langColCount + devCapColCount + techColCount;
+
+  // Sort categories by minimum skill_id (same as UI)
+  const sortedCategories = Object.entries(dynamicSkillsByCategory)
+    .sort((a, b) => {
+      const aMinId = Math.min(...a[1].map((s) => s.skill_id));
+      const bMinId = Math.min(...b[1].map((s) => s.skill_id));
+      return aMinId - bMinId;
+    });
+
+  // ============================================================
+  // BUILD HEADER ROWS - Each row is totalCols wide, one cell per column
+  // ============================================================
+  const row1: any[] = new Array(totalCols).fill('');
+  const row2: any[] = new Array(totalCols).fill('');
+  const row3: any[] = new Array(totalCols).fill('');
+  const row4: any[] = new Array(totalCols).fill('');
+  const row5: any[] = new Array(totalCols).fill('');
+  const merges: XLSX.Range[] = [];
+
+  // --- Employee headers: rowSpan=5 (rows 0-4) ---
+  for (let i = 0; i < empColCount; i++) {
+    row1[i] = employeeHeaders[i].header_name;
+    merges.push({ s: { r: 0, c: i }, e: { r: 4, c: i } });
+  }
+
+  let col = empColCount;
+
+  // --- Administrator section ---
   if (showAdministrator) {
-    row2.push(administratorHeaders[0].header_name);
-    row2.push('management ability');
+    const adminStart = col;
+    // ROW 1: "Administrator" spans 5 columns
+    row1[adminStart] = 'Administrator';
+    merges.push({ s: { r: 0, c: adminStart }, e: { r: 0, c: adminStart + 4 } });
+
+    // ROW 2: "Management experience (Levels 1-5)" with rowSpan=4 (rows 1-4)
+    row2[adminStart] = administratorHeaders[0].header_name;
+    merges.push({ s: { r: 1, c: adminStart }, e: { r: 4, c: adminStart } });
+
+    // ROW 2: "management ability" spans 4 columns (adminStart+1 to adminStart+4)
+    row2[adminStart + 1] = 'management ability';
+    merges.push({ s: { r: 1, c: adminStart + 1 }, e: { r: 1, c: adminStart + 4 } });
+
+    // ROW 3: Individual management ability headers with rowSpan=3 (rows 2-4)
+    for (let i = 1; i < administratorHeaders.length; i++) {
+      row3[adminStart + i] = administratorHeaders[i].header_name;
+      merges.push({ s: { r: 2, c: adminStart + i }, e: { r: 4, c: adminStart + i } });
+    }
+
+    col += adminColCount;
   }
+
+  // --- Developer section ---
   if (showDeveloper) {
-    row2.push('language skills');
-    row2.push('Development capabilities');
+    const devStart = col;
+    const devTotalCols = langColCount + devCapColCount;
+
+    // ROW 1: "Developer (DIR and YSX tasks only)" spans all developer columns
+    row1[devStart] = 'Developer (DIR and YSX tasks only)';
+    merges.push({ s: { r: 0, c: devStart }, e: { r: 0, c: devStart + devTotalCols - 1 } });
+
+    // ROW 2: "language skills" spans 2 columns
+    row2[devStart] = 'language skills';
+    merges.push({ s: { r: 1, c: devStart }, e: { r: 1, c: devStart + 1 } });
+
+    // ROW 3: language skill sub-headers with rowSpan=3 (rows 2-4)
+    for (let i = 0; i < languageSkillHeaders.length; i++) {
+      row3[devStart + i] = languageSkillHeaders[i].header_name;
+      merges.push({ s: { r: 2, c: devStart + i }, e: { r: 4, c: devStart + i } });
+    }
+
+    // ROW 2: "Development capabilities" if devCap headers exist
+    if (devCapHeadersList.length > 0) {
+      const devCapStart = devStart + langColCount;
+      row2[devCapStart] = 'Development capabilities';
+      merges.push({ s: { r: 1, c: devCapStart }, e: { r: 1, c: devCapStart + devCapColCount - 1 } });
+
+      // ROW 3: Individual devCap type names with rowSpan=2, colSpan=2 (rows 2-3)
+      devCapHeadersList.forEach((header: any, index: number) => {
+        const headerCol = devCapStart + index * 2;
+        row3[headerCol] = header.developmentTypeName || header.development_type_name || '';
+        merges.push({ s: { r: 2, c: headerCol }, e: { r: 3, c: headerCol + 1 } });
+      });
+
+      // ROW 5: Years/Experience sub-headers for each devCap
+      devCapHeadersList.forEach((_: any, index: number) => {
+        const headerCol = devCapStart + index * 2;
+        row5[headerCol] = 'Years';
+        row5[headerCol + 1] = 'Experience';
+      });
+    }
+
+    col += devTotalCols;
   }
+
+  // --- Technical Ability section ---
   if (showTechnicalAbility) {
-    // For "empty" category, show sub-category names with rowSpan 2
-    // For non-empty categories, show category names
-    Object.entries(dynamicSkillsByCategory).forEach(([categoryName, skills]) => {
-      if (categoryName === "empty") {
-        // Show sub-category names directly
-        const subCategoryMap: Record<string, { count: number }> = {};
-        skills.forEach((skill) => {
-          const subName = skill.sub_category_name === "empty" ? "" : skill.sub_category_name;
+    const techStart = col;
+
+    // ROW 1: "Technical Ability" spans all technical columns
+    if (techColCount > 0) {
+      row1[techStart] = 'Technical Ability';
+      if (skill_headers?.length === 0) {
+        // If no skill headers, rowSpan=5 like UI
+        merges.push({ s: { r: 0, c: techStart }, e: { r: 4, c: techStart } });
+      } else {
+        merges.push({ s: { r: 0, c: techStart }, e: { r: 0, c: techStart + techColCount - 1 } });
+      }
+    } else {
+      // No skills at all
+      row1[techStart] = 'Technical Ability';
+    }
+
+    // Now build ROW 2, ROW 3, ROW 4 for technical skills
+    // This must exactly mirror the UI's ROW 2, ROW 3, ROW 4 logic
+    let techCol = techStart;
+
+    // === ROW 2 (row index 1) - Categories / Sub-categories / Skills depending on empty status ===
+    sortedCategories.forEach(([categoryName, skills]) => {
+      const sortedSkills = [...skills].sort((a, b) => a.skill_id - b.skill_id);
+      const isCategoryEmpty = categoryName.includes('empty');
+
+      if (isCategoryEmpty) {
+        // Build sub-category map
+        const subCategoryMap: Record<string, { count: number; skills: GroupedSkill[] }> = {};
+        sortedSkills.forEach((skill) => {
+          const subName = skill.sub_category_name.includes('empty') ? '' : skill.sub_category_name;
           if (!subCategoryMap[subName]) {
-            subCategoryMap[subName] = { count: 0 };
+            subCategoryMap[subName] = { count: 0, skills: [] };
           }
           subCategoryMap[subName].count += 2;
+          subCategoryMap[subName].skills.push(skill);
         });
-        Object.entries(subCategoryMap).forEach(([subCategoryName]) => {
-          row2.push(subCategoryName);
+
+        const sortedSubs = Object.entries(subCategoryMap)
+          .sort((a, b) => {
+            const aMinId = Math.min(...a[1].skills.map(s => s.skill_id));
+            const bMinId = Math.min(...b[1].skills.map(s => s.skill_id));
+            return aMinId - bMinId;
+          });
+
+        sortedSubs.forEach(([subCategoryName, { count, skills: subSkills }]) => {
+          const sortedSubSkills = [...subSkills].sort((a, b) => a.skill_id - b.skill_id);
+
+          if (isCategoryEmpty && subCategoryName === '') {
+            // Both category and subcategory are empty: show individual skills with rowSpan=3 (rows 1-3)
+            sortedSubSkills.forEach((skill) => {
+              row2[techCol] = skill.skill_name;
+              merges.push({ s: { r: 1, c: techCol }, e: { r: 3, c: techCol + 1 } });
+              // ROW 5: Years/Experience
+              row5[techCol] = 'Years';
+              row5[techCol + 1] = 'Experience';
+              techCol += 2;
+            });
+          } else {
+            // Category empty but subcategory exists: show subcategory with rowSpan=2 (rows 1-2)
+            row2[techCol] = subCategoryName || 'Uncategorized';
+            merges.push({ s: { r: 1, c: techCol }, e: { r: 2, c: techCol + count - 1 } });
+            // ROW 4: Individual skill names
+            sortedSubSkills.forEach((skill) => {
+              row4[techCol] = skill.skill_name;
+              merges.push({ s: { r: 3, c: techCol }, e: { r: 3, c: techCol + 1 } });
+              // ROW 5: Years/Experience
+              row5[techCol] = 'Years';
+              row5[techCol + 1] = 'Experience';
+              techCol += 2;
+            });
+          }
         });
       } else {
-        const hasOnlyEmptySubCategories = skills.every(
-          (skill) => skill.sub_category_name === "empty"
+        // Non-empty category
+        const hasOnlyEmptySubCategories = sortedSkills.every(
+          (skill) => skill.sub_category_name.includes('empty')
         );
+
         if (hasOnlyEmptySubCategories) {
-          row2.push(categoryName);
+          // Category name shown, but all subcategories empty -> show individual skills with rowSpan=3 (rows 1-3)
+          sortedSkills.forEach((skill) => {
+            row2[techCol] = skill.skill_name;
+            merges.push({ s: { r: 1, c: techCol }, e: { r: 3, c: techCol + 1 } });
+            // ROW 5: Years/Experience
+            row5[techCol] = 'Years';
+            row5[techCol + 1] = 'Experience';
+            techCol += 2;
+          });
         } else {
-          row2.push(categoryName);
+          // Normal category with sub-categories
+          // ROW 2: Category name spanning all its skills
+          row2[techCol] = categoryName;
+          merges.push({ s: { r: 1, c: techCol }, e: { r: 1, c: techCol + sortedSkills.length * 2 - 1 } });
+
+          // ROW 3: Sub-category names
+          const subCategoryMap: Record<string, { count: number; skills: GroupedSkill[] }> = {};
+          sortedSkills.forEach((skill) => {
+            const subName = skill.sub_category_name.includes('empty') ? '' : skill.sub_category_name;
+            if (!subCategoryMap[subName]) {
+              subCategoryMap[subName] = { count: 0, skills: [] };
+            }
+            subCategoryMap[subName].count += 2;
+            subCategoryMap[subName].skills.push(skill);
+          });
+
+          let subCol = techCol;
+          Object.entries(subCategoryMap)
+            .sort((a, b) => {
+              const aMinId = Math.min(...a[1].skills.map(s => s.skill_id));
+              const bMinId = Math.min(...b[1].skills.map(s => s.skill_id));
+              return aMinId - bMinId;
+            })
+            .forEach(([subCategoryName, { count }]) => {
+              row3[subCol] = subCategoryName;
+              merges.push({ s: { r: 2, c: subCol }, e: { r: 2, c: subCol + count - 1 } });
+              subCol += count;
+            });
+
+          // ROW 4: Individual skill names
+          sortedSkills.forEach((skill) => {
+            row4[techCol] = skill.skill_name;
+            merges.push({ s: { r: 3, c: techCol }, e: { r: 3, c: techCol + 1 } });
+            // ROW 5: Years/Experience
+            row5[techCol] = 'Years';
+            row5[techCol + 1] = 'Experience';
+            techCol += 2;
+          });
         }
       }
     });
   }
-  row2.push('');
-  headerRows.push(row2);
-  
-  // ROW 3: More sub-categories
-  const row3: any[] = [];
-  employeeHeaders.forEach(() => row3.push(''));
-  if (showAdministrator) {
-    row3.push('');
-    for (let i = 1; i < administratorHeaders.length; i++) {
-      row3.push(administratorHeaders[i].header_name);
-    }
-  }
-  if (showDeveloper) {
-    languageSkillHeaders.forEach(() => row3.push(''));
-    (devCap_headers || []).forEach((header: any) => {
-      row3.push(header.development_type);
-    });
-  }
-  if (showTechnicalAbility) {
-    // For non-empty categories with sub-categories, show sub-categories in row3
-    Object.entries(dynamicSkillsByCategory).forEach(([categoryName, skills]) => {
-      if (categoryName === "empty" || skills.every((skill) => skill.sub_category_name === "empty")) {
-        return;
-      }
-      const subCategoryMap: Record<string, { count: number }> = {};
-      skills.forEach((skill) => {
-        const subName = skill.sub_category_name === "empty" ? "" : skill.sub_category_name;
-        if (!subCategoryMap[subName]) {
-          subCategoryMap[subName] = { count: 0 };
-        }
-        subCategoryMap[subName].count += 2;
-      });
-      Object.entries(subCategoryMap).forEach(([subCategoryName]) => {
-        row3.push(subCategoryName);
-      });
-    });
-  }
-  row3.push('');
-  headerRows.push(row3);
-  
-  // ROW 4: Individual Skills
-  const row4: any[] = [];
-  employeeHeaders.forEach(() => row4.push(''));
-  if (showAdministrator) {
-    row4.push('');
-    for (let i = 1; i < administratorHeaders.length; i++) {
-      row4.push('');
-    }
-  }
-  if (showDeveloper) {
-    languageSkillHeaders.forEach(() => row4.push(''));
-    (devCap_headers || []).forEach(() => row4.push(''));
-  }
-  if (showTechnicalAbility) {
-    dynamicSkillsList.forEach((skill) => {
-      row4.push(skill.name);
-    });
-  }
-  row4.push('');
-  headerRows.push(row4);
-  
-  // ROW 5: Years and Experience
-  const row5: any[] = [];
-  employeeHeaders.forEach(() => row5.push(''));
-  if (showAdministrator) {
-    row5.push('');
-    for (let i = 1; i < administratorHeaders.length; i++) {
-      row5.push('');
-    }
-  }
-  if (showDeveloper) {
-    languageSkillHeaders.forEach(() => row5.push(''));
-    (devCap_headers || []).forEach(() => {
-      row5.push('Years');
-      row5.push('Experience');
-    });
-  }
-  if (showTechnicalAbility) {
-    dynamicSkillsList.forEach(() => {
-      row5.push('Years');
-      row5.push('Experience');
-    });
-  }
-  row5.push('');
-  headerRows.push(row5);
-  
+
+  const headerRows = [row1, row2, row3, row4, row5];
+
+  // ============================================================
   // DATA ROWS
+  // ============================================================
   const dataRows: any[][] = [];
   employee_data.forEach((employee: any) => {
     const row: any[] = [];
@@ -315,34 +454,37 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     if (showDeveloper) {
       const langSkill = languageSkillMap.get(employee.id);
       const langLevel = langSkill?.language_skill_level;
-      row.push(langLevel ? `Level ${langLevel}` : '-');
-      const jlptLevel = langSkill?.jlpt_highest_level;
+      row.push(langLevel ? `${langLevel}` : '-');
+      const jlptLevel = japaneseLevelMap.get(employee.id) || langSkill?.jlpt_highest_level;
       row.push(jlptLevel || '-');
       
-      (devCap_headers || []).forEach((header: any) => {
-        const devCapData = devCapMap.get(employee.id)?.get(header.id);
+      (devCapHeadersList).forEach((header: any) => {
+        const typeName = header.developmentTypeName || header.development_type_name;
+        const devCapData = devCapMap.get(employee.id)?.get(typeName);
         row.push(devCapData?.years || '-');
-        row.push(devCapData?.experience || '-');
+        row.push(devCapData?.experience_process || '-');
       });
     }
     
-    // Technical Skills data
+    // Technical Skills data - sorted by skill id like UI
     if (showTechnicalAbility) {
       const employeeSkills = skillMap.get(employee.id) || new Map();
-      dynamicSkillsList.forEach((skill) => {
-        const skillData = employeeSkills.get(skill.id);
-        row.push(skillData?.years || '-');
-        row.push(skillData?.level || '-');
+      const sortedSkills = [...dynamicSkillsList].sort((a, b) => a.id - b.id);
+      sortedSkills.forEach((skill) => {
+        const sd = employeeSkills.get(skill.name);
+        row.push(sd?.years || '-');
+        row.push(sd?.level || '-');
       });
     }
     
-    row.push('');
     dataRows.push(row);
   });
   
   return {
     headerRows,
     dataRows,
+    merges,
+    totalCols,
     employeeHeaders,
     administratorHeaders,
     languageSkillHeaders,
@@ -366,7 +508,7 @@ export async function exportSkillsToExcel(
     fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`
   } = options || {};
 
-  const { headerRows, dataRows, dynamicSkillsList, dynamicSkillsByCategory } = buildExportData(data, options || {});
+  const { headerRows, dataRows, merges, totalCols } = buildExportData(data, options || {});
   const allRows = [...headerRows, ...dataRows];
   
   const wb = XLSX.utils.book_new();
@@ -374,7 +516,7 @@ export async function exportSkillsToExcel(
   
   // Set column widths
   const colWidths = [];
-  for (let i = 0; i < (allRows[0]?.length || 0); i++) {
+  for (let i = 0; i < totalCols; i++) {
     let maxLength = 10;
     for (let j = 0; j < allRows.length && j < 50; j++) {
       const cell = allRows[j]?.[i];
@@ -385,217 +527,15 @@ export async function exportSkillsToExcel(
         }
       }
     }
-    colWidths.push({ wch: Math.min(maxLength + 5, 50) });
+    colWidths.push({ wch: Math.min(Math.max(maxLength + 5, 15), 50) });
   }
   ws['!cols'] = colWidths;
   
-  // ============================================================
-  // MERGE CELLS - MATCHING UI TABLE EXACTLY
-  // ============================================================
-  const merges: any[] = [];
-  let colIdx = 0;
-  
-  const employeeHeadersCount = 6;
-  
-  // 1. Employee headers - rowSpan 5 (rows 0-4)
-  for (let i = 0; i < employeeHeadersCount; i++) {
-    merges.push({ s: { r: 0, c: colIdx }, e: { r: 4, c: colIdx } });
-    colIdx++;
-  }
-  
-  // 2. Administrator main header - colSpan 5, row 0
-  if (options?.showAdministrator !== false) {
-    const adminStart = colIdx;
-    const adminEnd = adminStart + 4;
-    merges.push({ s: { r: 0, c: adminStart }, e: { r: 0, c: adminEnd } });
-    colIdx = adminEnd + 1;
-  }
-  
-  // 3. Developer main header - colSpan 10, row 0
-  if (options?.showDeveloper !== false) {
-    const devHeaders = data.devCap_headers || [];
-    const devStart = colIdx;
-    const devEnd = devStart + 1 + devHeaders.length * 2;
-    merges.push({ s: { r: 0, c: devStart }, e: { r: 0, c: devEnd } });
-    colIdx = devEnd + 1;
-  }
-  
-  // 4. Technical Ability main header - row 0
-  if (options?.showTechnicalAbility !== false) {
-    const techStart = colIdx;
-    const techEnd = techStart + dynamicSkillsList.length * 2 - 1;
-    if (dynamicSkillsList.length > 0) {
-      merges.push({ s: { r: 0, c: techStart }, e: { r: 0, c: techEnd } });
-    }
-    colIdx = techEnd + 1;
-  }
-  
-  // 5. Actions - rowSpan 5 (rows 0-4)
-  merges.push({ s: { r: 0, c: colIdx }, e: { r: 4, c: colIdx } });
-  
-  // ============================================================
-  // ROW 2 MERGES (row index 1)
-  // ============================================================
-  
-  // Administrator: Management experience - rowSpan 4 (rows 1-4)
-  if (options?.showAdministrator !== false) {
-    const mgmtCol = employeeHeadersCount;
-    merges.push({ s: { r: 1, c: mgmtCol }, e: { r: 4, c: mgmtCol } });
-    // management ability - colSpan 4, row 1
-    const mgmtAbilityStart = mgmtCol + 1;
-    const mgmtAbilityEnd = mgmtAbilityStart + 3;
-    merges.push({ s: { r: 1, c: mgmtAbilityStart }, e: { r: 1, c: mgmtAbilityEnd } });
-  }
-  
-  // Developer: language skills - colSpan 2, row 1
-  if (options?.showDeveloper !== false) {
-    const offset = employeeHeadersCount + (options?.showAdministrator !== false ? 5 : 0);
-    const langStart = offset;
-    const langEnd = langStart + 1;
-    merges.push({ s: { r: 1, c: langStart }, e: { r: 1, c: langEnd } });
-    // Development capabilities - colSpan 8, row 1
-    const devHeaders = data.devCap_headers || [];
-    const devStart = langEnd + 1;
-    const devEnd = devStart + devHeaders.length * 2 - 1;
-    if (devHeaders.length > 0) {
-      merges.push({ s: { r: 1, c: devStart }, e: { r: 1, c: devEnd } });
-    }
-  }
-  
-  // Technical Ability: handle "empty" category with rowSpan 2
-  if (options?.showTechnicalAbility !== false) {
-    let techCol = employeeHeadersCount + 
-      (options?.showAdministrator !== false ? 5 : 0) + 
-      (options?.showDeveloper !== false ? 2 + (data.devCap_headers || []).length * 2 : 0);
-    
-    Object.entries(dynamicSkillsByCategory).forEach(([categoryName, skills]) => {
-      if (categoryName === "empty") {
-        // For "empty" category, sub-categories have rowSpan 2 (rows 1-2)
-        const subCategoryMap: Record<string, { count: number }> = {};
-        skills.forEach((skill) => {
-          const subName = skill.sub_category_name === "empty" ? "" : skill.sub_category_name;
-          if (!subCategoryMap[subName]) {
-            subCategoryMap[subName] = { count: 0 };
-          }
-          subCategoryMap[subName].count += 2;
-        });
-        Object.entries(subCategoryMap).forEach(([, { count }]) => {
-          const start = techCol;
-          const end = techCol + count - 1;
-          merges.push({ s: { r: 1, c: start }, e: { r: 2, c: end } });
-          techCol = end + 1;
-        });
-      } else {
-        const hasOnlyEmptySubCategories = skills.every(
-          (skill) => skill.sub_category_name === "empty"
-        );
-        if (hasOnlyEmptySubCategories) {
-          // Category with only empty sub-categories - rowSpan 2 (rows 1-2)
-          const start = techCol;
-          const end = techCol + skills.length * 2 - 1;
-          merges.push({ s: { r: 1, c: start }, e: { r: 2, c: end } });
-          techCol = end + 1;
-        } else {
-          // Category with sub-categories - only row 1
-          const start = techCol;
-          const end = techCol + skills.length * 2 - 1;
-          merges.push({ s: { r: 1, c: start }, e: { r: 1, c: end } });
-          techCol = end + 1;
-        }
-      }
-    });
-  }
-  
-  // ============================================================
-  // ROW 3 MERGES (row index 2)
-  // ============================================================
-  
-  // Administrator: QCD, Report/Consult, Education, Total - rowSpan 3 (rows 2-4)
-  if (options?.showAdministrator !== false) {
-    const offset = employeeHeadersCount + 1;
-    for (let i = 1; i < 5; i++) {
-      const col = offset + i - 1;
-      merges.push({ s: { r: 2, c: col }, e: { r: 4, c: col } });
-    }
-  }
-  
-  // Developer: Language skills - rowSpan 3 (rows 2-4)
-  if (options?.showDeveloper !== false) {
-    const offset = employeeHeadersCount + (options?.showAdministrator !== false ? 5 : 0);
-    for (let i = 0; i < 2; i++) {
-      const col = offset + i;
-      merges.push({ s: { r: 2, c: col }, e: { r: 4, c: col } });
-    }
-    // Development capabilities - rowSpan 2, colSpan 2 (rows 2-3)
-    const devHeaders = data.devCap_headers || [];
-    const devStart = offset + 2;
-    devHeaders.forEach((header: any, index: number) => {
-      const col = devStart + index * 2;
-      merges.push({ s: { r: 2, c: col }, e: { r: 3, c: col + 1 } });
-    });
-  }
-  
-  // Technical Ability: sub-categories for non-empty categories (row 2 only)
-  if (options?.showTechnicalAbility !== false) {
-    let techCol = employeeHeadersCount + 
-      (options?.showAdministrator !== false ? 5 : 0) + 
-      (options?.showDeveloper !== false ? 2 + (data.devCap_headers || []).length * 2 : 0);
-    
-    Object.entries(dynamicSkillsByCategory).forEach(([categoryName, skills]) => {
-      if (categoryName === "empty" || skills.every((skill) => skill.sub_category_name === "empty")) {
-        // Skip - already handled in row 2 merges
-        if (categoryName === "empty") {
-          const subCategoryMap: Record<string, { count: number }> = {};
-          skills.forEach((skill) => {
-            const subName = skill.sub_category_name === "empty" ? "" : skill.sub_category_name;
-            if (!subCategoryMap[subName]) {
-              subCategoryMap[subName] = { count: 0 };
-            }
-            subCategoryMap[subName].count += 2;
-          });
-          Object.entries(subCategoryMap).forEach(([, { count }]) => {
-            techCol += count;
-          });
-        } else {
-          techCol += skills.length * 2;
-        }
-        return;
-      }
-      
-      const subCategoryMap: Record<string, { count: number }> = {};
-      skills.forEach((skill) => {
-        const subName = skill.sub_category_name === "empty" ? "" : skill.sub_category_name;
-        if (!subCategoryMap[subName]) {
-          subCategoryMap[subName] = { count: 0 };
-        }
-        subCategoryMap[subName].count += 2;
-      });
-      Object.entries(subCategoryMap).forEach(([, { count }]) => {
-        const start = techCol;
-        const end = techCol + count - 1;
-        merges.push({ s: { r: 2, c: start }, e: { r: 2, c: end } });
-        techCol = end + 1;
-      });
-    });
-  }
-  
-  // ============================================================
-  // ROW 4 MERGES (row index 3) - Individual skills (each spans 2 columns)
-  // ============================================================
-  if (options?.showTechnicalAbility !== false) {
-    let techCol = employeeHeadersCount + 
-      (options?.showAdministrator !== false ? 5 : 0) + 
-      (options?.showDeveloper !== false ? 2 + (data.devCap_headers || []).length * 2 : 0);
-    
-    dynamicSkillsList.forEach(() => {
-      const start = techCol;
-      const end = techCol + 1;
-      merges.push({ s: { r: 3, c: start }, e: { r: 3, c: end } });
-      techCol = end + 1;
-    });
-  }
-  
+  // Apply merges computed in buildExportData
   ws['!merges'] = merges;
+  
+  // Apply some styling
+  ws['!rows'] = allRows.map(() => ({ hpx: 25 }));
   
   XLSX.utils.book_append_sheet(wb, ws, 'Skills Report');
   
@@ -605,7 +545,7 @@ export async function exportSkillsToExcel(
 }
 
 /**
- * Export skills data to CSV format
+ * Export skills data to CSV format (simplified - single header row)
  */
 export async function exportSkillsToCSV(
   data: ExportSkillData,
@@ -635,13 +575,12 @@ export async function exportSkillsToPDF(
     fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`
   } = options || {};
 
-  const { headerRows, dataRows, dynamicSkillsList } = buildExportData(data, options || {});
+  const { headerRows, dataRows, dynamicSkillsList, totalCols } = buildExportData(data, options || {});
   
   // Build flat headers for PDF
   const flatHeaders: string[] = [];
-  const colCount = headerRows[0]?.length || 0;
   
-  for (let i = 0; i < colCount; i++) {
+  for (let i = 0; i < totalCols; i++) {
     let headerParts: string[] = [];
     for (let rowIdx = 0; rowIdx < headerRows.length; rowIdx++) {
       const cellValue = headerRows[rowIdx]?.[i];

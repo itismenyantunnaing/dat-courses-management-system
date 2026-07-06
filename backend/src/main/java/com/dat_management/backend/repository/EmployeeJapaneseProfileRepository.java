@@ -19,5 +19,15 @@ public interface EmployeeJapaneseProfileRepository extends JpaRepository<Employe
 
 
     boolean existsByEmployeeId(String employeeId);
+
+    @Query("""
+                SELECT p FROM EmployeeJapaneseProfile p
+                JOIN FETCH p.employee e
+                LEFT JOIN FETCH e.team t
+                LEFT JOIN FETCH t.departmentDat d
+                WHERE e.isDeleted = false
+            """)
+    List<EmployeeJapaneseProfile> findAllWithEmployee();
+}
     Optional<EmployeeJapaneseProfile> findByEmployeeId(String employeeId);
 }

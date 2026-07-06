@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Table,
   TableBody,
@@ -30,12 +30,19 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { Kbd } from "@/components/ui/kbd"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
   Delete02Icon,
   CalendarAdd01Icon,
-  Download03Icon, // Add this import
+  Cancel01Icon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -55,6 +62,29 @@ import {
 } from "./ui/select"
 
 const STROKE_WIDTH = 2
+
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
+
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
+}
 
 // Status badge styling
 const getStatusBadge = (date: string) => {
@@ -85,7 +115,7 @@ const getStatusLabel = (date: string) => {
 
 const getDayName = (dateString: string) => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { weekday: 'long' })
+  return date.toLocaleDateString("en-US", { weekday: "long" })
 }
 
 // BorderedTableCell component
@@ -122,6 +152,9 @@ export function HolidaysContainer({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Search input ref for keyboard shortcut
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
   // State for row selection
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
 
@@ -149,11 +182,24 @@ export function HolidaysContainer({
     loadData()
   }, [fetch_HolidayData])
 
-
   // Update refresh key when holiday_data changes
   useEffect(() => {
-    setRefreshKey(prev => prev + 1)
+    setRefreshKey((prev) => prev + 1)
   }, [holiday_data])
+
+  // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Cmd+K (Mac) or Ctrl+K (Windows/Linux)
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
   // Column headers
   const holidayHeaders = [
@@ -167,8 +213,9 @@ export function HolidaysContainer({
 
   // Use holiday_data directly from store
   const filteredHolidays = holiday_data.filter((holiday) => {
-    const matchesSearch =
-      holiday.holidayName?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = holiday.holidayName
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase())
     return matchesSearch
   })
 
@@ -196,22 +243,22 @@ export function HolidaysContainer({
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
-  // Handle select all on current page
+  // Handle select all - selects ALL filtered holidays across all pages
   const handleSelectAll = () => {
-    const allSelected = paginatedHolidays.every(
-      (holiday) => rowSelection[holiday.id?.toString() ?? '']
+    const allSelected = filteredHolidays.every(
+      (holiday) => rowSelection[holiday.id?.toString() ?? ""]
     )
 
     if (allSelected) {
-      const newSelection = { ...rowSelection }
-      paginatedHolidays.forEach((holiday) => {
-        delete newSelection[holiday.id?.toString() ?? '']
-      })
-      setRowSelection(newSelection)
+      // Deselect all
+      setRowSelection({})
     } else {
-      const newSelection = { ...rowSelection }
-      paginatedHolidays.forEach((holiday) => {
-        newSelection[holiday.id?.toString() ?? ""] = true
+      // Select all filtered holidays
+      const newSelection: Record<string, boolean> = {}
+      filteredHolidays.forEach((holiday) => {
+        if (holiday.id) {
+          newSelection[holiday.id.toString()] = true
+        }
       })
       setRowSelection(newSelection)
     }
@@ -244,12 +291,18 @@ export function HolidaysContainer({
     const selectedIds = Object.entries(rowSelection)
       .filter(([, selected]) => selected)
       .map(([id]) => parseInt(id))
-      .filter(id => !isNaN(id)) // Also filter out NaN values
+      .filter((id) => !isNaN(id))
 
-    return holiday_data.filter((holiday) =>
-      holiday.id !== undefined && selectedIds.includes(holiday.id)
+    return holiday_data.filter(
+      (holiday) => holiday.id !== undefined && selectedIds.includes(holiday.id)
     )
   }
+
+  // Clear all selections
+  const handleClearSelection = () => {
+    setRowSelection({})
+  }
+
   // Handle bulk delete click
   const handleBulkDeleteClick = () => {
     setBulkDeleteDialogOpen(true)
@@ -262,15 +315,11 @@ export function HolidaysContainer({
 
     setIsDeleting(true)
     try {
-      // Delete from store - UI updates automatically
-
       const selectedIds = selectedHolidays
         .map((holiday) => holiday.id)
-        .filter(id => id !== undefined && id !== null)
-
+        .filter((id) => id !== undefined && id !== null)
 
       const result = await delete_HolidayData(selectedIds)
-
       alert(result)
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
@@ -314,43 +363,51 @@ export function HolidaysContainer({
 
   const totalColumns = holidayHeaders.length
 
+  // Check if all filtered holidays are selected (for the header checkbox)
+  const areAllFilteredSelected =
+    filteredHolidays.length > 0 &&
+    filteredHolidays.every(
+      (holiday) => rowSelection[holiday.id?.toString() ?? ""]
+    )
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-muted-foreground">Loading holidays...</p>
+          <LoadingSpinner text="Loading holidays..." />
         </div>
       </div>
     )
   }
 
+  // Determine if selection bar is active
+  const isSelectionActive = selectedCount > 0
+
   return (
     <>
       <div className="flex flex-col gap-4 py-6">
         <CardContent className="px-4">
+          {/* Search and New Button */}
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative max-w-xs flex-1">
-              <HugeiconsIcon
-                icon={Search01Icon}
-                strokeWidth={STROKE_WIDTH}
-                className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-              />
-              <Input
+            <InputGroup className="max-w-sm">
+              <InputGroupInput
+                ref={searchInputRef}
                 placeholder={searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
               />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {selectedCount > 0 && (
-                <Button variant="destructive" onClick={handleBulkDeleteClick}>
-                  <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} /> Delete (
-                  {selectedCount}) Holiday
-                  {selectedCount > 1 ? "s" : ""}
-                </Button>
-              )}
+              <InputGroupAddon>
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  strokeWidth={2}
+                  className="h-4 w-4 text-muted-foreground"
+                />
+              </InputGroupAddon>
+              <InputGroupAddon align="inline-end">
+                <Kbd>Ctrl + K</Kbd>
+              </InputGroupAddon>
+            </InputGroup>
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="default"
                 onClick={handleNewHoliday}
@@ -362,8 +419,12 @@ export function HolidaysContainer({
             </div>
           </div>
 
+          {/* Table */}
           <div
-            className="relative overflow-x-auto rounded-md border"
+            className={cn(
+              "relative overflow-x-auto rounded-md border-y",
+              isSelectionActive && "pointer-events-none"
+            )}
             style={{ zIndex: 1 }}
           >
             <Table key={refreshKey}>
@@ -371,12 +432,7 @@ export function HolidaysContainer({
                 <TableRow className="bg-muted/50">
                   <BorderedTableHead className="w-10 align-middle whitespace-nowrap">
                     <Checkbox
-                      checked={
-                        paginatedHolidays.length > 0 &&
-                        paginatedHolidays.every(
-                          (holiday) => rowSelection[holiday.id?.toString() ?? ""]
-                        )
-                      }
+                      checked={areAllFilteredSelected}
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all"
                     />
@@ -404,7 +460,8 @@ export function HolidaysContainer({
                   </TableRow>
                 ) : (
                   paginatedHolidays.map((holiday, index) => {
-                    const isSelected = !!holiday.id && !!rowSelection[holiday.id.toString()];
+                    const isSelected =
+                      !!holiday.id && !!rowSelection[holiday.id.toString()]
                     return (
                       <TableRow
                         key={holiday.id}
@@ -443,7 +500,9 @@ export function HolidaysContainer({
                           {getDayName(holiday.holidayDate)}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          <Badge className={getStatusBadge(holiday.holidayDate)}>
+                          <Badge
+                            className={getStatusBadge(holiday.holidayDate)}
+                          >
                             {getStatusLabel(holiday.holidayDate)}
                           </Badge>
                         </BorderedTableCell>
@@ -455,6 +514,64 @@ export function HolidaysContainer({
             </Table>
           </div>
 
+          {/* Overlay and Selection Bar */}
+          {isSelectionActive && (
+            <>
+              {/* Overlay - Click to clear selection */}
+              <div
+                className="pointer-events-auto absolute inset-0 z-40 cursor-pointer bg-black/4"
+                onClick={handleClearSelection}
+              />
+
+              {/* Selection Bar */}
+              <div className="absolute top-35 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
+                <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={areAllFilteredSelected}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all"
+                      />
+                      <span className="text-sm font-medium whitespace-nowrap">
+                        {selectedCount} holiday
+                        {selectedCount > 1 ? "s are" : " is"} selected
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBulkDeleteClick}
+                        disabled={isDeleting}
+                      >
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          strokeWidth={2}
+                          className="mr-1 h-4 w-4"
+                        />
+                        Delete
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearSelection}
+                        className="px-2"
+                      >
+                        <HugeiconsIcon
+                          icon={Cancel01Icon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Pagination */}
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Field orientation="horizontal" className="w-fit">
               <FieldLabel htmlFor="select-rows-per-page">
@@ -524,7 +641,7 @@ export function HolidaysContainer({
                     }}
                     className={
                       currentPage === totalPages ||
-                        filteredHolidays.length === 0
+                      filteredHolidays.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }

@@ -18,9 +18,6 @@ public class DepartmentDat {
     @JoinColumn(name = "division_id", nullable = false)
     private Division division;
 
-    @Column(nullable = false, unique = true)
-    private String deptCode;
-
     @Column(nullable = false)
     private String deptName;
 

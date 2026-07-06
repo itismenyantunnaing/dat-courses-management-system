@@ -46,174 +46,30 @@ export const TECHNICAL_ABILITY_CONFIG: SkillCategory[] = [
     id: 1,
     category_name: "Programming Language",
     skill_sub_categories: [
-      { 
-        id: 1, 
-        sub_category_name: "Host Club", 
-        skills: [
-          { id: 1, skill_name: "assembler" }, 
-          { id: 2, skill_name: "COBOL" }, 
-          { id: 3, skill_name: "JCL" }
-        ] 
-      },
-      { 
-        id: 2, 
-        sub_category_name: "distributed system", 
-        skills: [
-          { id: 4, skill_name: "JAVA" }, 
-          { id: 5, skill_name: ".Net" }, 
-          { id: 6, skill_name: "C/C++" }, 
-          { id: 7, skill_name: "PL/SQL" }, 
-          { id: 8, skill_name: "Python" }, 
-          { id: 9, skill_name: "shell" }
-        ] 
-      }
+      { id: 1, sub_category_name: "Host Club", skills: [{ id: 1, skill_name: "assembler" }, { id: 2, skill_name: "COBOL" }, { id: 3, skill_name: "JCL" }] },
+      { id: 2, sub_category_name: "distributed system", skills: [{ id: 4, skill_name: "JAVA" }, { id: 5, skill_name: ".Net" }, { id: 6, skill_name: "C/C++" }, { id: 7, skill_name: "PL/SQL" }, { id: 8, skill_name: "Python" }, { id: 9, skill_name: "shell" }] }
     ]
   },
   {
     id: 2,
-    category_name: "empty-1",
-    skill_sub_categories: [
-      { 
-        id: 3, 
-        sub_category_name: "DB", 
-        skills: [
-          { id: 10, skill_name: "Oracle" }, 
-          { id: 11, skill_name: "SQL Server" }, 
-          { id: 12, skill_name: "MySQL" }, 
-          { id: 13, skill_name: "PostgreSQL" }, 
-          { id: 14, skill_name: "InMemoryDB" }
-        ] 
-      }
-    ]
-  },
-  {
-    id: 3,
     category_name: "Trending words",
     skill_sub_categories: [
-      { 
-        id: 4, 
-        sub_category_name: "Cloud", 
-        skills: [
-          { id: 15, skill_name: "Amazon Web Services (AWS)" }, 
-          { id: 16, skill_name: "Microsoft Azure" }, 
-          { id: 17, skill_name: "Google Cloud Platform (GCP)" }, 
-          { id: 18, skill_name: "Actual Cloud" }
-        ] 
-      },
-      { 
-        id: 5, 
-        sub_category_name: "empty-2", 
-        skills: [
-          { id: 19, skill_name: "RPA" }, 
-          { id: 20, skill_name: "ChatBot" },
-          { id: 21, skill_name: "BI tools / Microsoft Power Automate / Microsoft Power App / Tabular" }
-        ] 
-      },
-      { 
-        id: 6, 
-        sub_category_name: "LowCode", 
-        skills: [
-          { id: 22, skill_name: "Salesforce" }, 
-          { id: 23, skill_name: "Outsystems" }
-        ] 
-      },
-      { 
-        id: 7, 
-        sub_category_name: "Mobile", 
-        skills: [
-          { id: 24, skill_name: "iOS" }, 
-          { id: 25, skill_name: "Android" }, 
-          { id: 26, skill_name: "Other (Windows Phone, Tizen, Xamarin, Qt, Fluter)" }
-        ] 
-      },
-      { 
-        id: 8, 
-        sub_category_name: "cutting edge technology", 
-        skills: [
-          { id: 27, skill_name: "BigData" }, 
-          { id: 28, skill_name: "BlockChain" }, 
-          { id: 29, skill_name: "AI" }
-        ] 
-      }
+      { id: 8, sub_category_name: "Cloud", skills: [{ id: 15, skill_name: "Amazon Web Services (AWS)" }, { id: 16, skill_name: "Microsoft Azure" }, { id: 17, skill_name: "Google Cloud Platform (GCP)" }, { id: 18, skill_name: "Actual Cloud" }] },
+      { id: 9, sub_category_name: "General", skills: [{ id: 19, skill_name: "RPA" }, { id: 20, skill_name: "ChatBot" }, { id: 21, skill_name: "BI tools / Microsoft Power Automate / Microsoft Power App / Tabular" }] },
+      { id: 10, sub_category_name: "LowCode", skills: [{ id: 22, skill_name: "Salesforce" }, { id: 23, skill_name: "Outsystems" }] },
+      { id: 11, sub_category_name: "Mobile", skills: [{ id: 24, skill_name: "iOS" }, { id: 25, skill_name: "Android" }, { id: 26, skill_name: "Other (Windows Phone, Tizen, Xamarin, Qt, Fluter)" }] },
+      { id: 12, sub_category_name: "cutting edge technology", skills: [{ id: 27, skill_name: "BigData" }, { id: 28, skill_name: "BlockChain" }, { id: 29, skill_name: "AI" }] }
     ]
   },
   {
-    id: 4,
-    category_name: "empty-11",
+    id: null,
+    category_name: "Uncategorized",
     skill_sub_categories: [
-      { 
-        id: 9, 
-        sub_category_name: "*DAT only", 
-        skills: [
-          { id: 30, skill_name: "Ruby" }, 
-          { id: 31, skill_name: "NodeJS" }, 
-          { id: 32, skill_name: "Typescript" }, 
-          { id: 33, skill_name: "GO" }, 
-          { id: 34, skill_name: "Solidity" }, 
-          { id: 35, skill_name: "PHP" }, 
-          { id: 36, skill_name: "ReactJS" }, 
-          { id: 37, skill_name: "DataStage (IBM InfoSphere)" }, 
-          { id: 38, skill_name: "Job Network Development" }, 
-          { id: 39, skill_name: "PowerCenter (Informatica)" }, 
-          { id: 40, skill_name: "Window" }, 
-          { id: 41, skill_name: "Linux" }, 
-          { id: 42, skill_name: "Virtualization" }, 
-          { id: 43, skill_name: "HCI" }, 
-          { id: 44, skill_name: "Networking" }, 
-          { id: 45, skill_name: "Security" }, 
-          { id: 46, skill_name: "Automation (RPA and Selenium web driver)" }, 
-          { id: 47, skill_name: "VBA" }, 
-          { id: 48, skill_name: "Angular" }
-        ] 
-      }
-    ]
-  },
-  {
-    id: 5,
-    category_name: "empty-12",
-    skill_sub_categories: [
-      { 
-        id: 10, 
-        sub_category_name: "Framework", 
-        skills: [
-          { id: 49, skill_name: ".Net Framework" }, 
-          { id: 50, skill_name: "Silver Light" }, 
-          { id: 51, skill_name: "Struts" }, 
-          { id: 52, skill_name: "SAP" }, 
-          { id: 53, skill_name: "Spring" }, 
-          { id: 54, skill_name: "Mybatis" }, 
-          { id: 55, skill_name: "Wicket" }, 
-          { id: 56, skill_name: "Ionic" }, 
-          { id: 57, skill_name: "Junit" }
-        ] 
-      }
-    ]
-  },
-  {
-    id: 6,
-    category_name: "empty-13",
-    skill_sub_categories: [
-      { 
-        id: 11, 
-        sub_category_name: "Other Cloud", 
-        skills: [
-          { id: 58, skill_name: "Digital Ocean" }
-        ] 
-      }
-    ]
-  },
-  {
-    id: 7,
-    category_name: "empty-14",
-    skill_sub_categories: [
-      { 
-        id: 12, 
-        sub_category_name: "Others", 
-        skills: [
-          { id: 59, skill_name: "React" }, 
-          { id: 60, skill_name: "JS" }
-        ] 
-      }
+      { id: 3, sub_category_name: "DB", skills: [{ id: 10, skill_name: "Oracle" }, { id: 11, skill_name: "SQL Server" }, { id: 12, skill_name: "MySQL" }, { id: 13, skill_name: "PostgreSQL" }, { id: 14, skill_name: "InMemoryDB" }] },
+      { id: 4, sub_category_name: "DAT only", skills: [{ id: 30, skill_name: "Ruby" }, { id: 31, skill_name: "NodeJS" }, { id: 32, skill_name: "Typescript" }, { id: 33, skill_name: "GO" }, { id: 34, skill_name: "Solidity" }, { id: 35, skill_name: "PHP" }, { id: 36, skill_name: "ReactJS" }, { id: 37, skill_name: "DataStage (IBM InfoSphere)" }, { id: 38, skill_name: "Job Network Development" }, { id: 39, skill_name: "PowerCenter (Informatica)" }, { id: 40, skill_name: "Window" }, { id: 41, skill_name: "Linux" }, { id: 42, skill_name: "Virtualization" }, { id: 43, skill_name: "HCI" }, { id: 44, skill_name: "Networking" }, { id: 45, skill_name: "Security" }, { id: 46, skill_name: "Automation (RPA and Selenium web driver)" }, { id: 47, skill_name: "VBA" }, { id: 48, skill_name: "Angular" }] },
+      { id: 5, sub_category_name: "Framework", skills: [{ id: 49, skill_name: ".Net Framework" }, { id: 50, skill_name: "Silver Light" }, { id: 51, skill_name: "Struts" }, { id: 52, skill_name: "SAP" }, { id: 53, skill_name: "Spring" }, { id: 54, skill_name: "Mybatis" }, { id: 55, skill_name: "Wicket" }, { id: 56, skill_name: "Ionic" }, { id: 57, skill_name: "Junit" }] },
+      { id: 6, sub_category_name: "Other Cloud", skills: [{ id: 58, skill_name: "Digital Ocean" }] },
+      { id: 7, sub_category_name: "Others", skills: [{ id: 59, skill_name: "React" }, { id: 60, skill_name: "JS" }] }
     ]
   }
 ];
@@ -257,7 +113,7 @@ export function parseTechnicalHeader(header: string): {
   
   // If the first part is "technical ability", remove it from category
   if (category === 'technical ability' || category === 'Technical Ability') {
-    category = parts.length > 4 ? parts[parts.length - 5] : '';
+    category = parts.length > 4 ? parts[parts.length - 5] : 'Uncategorized';
   }
   
   return { skill, subcategory, category, attribute };

@@ -15,9 +15,6 @@ public class Division {
     private Integer id;
 
     @Column(nullable = false, unique = true)
-    private String divisionCode;
-
-    @Column(nullable = false, unique = true)
     private String divisionName;
 
     private Boolean isDeleted = false;

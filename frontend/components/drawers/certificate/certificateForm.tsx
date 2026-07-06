@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect, forwardRef } from "react"
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -12,7 +14,11 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload05Icon } from "@hugeicons/core-free-icons"
-import { CERTIFICATE_TYPES, CERTIFICATE_LEVELS, type JapaneseCertificate } from "@/types/certificate"
+import {
+  CERTIFICATE_TYPES,
+  CERTIFICATE_LEVELS,
+  type JapaneseCertificate,
+} from "@/types/certificate"
 import { mainStore } from "@/store/mainStore"
 
 interface CertificateFormData {
@@ -33,6 +39,7 @@ interface CertificateFormProps {
   onCancel: () => void
   isSubmitting?: boolean
   onChanges?: (hasChanges: boolean) => void
+  onDropdownOpenChange?: (isOpen: boolean) => void
 }
 
 export const CertificateForm = forwardRef<
@@ -48,6 +55,7 @@ export const CertificateForm = forwardRef<
       onCancel,
       isSubmitting = false,
       onChanges,
+      onDropdownOpenChange,
     },
     ref
   ) => {
@@ -75,13 +83,13 @@ export const CertificateForm = forwardRef<
     const isLevelDisabled = (level: string): boolean => {
       // If no certificate type is selected, don't disable anything
       if (!formData.certificateType) return false
-      
+
       return existingCertificates.some((cert: JapaneseCertificate) => {
         // Skip checking the current certificate when editing
         if (mode === "edit" && cert.id === currentCertificateId) {
           return false
         }
-        
+
         // Check if same certificate type and level exists
         const certType = cert.certificateType
         const certLevel = cert.japaneseLevel
@@ -92,29 +100,29 @@ export const CertificateForm = forwardRef<
     // Get available levels for the selected certificate type
     const getAvailableLevels = () => {
       if (!formData.certificateType) return CERTIFICATE_LEVELS
-      return CERTIFICATE_LEVELS.filter(level => !isLevelDisabled(level))
+      return CERTIFICATE_LEVELS.filter((level) => !isLevelDisabled(level))
     }
 
     // Check if the current selection is already taken
     const isDuplicateSelection = (): boolean => {
       if (!formData.certificateType || !formData.level) return false
-      
+
       return existingCertificates.some((cert: JapaneseCertificate) => {
         if (mode === "edit" && cert.id === currentCertificateId) {
           return false
         }
-        
+
         const certType = cert.certificateType
         const certLevel = cert.japaneseLevel
-        return certType === formData.certificateType && certLevel === formData.level
+        return (
+          certType === formData.certificateType && certLevel === formData.level
+        )
       })
     }
 
     // Get display label for certificate type
     const getDisplayLabel = (type: string) => {
-      return type === 'NAT_TEST' ? 'NAT-test' : 
-             type === 'TOP_J' ? 'TopJ' : 
-             type
+      return type === "NAT_TEST" ? "NAT-test" : type === "TOP_J" ? "TopJ" : type
     }
 
     // ✅ Check if form is valid and update changes
@@ -123,22 +131,24 @@ export const CertificateForm = forwardRef<
       const hasLevel = !!formData.level
       const hasFile = mode === "add" ? !!selectedFile : true
       const isDuplicate = isDuplicateSelection()
-      
+
       const valid = hasCertificateType && hasLevel && hasFile && !isDuplicate
       setIsFormValid(valid)
-      
+
       // ✅ Check for changes
       if (mode === "edit" && initialFormDataRef.current) {
         const hasFormChanges =
-          formData.certificateType !== initialFormDataRef.current.certificateType ||
+          formData.certificateType !==
+            initialFormDataRef.current.certificateType ||
           formData.level !== initialFormDataRef.current.level ||
           selectedFile !== null
-        
+
         if (onChanges) {
           onChanges(hasFormChanges && !isDuplicate)
         }
       } else if (mode === "add") {
-        const hasChanges = !!formData.certificateType || !!formData.level || !!selectedFile
+        const hasChanges =
+          !!formData.certificateType || !!formData.level || !!selectedFile
         if (onChanges) {
           onChanges(hasChanges && !isDuplicate)
         }
@@ -167,20 +177,20 @@ export const CertificateForm = forwardRef<
     useEffect(() => {
       if (formData.certificateType && formData.level) {
         if (isLevelDisabled(formData.level)) {
-          setFormData(prev => ({ ...prev, level: "" }))
+          setFormData((prev) => ({ ...prev, level: "" }))
         }
       }
     }, [formData.certificateType])
 
     const handleImageChange = (file: File | null) => {
       if (file) {
-        if (!file.type.startsWith('image/')) {
-          alert('Please select an image file')
+        if (!file.type.startsWith("image/")) {
+          alert("Please select an image file")
           return
         }
 
         if (file.size > 10 * 1024 * 1024) {
-          alert('File size must be less than 10MB')
+          alert("File size must be less than 10MB")
           return
         }
 
@@ -218,22 +228,25 @@ export const CertificateForm = forwardRef<
       e.preventDefault()
 
       if (!formData.certificateType || !formData.level) {
-        alert('Please select certificate type and level')
+        alert("Please select certificate type and level")
         return
       }
 
       if (mode === "add" && !selectedFile) {
-        alert('Please select an image file')
+        alert("Please select an image file")
         return
       }
 
       if (isDuplicateSelection()) {
-        alert(`A certificate with type "${getDisplayLabel(formData.certificateType)}" and level "${formData.level}" already exists. Please select a different combination.`)
+        alert(
+          `A certificate with type "${getDisplayLabel(formData.certificateType)}" and level "${formData.level}" already exists. Please select a different combination.`
+        )
         return
       }
 
       onSubmit({
-        certificateType: formData.certificateType as (typeof CERTIFICATE_TYPES)[number],
+        certificateType:
+          formData.certificateType as (typeof CERTIFICATE_TYPES)[number],
         level: formData.level as (typeof CERTIFICATE_LEVELS)[number],
         imageUrl: imagePreview || undefined,
         file: selectedFile || undefined,
@@ -242,10 +255,11 @@ export const CertificateForm = forwardRef<
 
     const ImageUploadArea = () => (
       <div
-        className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${isDragging
+        className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
+          isDragging
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/25"
-          }`}
+        }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -282,8 +296,8 @@ export const CertificateForm = forwardRef<
             </p>
             {selectedFile && (
               <p className="text-xs text-green-600">
-                ✓ Image selected:{" "}
-                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                ✓ Image selected: {(selectedFile.size / 1024 / 1024).toFixed(2)}{" "}
+                MB
               </p>
             )}
           </div>
@@ -327,33 +341,50 @@ export const CertificateForm = forwardRef<
           <h3 className="mb-4 text-lg font-semibold">
             Certificate Information
           </h3>
-          
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="min-w-0 space-y-2">
+            {/* Certificate Type Select - with stopPropagation wrapper like employeeForm */}
+            <div
+              className="min-w-0 space-y-2"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
               <Label htmlFor="certificateType">
                 Certificate Type <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.certificateType}
                 onValueChange={(value: (typeof CERTIFICATE_TYPES)[number]) =>
-                  setFormData({ ...formData, certificateType: value, level: "" })
+                  setFormData({
+                    ...formData,
+                    certificateType: value,
+                    level: "",
+                  })
                 }
+                onOpenChange={onDropdownOpenChange}
               >
                 <SelectTrigger id="certificateType" className="w-full">
                   <SelectValue placeholder="Select certificate type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CERTIFICATE_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {getDisplayLabel(type)}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    <SelectLabel>Certificate Type</SelectLabel>
+                    {CERTIFICATE_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {getDisplayLabel(type)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="min-w-0 space-y-2">
+            {/* Level Select - with stopPropagation wrapper like employeeForm */}
+            <div
+              className="min-w-0 space-y-2"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
               <Label htmlFor="level">
                 Level <span className="text-red-500">*</span>
               </Label>
@@ -363,44 +394,58 @@ export const CertificateForm = forwardRef<
                   setFormData({ ...formData, level: value })
                 }
                 disabled={!hasCertificateType}
+                onOpenChange={onDropdownOpenChange}
               >
                 <SelectTrigger id="level" className="w-full">
-                  <SelectValue placeholder={hasCertificateType ? "Select level" : "Select certificate type first"} />
+                  <SelectValue
+                    placeholder={
+                      hasCertificateType
+                        ? "Select level"
+                        : "Select certificate type first"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {!hasCertificateType ? (
-                    <SelectItem value="" disabled>
-                      Please select a certificate type first
-                    </SelectItem>
-                  ) : availableLevels.length === 0 ? (
-                    <SelectItem value="" disabled>
-                      All levels are already taken
-                    </SelectItem>
-                  ) : (
-                    CERTIFICATE_LEVELS.map((level) => {
-                      const isDisabled = isLevelDisabled(level)
-                      return (
-                        <SelectItem 
-                          key={level} 
-                          value={level}
-                          disabled={isDisabled}
-                          className={isDisabled ? "opacity-50 cursor-not-allowed" : ""}
-                        >
-                          {level}
-                          {isDisabled && " (already exists)"}
-                        </SelectItem>
-                      )
-                    })
-                  )}
+                  <SelectGroup>
+                    <SelectLabel>Certificate Level</SelectLabel>
+                    {!hasCertificateType ? (
+                      <SelectItem value="" disabled>
+                        Please select a certificate type first
+                      </SelectItem>
+                    ) : availableLevels.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        All levels are already taken
+                      </SelectItem>
+                    ) : (
+                      CERTIFICATE_LEVELS.map((level) => {
+                        const isDisabled = isLevelDisabled(level)
+                        return (
+                          <SelectItem
+                            key={level}
+                            value={level}
+                            disabled={isDisabled}
+                            className={
+                              isDisabled ? "cursor-not-allowed opacity-50" : ""
+                            }
+                          >
+                            {level}
+                            {isDisabled && " (already exists)"}
+                          </SelectItem>
+                        )
+                      })
+                    )}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
               {hasCertificateType && availableLevels.length === 0 && (
                 <p className="text-xs text-yellow-600">
-                  All levels for {getDisplayLabel(formData.certificateType)} are already taken.
+                  All levels for {getDisplayLabel(formData.certificateType)} are
+                  already taken.
                 </p>
               )}
             </div>
 
+            {/* Image Upload Area */}
             <div className="min-w-0 space-y-2 sm:col-span-2">
               <Label>
                 Certificate Image{" "}

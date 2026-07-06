@@ -35,7 +35,8 @@ const allTab = {
   id: "all",
   label: "All",
   exportTitle: "Export All Data",
-  exportDescription: "Export all data from the system in your preferred format.",
+  exportDescription:
+    "Export all data from the system in your preferred format.",
   onExport: (format: string) => {
     console.log(`Exporting all data as ${format}`)
     exportTabs.forEach((tab) => {
@@ -53,10 +54,25 @@ interface ExportDialogProps {
   label?: string // Used ONLY for filtering which tabs to show
 }
 
-export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialogProps) {
+export function ExportDialog({
+  open,
+  onOpenChange,
+  label = "all",
+}: ExportDialogProps) {
   const [activeExportTab, setActiveExportTab] = useState("")
   const [isExporting, setIsExporting] = useState(false)
-  const { fetch_EmployeeData, fetch_HolidayData, fetch_SkillHeaders, fetch_devCapHeaders, fetch_SkillData, fetch_devCapData, fetch_TargetDates, fetch_languageSkillData, fetch_managementScoreData, fetch_EmployeeJapaneseLevel } = mainStore();
+  const {
+    fetch_EmployeeData,
+    fetch_HolidayData,
+    fetch_SkillHeaders,
+    fetch_devCapHeaders,
+    fetch_SkillData,
+    fetch_devCapData,
+    fetch_TargetDates,
+    fetch_languageSkillData,
+    fetch_managementScoreData,
+    fetch_EmployeeJapaneseLevel,
+  } = mainStore()
 
   // Get the filtered tabs based on label prop
   const filteredTabs = useMemo(() => {
@@ -71,7 +87,8 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
       if (label === "exams") return tab.id === "exams"
       if (label === "dashboard") return tab.id === "dashboard"
       if (label === "skills") return tab.id === "skills"
-      if (label === "current_target_data") return tab.id === "current_target_data"
+      if (label === "current_target_data")
+        return tab.id === "current_target_data"
       if (label === "holidays") return tab.id === "holidays"
       return tab.id === label
     })
@@ -95,7 +112,7 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
     if (open) {
       if (showTabs && filteredTabs.length > 0) {
         // Try to set Employees as initial tab if it exists
-        const employeeTab = filteredTabs.find(tab => tab.id === "employees")
+        const employeeTab = filteredTabs.find((tab) => tab.id === "employees")
         const initialTab = employeeTab ? employeeTab.id : filteredTabs[0].id
         setActiveExportTab(initialTab)
       }
@@ -105,22 +122,22 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
 
   // Fetch data when tab changes
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
 
     const fetchDataForTab = async () => {
-      const tabId = currentTabData?.id;
+      const tabId = currentTabData?.id
 
       // Skip fetching for "all" tab
-      if (tabId === "all") return;
+      if (tabId === "all") return
 
       try {
         switch (tabId) {
           case "employees":
-            await fetch_EmployeeData();
-            break;
+            await fetch_EmployeeData()
+            break
           case "holidays":
-            await fetch_HolidayData();
-            break;
+            await fetch_HolidayData()
+            break
           case "skills":
             await Promise.all([
               fetch_SkillHeaders(),
@@ -128,82 +145,86 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
               fetch_SkillData(),
               fetch_devCapData(),
               fetch_languageSkillData(),
-              fetch_managementScoreData()
-            ]);
-            break;
+              fetch_managementScoreData(),
+            ])
+            break
           case "current_target_data":
             await Promise.all([
               fetch_EmployeeJapaneseLevel(),
               fetch_TargetDates(),
-            ]);
-            break;
+            ])
+            break
           default:
-            break;
+            break
         }
       } catch (error) {
-        console.error(`❌ Failed to fetch data for tab ${tabId}:`, error);
+        console.error(`❌ Failed to fetch data for tab ${tabId}:`, error)
       }
-    };
+    }
 
-    fetchDataForTab();
-  }, [open, currentTabData?.id]);
+    fetchDataForTab()
+  }, [open, currentTabData?.id])
 
   const handleExportClick = useCallback(
     async (format: string) => {
-      if (!currentTabData) return;
+      if (!currentTabData) return
 
-      setIsExporting(true);
+      setIsExporting(true)
 
       try {
-        const tabId = currentTabData.id;
+        const tabId = currentTabData.id
 
         // Handle based on tab ID
         switch (tabId) {
           case "all":
             // Export all data
-            console.log(`📊 Exporting all data as ${format}`);
+            console.log(`📊 Exporting all data as ${format}`)
             for (const tab of exportTabs) {
-              await tab.onExport(format);
+              await tab.onExport(format)
             }
-            break;
+            break
 
           case "employees":
-            console.log(`👤 Exporting Employees data as ${format}`);
-            await currentTabData.onExport(format);
-            break;
+            console.log(`👤 Exporting Employees data as ${format}`)
+            await currentTabData.onExport(format)
+            break
 
           case "skills":
-            console.log(`💻 Exporting Skills data as ${format}`);
-            await currentTabData.onExport(format);
-            break;
+            console.log(`💻 Exporting Skills data as ${format}`)
+            await currentTabData.onExport(format)
+            break
 
           case "current_target_data":
-            console.log(`🎯 Exporting Current Target data as ${format}`);
-            await currentTabData.onExport(format);
-            break;
+            console.log(`🎯 Exporting Current Target data as ${format}`)
+            await currentTabData.onExport(format)
+            break
 
           case "holidays":
-            console.log(`📅 Exporting Holidays data as ${format}`);
-            await currentTabData.onExport(format);
-            break;
+            console.log(`📅 Exporting Holidays data as ${format}`)
+            await currentTabData.onExport(format)
+            break
 
           case "courses":
-            console.log(`📚 Exporting Courses data as ${format}`);
-            await currentTabData.onExport(format);
-            break;
+            console.log(`📚 Exporting Courses data as ${format}`)
+            await currentTabData.onExport(format)
+            break
 
           default:
             // Default export
-            console.log(`📋 Exporting ${currentTabData.label} data as ${format}`);
-            await currentTabData.onExport(format);
+            console.log(
+              `📋 Exporting ${currentTabData.label} data as ${format}`
+            )
+            await currentTabData.onExport(format)
         }
 
-        onOpenChange(false);
+        onOpenChange(false)
       } catch (error) {
-        console.error('❌ Export failed:', error);
-        alert(`Failed to export: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("❌ Export failed:", error)
+        alert(
+          `Failed to export: ${error instanceof Error ? error.message : "Unknown error"}`
+        )
       } finally {
-        setIsExporting(false);
+        setIsExporting(false)
       }
     },
     [currentTabData, onOpenChange]
@@ -215,9 +236,9 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
 
   // Check if PDF should be hidden for certain tabs
   const shouldHidePDF = useMemo(() => {
-    const tabId = currentTabData?.id;
-    return tabId === "current_target_data" || tabId === "skills";
-  }, [currentTabData]);
+    const tabId = currentTabData?.id
+    return tabId === "current_target_data" || tabId === "skills"
+  }, [currentTabData])
 
   // Export buttons component
   const ExportButtons = () => (
@@ -228,8 +249,12 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
         onClick={() => handleExportClick("excel")}
         disabled={isExporting}
       >
-        <HugeiconsIcon icon={Xls01Icon} strokeWidth={2} className="size-5 text-green-600" />
-        <span>{isExporting ? 'Exporting...' : 'Export to Excel'}</span>
+        <HugeiconsIcon
+          icon={Xls01Icon}
+          strokeWidth={2}
+          className="size-5 text-green-600"
+        />
+        <span>{isExporting ? "Exporting..." : "Export to Excel"}</span>
       </Button>
 
       <Button
@@ -238,8 +263,12 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
         onClick={() => handleExportClick("csv")}
         disabled={isExporting}
       >
-        <HugeiconsIcon icon={Csv01Icon} strokeWidth={2} className="size-5 text-blue-600" />
-        <span>{isExporting ? 'Exporting...' : 'Export to CSV'}</span>
+        <HugeiconsIcon
+          icon={Csv01Icon}
+          strokeWidth={2}
+          className="size-5 text-blue-600"
+        />
+        <span>{isExporting ? "Exporting..." : "Export to CSV"}</span>
       </Button>
 
       {!shouldHidePDF && (
@@ -249,8 +278,12 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
           onClick={() => handleExportClick("pdf")}
           disabled={isExporting}
         >
-          <HugeiconsIcon icon={Pdf01Icon} strokeWidth={2} className="size-5 text-red-600" />
-          <span>{isExporting ? 'Exporting...' : 'Export to PDF'}</span>
+          <HugeiconsIcon
+            icon={Pdf01Icon}
+            strokeWidth={2}
+            className="size-5 text-red-600"
+          />
+          <span>{isExporting ? "Exporting..." : "Export to PDF"}</span>
         </Button>
       )}
     </div>
@@ -260,9 +293,24 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
   if (!showTabs) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent
+          className="sm:max-w-[500px]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={(e) => {
+            // Prevent dialog from closing when clicking inside dropdown
+            const target = e.target as HTMLElement
+            if (
+              target.closest('[role="menu"]') ||
+              target.closest('[role="listbox"]')
+            ) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>{currentTabData?.exportTitle || "Export Data"}</DialogTitle>
+            <DialogTitle>
+              {currentTabData?.exportTitle || "Export Data"}
+            </DialogTitle>
             <DialogDescription>
               {currentTabData?.exportDescription ||
                 "Export data from the system in your preferred format."}
@@ -274,7 +322,11 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancel} disabled={isExporting}>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isExporting}
+            >
               Cancel
             </Button>
           </DialogFooter>
@@ -289,16 +341,35 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent
+        className="sm:max-w-[500px]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          // Prevent dialog from closing when clicking inside dropdown
+          const target = e.target as HTMLElement
+          if (
+            target.closest('[role="menu"]') ||
+            target.closest('[role="listbox"]')
+          ) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DialogHeader>
-          <DialogTitle>{currentTabData?.exportTitle || "Export Data"}</DialogTitle>
+          <DialogTitle>
+            {currentTabData?.exportTitle || "Export Data"}
+          </DialogTitle>
           <DialogDescription>
             {currentTabData?.exportDescription ||
               "Export data from the system in your preferred format."}
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeExportTab} onValueChange={setActiveExportTab} className="w-full">
+        <Tabs
+          value={activeExportTab}
+          onValueChange={setActiveExportTab}
+          className="w-full"
+        >
           <div className="flex items-center gap-2">
             <TabsList className="h-auto w-full">
               <div
@@ -323,11 +394,19 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
             </TabsList>
 
             {dropdownExportTabs.length > 0 && (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="shrink-0 whitespace-nowrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 whitespace-nowrap"
+                  >
                     More ({dropdownExportTabs.length})
-                    <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="ml-1 size-3" />
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      strokeWidth={2}
+                      className="ml-1 size-3"
+                    />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
@@ -360,7 +439,11 @@ export function ExportDialog({ open, onOpenChange, label = "all" }: ExportDialog
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isExporting}>
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isExporting}
+          >
             Cancel
           </Button>
         </DialogFooter>
