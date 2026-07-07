@@ -2,19 +2,14 @@ package com.dat_management.backend.service;
 
 import com.dat_management.backend.dto.SelfStudySessionProgressRequest;
 import com.dat_management.backend.dto.SelfStudySessionProgressResponse;
-import com.dat_management.backend.dto.EnrollmentSessionWithCarryOverDto;
 import com.dat_management.backend.entity.*;
 import com.dat_management.backend.repository.*;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,154 +18,6 @@ public class SelfStudySessionProgressService {
     private final SelfStudySessionProgressRepository progressRepository;
     private final CourseEnrollmentRepository enrollmentRepository;
     private final SelfStudySessionRepository selfStudySessionRepository;
-
-    public List<EnrollmentSessionWithCarryOverDto> getEnrollmentSessionsWithLeftover(Integer enrollmentId) {
-        // Get the enrollment
-        CourseEnrollment enrollment = enrollmentRepository.findById(enrollmentId)
-                .orElseThrow(() -> new RuntimeException("Enrollment not found"));
-        
-        // Get the course
-        Integer courseId = enrollment.getCourse().getId();
-        
-        // Get all sessions for this course ordered by session number
-        List<SelfStudySession> sessions = selfStudySessionRepository
-                .findByCourseIdOrderBySessionNoAsc(courseId);
-        
-        // Get existing progress for this enrollment
-        List<SelfStudySessionProgress> existingProgress = progressRepository
-                .findByEnrollmentId(enrollmentId);
-        
-        Map<Integer, SelfStudySessionProgress> progressMap = existingProgress.stream()
-                .collect(Collectors.toMap(
-                        p -> p.getSelfStudySession().getId(),
-                        p -> p
-                ));
-        
-        List<EnrollmentSessionWithCarryOverDto> result = new ArrayList<>();
-        
-        // Track leftovers from previous sessions
-        Integer leftoverKanji = 0;
-        Integer leftoverVocab = 0;
-        Integer leftoverGrammar = 0;
-        Integer leftoverReading = 0;
-        Integer leftoverListening = 0;
-        
-        for (SelfStudySession session : sessions) {
-            SelfStudySessionProgress progress = progressMap.get(session.getId());
-            
-            // Get current progress values
-            Integer currentKanji = progress != null && progress.getKanjiCount() != null ? progress.getKanjiCount() : 0;
-            Integer currentVocab = progress != null && progress.getVocabularyCount() != null ? progress.getVocabularyCount() : 0;
-            Integer currentGrammar = progress != null && progress.getGrammarCount() != null ? progress.getGrammarCount() : 0;
-            Integer currentReading = progress != null && progress.getReadingMinutes() != null ? progress.getReadingMinutes() : 0;
-            Integer currentListening = progress != null && progress.getListeningMinutes() != null ? progress.getListeningMinutes() : 0;
-            
-            String completionStatus = progress != null && progress.getCompletionStatus() != null 
-                    ? progress.getCompletionStatus() : "NOT_STARTED";
-            
-            // Check if deadline passed - convert LocalDateTime to LocalDate for comparison
-            boolean isDeadlinePassed = true;
-            if (session.getSessionDeadline() != null) {
-                LocalDate deadlineDate = session.getSessionDeadline().toLocalDate();
-                isDeadlinePassed = deadlineDate.isBefore(LocalDate.of(2026, 7, 10));
-            }
-            
-            // Original targets
-            Integer originalKanjiTarget = session.getKanjiTarget() != null ? session.getKanjiTarget() : 0;
-            Integer originalVocabTarget = session.getVocabularyTarget() != null ? session.getVocabularyTarget() : 0;
-            Integer originalGrammarTarget = session.getGrammarTarget() != null ? session.getGrammarTarget() : 0;
-            Integer originalReadingTarget = session.getReadingTargetMinutes() != null ? session.getReadingTargetMinutes() : 0;
-            Integer originalListeningTarget = session.getListeningTargetMinutes() != null ? session.getListeningTargetMinutes() : 0;
-            
-            // Targets (original + leftover from previous sessions)
-            Integer kanjiTarget = originalKanjiTarget + leftoverKanji;
-            Integer vocabTarget = originalVocabTarget + leftoverVocab;
-            Integer grammarTarget = originalGrammarTarget + leftoverGrammar;
-            Integer readingTarget = originalReadingTarget + leftoverReading;
-            Integer listeningTarget = originalListeningTarget + leftoverListening;
-            
-            // Calculate total completed
-            Integer totalKanjiCompleted = currentKanji;
-            Integer totalVocabCompleted = currentVocab;
-            Integer totalGrammarCompleted = currentGrammar;
-            Integer totalReadingCompleted = currentReading;
-            Integer totalListeningCompleted = currentListening;
-            
-            // Calculate percentages based on effective targets
-            Double kanjiPercent = calc(totalKanjiCompleted, kanjiTarget);
-            Double vocabPercent = calc(totalVocabCompleted, vocabTarget);
-            Double grammarPercent = calc(totalGrammarCompleted, grammarTarget);
-            Double readingPercent = calc(totalReadingCompleted, readingTarget);
-            Double listeningPercent = calc(totalListeningCompleted, listeningTarget);
-            
-            // Convert LocalDateTime to LocalDate for sessionDeadline
-            LocalDate sessionDeadlineDate = session.getSessionDeadline() != null 
-                    ? session.getSessionDeadline().toLocalDate() 
-                    : null;
-            
-            // Build DTO
-            EnrollmentSessionWithCarryOverDto dto = EnrollmentSessionWithCarryOverDto.builder()
-                    .enrollmentId(enrollment.getId())
-                    .employeeId(enrollment.getEmployee().getId())
-                    .employeeName(enrollment.getEmployee().getName())
-                    .sessionId(session.getId())
-                    .sessionNo(session.getSessionNo())
-                    .sessionDeadline(sessionDeadlineDate)
-                    .sessionStatus(session.getSessionStatus())
-                    .originalKanjiTarget(originalKanjiTarget)
-                    .originalVocabularyTarget(originalVocabTarget)
-                    .originalGrammarTarget(originalGrammarTarget)
-                    .originalReadingTargetMinutes(originalReadingTarget)
-                    .originalListeningTargetMinutes(originalListeningTarget)
-                    .leftoverKanji(leftoverKanji)
-                    .leftoverVocabulary(leftoverVocab)
-                    .leftoverGrammar(leftoverGrammar)
-                    .leftoverReadingMinutes(leftoverReading)
-                    .leftoverListeningMinutes(leftoverListening)
-                    .KanjiTarget(kanjiTarget)
-                    .VocabularyTarget(vocabTarget)
-                    .GrammarTarget(grammarTarget)
-                    .ReadingTargetMinutes(readingTarget)
-                    .ListeningTargetMinutes(listeningTarget)
-                    .kanjiCount(currentKanji)
-                    .vocabularyCount(currentVocab)
-                    .grammarCount(currentGrammar)
-                    .readingMinutes(currentReading)
-                    .listeningMinutes(currentListening)
-                    .kanjiProgressPercent(kanjiPercent)
-                    .vocabularyProgressPercent(vocabPercent)
-                    .grammarProgressPercent(grammarPercent)
-                    .readingProgressPercent(readingPercent)
-                    .listeningProgressPercent(listeningPercent)
-                    .completionStatus(completionStatus)
-                    .isDeadlinePassed(isDeadlinePassed)
-                    .filePath(session.getFilepath())
-                    .createdAt(session.getCreatedAt())
-                    .updatedAt(session.getUpdatedAt())
-                    .build();
-            
-            result.add(dto);
-            
-            // Calculate leftovers for next session ONLY if deadline passed
-            if (isDeadlinePassed) {
-                // Calculate what's left to complete
-                leftoverKanji = Math.max(0, kanjiTarget - totalKanjiCompleted);
-                leftoverVocab = Math.max(0, vocabTarget - totalVocabCompleted);
-                leftoverGrammar = Math.max(0, grammarTarget - totalGrammarCompleted);
-                leftoverReading = Math.max(0, readingTarget - totalReadingCompleted);
-                leftoverListening = Math.max(0, listeningTarget - totalListeningCompleted);
-            } else {
-                // If deadline not passed, no leftovers carry forward
-                leftoverKanji = 0;
-                leftoverVocab = 0;
-                leftoverGrammar = 0;
-                leftoverReading = 0;
-                leftoverListening = 0;
-            }
-        }
-        
-        return result;
-    }
 
     // =========================
     // FETCH PROGRESS
@@ -306,6 +153,22 @@ public class SelfStudySessionProgressService {
                 .progress(mapToProgressItem(saved))
                 .build();
     }
+     
+    public SelfStudySessionProgressResponse getProgressByEnrollmentId(Integer enrollmentId) {
+    // Verify enrollment exists
+    enrollmentRepository.findById(enrollmentId)
+            .orElseThrow(() -> new RuntimeException("Enrollment not found"));
+
+    List<SelfStudySessionProgressResponse> progressList =
+            progressRepository.findByEnrollment_Id(enrollmentId)
+                    .stream()
+                    .map(this::mapToProgressItem)
+                    .toList();
+
+    return SelfStudySessionProgressResponse.builder()
+            .progress(progressList)
+            .build();
+}
 
     // =========================
     // MAPPING WITH PERCENTAGE
@@ -327,7 +190,7 @@ public class SelfStudySessionProgressService {
                 .employeeName(progress.getEnrollment().getEmployee().getName())
                 .selfStudySessionId(session.getId())
                 .sessionNo(session.getSessionNo())
-                .sessionDeadline(session.getSessionDeadline())
+                .sessionDeadline(progress.getSessionDeadline())
 
                 .kanjiCount(progress.getKanjiCount())
                 .vocabularyCount(progress.getVocabularyCount())

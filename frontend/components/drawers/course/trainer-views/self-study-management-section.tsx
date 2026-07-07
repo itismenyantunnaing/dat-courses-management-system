@@ -513,7 +513,7 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
                     key={session.id}
                     className="space-y-1 rounded-lg border bg-muted/5 p-2"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-medium">
                         Session #{globalIndex + 1}
                       </span>
@@ -530,18 +530,6 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
                           className="h-3 w-3"
                         />
                       </Button>
-                    </div>
-
-                    {/* Show date as display only (no picker) */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        Date:
-                      </span>
-                      <span className="text-xs font-medium">
-                        {session.date
-                          ? format(session.date, "MMM d, yyyy (EEE)")
-                          : "Not set"}
-                      </span>
                     </div>
 
                     {/* JLPT Self-Study - Show metrics fields */}

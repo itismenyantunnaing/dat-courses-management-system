@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -21,6 +22,8 @@ public class CourseEnrollmentService {
         private final EmployeeRepository employeeRepository;
         private final CourseRepository courseRepository;
         private final CourseGroupRepository courseGroupRepository;
+        private final SelfStudySessionRepository selfStudySessionRepository;
+        private final SelfStudySessionProgressRepository progressRepository;
 
         public List<EnrollmentResponseDTO> getEnrollments(Integer courseId) {
 
@@ -58,8 +61,41 @@ public class CourseEnrollmentService {
                 enrollment.setCourseGroup(group);
                 enrollment.setEnrollmentStatus("APPROVED");
 
-                return toDTO(
-                                enrollmentRepository.save(enrollment));
+                enrollment = enrollmentRepository.save(enrollment);
+
+                // Auto-create progress records for self-study courses
+                if (course.getCourseCategory() != null
+                        && course.getCourseCategory().getCourseType()
+                                == com.dat_management.backend.entity.CourseCategory.CourseType.SELF_STUDY) {
+
+                        List<com.dat_management.backend.entity.SelfStudySession> sessions =
+                                selfStudySessionRepository.findByCourseIdOrderBySessionNoAsc(course.getId());
+
+                        Integer perDays = course.getSessionPerDays() != null ? course.getSessionPerDays() : 0;
+                        LocalDateTime enrollDate = enrollment.getEnrolledAt();
+
+                        for (com.dat_management.backend.entity.SelfStudySession session : sessions) {
+                                int sessionIndex = session.getSessionNo() - 1; // 0-based
+                                LocalDateTime deadline = enrollDate.plusDays((long) sessionIndex * perDays);
+
+                                com.dat_management.backend.entity.SelfStudySessionProgress progress =
+                                        new com.dat_management.backend.entity.SelfStudySessionProgress();
+                                progress.setEnrollment(enrollment);
+                                progress.setSelfStudySession(session);
+                                progress.setSessionDeadline(deadline);
+                                progress.setCompletionStatus("NOT_STARTED");
+                                progress.setKanjiCount(0);
+                                progress.setVocabularyCount(0);
+                                progress.setGrammarCount(0);
+                                progress.setReadingMinutes(0);
+                                progress.setListeningMinutes(0);
+                                progress.setUpdatedAt(LocalDateTime.now());
+
+                                progressRepository.save(progress);
+                        }
+                }
+
+                return toDTO(enrollment);
         }
 
         public EnrollmentResponseDTO updateEnrollment(

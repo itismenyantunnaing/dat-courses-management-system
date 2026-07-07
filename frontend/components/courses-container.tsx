@@ -76,7 +76,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
     fetch_courseCategories()
   }, [fetchAll_CourseData, fetch_courseCategories])
 
-  const userRole = "admin" // getUserRole()
+  const userRole = "learner" // getUserRole()
 
   const canEditTrainerCourses = userRole === "admin" || userRole === "approver"
   const isLearner = userRole === "learner"
@@ -218,9 +218,6 @@ const handleSubmit = async (data: CourseCategory) => {
                     // Include session ID if editing
                     ...(editingCourse && existingSession?.id && { id: parseInt(existingSession.id) }),
                     session_no: index + 1,
-                    session_deadline: session.date instanceof Date 
-                        ? session.date.toISOString().split('T')[0] 
-                        : session.date,
                     file_path: isJLPT ? null : (session.link || null),
                     filepath: isJLPT ? null : (session.link || null),
                     kanji_target: isJLPT ? (session.kanjiCount || 0) : 0,
@@ -243,6 +240,7 @@ const handleSubmit = async (data: CourseCategory) => {
             total_sessions: data.courseType === 'trainer'
                 ? data.groups?.reduce((total: number, g: any) => total + (g.sessions?.length || 0), 0)
                 : data.sessions?.length || 0,
+            session_per_days: data.courseType === 'self-study' ? data.daysPerSession : null,
             start_date: null,
             end_date: null,
             registration_deadline: data.registrationDeadline instanceof Date
@@ -256,43 +254,19 @@ const handleSubmit = async (data: CourseCategory) => {
             const existingGroup = editingCourse?.groups?.[0]
             const existingSessions = editingCourse?.self_study_sessions || []
             
-            // Get first and last session dates
-            const sessionDates = data.sessions.map((s: any) => s.date).filter((d: any) => d) || []
-            const firstSessionDate = sessionDates.length > 0 ? sessionDates[0] : new Date()
-            const lastSessionDate = sessionDates.length > 0 ? sessionDates[sessionDates.length - 1] : new Date()
-
-            // Set course start and end dates from sessions
-            courseData.start_date = firstSessionDate instanceof Date
-                ? firstSessionDate.toISOString().split('T')[0]
-                : firstSessionDate
-            courseData.end_date = lastSessionDate instanceof Date
-                ? lastSessionDate.toISOString().split('T')[0]
-                : lastSessionDate
+            // For self-study, start and end dates are dynamic per learner
+            courseData.start_date = null
+            courseData.end_date = null
 
             courseData.groups = [{
                 ...(editingCourse && existingGroup?.id && { id: parseInt(existingGroup.id) }),
                 group_name: 'Group 1',
                 capacity: null,
-                start_date: firstSessionDate instanceof Date
-                    ? firstSessionDate.toISOString().split('T')[0]
-                    : firstSessionDate,
-                end_date: lastSessionDate instanceof Date
-                    ? lastSessionDate.toISOString().split('T')[0]
-                    : lastSessionDate,
+                start_date: null,
+                end_date: null,
                 sessions_per_week: [],
                 group_status: 'OPEN',
-                sessions: data.sessions.map((session: any, index: number) => ({
-                    ...(editingCourse && existingSessions[index]?.id && {
-                        id: parseInt(existingSessions[index].id)
-                    }),
-                    session_no: index + 1,
-                    session_date: session.date instanceof Date
-                        ? session.date.toISOString().split('T')[0]
-                        : session.date,
-                    start_time: null,
-                    end_time: null,
-                    session_status: session.status || 'PLANNED'
-                }))
+                sessions: [] // Self-study courses do not need trainer sessions in the dummy group
             }]
         }
 

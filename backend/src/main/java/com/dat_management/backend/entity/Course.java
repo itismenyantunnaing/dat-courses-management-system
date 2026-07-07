@@ -46,10 +46,11 @@ public class Course {
 
     private String selfStudyType; //JLPT,Other
     
-
     private String targetLevel;
 
     private Short totalSessions;
+
+    private Integer sessionPerDays;
 
     private LocalDate startDate;
 

@@ -31,6 +31,9 @@ public class CourseRequestDto {
     @JsonProperty("total_sessions")
     private Short totalSessions;
 
+    @JsonProperty("session_per_days")
+    private Integer sessionPerDays;
+
     @JsonProperty("start_date")
     private LocalDate startDate;
 

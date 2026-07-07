@@ -113,7 +113,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     const sessions: CourseSession[] = (course.self_study_sessions || []).map((s: BackendSelfStudySessionDto) => ({
       id: s.id?.toString() || '',
       sessionNo: s.session_no,
-      date: new Date(s.session_deadline),
+      date: undefined as any, // Date is calculated dynamically based on enrollment
       kanjiCount: s.kanji_target || 0,
       vocabularyCount: s.vocabulary_target || 0,
       grammarCount: s.grammar_target || 0,
@@ -124,13 +124,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     }))
 
     // Calculate daysPerSession from sessions if possible
-    let calculatedDaysPerSession: number | undefined = undefined
-    if (sessions.length >= 2) {
-      const date1 = sessions[0].date.getTime()
-      const date2 = sessions[1].date.getTime()
-      const diffTime = Math.abs(date2 - date1)
-      calculatedDaysPerSession = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    }
+    let calculatedDaysPerSession: number | undefined = course.session_per_days;
 
     // Get the category value for the frontend
     const categoryName = course.category?.course_category_name || ''

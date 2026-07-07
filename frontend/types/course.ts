@@ -49,7 +49,6 @@ export interface BackendSessionDto {
 export interface BackendSelfStudySessionDto {
   id: number
   session_no: number
-  session_deadline: string
   file_path?: string
   filepath?: string
   kanji_target: number
@@ -80,6 +79,7 @@ export interface BackendCourseDto {
   course_category_id: number
   target_level?: string
   total_sessions?: number
+  session_per_days?: number
   start_date?: string
   end_date?: string
   registration_deadline?: string

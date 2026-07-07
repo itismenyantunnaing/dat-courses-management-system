@@ -40,8 +40,6 @@ public class SelfStudySession {
     @Column(nullable = false)
     private Short sessionNo;
 
-    private LocalDateTime sessionDeadline;
-
     private String filepath;
     private Integer kanjiTarget;
     private Integer vocabularyTarget;

@@ -64,26 +64,12 @@ export function CourseCard({ course, onView }: CourseCardProps) {
       if (dates.length === 0) return null
       return new Date(Math.min(...dates.map((d) => d.getTime())))
     }
-    // Self-study - use sessions date or null
-    const sessions = course.self_study_sessions?.length > 0 ? course.self_study_sessions : course.sessions
-    if (sessions?.length > 0) {
-      const dates = sessions.map((s) => s.date).filter((d) => d)
-      if (dates.length === 0) return null
-      return new Date(Math.min(...dates.map((d) => d.getTime())))
-    }
     return null
   }
 
   const getEndDate = () => {
     if (course.courseType === "trainer" && course.groups?.length > 0) {
       const dates = course.groups.map((g) => g.endDate).filter((d) => d)
-      if (dates.length === 0) return null
-      return new Date(Math.max(...dates.map((d) => d.getTime())))
-    }
-    // Self-study - use sessions date or null
-    const sessions = course.self_study_sessions?.length > 0 ? course.self_study_sessions : course.sessions
-    if (sessions?.length > 0) {
-      const dates = sessions.map((s) => s.date).filter((d) => d)
       if (dates.length === 0) return null
       return new Date(Math.max(...dates.map((d) => d.getTime())))
     }
@@ -208,7 +194,7 @@ export function CourseCard({ course, onView }: CourseCardProps) {
             className="h-4 w-4 shrink-0"
           />
           <span>
-            {startDate ? format(startDate, "MMM d, yyyy") : "TBD"}
+            {startDate ? format(startDate, "MMM d, yyyy") : (course.courseType === "self-study" ? "Dynamic Schedule" : "TBD")}
             {endDate && ` - ${format(endDate, "MMM d, yyyy")}`}
           </span>
         </div>

@@ -154,10 +154,10 @@ export function CategoryDrawer({
         // Check if name already contains "jlpt" (case insensitive)
         if (!lowerName.includes('jlpt')) {
           // No JLPT found, add suffix
-          newName = newName ? `${newName}-JLPT` : 'JLPT'
+          newName = newName ? `JLPT-${newName}` : 'JLPT'
         }
       } else {
-        // If Other is selected, remove -JLPT suffix if present (case insensitive)
+        // If Other is selected, remove JLPT suffix if present (case insensitive)
         const nameWithoutSuffix = newName.replace(/\s*-?\s*jlpt\s*$/i, '').trim()
         newName = nameWithoutSuffix || newName
       }
@@ -249,7 +249,7 @@ export function CategoryDrawer({
     if (formData.selfStudyType === "jlpt" && categoryName) {
       const lowerName = categoryName.toLowerCase()
       if (!lowerName.includes('jlpt')) {
-        categoryName = `${categoryName}-JLPT`
+        categoryName = `JLPT-${categoryName}`
       }
     }
 
@@ -455,7 +455,7 @@ export function CategoryDrawer({
                     />
                     {formData.selfStudyType === "jlpt" && (
                       <p className="text-xs text-muted-foreground">
-                        ℹ️ &quot;-JLPT&quot; will be automatically added if not already present in the name
+                        ℹ️ &quot;JLPT-&quot; will be automatically added if not already present in the name
                       </p>
                     )}
                   </div>

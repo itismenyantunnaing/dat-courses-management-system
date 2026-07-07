@@ -2,7 +2,6 @@ package com.dat_management.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data 
@@ -15,9 +14,6 @@ public class SelfStudySessionDto {
 
     @JsonProperty("session_no")
     private Short sessionNo;
-
-    @JsonProperty("session_deadline")
-    private LocalDate sessionDeadline;
 
     @JsonProperty("file_path")
     private String filePath;

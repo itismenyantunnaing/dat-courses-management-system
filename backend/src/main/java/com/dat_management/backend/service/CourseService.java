@@ -63,6 +63,7 @@ public class CourseService {
         course.setSelfStudyType(req.getSelfStudyType());
         course.setTargetLevel(req.getTargetLevel());
         course.setTotalSessions(req.getTotalSessions());
+        course.setSessionPerDays(req.getSessionPerDays());
         course.setStartDate(req.getStartDate());
         course.setEndDate(req.getEndDate());
         course.setRegistrationDeadline(req.getRegistrationDeadline());
@@ -111,6 +112,7 @@ public class CourseService {
         if (req.getSelfStudyType() != null) course.setSelfStudyType(req.getSelfStudyType());
         if (req.getTargetLevel() != null) course.setTargetLevel(req.getTargetLevel());
         if (req.getTotalSessions() != null) course.setTotalSessions(req.getTotalSessions());
+        if (req.getSessionPerDays() != null) course.setSessionPerDays(req.getSessionPerDays());
         if (req.getStartDate() != null) course.setStartDate(req.getStartDate());
         if (req.getEndDate() != null) course.setEndDate(req.getEndDate());
         if (req.getRegistrationDeadline() != null) course.setRegistrationDeadline(req.getRegistrationDeadline());
@@ -538,8 +540,6 @@ public class CourseService {
                 .stream().map(s -> SelfStudySessionDto.builder()
                         .id(s.getId())
                         .sessionNo(s.getSessionNo())
-                        .sessionDeadline(s.getSessionDeadline() != null
-                                ? s.getSessionDeadline().toLocalDate() : null)
                         .filePath(s.getFilepath())
                         .kanjiTarget(s.getKanjiTarget())
                         .vocabularyTarget(s.getVocabularyTarget())
@@ -560,6 +560,7 @@ public class CourseService {
                 .courseCategoryId(c.getCourseCategory() != null ? c.getCourseCategory().getId() : null)
                 .targetLevel(c.getTargetLevel())
                 .totalSessions(c.getTotalSessions())
+                .sessionPerDays(c.getSessionPerDays())
                 .startDate(c.getStartDate())
                 .endDate(c.getEndDate())
                 .registrationDeadline(c.getRegistrationDeadline())
@@ -629,8 +630,6 @@ public class CourseService {
             SelfStudySession ss = new SelfStudySession();
             ss.setCourse(course);
             ss.setSessionNo(s.getSessionNo());
-            ss.setSessionDeadline(s.getSessionDeadline() != null
-                    ? s.getSessionDeadline().atStartOfDay() : null);
             ss.setFilepath(s.getFilePath());
             ss.setKanjiTarget(s.getKanjiTarget());
             ss.setVocabularyTarget(s.getVocabularyTarget());
