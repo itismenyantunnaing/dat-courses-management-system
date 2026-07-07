@@ -28,7 +28,7 @@ public class EmployeeService {
     private final DivisionRepository      divisionRepository;
     private final RoleRepository          roleRepository;
     private final PasswordEncoder         passwordEncoder;
-    private final SkillSetService         skillSetService;  // Add this
+    private final SkillSetService         skillSetService;
 
     // ── Mapping ──────────────────────────────────────────────────────────────
 
@@ -217,6 +217,23 @@ public class EmployeeService {
         return toDTO(employeeRepository.save(e));
     }
 
+    // ── Role Resolution ──────────────────────────────────────────────────────
+
+    private Role resolveOrCreateRole(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            return null;
+        }
+
+        return roleRepository.findByRoleName(roleName)
+                .orElseGet(() -> {
+                    Role newRole = new Role();
+                    newRole.setRoleName(roleName);
+                    // You might want to set additional fields like description
+                    // newRole.setDescription("Auto-created role: " + roleName);
+                    return roleRepository.saveAndFlush(newRole);
+                });
+    }
+
     // ── Apply DTO fields to entity ───────────────────────────────────────────
 
     private void applyDTO(Employee e, EmployeeRequestDTO dto) {
@@ -232,6 +249,7 @@ public class EmployeeService {
         e.setDob(dto.getDob());
         e.setProfilePhotoPath(dto.getProfilePhotoPath());
 
+        // Team resolution: prefer name-based cascade, fallback to raw team_id
         if (dto.getTeamName() != null && !dto.getTeamName().isBlank()) {
             Team resolvedTeam = resolveOrCreateTeamChain(
                     dto.getDivisionName(),
@@ -241,9 +259,14 @@ public class EmployeeService {
             if (resolvedTeam != null) {
                 e.setTeam(resolvedTeam);
             }
-        } 
-        if (dto.getName() != null) {
-            roleRepository.findByRoleName(dto.getName()).ifPresent(e::setRole);
+        }
+
+        // Role resolution using name (with auto-creation)
+        if (dto.getRoleName() != null && !dto.getRoleName().isBlank()) {
+            Role resolvedRole = resolveOrCreateRole(dto.getRoleName());
+            if (resolvedRole != null) {
+                e.setRole(resolvedRole);
+            }
         }
     }
 

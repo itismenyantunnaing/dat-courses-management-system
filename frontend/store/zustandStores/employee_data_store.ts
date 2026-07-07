@@ -10,28 +10,11 @@ type StoreGet = () => Employee_StoreType
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// Helper functions to extract unique values
-export const getUniqueDivisions = (employees: Employee[]) => {
-  const divisions = employees.map((emp) => emp.div_name).filter(Boolean)
-  return [...new Set(divisions)].map((div) => ({ value: div, label: div }))
-}
-
-export const getUniqueDepartments = (employees: Employee[]) => {
-  const departments = employees.map((emp) => emp.dept_dat).filter(Boolean)
-  return [...new Set(departments)].map((dept) => ({ value: dept, label: dept }))
-}
-
-export const getUniqueTeams = (employees: Employee[]) => {
-  const teams = employees.map((emp) => emp.team).filter(Boolean)
-  return [...new Set(teams)].map((team) => ({ value: team, label: team }))
-}
-
-export const getUniqueRoles = (employees: Employee[]) => {
-  const roles = employees.map((emp) => emp.role).filter(Boolean)
-  return [...new Set(roles)].map((role) => ({ value: role, label: role }))
-}
-
 export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
+  roles: [],
+  divisions: [],
+  dat_departments: [],
+  teams: [],
   employee_data: [],
   isCreating: false,
   isDeleting: false,
@@ -42,6 +25,375 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   department_options: [],
   team_options: [],
   role_options: [],
+
+  fetch_roles: async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/roles`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      set(() => ({ roles: data }))
+    } catch (error) {
+      console.error('Error fetching roles data:', error);
+      set(() => ({ roles: [] }))
+    }
+  },
+
+  fetch_divisions: async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/divisions`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      set(() => ({ divisions: data }))
+    } catch (error) {
+      console.error('Error fetching division data:', error);
+      set(() => ({ divisions: [] }));
+    }
+  },
+
+  fetch_dat_departments: async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/departments-dat`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      set(() => ({ dat_departments: data }))
+    } catch (error) {
+      console.error('Error fetching division data:', error);
+      set(() => ({ dat_departments: [] }));
+    }
+  },
+
+
+  fetch_teams: async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/teams`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      set(() => ({ teams: data }))
+    } catch (error) {
+      console.error('Error fetching division data:', error);
+      set(() => ({ teams: [] }));
+    }
+  },
+
+
+  add_division: async (divisionName: string) => {
+
+    try {
+      const response = await fetch(`${apiUrl}/api/divisions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ divisionName: divisionName.trim() }),
+      });
+
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+      }
+
+      // Parse response if it's JSON
+      const data = responseText ? JSON.parse(responseText) : null;
+
+      // Refresh divisions list
+      await get().fetch_divisions();
+      return {
+        success: true,
+        data: data,
+      };
+
+    } catch (error) {
+      console.error('❌ Error creating division:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create division'
+      };
+    }
+  },
+
+
+  add_dat_department: async (divisionId: number, deptName: string) => {
+    console.log('📝 add_dat_department called with:', { divisionId, deptName });
+
+    // Validate input
+    if (!divisionId) {
+      console.error('❌ Division ID is required');
+      return {
+        success: false,
+        error: 'Division ID is required'
+      };
+    }
+
+    if (!deptName || deptName.trim() === '') {
+      console.error('❌ Department name is required');
+      return {
+        success: false,
+        error: 'Department name is required'
+      };
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/departments-dat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          divisionId: divisionId,
+          deptName: deptName.trim()
+        }),
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+      }
+
+      // Parse response if it's JSON
+      const data = responseText ? JSON.parse(responseText) : null;
+      console.log('✅ Department created successfully:', data);
+
+      // Refresh departments list
+      await get().fetch_dat_departments();
+
+      return {
+        success: true,
+        data: data,
+        message: `Department "${deptName.trim()}" created successfully`
+      };
+
+    } catch (error) {
+      console.error('❌ Error creating department:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create department'
+      };
+    }
+  },
+
+  add_team: async (departmentDatId: number, teamName: string) => {
+    console.log('📝 add_team called with:', { departmentDatId, teamName });
+
+    // Validate input
+    if (!departmentDatId) {
+      console.error('❌ Department ID is required');
+      return {
+        success: false,
+        error: 'Department ID is required'
+      };
+    }
+
+    if (!teamName || teamName.trim() === '') {
+      console.error('❌ Team name is required');
+      return {
+        success: false,
+        error: 'Team name is required'
+      };
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/teams`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          departmentDatId: departmentDatId,
+          teamName: teamName.trim()
+        }),
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+      }
+
+      // Parse response if it's JSON
+      const data = responseText ? JSON.parse(responseText) : null;
+      console.log('✅ Team created successfully:', data);
+
+      // Refresh teams list
+      await get().fetch_teams();
+
+      return {
+        success: true,
+        data: data,
+        message: `Team "${teamName.trim()}" created successfully`
+      };
+
+    } catch (error) {
+      console.error('❌ Error creating team:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create team'
+      };
+    }
+  },
+
+  update_division: async (id: number, divisionName: string) => {
+    console.log('📝 update_division called with:', { id, divisionName });
+
+    // Validate input
+    if (!id) {
+      return {
+        success: false,
+        error: 'Division ID is required'
+      };
+    }
+
+    if (!divisionName || divisionName.trim() === '') {
+      return {
+        success: false,
+        error: 'Division name is required'
+      };
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/divisions/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ divisionName: divisionName.trim() }),
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+      }
+
+      // Parse response if it's JSON
+      const data = responseText ? JSON.parse(responseText) : null;
+      console.log('✅ Division updated successfully:', data);
+
+      // Refresh divisions list
+      await get().fetch_divisions();
+
+      return {
+        success: true,
+        data: data,
+        message: `Division updated successfully`
+      };
+
+    } catch (error) {
+      console.error('❌ Error updating division:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update division'
+      };
+    }
+  },
+
+  update_department: async (id: number, divisionId: number, deptName: string) => {
+    if (!id) {
+      return { success: false, error: 'Department ID is required' };
+    }
+    if (!divisionId) {
+      return { success: false, error: 'Division ID is required' };
+    }
+    if (!deptName || deptName.trim() === '') {
+      return { success: false, error: 'Department name is required' };
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/departments-dat/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          divisionId: divisionId,
+          deptName: deptName.trim()
+        }),
+      });
+
+      const responseText = await response.text();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+      }
+
+      const data = responseText ? JSON.parse(responseText) : null;
+      await get().fetch_dat_departments();
+
+      return {
+        success: true,
+        data: data,
+        message: `Department updated successfully`
+      };
+    } catch (error) {
+      console.error('❌ Error updating department:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update department'
+      };
+    }
+  },
+
+
+  update_team: async (id: number, departmentDatId: number, teamName: string) => {
+  if (!id) {
+    return { success: false, error: 'Team ID is required' };
+  }
+  if (!departmentDatId) {
+    return { success: false, error: 'Department ID is required' };
+  }
+  if (!teamName || teamName.trim() === '') {
+    return { success: false, error: 'Team name is required' };
+  }
+
+  try {
+    const response = await fetch(`${apiUrl}/api/teams/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        departmentDatId: departmentDatId,
+        teamName: teamName.trim()
+      }),
+    });
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+    }
+
+    const data = responseText ? JSON.parse(responseText) : null;
+    console.log('✅ Team updated successfully:', data);
+
+    // Refresh teams list
+    await get().fetch_teams();
+
+    return {
+      success: true,
+      data: data,
+      message: `Team updated successfully`
+    };
+  } catch (error) {
+    console.error('❌ Error updating team:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update team'
+    };
+  }
+},
 
   fetch_EmployeeData: async () => {
     try {
@@ -54,18 +406,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       const employeeData = await response.json();
       set(() => ({ employee_data: employeeData }));
 
-      // Extract unique values for dropdowns
-      const divisions = getUniqueDivisions(employeeData)
-      const departments = getUniqueDepartments(employeeData)
-      const teams = getUniqueTeams(employeeData)
-      const roles = getUniqueRoles(employeeData)
-
-      set(() => ({
-        division_options: divisions,
-        department_options: departments,
-        team_options: teams,
-        role_options: roles,
-      }))
     } catch (error) {
       console.error('Error fetching employee data:', error);
       set(() => ({ employee_data: [] }));
@@ -171,10 +511,14 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       // Update options after successful delete
       const updatedData = get().employee_data;
-      const divisions = getUniqueDivisions(updatedData);
-      const departments = getUniqueDepartments(updatedData);
-      const teams = getUniqueTeams(updatedData);
-      const roles = getUniqueRoles(updatedData);
+      const divisions = [...new Set(updatedData.map((emp: Employee) => emp.div_name).filter(Boolean))]
+        .map((div) => ({ value: div, label: div }));
+      const departments = [...new Set(updatedData.map((emp: Employee) => emp.dept_dat).filter(Boolean))]
+        .map((dept) => ({ value: dept, label: dept }));
+      const teams = [...new Set(updatedData.map((emp: Employee) => emp.team).filter(Boolean))]
+        .map((team) => ({ value: team, label: team }));
+      const roles = [...new Set(updatedData.map((emp: Employee) => emp.role).filter(Boolean))]
+        .map((role) => ({ value: role, label: role }));
 
       set(() => ({
         division_options: divisions,
@@ -268,10 +612,14 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       // Update options after successful update
       const finalData = get().employee_data;
-      const divisions = getUniqueDivisions(finalData);
-      const departments = getUniqueDepartments(finalData);
-      const teams = getUniqueTeams(finalData);
-      const roles = getUniqueRoles(finalData);
+      const divisions = [...new Set(finalData.map((emp: Employee) => emp.div_name).filter(Boolean))]
+        .map((div) => ({ value: div, label: div }));
+      const departments = [...new Set(finalData.map((emp: Employee) => emp.dept_dat).filter(Boolean))]
+        .map((dept) => ({ value: dept, label: dept }));
+      const teams = [...new Set(finalData.map((emp: Employee) => emp.team).filter(Boolean))]
+        .map((team) => ({ value: team, label: team }));
+      const roles = [...new Set(finalData.map((emp: Employee) => emp.role).filter(Boolean))]
+        .map((role) => ({ value: role, label: role }));
 
       set(() => ({
         division_options: divisions,
@@ -323,10 +671,14 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       // Update options after successful delete
       const updatedData = get().employee_data;
-      const divisions = getUniqueDivisions(updatedData)
-      const departments = getUniqueDepartments(updatedData)
-      const teams = getUniqueTeams(updatedData)
-      const roles = getUniqueRoles(updatedData)
+      const divisions = [...new Set(updatedData.map((emp: Employee) => emp.div_name).filter(Boolean))]
+        .map((div) => ({ value: div, label: div }));
+      const departments = [...new Set(updatedData.map((emp: Employee) => emp.dept_dat).filter(Boolean))]
+        .map((dept) => ({ value: dept, label: dept }));
+      const teams = [...new Set(updatedData.map((emp: Employee) => emp.team).filter(Boolean))]
+        .map((team) => ({ value: team, label: team }));
+      const roles = [...new Set(updatedData.map((emp: Employee) => emp.role).filter(Boolean))]
+        .map((role) => ({ value: role, label: role }));
 
       set(() => ({
         division_options: divisions,
@@ -348,7 +700,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   // bulk create employee
-  bulkCreate_EmployeeData: async (employees: any[]) => {
+  bulkCreate_EmployeeData: async (employees: Employee[]) => {
     const previousData = get().employee_data;
 
 
@@ -372,6 +724,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       dob: emp.dob || '',
       profile_photo_path: emp.profile_photo_path || '',
     }));
+
 
     // Optimistically add all employees to the UI
     set(() => ({
@@ -465,10 +818,14 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       // Update options
       const updatedData = get().employee_data;
-      const divisions = getUniqueDivisions(updatedData);
-      const departments = getUniqueDepartments(updatedData);
-      const teams = getUniqueTeams(updatedData);
-      const roles = getUniqueRoles(updatedData);
+      const divisions = [...new Set(updatedData.map((emp: Employee) => emp.div_name).filter(Boolean))]
+        .map((div) => ({ value: div, label: div }));
+      const departments = [...new Set(updatedData.map((emp: Employee) => emp.dept_dat).filter(Boolean))]
+        .map((dept) => ({ value: dept, label: dept }));
+      const teams = [...new Set(updatedData.map((emp: Employee) => emp.team).filter(Boolean))]
+        .map((team) => ({ value: team, label: team }));
+      const roles = [...new Set(updatedData.map((emp: Employee) => emp.role).filter(Boolean))]
+        .map((role) => ({ value: role, label: role }));
 
       set(() => ({
         division_options: divisions,

@@ -33,7 +33,14 @@ export function CreateEmployeeDrawer({
   const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
     useState(false)
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
-  const { add_EmployeeData } = mainStore()
+  const { 
+    add_EmployeeData, 
+    add_division,
+    add_dat_department,
+    add_team,
+    divisions,
+    dat_departments 
+  } = mainStore()
 
   // State for Add Item Dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -141,20 +148,104 @@ export function CreateEmployeeDrawer({
     setAddDialogOpen(true)
   }
 
-  const handleItemAdded = (name: string) => {
-    console.log(`Added new ${addItemType}: ${name}`)
-    alert(
-      `✅ ${addItemType.charAt(0).toUpperCase() + addItemType.slice(1)} "${name}" added successfully!`
-    )
+  const handleItemAdded = async (name: string) => {
+    console.log('🔄 handleItemAdded called with:', { addItemType, name });
 
-    // Auto-select the newly added item in the form
+    let result = null;
+
+    // Call the appropriate function based on the type
     if (addItemType === "division") {
-      setFormData((prev) => ({ ...prev, div: name }))
+      console.log('📝 Calling add_division for:', name);
+      result = await add_division(name);
+      
+      if (result && result.success) {
+        alert(`✅ Division "${name}" added successfully!`);
+        setFormData((prev) => ({ ...prev, div: name }));
+      } else {
+        alert(`❌ Failed to add division: ${result?.error || 'Unknown error'}`);
+      }
+      
     } else if (addItemType === "department") {
-      setFormData((prev) => ({ ...prev, dept_dat: name }))
+      console.log('📝 Calling add_dat_department for:', name);
+      
+      // You need to get the division ID from the selected division
+      // Find the selected division from the divisions list
+      const selectedDivision = divisions.find((div: any) => 
+        div.divisionName === formData.div || div.id === formData.div
+      );
+      
+      if (!selectedDivision) {
+        alert('❌ Please select a division first before adding a department');
+        return;
+      }
+      
+      const divisionId = selectedDivision.id || selectedDivision.divisionId;
+      
+      // Find if the division has the ID
+      let finalDivisionId = divisionId;
+      if (!finalDivisionId && divisions.length > 0) {
+        // If the divisions list has items with id
+        const divWithId = divisions.find((d: any) => d.id);
+        if (divWithId) {
+          // Try to find the matching division by name
+          const match = divisions.find((d: any) => d.divisionName === formData.div);
+          if (match) {
+            finalDivisionId = match.id;
+          } else {
+            // If we can't find it, use the first division's ID
+            finalDivisionId = divisions[0]?.id;
+          }
+        }
+      }
+      
+      if (!finalDivisionId) {
+        alert('❌ Could not find division ID. Please select a valid division.');
+        return;
+      }
+      
+      console.log('🔍 Using divisionId:', finalDivisionId);
+      result = await add_dat_department(finalDivisionId, name);
+      
+      if (result && result.success) {
+        alert(`✅ Department "${name}" added successfully!`);
+        setFormData((prev) => ({ ...prev, dept_dat: name }));
+      } else {
+        alert(`❌ Failed to add department: ${result?.error || 'Unknown error'}`);
+      }
+      
     } else if (addItemType === "team") {
-      setFormData((prev) => ({ ...prev, team: name }))
+      console.log('📝 Calling add_team for:', name);
+      
+      // You need to get the department ID from the selected department
+      const selectedDepartment = dat_departments.find((dept: any) => 
+        dept.deptName === formData.dept_dat || dept.id === formData.dept_dat
+      );
+      
+      if (!selectedDepartment) {
+        alert('❌ Please select a department first before adding a team');
+        return;
+      }
+      
+      const departmentId = selectedDepartment.id || selectedDepartment.departmentDatId;
+      
+      if (!departmentId) {
+        alert('❌ Could not find department ID. Please select a valid department.');
+        return;
+      }
+      
+      console.log('🔍 Using departmentId:', departmentId);
+      result = await add_team(departmentId, name);
+      
+      if (result && result.success) {
+        alert(`✅ Team "${name}" added successfully!`);
+        setFormData((prev) => ({ ...prev, team: name }));
+      } else {
+        alert(`❌ Failed to add team: ${result?.error || 'Unknown error'}`);
+      }
     }
+
+    // Log the result for debugging
+    console.log('📊 Result from API:', result);
   }
 
   const handleDropdownOpenChange = (isOpen: boolean) => {

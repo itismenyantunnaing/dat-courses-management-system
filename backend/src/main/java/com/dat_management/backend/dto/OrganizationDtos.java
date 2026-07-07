@@ -41,6 +41,11 @@ public final class OrganizationDtos {
             String teamName) {
     }
 
+    public record TeamUpdateDTO(
+         @NotBlank(message = "teamName is required")
+         String teamName
+    ){}
+
     public record TeamResponseDTO(
             Integer id,
             Integer departmentDatId,

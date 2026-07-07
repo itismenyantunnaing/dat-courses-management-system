@@ -1,5 +1,5 @@
 import type { EmployeeJapaneseLevel, TargetDates } from "@/types/current_target"
-import { Employee } from "@/types/employee"
+import { Employee, type Division } from "@/types/employee"
 import { Holiday } from "@/types/holiday"
 import {
   SkillCategory,
@@ -22,6 +22,7 @@ import type { DevelopmentData, ManagementSkillData, TechnicalSkillData } from "@
 
 export interface Employee_StoreType {
   employee_data: Employee[]
+  divisions: Division[]
   isCreating?: boolean
   isDeleting?: boolean
   isUpdating?: boolean
@@ -30,6 +31,7 @@ export interface Employee_StoreType {
   team_options: { value: string; label: string }[]
   role_options: { value: string; label: string }[]
   fetch_EmployeeData: () => Promise<void>
+  fetch_divisions: () => Promise<void>
   add_EmployeeData: (employee: Employee) => Promise<string>
   delete_EmployeeData: (employeeIds: string | string[]) => Promise<string>
   update_EmployeeData: (id: string, employee: Employee) => Promise<string>

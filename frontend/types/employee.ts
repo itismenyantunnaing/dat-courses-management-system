@@ -17,3 +17,8 @@ export interface Employee {
   dob: string;
   profile_photo_path: string;
 }
+
+export interface Division {
+  id: number;
+  divisionName: string;
+}

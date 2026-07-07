@@ -36,7 +36,7 @@ export function EditEmployeeDrawer({
   const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
     useState(false)
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
-  const { update_EmployeeData } = mainStore()
+  const { update_EmployeeData, add_division } = mainStore()
 
   // State for Add Item Dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -96,8 +96,8 @@ export function EditEmployeeDrawer({
     setAddDialogOpen(true)
   }
 
-  const handleItemAdded = (name: string) => {
-    console.log(`Added new ${addItemType}: ${name}`)
+  const handleItemAdded = async (name: string) => {
+    await add_division(name)
     alert(
       `✅ ${addItemType.charAt(0).toUpperCase() + addItemType.slice(1)} "${name}" added successfully!`
     )

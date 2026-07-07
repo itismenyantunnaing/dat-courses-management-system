@@ -67,7 +67,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     if (userData.status === "default") {
       setIsChangePasswordOpen(true)
     }
-  }, [userData.status])
+  }, [])
 
   const getCurrentLabel = () => {
     switch (activeTab) {

@@ -252,9 +252,22 @@ export function EmployeeContainer({
   // Use store directly - no local state duplication
   const {
     fetch_EmployeeData,
+    fetch_divisions,
+    fetch_dat_departments,
+    fetch_teams,
+    fetch_roles,
     employee_data,
     delete_EmployeeData,
     isDeleting: isStoreDeleting,
+    add_division,
+    add_dat_department,
+    add_team,
+    update_division,
+    update_department,
+    update_team,
+    divisions,
+    dat_departments,
+    teams,
   } = mainStore()
 
   useEffect(() => {
@@ -389,15 +402,15 @@ export function EmployeeContainer({
 
   // Filter employees based on active view
   const getFilteredData = () => {
-    let data = employee_data
+    const data = employee_data
 
     // Apply view filter
     if (activeView === "divisions") {
       const divs = getUniqueValues("div_name")
       const filteredDivs = searchTerm.trim()
         ? divs.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : divs
       // Add "Others" category if there are employees with empty div_name
       const othersCount = getEmployeesWithEmptyCategory("div_name").length
@@ -409,8 +422,8 @@ export function EmployeeContainer({
       const depts = getUniqueValues("dept_dat")
       const filteredDepts = searchTerm.trim()
         ? depts.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : depts
       // Add "Others" category if there are employees with empty dept_dat
       const othersCount = getEmployeesWithEmptyCategory("dept_dat").length
@@ -422,8 +435,8 @@ export function EmployeeContainer({
       const teams = getUniqueValues("team")
       const filteredTeams = searchTerm.trim()
         ? teams.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : teams
       // Add "Others" category if there are employees with empty team
       const othersCount = getEmployeesWithEmptyCategory("team").length
@@ -543,20 +556,95 @@ export function EmployeeContainer({
     setEditDialogOpen(true)
   }
 
-  const handleAddItem = (name: string) => {
-    console.log(`Added new ${dialogItemType}: ${name}`)
-    alert(
-      `✅ ${dialogItemType.charAt(0).toUpperCase() + dialogItemType.slice(1)} "${name}" added successfully!`
-    )
-    fetch_EmployeeData()
+  const handleAddItem = async (name: string, parentId?: number) => {
+    let result = null
+
+    if (dialogItemType === "division") {
+      result = await add_division(name)
+    } else if (dialogItemType === "department") {
+      if (!parentId) {
+        alert("Division ID is required")
+        return
+      }
+      result = await add_dat_department(parentId, name)
+    } else if (dialogItemType === "team") {
+      if (!parentId) {
+        alert("Department ID is required")
+        return
+      }
+      result = await add_team(parentId, name)
+    }
+
+    if (result?.success) {
+      alert(`✅ ${dialogItemType} "${name}" added successfully!`)
+      await fetch_EmployeeData()
+    } else {
+      alert(`❌ Failed to add: ${result?.error || "Unknown error"}`)
+    }
   }
 
-  const handleEditItemSubmit = (oldName: string, newName: string) => {
-    console.log(`Updated ${dialogItemType} from "${oldName}" to "${newName}"`)
-    alert(
-      `✅ ${dialogItemType.charAt(0).toUpperCase() + dialogItemType.slice(1)} updated from "${oldName}" to "${newName}" successfully!`
-    )
-    fetch_EmployeeData()
+  // Updated handleEditItemSubmit with proper update logic
+  const handleEditItemSubmit = async (oldName: string, newName: string, parentId?: number) => {
+    console.log(`🔄 Updating ${dialogItemType}:`, { oldName, newName, parentId })
+
+    let result = null
+
+    try {
+      if (dialogItemType === "division") {
+        // Find the division ID
+        const division = divisions.find((d: any) => d.divisionName === oldName)
+        if (!division) {
+          alert("❌ Division not found")
+          return
+        }
+        result = await update_division(division.id, newName)
+
+      } else if (dialogItemType === "department") {
+        // Find the department ID
+        const department = dat_departments.find((d: any) => d.deptName === oldName)
+        if (!department) {
+          alert("❌ Department not found")
+          return
+        }
+        // Department update needs divisionId and deptName
+        if (!parentId) {
+          alert("❌ Division ID is required for department update")
+          return
+        }
+        result = await update_department(department.id, parentId, newName)
+
+      } else if (dialogItemType === "team") {
+        // Find the team ID
+        const team = teams.find((t: any) => t.teamName === oldName)
+        if (!team) {
+          alert("❌ Team not found")
+          return
+        }
+        // Team update needs departmentDatId and teamName
+        if (!parentId) {
+          alert("❌ Department ID is required for team update")
+          return
+        }
+        result = await update_team(team.id, parentId, newName)
+      }
+
+      if (result?.success) {
+        alert(`✅ ${dialogItemType.charAt(0).toUpperCase() + dialogItemType.slice(1)} updated successfully!`)
+
+        // Refresh ALL data
+        await fetch_EmployeeData()
+        await fetch_divisions()
+        await fetch_dat_departments()
+        await fetch_teams()
+        await fetch_roles()
+
+      } else {
+        alert(`❌ Failed to update: ${result?.error || "Unknown error"}`)
+      }
+    } catch (error) {
+      console.error("Error updating item:", error)
+      alert(`❌ Failed to update ${dialogItemType}. Please try again.`)
+    }
   }
 
   const handleItemsPerPageChange = (value: string) => {
@@ -1289,7 +1377,7 @@ export function EmployeeContainer({
                       value={drilldownSearchTerm}
                       onChange={(e) => {
                         setDrilldownSearchTerm(e.target.value)
-                        setDrillDownPage(1) // Reset to first page when searching
+                        setDrillDownPage(1)
                       }}
                     />
                     <InputGroupAddon>
@@ -1397,7 +1485,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === 1 ||
-                            drillDownEmployees.length === 0
+                              drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -1432,7 +1520,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === drillDownTotalPages ||
-                            drillDownEmployees.length === 0
+                              drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -1748,7 +1836,7 @@ export function EmployeeContainer({
                       }}
                       className={
                         currentPage === totalPages ||
-                        filteredEmployees.length === 0
+                          filteredEmployees.length === 0
                           ? "pointer-events-none opacity-50"
                           : ""
                       }
