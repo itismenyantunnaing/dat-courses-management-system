@@ -1,4 +1,3 @@
-// components/courses/trainer-course-form.tsx
 "use client"
 
 import React, { useState, useRef, useEffect, forwardRef, useMemo } from "react"
@@ -53,6 +52,24 @@ import { formatSelfStudySessionsForAPI } from "./self-study-management-section"
 
 // Default session days constant
 const DEFAULT_SESSION_DAYS = [4, 5] // Thursday, Friday
+
+// ========== DATE HELPER FUNCTIONS ==========
+// Create a date that preserves the local date without timezone offset
+const createLocalDate = (date: Date): Date => {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+};
+
+// Get today's date as local date
+const getTodayLocal = (): Date => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
+// Format a date for display using date-fns
+const formatLocalDateDisplay = (date: Date): string => {
+  if (!date) return '';
+  return format(date, 'PPP');
+};
 
 // Helper function to convert Employee to MentionedLearner
 const convertEmployeeToMentionedLearner = (employee: any): MentionedLearner => ({
@@ -111,7 +128,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         id: `g${Date.now()}`,
         name: "Group 1",
         capacity: "unlimited" as const,
-        startDate: new Date(),
+        startDate: getTodayLocal(), // Use local date
         sessionsPerWeek: DEFAULT_SESSION_DAYS,
         startTime: "09:00",
         endTime: "10:00",
@@ -328,7 +345,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         if (formData.groups.length === 0) return false
         const groupValid = formData.groups.every((group) => {
           const hasSessions = group.sessions.length > 0
-          // Relax time validation for existing data if needed, but usually it's fine
           const hasValidTimes =
             !group.startTime || !group.endTime || group.startTime < group.endTime
 
@@ -336,11 +352,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
             !group.endDate ||
             (group.startDate && group.endDate >= group.startDate)
 
-          // Relax session date range validation for existing data
           const sessionsValid = group.sessions.every(
             (session) => {
               if (!session.date) return false;
-              // Just ensure the session has a date
               return true;
             }
           )
@@ -350,7 +364,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
             hasValidTimes &&
             hasValidDates &&
             sessionsValid
-            // (group.sessionsPerWeek?.length || 0) > 0 // Remove this strict check for existing data
           )
         })
         return groupValid
@@ -368,13 +381,23 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       }
 
       if (!formData.category) return
-      if (formData.courseType === "trainer" && formData.groups.length === 0)
-        return
+      if (formData.courseType === "trainer" && formData.groups.length === 0) return
 
       let hasError = false
       const errors: { [key: string]: string } = {}
 
       if (formData.courseType === "trainer") {
+        const groupsWithEmptyNames = formData.groups.filter(
+          group => !group.name || group.name.trim() === ''
+        )
+        
+        if (groupsWithEmptyNames.length > 0) {
+          groupsWithEmptyNames.forEach(group => {
+            errors[group.id] = "Group name is required"
+          })
+          hasError = true
+        }
+
         formData.groups.forEach((group) => {
           if (group.sessions.length === 0) {
             errors[group.id] = "At least one session is required"
@@ -413,12 +436,14 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
       if (hasError) {
         setGroupErrors(errors)
+        if (errors[Object.keys(errors)[0]] === "Group name is required") {
+          alert(`Please provide names for all ${formData.groups.length} groups before submitting.`)
+        }
         return
       }
 
       if (!formData.title || !formData.courseType) return
 
-      // Build the submit data object with API format
       const submitData = {
         title: formData.title,
         trainerName: formData.trainerName,
@@ -439,7 +464,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         totalGrammar: formData.totalGrammar,
         totalReadingMinutes: formData.totalReadingMinutes,
         totalListeningMinutes: formData.totalListeningMinutes,
-        // Add API-specific formatted data
         formattedGroups: formData.courseType === "trainer"
           ? formatGroupsForAPI(formData.groups)
           : undefined,
@@ -622,17 +646,16 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                       <Button
                         type="button"
                         variant="outline"
-                        className={`w-full justify-between text-left font-normal ${submitted && !formData.registrationDeadline
-                          ? "border-destructive"
-                          : ""
-                          }`}
+                        className={`w-full justify-between text-left font-normal ${
+                          submitted && !formData.registrationDeadline
+                            ? "border-destructive"
+                            : ""
+                        }`}
                       >
                         {formData.registrationDeadline ? (
-                          format(formData.registrationDeadline, "PPP")
+                          formatLocalDateDisplay(formData.registrationDeadline)
                         ) : (
-                          <span className="text-muted-foreground">
-                            Pick a date
-                          </span>
+                          <span className="text-muted-foreground">Pick a date</span>
                         )}
                         <HugeiconsIcon
                           icon={Calendar03Icon}
@@ -645,15 +668,21 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                       <Calendar
                         mode="single"
                         selected={formData.registrationDeadline}
-                        onSelect={(date) =>
-                          setFormData({
-                            ...formData,
-                            registrationDeadline: date || undefined,
-                          })
-                        }
-                        defaultMonth={
-                          formData.registrationDeadline || new Date()
-                        }
+                        onSelect={(date) => {
+                          if (date) {
+                            // IMPORTANT: Create a local date without timezone offset
+                            setFormData({
+                              ...formData,
+                              registrationDeadline: createLocalDate(date),
+                            })
+                          } else {
+                            setFormData({
+                              ...formData,
+                              registrationDeadline: undefined,
+                            })
+                          }
+                        }}
+                        defaultMonth={formData.registrationDeadline || new Date()}
                       />
                     </PopoverContent>
                   </Popover>
@@ -665,7 +694,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                   {formData.registrationDeadline && (
                     <p className="text-xs text-muted-foreground">
                       Registration closes on{" "}
-                      {format(formData.registrationDeadline, "PPP")}
+                      {formatLocalDateDisplay(formData.registrationDeadline)}
                     </p>
                   )}
                 </div>
@@ -728,7 +757,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               selfStudyBaseDate={selfStudyBaseDate}
               onSetSelfStudyBaseDate={setSelfStudyBaseDate}
               courseId={initialData?.id}
-              mode={mode}  
+              mode={mode}
             />
           )}
 
@@ -833,7 +862,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           selectedCategory={formData.category}
           selectedSelfStudyType={formData.selfStudyType}
           onSelectCategory={(category, selfStudyType) => {
-            // Use the store helper functions to check category types
             const isTrainerCat = isTrainerCategory(category)
             const isSelfStudyCat = isSelfStudyCategory(category)
 
@@ -846,7 +874,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               if (selfStudyType) {
                 newSelfStudyType = selfStudyType
               } else {
-                // Get the self-study type from the category
                 const categoryData = getCategoryByValue(category)
                 newSelfStudyType = categoryData?.selfStudyType || "other"
               }

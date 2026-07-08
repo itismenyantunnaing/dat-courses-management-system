@@ -135,6 +135,27 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
   const isJLPT = isJLPTType(selfStudyType)
   const { enrollments } = mainStore()
 
+  // Add this useEffect for non-JLPT total updates
+  useEffect(() => {
+    if (sessions.length > 0 && !isJLPT) {
+      // For non-JLPT, we just need to ensure dates are correct
+      const sessionsWithDates = recalculateSessionDates(sessions)
+
+      const updateSignature = JSON.stringify({
+        sessionsLength: sessions.length,
+        isJLPT,
+        baseDate: (selfStudyBaseDate || sessions[0]?.date || new Date()).getTime(),
+        durations: sessions.map(s => s.durationPerSession || 7).join(','),
+        type: 'non-jlpt-dates'
+      })
+
+      if (lastUpdateRef.current !== updateSignature) {
+        lastUpdateRef.current = updateSignature
+        onUpdateSessions(sessionsWithDates)
+      }
+    }
+  }, [sessions.map(s => s.durationPerSession).join(','), selfStudyBaseDate, isJLPT, onUpdateSessions])
+
   // Get enrolled employees for this course from store
   const enrolledEmployees = React.useMemo(() => {
     if (mode === "add" || !courseId) return []
@@ -186,7 +207,7 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
     const totalPages = Math.ceil((sessions.length + 1) / itemsPerPage)
     onSetSessionPage(totalPages)
   }
-  
+
   const removeSelfStudySession = (sessionId: string) => {
     onUpdateSessions(sessions.filter((s) => s.id !== sessionId))
   }
@@ -202,11 +223,18 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
       onSetSelfStudyBaseDate(value)
     }
 
-    onUpdateSessions(
-      sessions.map((s) =>
-        s.id === sessionId ? { ...s, [field]: value } : s
-      )
+    // If updating duration, recalculate all dates
+    let updatedSessions = sessions.map((s) =>
+      s.id === sessionId ? { ...s, [field]: value } : s
     )
+
+    if (field === "durationPerSession") {
+      // Recalculate all dates based on new duration
+      const sessionsWithRecalculatedDates = recalculateSessionDates(updatedSessions)
+      updatedSessions = sessionsWithRecalculatedDates
+    }
+
+    onUpdateSessions(updatedSessions)
   }
 
   // Helper function to recalculate all session dates based on cumulative durations
@@ -216,7 +244,6 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
 
     return sessionsList.map((session, index) => {
       if (index === 0) {
-        // First session starts on base date
         return {
           ...session,
           date: baseDate,
@@ -447,25 +474,32 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
               const value = parseInt(e.target.value) || 0
               const baseDate = selfStudyBaseDate || sessions[0]?.date || new Date()
 
+              // Get current sessions to preserve their durations
+              const currentSessions = sessions || []
+
               const newSessions: CourseSession[] = Array.from(
                 { length: value },
                 (_, i) => {
-                  // Calculate cumulative days from previous sessions
                   let cumulativeDays = 0
                   for (let j = 0; j < i; j++) {
-                    cumulativeDays += sessions[j]?.durationPerSession || 7
+                    // Use existing session duration if available, otherwise default to 7
+                    cumulativeDays += (currentSessions[j]?.durationPerSession || sessions[j]?.durationPerSession || 7)
                   }
+
+                  // Check if session already exists
+                  const existingSession = currentSessions[i]
+
                   return {
-                    id: `s${Date.now()}-${i}`,
+                    id: existingSession?.id || `s${Date.now()}-${i}`,
                     date: addDays(baseDate, cumulativeDays),
-                    durationPerSession: sessions[i]?.durationPerSession || 7, // Keep existing or default to 7
-                    kanjiCount: isJLPT ? 0 : undefined,
-                    vocabularyCount: isJLPT ? 0 : undefined,
-                    grammarCount: isJLPT ? 0 : undefined,
-                    readingMinutes: isJLPT ? 0 : undefined,
-                    listeningMinutes: isJLPT ? 0 : undefined,
-                    link: !isJLPT ? "" : undefined,
-                    status: 'PLANNED'
+                    durationPerSession: existingSession?.durationPerSession || 7,
+                    kanjiCount: isJLPT ? (existingSession?.kanjiCount || 0) : undefined,
+                    vocabularyCount: isJLPT ? (existingSession?.vocabularyCount || 0) : undefined,
+                    grammarCount: isJLPT ? (existingSession?.grammarCount || 0) : undefined,
+                    readingMinutes: isJLPT ? (existingSession?.readingMinutes || 0) : undefined,
+                    listeningMinutes: isJLPT ? (existingSession?.listeningMinutes || 0) : undefined,
+                    link: !isJLPT ? (existingSession?.link || "") : undefined,
+                    status: existingSession?.status || 'PLANNED'
                   }
                 }
               )

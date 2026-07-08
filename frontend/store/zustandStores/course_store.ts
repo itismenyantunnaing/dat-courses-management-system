@@ -21,6 +21,34 @@ type StoreGet = () => Course_StoreType
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
+// ========== DATE HELPER FUNCTIONS ==========
+// Format a date as YYYY-MM-DD in local timezone (no timezone conversion)
+const formatLocalDate = (date: Date): string => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return '';
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Parse a date string as local date (no timezone conversion)
+const parseLocalDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    // Parse as local date (year, month-1, day) to avoid timezone issues
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+  return new Date(dateStr);
+};
+
+// Check if a value is a valid Date object
+const isValidDate = (date: any): date is Date => {
+  return date instanceof Date && !isNaN(date.getTime());
+};
+
 // Define the course store as a function that takes set and get
 export const courseStore = (set: StoreSet, get: StoreGet) => ({
   // ========== INITIAL STATE ==========
@@ -79,7 +107,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       const groupSessions: CourseSession[] = (g.sessions || []).map((s: BackendSessionDto) => ({
         id: s.id?.toString() || '',
         sessionNo: s.session_no,
-        date: new Date(s.session_date),
+        date: s.session_date ? parseLocalDate(s.session_date) : new Date(),
         startTime: s.start_time,
         endTime: s.end_time,
         status: s.session_status,
@@ -105,7 +133,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
         sessionsPerWeek,
         sessions: groupSessions,
         registeredCount: g.registered_count || 0,
-        createdAt: g.created_at ? new Date(g.created_at) : undefined,
+        createdAt: g.created_at ? parseLocalDate(g.created_at.split('T')[0]) : undefined,
       }
     })
 
@@ -113,8 +141,8 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     const sessions: CourseSession[] = (course.self_study_sessions || []).map((s: BackendSelfStudySessionDto, index: number) => ({
       id: s.id?.toString() || `s-${index}`,
       sessionNo: s.session_no || index + 1,
-      date: s.session_date ? new Date(s.session_date) : undefined as any,
-      durationPerSession: s.duration_per_session || 7, // ✅ ADD THIS
+      date: s.session_date ? parseLocalDate(s.session_date) : undefined as any,
+      durationPerSession: s.duration_per_session || 7,
       kanjiCount: s.kanji_target || 0,
       vocabularyCount: s.vocabulary_target || 0,
       grammarCount: s.grammar_target || 0,
@@ -130,7 +158,6 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
 
     // Get the category value for the frontend
     const categoryName = course.category?.course_category_name || ''
-    // Try to find matching category from the store if it's already loaded
     const categoryValue = categoryName.toLowerCase().replace(/\s+/g, '-')
 
     // Status mapping
@@ -152,12 +179,12 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       category: categoryValue,
       targetLevel: course.target_level,
       totalSessions: course.total_sessions,
-      startDate: course.start_date ? new Date(course.start_date) : undefined,
-      endDate: course.end_date ? new Date(course.end_date) : undefined,
+      startDate: course.start_date ? parseLocalDate(course.start_date) : undefined,
+      endDate: course.end_date ? parseLocalDate(course.end_date) : undefined,
       status: status as "active" | "upcoming" | "completed" | "draft",
-      registrationDeadline: course.registration_deadline ? new Date(course.registration_deadline) : undefined,
-      createdAt: course.created_at ? new Date(course.created_at) : new Date(),
-      updatedAt: course.updated_at ? new Date(course.updated_at) : new Date(),
+      registrationDeadline: course.registration_deadline ? parseLocalDate(course.registration_deadline) : undefined,
+      createdAt: course.created_at ? parseLocalDate(course.created_at.split('T')[0]) : new Date(),
+      updatedAt: course.updated_at ? parseLocalDate(course.updated_at.split('T')[0]) : new Date(),
       groups: groups,
       self_study_sessions: sessions,
       daysPerSession: calculatedDaysPerSession,
@@ -173,18 +200,55 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   // Helper to transform frontend Course to backend request format
-  transformFrontendToBackendRequest: (course: Partial<Course>): any => {
+  transformFrontendToBackendRequest: (course: Partial<Course> | any): any => {
     const request: any = {}
 
+    // Handle both frontend and backend formats
     if (course.title !== undefined) request.course_name = course.title
+    else if (course.course_name !== undefined) request.course_name = course.course_name
+
     if (course.trainerName !== undefined) request.trainer_name = course.trainerName
+    else if (course.trainer_name !== undefined) request.trainer_name = course.trainer_name
+
     if (course.selfStudyType !== undefined) request.self_study_type = course.selfStudyType
+    else if (course.self_study_type !== undefined) request.self_study_type = course.self_study_type
+
     if (course.categoryId !== undefined) request.course_category_id = course.categoryId
+    else if (course.course_category_id !== undefined) request.course_category_id = course.course_category_id
+
     if (course.targetLevel !== undefined) request.target_level = course.targetLevel
+    else if (course.target_level !== undefined) request.target_level = course.target_level
+
     if (course.totalSessions !== undefined) request.total_sessions = course.totalSessions
-    if (course.startDate !== undefined) request.start_date = course.startDate
-    if (course.endDate !== undefined) request.end_date = course.endDate
-    if (course.registrationDeadline !== undefined) request.registration_deadline = course.registrationDeadline
+    else if (course.total_sessions !== undefined) request.total_sessions = course.total_sessions
+
+    // Fix date fields - use formatLocalDate for proper local date handling
+    if (course.startDate !== undefined) {
+      request.start_date = isValidDate(course.startDate) 
+        ? formatLocalDate(course.startDate) 
+        : course.startDate
+    } else if (course.start_date !== undefined) {
+      request.start_date = course.start_date
+    }
+
+    if (course.endDate !== undefined) {
+      request.end_date = isValidDate(course.endDate) 
+        ? formatLocalDate(course.endDate) 
+        : course.endDate
+    } else if (course.end_date !== undefined) {
+      request.end_date = course.end_date
+    }
+
+    if (course.registrationDeadline !== undefined) {
+      request.registration_deadline = isValidDate(course.registrationDeadline) 
+        ? formatLocalDate(course.registrationDeadline) 
+        : course.registrationDeadline
+    } else if (course.registration_deadline !== undefined) {
+      request.registration_deadline = course.registration_deadline
+    }
+    
+    if (course.session_per_days !== undefined) request.session_per_days = course.session_per_days
+
     if (course.status !== undefined) {
       const statusMap: Record<string, string> = {
         'active': 'OPEN',
@@ -195,36 +259,140 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       request.status = statusMap[course.status] || course.status.toUpperCase()
     }
 
-    // Handle groups
+    // Handle groups - with proper date formatting
     if (course.groups !== undefined) {
-      request.groups = course.groups.map((group: CourseGroup) => ({
-        group_name: group.name,
-        capacity: group.capacity === 'unlimited' ? null : group.capacity,
-        group_status: group.status,
-        sessions: group.sessions.map((session: CourseSession) => ({
-          session_no: session.sessionNo,
-          session_date: session.date ? session.date.toISOString().split('T')[0] : undefined,
-          start_time: session.startTime,
-          end_time: session.endTime,
-          session_status: session.status
-        }))
-      }))
+      const isValidGroup = (group: any) => {
+        if (group.group_name !== undefined) {
+          return group.group_name && group.group_name.trim() !== '';
+        }
+        if (group.name !== undefined) {
+          return group.name && group.name.trim() !== '';
+        }
+        return false;
+      };
+
+      const getGroupName = (group: any) => {
+        if (group.group_name !== undefined) {
+          return group.group_name.trim();
+        }
+        if (group.name !== undefined) {
+          return group.name.trim();
+        }
+        return null;
+      };
+
+      const validGroups = course.groups
+        .filter(group => isValidGroup(group))
+        .map((group: any) => {
+          const groupName = getGroupName(group);
+          const groupId = group.id ? (typeof group.id === 'string' && group.id.startsWith('new-') ? null : parseInt(group.id)) : null;
+
+          // Check if we already have a formatted group (backend format)
+          if (group.group_name !== undefined) {
+            // Already in backend format, but ensure dates are properly formatted
+            return {
+              ...(groupId ? { id: groupId } : {}),
+              group_name: groupName,
+              capacity: group.capacity !== undefined ? group.capacity : null,
+              group_status: group.group_status || group.status || 'PLANNED',
+              start_date: group.start_date || (group.startDate ? formatLocalDate(group.startDate) : null),
+              end_date: group.end_date || (group.endDate ? formatLocalDate(group.endDate) : null),
+              sessions_per_week: group.sessions_per_week || group.sessionsPerWeek || [],
+              start_time: group.start_time || group.startTime || '09:00',
+              end_time: group.end_time || group.endTime || '10:00',
+              sessions: (group.sessions || []).map((session: any) => {
+                const sessionId = session.id ? (typeof session.id === 'string' && session.id.startsWith('new-') ? null : parseInt(session.id)) : null;
+                return {
+                  ...(sessionId ? { id: sessionId } : {}),
+                  session_no: session.session_no || session.sessionNo || 1,
+                  session_date: session.session_date || (session.date ? formatLocalDate(session.date) : null),
+                  start_time: session.start_time || session.startTime || '09:00',
+                  end_time: session.end_time || session.endTime || '10:00',
+                  session_status: session.session_status || session.status || 'PLANNED'
+                };
+              })
+            };
+          }
+
+          // Frontend format - transform to backend format with proper date formatting
+          return {
+            ...(groupId ? { id: groupId } : {}),
+            group_name: groupName,
+            capacity: group.capacity === 'unlimited' ? null : group.capacity,
+            group_status: group.status || 'PLANNED',
+            start_date: group.startDate ? formatLocalDate(group.startDate) : null,
+            end_date: group.endDate ? formatLocalDate(group.endDate) : null,
+            sessions_per_week: group.sessionsPerWeek || [],
+            start_time: group.startTime || '09:00',
+            end_time: group.endTime || '10:00',
+            sessions: (group.sessions || []).map((session: CourseSession) => {
+              const sessionId = session.id ? (typeof session.id === 'string' && session.id.startsWith('new-') ? null : parseInt(session.id)) : null;
+              return {
+                ...(sessionId ? { id: sessionId } : {}),
+                session_no: session.sessionNo || 1,
+                session_date: session.date ? formatLocalDate(session.date) : null,
+                start_time: session.startTime || '09:00',
+                end_time: session.endTime || '10:00',
+                session_status: session.status || 'PLANNED'
+              };
+            })
+          };
+        });
+
+      if (course.groups.length > validGroups.length) {
+        console.warn(`⚠️ Filtered out ${course.groups.length - validGroups.length} invalid groups`);
+      }
+
+      request.groups = validGroups;
     }
 
-    // Handle self-study sessions - ✅ ADD duration_per_session
+    // Handle self-study sessions
     if (course.self_study_sessions !== undefined) {
-      request.self_study_sessions = course.self_study_sessions.map((session: CourseSession, index: number) => ({
-        session_no: index + 1, // Use index instead of session.sessionNo
-        duration_per_session: session.durationPerSession || 7, // ✅ ADD THIS with default
-        kanji_target: session.kanjiCount || 0,
-        vocabulary_target: session.vocabularyCount || 0,
-        grammar_target: session.grammarCount || 0,
-        reading_target_minutes: session.readingMinutes || 0,
-        listening_target_minutes: session.listeningMinutes || 0,
-        study_time_target_minutes: session.studyTimeTargetMinutes || 0,
-        file_path: session.link || '',
-        session_status: session.status || 'PLANNED'
-      }))
+      request.self_study_sessions = course.self_study_sessions.map((session: any, index: number) => {
+        // If it's already in backend format, use its values
+        if (session.duration_per_session !== undefined || session.kanji_target !== undefined) {
+          return {
+            id: session.id ? (typeof session.id === 'string' && session.id.startsWith('s') ? null : parseInt(session.id)) : null,
+            session_no: index + 1,
+            duration_per_session: session.duration_per_session !== undefined ? session.duration_per_session : 7,
+            kanji_target: session.kanji_target || 0,
+            vocabulary_target: session.vocabulary_target || 0,
+            grammar_target: session.grammar_target || 0,
+            reading_target_minutes: session.reading_target_minutes || 0,
+            listening_target_minutes: session.listening_target_minutes || 0,
+            study_time_target_minutes: session.study_time_target_minutes || 0,
+            file_path: session.file_path || session.filepath || '',
+            filepath: session.file_path || session.filepath || '',
+            session_status: session.session_status || 'PLANNED'
+          };
+        }
+
+        // Frontend format - check if date is a Date object and format it
+        let sessionDate = null;
+        if (session.date) {
+          if (isValidDate(session.date)) {
+            sessionDate = formatLocalDate(session.date);
+          } else if (typeof session.date === 'string') {
+            // If it's already a string, use it as is (might already be YYYY-MM-DD)
+            sessionDate = session.date;
+          }
+        }
+
+        return {
+          id: session.id ? (typeof session.id === 'string' && session.id.startsWith('s') ? null : parseInt(session.id)) : null,
+          session_no: index + 1,
+          duration_per_session: session.durationPerSession || 7,
+          kanji_target: session.kanjiCount || 0,
+          vocabulary_target: session.vocabularyCount || 0,
+          grammar_target: session.grammarCount || 0,
+          reading_target_minutes: session.readingMinutes || 0,
+          listening_target_minutes: session.listeningMinutes || 0,
+          study_time_target_minutes: session.studyTimeTargetMinutes || 0,
+          file_path: session.link || '',
+          filepath: session.link || '',
+          session_status: session.status || 'PLANNED'
+        };
+      });
     }
 
     return request
@@ -318,7 +486,6 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({ ...state, isCreating: true, error: null }))
 
     try {
-      // ❗ HARD CHECK
       if (!(formData instanceof FormData)) {
         throw new Error("Body is NOT FormData")
       }
@@ -382,8 +549,10 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({ ...state, isUpdating: true, error: null }))
 
     try {
-      // Transform frontend course data to backend format
+      console.log('📝 Update Course Data:', JSON.stringify(courseData, null, 2));
+
       const backendRequest = get().transformFrontendToBackendRequest(courseData)
+      console.log('🚀 Sending to API:', JSON.stringify(backendRequest, null, 2));
 
       const headers = get().getAuthHeaders()
 
@@ -411,12 +580,10 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(result.message || 'Failed to update course')
       }
 
-      // If the response contains the updated course, transform it
       let transformedCourse = null
       if (result.course) {
         transformedCourse = get().transformBackendCourseToFrontend(result.course as BackendCourseDto)
       } else {
-        // If no course returned, fetch the updated course
         const fetchResult = await get().fetch_CourseData(id)
         if (fetchResult.success && fetchResult.course) {
           transformedCourse = fetchResult.course
@@ -431,7 +598,6 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
           error: null
         }))
       } else {
-        // If we can't get the updated course, just mark as updated
         set((state: Course_StoreType) => ({
           ...state,
           isUpdating: false,

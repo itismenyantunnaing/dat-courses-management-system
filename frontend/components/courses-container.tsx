@@ -20,6 +20,17 @@ import { format } from "date-fns"
 
 const STROKE_WIDTH = 2
 
+// Add this helper function at the top of the file, after imports
+const formatLocalDateForAPI = (date: Date): string => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return '';
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Helper function to get course start date
 const getCourseStartDate = (course: Course): Date | null => {
   if (course.courseType === "trainer") {
@@ -86,7 +97,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
 
     return courses
       .filter(() => {
-        if (userRole === "ADMIN" || userRole === "APPROVER") {
+        if (userRole === "admin" || userRole === "approver") {
           return true
         }
         return true
@@ -148,7 +159,6 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
     setIsSubmitting(true)
 
     try {
-      // Get the category from the store using the category value
       const category = getCategoryByValue(data.category)
 
       if (!category) {
@@ -157,7 +167,6 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
         return
       }
 
-      // Map frontend status to backend status
       const statusMap: Record<string, string> = {
         'active': 'OPEN',
         'upcoming': 'CLOSED',
@@ -175,16 +184,15 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
           const existingGroup = editingCourse?.groups?.find((g: any) => g.id === group.id)
 
           return {
-            // Include group ID if editing
             ...(editingCourse && existingGroup?.id && { id: parseInt(existingGroup.id) }),
             group_name: group.name || `Group ${index + 1}`,
             capacity: group.capacity === 'unlimited' ? null : (Number(group.capacity) || null),
-            // Use group's own startDate/endDate
+            // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
             start_date: group.startDate instanceof Date
-              ? group.startDate.toISOString().split('T')[0]
+              ? formatLocalDateForAPI(group.startDate)
               : group.startDate || null,
             end_date: group.endDate instanceof Date
-              ? group.endDate.toISOString().split('T')[0]
+              ? formatLocalDateForAPI(group.endDate)
               : group.endDate || null,
             sessions_per_week: group.sessionsPerWeek || [],
             group_status: group.status || "OPEN",
@@ -192,11 +200,11 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
               const existingSession = existingGroup?.sessions?.find((s: any) => s.id === session.id)
 
               return {
-                // Include session ID if editing
                 ...(editingCourse && existingSession?.id && { id: parseInt(existingSession.id) }),
                 session_no: sIndex + 1,
+                // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
                 session_date: session.date instanceof Date
-                  ? session.date.toISOString().split('T')[0]
+                  ? formatLocalDateForAPI(session.date)
                   : session.date,
                 start_time: session.startTime || group.startTime || "09:00",
                 end_time: session.endTime || group.endTime || "10:00",
@@ -215,10 +223,9 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
           const existingSession = editingCourse?.self_study_sessions?.find((s: any) => s.id === session.id)
 
           return {
-            // Include session ID if editing
             ...(editingCourse && existingSession?.id && { id: parseInt(existingSession.id) }),
             session_no: index + 1,
-            duration_per_session: session.durationPerSession || 7, // ✅ ADD THIS LINE
+            duration_per_session: session.durationPerSession || 7,
             file_path: isJLPT ? null : (session.link || null),
             filepath: isJLPT ? null : (session.link || null),
             kanji_target: isJLPT ? (session.kanjiCount || 0) : 0,
@@ -244,8 +251,9 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
         session_per_days: data.courseType === 'self-study' ? data.daysPerSession : null,
         start_date: null,
         end_date: null,
+        // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
         registration_deadline: data.registrationDeadline instanceof Date
-          ? data.registrationDeadline.toISOString().split('T')[0]
+          ? formatLocalDateForAPI(data.registrationDeadline)
           : data.registrationDeadline || null,
         status: backendStatus,
       }

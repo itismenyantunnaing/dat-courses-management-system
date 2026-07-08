@@ -788,8 +788,8 @@ export function CourseDetail({
     return progress?.completion_status === 'COMPLETED'
   }
 
-  const TESTING_DATE = new Date('2026-07-14') // Change this for testing
-  // const TESTING_DATE = new Date() // Uncomment for production
+  // const TESTING_DATE = new Date('2026-07-13') // Change this for testing
+  const TESTING_DATE = new Date() // Uncomment for production
 
   // Helper function to get session status - UPDATED to use TESTING_DATE
   const getSessionStatus = (sessionDate: Date | string | undefined) => {
@@ -1239,275 +1239,385 @@ export function CourseDetail({
             </div>
           </TabsContent>
 
-          {/* Groups Tab - Now with Attendance for Trainer Courses */}
-          {course.courseType === "trainer" &&
-            course.groups &&
-            course.groups.length > 0 && (
-              <TabsContent value="groups">
-                <div className="space-y-6">
-                  {course.groups.map((group, index) => {
-                    const groupEmployees = getEmployeesByGroup(parseInt(group.id))
-                    const uniqueStatuses = getUniqueStatuses(groupEmployees)
+{/* Groups Tab - Now with Attendance for Trainer Courses */}
+{course.courseType === "trainer" &&
+  course.groups &&
+  course.groups.length > 0 && (
+    <TabsContent value="groups">
+      <div className="space-y-6">
+        {course.groups.map((group, index) => {
+          const groupEmployees = getEmployeesByGroup(parseInt(group.id))
+          const uniqueStatuses = getUniqueStatuses(groupEmployees)
 
-                    return (
-                      <Card key={index} className="overflow-hidden">
-                        <CardHeader className="bg-muted/30 pb-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="text-lg font-semibold">Group {index + 1}: {group.name}</h4>
-                              <div className="mt-1 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                                <span>
-                                  <span className="font-medium">Capacity:</span>{" "}
-                                  {group.capacity === "unlimited" ? "Unlimited" : group.capacity}
-                                </span>
-                                <span>
-                                  <span className="font-medium">Enrolled:</span>{" "}
-                                  {groupEmployees.length}
-                                </span>
-                                <span>
-                                  <span className="font-medium">Sessions:</span>{" "}
-                                  {group.sessions.length}
-                                </span>
-                                <span>
-                                  <span className="font-medium">Start:</span>{" "}
-                                  {group.startDate ? format(group.startDate, "MMM d, yyyy") : "TBD"}
-                                </span>
-                                {group.endDate && (
-                                  <span>
-                                    <span className="font-medium">End:</span>{" "}
-                                    {format(group.endDate, "MMM d, yyyy")}
+          return (
+            <Card key={index} className="overflow-hidden">
+              <CardHeader className="bg-muted/30 pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-lg font-semibold">Group {index + 1}: {group.name}</h4>
+                    <div className="mt-1 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                      <span>
+                        <span className="font-medium">Capacity:</span>{" "}
+                        {group.capacity === "unlimited" ? "Unlimited" : group.capacity}
+                      </span>
+                      <span>
+                        <span className="font-medium">Enrolled:</span>{" "}
+                        {groupEmployees.length}
+                      </span>
+                      <span>
+                        <span className="font-medium">Sessions:</span>{" "}
+                        {group.sessions.length}
+                      </span>
+                      <span>
+                        <span className="font-medium">Start:</span>{" "}
+                        {group.startDate ? format(group.startDate, "MMM d, yyyy") : "TBD"}
+                      </span>
+                      {group.endDate && (
+                        <span>
+                          <span className="font-medium">End:</span>{" "}
+                          {format(group.endDate, "MMM d, yyyy")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant={group.status === "ACTIVE" ? "default" : "secondary"}>
+                    {group.status || "Active"}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-4">
+                {/* Group Sessions with Attendance */}
+                <div className="mb-4">
+                  <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <HugeiconsIcon
+                      icon={Calendar05Icon}
+                      strokeWidth={1.5}
+                      className="h-4 w-4"
+                    />
+                    Sessions & Attendance ({group.sessions.length})
+                  </h5>
+
+                  {/* Show attendance only for enrolled users or admins */}
+                  {(userRole === "learner" || isAdmin) && (
+                    <div className="space-y-4">
+                      {group.sessions.map((session, idx) => {
+                        const sessionId = session.id
+                        const sessionDate = session.date ? new Date(session.date) : null
+                        const currentDate = TESTING_DATE || new Date()
+                        
+                        // Determine session status based on date
+                        const isFutureSession = sessionDate ? sessionDate.getTime() > currentDate.getTime() : false
+                        const isToday = sessionDate ? sessionDate.toDateString() === currentDate.toDateString() : false
+                        const isPast = sessionDate ? sessionDate.getTime() < currentDate.getTime() && !isToday : false
+                        const isOverdue = isPast && !isToday
+                        
+                        // Determine if attendance can be edited
+                        const canEditAttendance = isAdmin || (userRole === "learner" && (isToday || isPast))
+                        
+                        // For learners: show all sessions but with different states
+                        const isSessionLocked = userRole === "learner" && (isFutureSession || isOverdue)
+
+                        return (
+                          <Card key={idx} className={cn(
+                            "bg-muted/5 border-muted",
+                            isFutureSession && userRole === "learner" && "opacity-70",
+                            isOverdue && userRole === "learner" && "border-red-200 bg-red-50/5",
+                            isOverdue && isAdmin && "border-orange-200 bg-orange-50/5",
+                            isFutureSession && isAdmin && "border-blue-200 bg-blue-50/5"
+                          )}>
+                            <div className="p-3">
+                              {/* Session Header */}
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-4">
+                                  <span className="font-medium text-sm">Session {session.sessionNo || idx + 1}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {sessionDate ? format(sessionDate, "MMM d, yyyy") : "TBD"}
                                   </span>
+                                  {session.startTime && session.endTime && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {session.startTime} - {session.endTime}
+                                    </span>
+                                  )}
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {session.status || ""}
+                                  </Badge>
+                                  {isFutureSession && (
+                                    <Badge className="text-[10px] bg-blue-500 text-white">
+                                      Upcoming
+                                    </Badge>
+                                  )}
+                                  {isOverdue && (
+                                    <Badge className="text-[10px] bg-red-500 text-white">
+                                      Overdue
+                                    </Badge>
+                                  )}
+                                  {isToday && (
+                                    <Badge className="text-[10px] bg-green-500 text-white">
+                                      Today
+                                    </Badge>
+                                  )}
+                                </div>
+                                {isSessionLocked && userRole === "learner" && (
+                                  <div className="text-xs flex items-center gap-1">
+                                    {isFutureSession ? (
+                                      <span className="text-blue-500 flex items-center gap-1">
+                                        <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-3 w-3" />
+                                        Coming Soon
+                                      </span>
+                                    ) : isOverdue ? (
+                                      <span className="text-red-500 flex items-center gap-1">
+                                        <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-3 w-3" />
+                                        Locked
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                            <Badge variant={group.status === "ACTIVE" ? "default" : "secondary"}>
-                              {group.status || "Active"}
-                            </Badge>
-                          </div>
-                        </CardHeader>
 
-                        <CardContent className="pt-4">
-                          {/* Group Sessions with Attendance */}
-                          <div className="mb-4">
-                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                              <HugeiconsIcon
-                                icon={Calendar05Icon}
-                                strokeWidth={1.5}
-                                className="h-4 w-4"
-                              />
-                              Sessions & Attendance ({group.sessions.length})
-                            </h5>
+                              {/* Attendance Table - Show for all sessions */}
+                              <div className="overflow-x-auto">
+                                {enrolledEmployees.length > 0 ? (
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b">
+                                        <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Employee</th>
+                                        <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Department</th>
+                                        <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Status</th>
+                                        <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Action</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {/* Show ALL enrolled employees in the group */}
+                                      {groupEmployees
+                                        .filter(employee => {
+                                          // For learners: show ONLY the current user
+                                          if (userRole === "learner") {
+                                            return employee.employeeId === currentUserId;
+                                          }
+                                          // For admins: show ALL employees
+                                          return true;
+                                        })
+                                        .map((employee) => {
+                                          // Try to find attendance for this employee for this session
+                                          const attendance = getAttendanceForSession(
+                                            parseInt(sessionId),
+                                            employee.id
+                                          )
+                                          const key = `${sessionId}-${employee.id}`
+                                          const currentStatus = attendanceStatuses[key] || attendance?.attendanceStatus || ''
+                                          const isSaving = savingAttendance[key] || false
+                                          
+                                          // Determine if attendance can be edited
+                                          const canEdit = isAdmin || (userRole === "learner" && canEditAttendance && employee.employeeId === currentUserId)
 
-                            {/* Show attendance only for enrolled users or admins */}
-                            {(userRole === "learner" || isAdmin) && (
-                              <div className="space-y-4">
-                                {group.sessions.map((session, idx) => {
-                                  const sessionId = session.id
-                                  return (
-                                    <Card key={idx} className="bg-muted/5 border-muted">
-                                      <div className="p-3">
-                                        {/* Session Header */}
-                                        <div className="flex items-center justify-between mb-3">
-                                          <div className="flex items-center gap-4">
-                                            <span className="font-medium text-sm">Session {session.sessionNo || idx + 1}</span>
-                                            <span className="text-xs text-muted-foreground">
-                                              {session.date ? format(session.date, "MMM d, yyyy") : "TBD"}
-                                            </span>
-                                            {session.startTime && session.endTime && (
-                                              <span className="text-xs text-muted-foreground">
-                                                {session.startTime} - {session.endTime}
-                                              </span>
-                                            )}
-                                            <Badge variant="outline" className="text-[10px]">
-                                              {session.status || ""}
-                                            </Badge>
-                                          </div>
-                                        </div>
-
-                                        {/* Attendance Table */}
-                                        <div className="overflow-x-auto">
-                                          {/* Show attendance based on user role */}
-                                          {(userRole === "learner" || isAdmin)&& enrolledEmployees.length > 0 && (
-                                            <table className="w-full text-sm">
-                                              <thead>
-                                                <tr className="border-b">
-                                                  <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Employee</th>
-                                                  <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Department</th>
-                                                  <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Status</th>
-                                                  <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Action</th>
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                {/* Show ALL enrolled employees in the group */}
-                                                {groupEmployees
-                                                  .filter(employee => {
-                                                    // For learners: show ONLY the current user
-                                                    if (userRole === "learner") {
-                                                      return employee.employeeId === currentUserId;
-                                                    }
-                                                    // For admins: show ALL employees
-                                                    return true;
-                                                  })
-                                                  .map((employee) => {
-                                                    // Try to find attendance for this employee for this session
-                                                    const attendance = getAttendanceForSession(
-                                                      parseInt(sessionId),
-                                                      employee.id
-                                                    )
-                                                    const key = `${sessionId}-${employee.id}`
-                                                    const currentStatus = attendanceStatuses[key] || attendance?.attendanceStatus || ''
-                                                    const isSaving = savingAttendance[key] || false
-
-                                                    return (
-                                                      <tr key={employee.id} className="border-b border-muted/50">
-                                                        <td className="py-2 px-2">
-                                                          <div className="flex items-center gap-2">
-                                                            <Avatar className="h-6 w-6">
-                                                              <AvatarImage src={employee.pfImage || ""} />
-                                                              <AvatarFallback className="text-[10px]">
-                                                                {getInitials(employee.employeeName)}
-                                                              </AvatarFallback>
-                                                            </Avatar>
-                                                            <span className="text-xs font-medium">
-                                                              {truncateText(employee.employeeName, 20)}
-                                                            </span>
-                                                          </div>
-                                                        </td>
-                                                        <td className="py-2 px-2 text-xs text-muted-foreground">
-                                                          {truncateText(employee.departmentName, 20)}
-                                                        </td>
-                                                        <td className="py-2 px-2">
-                                                          {attendance && attendance.attendanceStatus ? (
-                                                            <Badge className={cn(
-                                                              "text-[10px]",
-                                                              getAttendanceStatusColor(attendance.attendanceStatus)
-                                                            )}>
-                                                              <HugeiconsIcon
-                                                                icon={getAttendanceStatusIcon(attendance.attendanceStatus)}
-                                                                strokeWidth={2}
-                                                                className="h-3 w-3 mr-1"
-                                                              />
-                                                              {attendance.attendanceStatus}
-                                                            </Badge>
-                                                          ) : (
-                                                            <span className="text-xs text-muted-foreground">Not recorded</span>
-                                                          )}
-                                                        </td>
-                                                        <td className="py-2 px-2">
-                                                          {(isAdmin || isUserEnrolled) && (
-                                                            <div className="flex items-center gap-2">
-                                                              <Select
-                                                                value={currentStatus}
-                                                                onValueChange={(value) =>
-                                                                  handleAttendanceStatusChange(sessionId, employee.id.toString(), value)
-                                                                }
-                                                                disabled={isSaving}
-                                                              >
-                                                                <SelectTrigger className="h-7 w-[130px] text-xs">
-                                                                  <SelectValue placeholder="Select status" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                  <SelectItem value="PRESENT">✅ Present</SelectItem>
-                                                                  <SelectItem value="ABSENT">❌ Absent</SelectItem>
-                                                                  <SelectItem value="LATE">⏰ Late</SelectItem>
-                                                                  <SelectItem value="EXCUSED">📝 Excused</SelectItem>
-                                                                </SelectContent>
-                                                              </Select>
-                                                              <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-7 px-2 text-xs"
-                                                                onClick={() => handleSaveAttendance(
-                                                                  parseInt(sessionId),
-                                                                  employee.id,
-                                                                  parseInt(group.id)
-                                                                )}
-                                                                disabled={!currentStatus || isSaving}
-                                                              >
-                                                                {isSaving ? (
-                                                                  <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></span>
-                                                                ) : (
-                                                                  <HugeiconsIcon icon={SaveIcon} strokeWidth={2} className="h-3 w-3" />
-                                                                )}
-                                                              </Button>
-                                                            </div>
-                                                          )}
-                                                        </td>
-                                                      </tr>
-                                                    )
-                                                  })}
-                                              </tbody>
-                                            </table>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </Card>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Enrolled Employees for this Group - with Status Tabs */}
-                          {groupEmployees.length > 0 && (
-                            <div>
-                              <div className="flex items-center justify-between mb-3">
-                                <h5 className="text-sm font-medium flex items-center gap-2">
-                                  <HugeiconsIcon
-                                    icon={User02Icon}
-                                    strokeWidth={1.5}
-                                    className="h-4 w-4"
-                                  />
-                                  Enrolled Employees ({groupEmployees.length})
-                                </h5>
+                                          return (
+                                            <tr key={employee.id} className="border-b border-muted/50">
+                                              <td className="py-2 px-2">
+                                                <div className="flex items-center gap-2">
+                                                  <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={employee.pfImage || ""} />
+                                                    <AvatarFallback className="text-[10px]">
+                                                      {getInitials(employee.employeeName)}
+                                                    </AvatarFallback>
+                                                  </Avatar>
+                                                  <span className="text-xs font-medium">
+                                                    {truncateText(employee.employeeName, 20)}
+                                                  </span>
+                                                </div>
+                                              </td>
+                                              <td className="py-2 px-2 text-xs text-muted-foreground">
+                                                {truncateText(employee.departmentName, 20)}
+                                              </td>
+                                              <td className="py-2 px-2">
+                                                {attendance && attendance.attendanceStatus ? (
+                                                  <Badge className={cn(
+                                                    "text-[10px]",
+                                                    getAttendanceStatusColor(attendance.attendanceStatus)
+                                                  )}>
+                                                    <HugeiconsIcon
+                                                      icon={getAttendanceStatusIcon(attendance.attendanceStatus)}
+                                                      strokeWidth={2}
+                                                      className="h-3 w-3 mr-1"
+                                                    />
+                                                    {attendance.attendanceStatus}
+                                                  </Badge>
+                                                ) : (
+                                                  <span className="text-xs text-muted-foreground">
+                                                    {isFutureSession && userRole === "learner" ? "Pending" : "Not recorded"}
+                                                  </span>
+                                                )}
+                                              </td>
+                                              <td className="py-2 px-2">
+                                                {canEdit ? (
+                                                  <div className="flex items-center gap-2">
+                                                    <Select
+                                                      value={currentStatus}
+                                                      onValueChange={(value) =>
+                                                        handleAttendanceStatusChange(sessionId, employee.id.toString(), value)
+                                                      }
+                                                      disabled={isSaving || isSessionLocked}
+                                                    >
+                                                      <SelectTrigger className="h-7 w-[130px] text-xs">
+                                                        <SelectValue placeholder="Select status" />
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        <SelectItem value="PRESENT">✅ Present</SelectItem>
+                                                        <SelectItem value="ABSENT">❌ Absent</SelectItem>
+                                                        <SelectItem value="LATE">⏰ Late</SelectItem>
+                                                        <SelectItem value="EXCUSED">📝 Excused</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                      className="h-7 px-2 text-xs"
+                                                      onClick={() => handleSaveAttendance(
+                                                        parseInt(sessionId),
+                                                        employee.id,
+                                                        parseInt(group.id)
+                                                      )}
+                                                      disabled={!currentStatus || isSaving || isSessionLocked}
+                                                    >
+                                                      {isSaving ? (
+                                                        <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></span>
+                                                      ) : (
+                                                        <HugeiconsIcon icon={SaveIcon} strokeWidth={2} className="h-3 w-3" />
+                                                      )}
+                                                    </Button>
+                                                  </div>
+                                                ) : (
+                                                  <span className="text-xs text-muted-foreground">
+                                                    {isFutureSession ? "Coming Soon" : isOverdue ? "Locked" : "No access"}
+                                                  </span>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          )
+                                        })}
+                                    </tbody>
+                                  </table>
+                                ) : (
+                                  <div className="text-center py-6 text-sm text-muted-foreground">
+                                    No employees enrolled in this group yet.
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Status Tabs */}
-                              <Tabs defaultValue={uniqueStatuses[0]?.toLowerCase() || "all"} className="mb-4">
-                                <TabsList className="mb-3">
-                                  {uniqueStatuses.map((status) => (
-                                    <TabsTrigger key={status} value={status.toLowerCase()} className="text-xs">
-                                      {capitalizeFirstLetter(status)} ({getEmployeesByStatus(groupEmployees, status).length})
-                                    </TabsTrigger>
-                                  ))}
-                                </TabsList>
+                              {/* Status Messages based on session state */}
+                              {isFutureSession && userRole === "learner" && (
+                                <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                  <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                                    <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
+                                    📅 This session is scheduled for {sessionDate ? format(sessionDate, "MMM d, yyyy") : "TBD"}. 
+                                    Attendance will be available on the session date.
+                                  </p>
+                                </div>
+                              )}
 
-                                {/* Status filtered employees */}
-                                {uniqueStatuses.map((status) => (
-                                  <TabsContent key={status} value={status.toLowerCase()}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                      {getEmployeesByStatus(groupEmployees, status).map((employee) => (
-                                        <div key={employee.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
-                                          <Avatar className="h-10 w-10 shrink-0">
-                                            <AvatarImage src={employee.pfImage || ""} />
-                                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                                              {getInitials(employee.employeeName)}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-medium truncate" title={employee.employeeName}>
-                                              {employee.employeeName}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground truncate" title={`${employee.departmentName} • ${employee.teamName}`}>
-                                              {truncateText(employee.departmentName, 25)}
-                                              {employee.teamName && ` • ${truncateText(employee.teamName, 20)}`}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </TabsContent>
-                                ))}
-                              </Tabs>
+                              {isOverdue && userRole === "learner" && (
+                                <div className="mt-3 p-2 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-800">
+                                  <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+                                    <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-4 w-4" />
+                                    ⚠️ This session is overdue. Attendance can be viewed but not modified.
+                                  </p>
+                                </div>
+                              )}
+
+                              {isOverdue && isAdmin && (
+                                <div className="mt-3 p-2 bg-orange-50 dark:bg-orange-950/20 rounded border border-orange-200 dark:border-orange-800">
+                                  <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-2">
+                                    <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-4 w-4" />
+                                    ⚠️ This session is overdue. As an admin, you can still modify attendance records.
+                                  </p>
+                                </div>
+                              )}
+
+                              {isFutureSession && isAdmin && (
+                                <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                  <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                                    <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
+                                    📅 This is a future session. As an admin, you can pre-record attendance.
+                                  </p>
+                                </div>
+                              )}
+
+                              {isToday && userRole === "learner" && (
+                                <div className="mt-3 p-2 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-800">
+                                  <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-2">
+                                    <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
+                                    ✅ Today's session - Attendance can be recorded.
+                                  </p>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
-              </TabsContent>
-            )}
+
+                {/* Enrolled Employees for this Group - with Status Tabs */}
+                {groupEmployees.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-sm font-medium flex items-center gap-2">
+                        <HugeiconsIcon
+                          icon={User02Icon}
+                          strokeWidth={1.5}
+                          className="h-4 w-4"
+                        />
+                        Enrolled Employees ({groupEmployees.length})
+                      </h5>
+                    </div>
+
+                    {/* Status Tabs */}
+                    <Tabs defaultValue={uniqueStatuses[0]?.toLowerCase() || "all"} className="mb-4">
+                      <TabsList className="mb-3">
+                        {uniqueStatuses.map((status) => (
+                          <TabsTrigger key={status} value={status.toLowerCase()} className="text-xs">
+                            {capitalizeFirstLetter(status)} ({getEmployeesByStatus(groupEmployees, status).length})
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+
+                      {/* Status filtered employees */}
+                      {uniqueStatuses.map((status) => (
+                        <TabsContent key={status} value={status.toLowerCase()}>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {getEmployeesByStatus(groupEmployees, status).map((employee) => (
+                              <div key={employee.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
+                                <Avatar className="h-10 w-10 shrink-0">
+                                  <AvatarImage src={employee.pfImage || ""} />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                    {getInitials(employee.employeeName)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium truncate" title={employee.employeeName}>
+                                    {employee.employeeName}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate" title={`${employee.departmentName} • ${employee.teamName}`}>
+                                    {truncateText(employee.departmentName, 25)}
+                                    {employee.teamName && ` • ${truncateText(employee.teamName, 20)}`}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+    </TabsContent>
+  )}
 
           {/* Sessions Tab - ONLY for self-study courses */}
           {course.courseType === "self-study" && (

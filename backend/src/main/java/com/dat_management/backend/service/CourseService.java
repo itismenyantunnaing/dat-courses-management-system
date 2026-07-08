@@ -100,7 +100,7 @@ public class CourseService {
     }
 
     // =========================================================
-    // API 4 — PUT /api/courses/:id (UPDATED WITH PROPER GROUP HANDLING)
+    // API 4 — PUT /api/courses/:id (UPDATED WITH PROPER GROUP AND SELF-STUDY HANDLING)
     // =========================================================
     public CourseDto updateCourse(Integer id, CourseUpdateDto req) {
         Course course = findCourseOrThrow(id);
@@ -124,10 +124,9 @@ public class CourseService {
             updateGroupsWithEnrollmentAwareness(course, req.getGroups());
         }
 
-        // Handle self-study sessions update
+        // Handle self-study sessions update - UPDATE instead of DELETE + CREATE
         if (req.getSelfStudySessions() != null) {
-            selfStudyRepo.deleteByCourseId(course.getId());
-            saveSelfStudySessions(course, req.getSelfStudySessions());
+            updateSelfStudySessions(course, req.getSelfStudySessions());
         }
 
         return toCourseDto(courseRepo.findById(course.getId()).get(), false);
@@ -313,42 +312,65 @@ public class CourseService {
     // =========================================================
 
     /**
-     * Updates groups with enrollment awareness:
-     * - Groups with enrollments: Can be updated but NOT deleted
-     * - Groups without enrollments: Can be updated OR deleted
-     * - New groups: Can be added
+     * Updates groups by matching on group_name:
+     * - If group_name exists in the course → UPDATE that group
+     * - If group_name doesn't exist → CREATE new group
+     * - Groups not in the request → DELETE (if no enrollments)
      */
     private void updateGroupsWithEnrollmentAwareness(Course course, List<GroupRequestDto> groupRequests) {
-        // Get existing groups
+        // Get existing groups for this course
         List<CourseGroup> existingGroups = groupRepo.findByCourseIdOrderByGroupNameAsc(course.getId());
         
-        // Map existing groups by ID for easy lookup
-        Map<Integer, CourseGroup> existingGroupMap = existingGroups.stream()
-            .collect(Collectors.toMap(CourseGroup::getId, Function.identity()));
+        // Create a map of group name -> existing group for easy lookup
+        Map<String, CourseGroup> existingGroupByName = existingGroups.stream()
+            .collect(Collectors.toMap(
+                CourseGroup::getGroupName,
+                Function.identity(),
+                (a, b) -> a
+            ));
         
         // Track which existing groups are still in the request
-        Set<Integer> requestGroupIds = new HashSet<>();
+        Set<String> requestGroupNames = new HashSet<>();
         
         // Process each group from the request
         for (GroupRequestDto gReq : groupRequests) {
-            if (gReq.getId() != null && existingGroupMap.containsKey(gReq.getId())) {
-                // EXISTING GROUP - Update it (even with enrollments)
-                CourseGroup group = existingGroupMap.get(gReq.getId());
-                requestGroupIds.add(group.getId());
+            String groupName = gReq.getGroupName();
+            if (groupName == null || groupName.trim().isEmpty()) {
+                throw new RuntimeException("Group name is required");
+            }
+            
+            // Check for duplicate group names within the request itself
+            long duplicateInRequest = groupRequests.stream()
+                .filter(r -> groupName.equals(r.getGroupName()))
+                .count();
+            
+            if (duplicateInRequest > 1) {
+                throw new RuntimeException(
+                    String.format("Duplicate group name '%s' found in the request", groupName)
+                );
+            }
+            
+            requestGroupNames.add(groupName);
+            
+            // Check if this group name already exists in the course
+            if (existingGroupByName.containsKey(groupName)) {
+                // EXISTING GROUP - Update it
+                CourseGroup group = existingGroupByName.get(groupName);
                 
                 // Update group basic info
-                group.setGroupName(gReq.getGroupName());
-                group.setCapacity(gReq.getCapacity());
+                if (gReq.getCapacity() != null) {
+                    group.setCapacity(gReq.getCapacity());
+                }
                 if (gReq.getGroupStatus() != null) {
                     group.setGroupStatus(GroupStatus.valueOf(gReq.getGroupStatus()));
                 }
                 group = groupRepo.save(group);
                 
-                // Update sessions for this group using incremental logic
+                // Update sessions for this group
                 updateSessionsForGroup(group, gReq.getSessions());
                 
             } else {
-                // NEW GROUP - Create it (if no ID provided or ID not found)
+                // NEW GROUP - Create it
                 CourseGroup group = saveGroup(course, gReq);
                 saveSessionsForGroup(course, group, gReq.getSessions());
             }
@@ -356,7 +378,7 @@ public class CourseService {
         
         // Delete groups that are no longer in the request (only if NO enrollments)
         for (CourseGroup existingGroup : existingGroups) {
-            if (!requestGroupIds.contains(existingGroup.getId())) {
+            if (!requestGroupNames.contains(existingGroup.getGroupName())) {
                 // Check for enrollments before deleting
                 long enrollmentCount = groupRepo.countEnrollmentsByGroupId(existingGroup.getId());
                 
@@ -393,11 +415,10 @@ public class CourseService {
             .collect(Collectors.toMap(CourseSession::getId, Function.identity()));
         
         // Map existing sessions by session number for duplicate checking
-        // FIXED: Using Integer as key type (converted from Short)
         Map<Integer, CourseSession> existingSessionByNo = existingSessions.stream()
             .filter(s -> s.getSessionNo() != null)
             .collect(Collectors.toMap(
-                s -> s.getSessionNo().intValue(),  // Convert Short to Integer
+                s -> s.getSessionNo().intValue(),
                 Function.identity(), 
                 (a, b) -> a
             ));
@@ -490,6 +511,146 @@ public class CourseService {
             }
         }
     }
+
+    /**
+     * Updates self-study sessions by matching on session_no:
+     * - If session_no exists in the course → UPDATE that session
+     * - If session_no doesn't exist → CREATE new session
+     * - Sessions not in the request → DELETE (if no progress records)
+     */
+    /**
+ * Updates self-study sessions by matching on id or session_no:
+ * - If id exists in the course → UPDATE that session
+ * - If session_no exists in the course → UPDATE that session  
+ * - If neither exists → CREATE new session
+ * - Sessions not in the request → DELETE (if no progress records)
+ */
+private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> sessionRequests) {
+    if (sessionRequests == null) return;
+    
+    // Get existing self-study sessions for this course
+    List<SelfStudySession> existingSessions = selfStudyRepo.findByCourseIdOrderBySessionNoAsc(course.getId());
+    
+    // Create maps for easy lookup
+    Map<Integer, SelfStudySession> existingSessionById = existingSessions.stream()
+        .collect(Collectors.toMap(SelfStudySession::getId, Function.identity(), (a, b) -> a));
+    
+    Map<Short, SelfStudySession> existingSessionByNo = existingSessions.stream()
+        .collect(Collectors.toMap(
+            SelfStudySession::getSessionNo,
+            Function.identity(),
+            (a, b) -> a
+        ));
+    
+    // Track which existing sessions are still in the request
+    Set<Integer> requestSessionIds = new HashSet<>();
+    
+    // Process each session from the request
+    for (SelfStudySessionDto sReq : sessionRequests) {
+        Short sessionNo = sReq.getSessionNo();
+        if (sessionNo == null) {
+            throw new RuntimeException("Session number is required");
+        }
+        
+        // Check for duplicate session numbers within the request itself
+        long duplicateInRequest = sessionRequests.stream()
+            .filter(s -> sessionNo.equals(s.getSessionNo()))
+            .count();
+        
+        if (duplicateInRequest > 1) {
+            throw new RuntimeException(
+                String.format("Duplicate session number '%d' found in the request", sessionNo)
+            );
+        }
+        
+        SelfStudySession sessionToUpdate = null;
+        
+        // First try to find by ID
+        if (sReq.getId() != null && existingSessionById.containsKey(sReq.getId())) {
+            sessionToUpdate = existingSessionById.get(sReq.getId());
+            requestSessionIds.add(sessionToUpdate.getId());
+        } 
+        // Then try to find by session_no
+        else if (existingSessionByNo.containsKey(sessionNo)) {
+            sessionToUpdate = existingSessionByNo.get(sessionNo);
+            requestSessionIds.add(sessionToUpdate.getId());
+        }
+        
+        if (sessionToUpdate != null) {
+            // EXISTING SESSION - Update it
+            // Update session fields
+            if (sReq.getFilePath() != null) {
+                sessionToUpdate.setFilepath(sReq.getFilePath());
+            }
+            if (sReq.getKanjiTarget() != null) {
+                sessionToUpdate.setKanjiTarget(sReq.getKanjiTarget());
+            }
+            if (sReq.getVocabularyTarget() != null) {
+                sessionToUpdate.setVocabularyTarget(sReq.getVocabularyTarget());
+            }
+            if (sReq.getGrammarTarget() != null) {
+                sessionToUpdate.setGrammarTarget(sReq.getGrammarTarget());
+            }
+            if (sReq.getReadingTargetMinutes() != null) {
+                sessionToUpdate.setReadingTargetMinutes(sReq.getReadingTargetMinutes());
+            }
+            if (sReq.getListeningTargetMinutes() != null) {
+                sessionToUpdate.setListeningTargetMinutes(sReq.getListeningTargetMinutes());
+            }
+            if (sReq.getDurationPerSession() != null) {
+                sessionToUpdate.setDurationPerSession(sReq.getDurationPerSession());
+            }
+            if (sReq.getSessionStatus() != null) {
+                sessionToUpdate.setSessionStatus(sReq.getSessionStatus());
+            }
+            // Always update the session_no if it changed
+            if (!sessionNo.equals(sessionToUpdate.getSessionNo())) {
+                // Check if the new session_no conflicts with another session
+                if (existingSessionByNo.containsKey(sessionNo) && 
+                    !existingSessionByNo.get(sessionNo).getId().equals(sessionToUpdate.getId())) {
+                    throw new RuntimeException(
+                        String.format("Session number %d already exists for this course", sessionNo)
+                    );
+                }
+                sessionToUpdate.setSessionNo(sessionNo);
+            }
+            sessionToUpdate.setUpdatedAt(LocalDateTime.now());
+            selfStudyRepo.save(sessionToUpdate);
+            
+        } else {
+            // NEW SESSION - Create it
+            SelfStudySession newSession = new SelfStudySession();
+            newSession.setCourse(course);
+            newSession.setSessionNo(sReq.getSessionNo());
+            newSession.setFilepath(sReq.getFilePath());
+            newSession.setKanjiTarget(sReq.getKanjiTarget());
+            newSession.setVocabularyTarget(sReq.getVocabularyTarget());
+            newSession.setGrammarTarget(sReq.getGrammarTarget());
+            newSession.setReadingTargetMinutes(sReq.getReadingTargetMinutes());
+            newSession.setListeningTargetMinutes(sReq.getListeningTargetMinutes());
+            newSession.setDurationPerSession(sReq.getDurationPerSession());
+            newSession.setSessionStatus(sReq.getSessionStatus() != null ? sReq.getSessionStatus() : "PLANNED");
+            newSession.setCreatedAt(LocalDateTime.now());
+            newSession.setUpdatedAt(LocalDateTime.now());
+            selfStudyRepo.save(newSession);
+        }
+    }
+    
+    // Delete sessions that are no longer in the request
+    for (SelfStudySession existingSession : existingSessions) {
+        if (!requestSessionIds.contains(existingSession.getId())) {
+            try {
+                selfStudyRepo.delete(existingSession);
+            } catch (Exception e) {
+                // If there's a foreign key constraint, throw a meaningful error
+                throw new RuntimeException(
+                    String.format("Cannot delete self-study session '%d' because it has associated progress records. Please remove the progress records first.",
+                        existingSession.getSessionNo())
+                );
+            }
+        }
+    }
+}
 
     private CourseDto toCourseDto(Course c, boolean includeEnrollments) {
         List<CourseGroup> groups = groupRepo.findByCourseIdOrderByGroupNameAsc(c.getId());
@@ -610,18 +771,6 @@ public class CourseService {
         }
     }
 
-    private SessionDto toSessionResponseDto(CourseSession session) {
-        return SessionDto.builder()
-            .id(session.getId())
-            .sessionNo(session.getSessionNo())
-            .sessionDate(session.getSessionDate())
-            .startTime(session.getStartTime())
-            .endTime(session.getEndTime())
-            .sessionStatus(session.getSessionStatus() != null ? 
-                session.getSessionStatus().name() : null)
-            .build();
-    }
-
     private void saveSelfStudySessions(Course course, List<SelfStudySessionDto> dtos) {
         if (dtos == null) return;
         for (SelfStudySessionDto s : dtos) {
@@ -633,13 +782,25 @@ public class CourseService {
             ss.setVocabularyTarget(s.getVocabularyTarget());
             ss.setGrammarTarget(s.getGrammarTarget());
             ss.setReadingTargetMinutes(s.getReadingTargetMinutes());
-            ss.setDurationPerSession(s.getDurationPerSession()); // NEW
+            ss.setDurationPerSession(s.getDurationPerSession());
             ss.setListeningTargetMinutes(s.getListeningTargetMinutes());
             ss.setSessionStatus(s.getSessionStatus() != null ? s.getSessionStatus() : "PLANNED");
             ss.setCreatedAt(LocalDateTime.now());
             ss.setUpdatedAt(LocalDateTime.now());
             selfStudyRepo.save(ss);
         }
+    }
+
+    private SessionDto toSessionResponseDto(CourseSession session) {
+        return SessionDto.builder()
+            .id(session.getId())
+            .sessionNo(session.getSessionNo())
+            .sessionDate(session.getSessionDate())
+            .startTime(session.getStartTime())
+            .endTime(session.getEndTime())
+            .sessionStatus(session.getSessionStatus() != null ? 
+                session.getSessionStatus().name() : null)
+            .build();
     }
 
     private Course findCourseOrThrow(Integer id) {

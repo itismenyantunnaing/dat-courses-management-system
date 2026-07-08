@@ -84,21 +84,24 @@ const DEFAULT_SESSION_DAYS = [4, 5]
 const AVAILABLE_LEARNERS_PER_PAGE = 10
 
 export const formatGroupsForAPI = (groups: CourseGroup[]) => {
-    return groups.map(group => ({
-        group_name: group.name,
-        capacity: group.capacity === 'unlimited' ? null : group.capacity,
-        start_date: group.startDate?.toISOString().split('T')[0] || null,
-        end_date: group.endDate?.toISOString().split('T')[0] || null,
-        sessions_per_week: group.sessionsPerWeek || [],
-        start_time: group.startTime,
-        end_time: group.endTime,
-        sessions: group.sessions.map(session => ({
-            session_date: session.date?.toISOString().split('T')[0],
-            start_time: session.startTime,
-            end_time: session.endTime,
-        })) || [],
-    }))
+    return groups
+        .filter(group => group.name && group.name.trim() !== '')
+        .map(group => ({
+            group_name: group.name.trim(),
+            capacity: group.capacity === 'unlimited' ? null : group.capacity,
+            start_date: group.startDate?.toISOString().split('T')[0] || null,
+            end_date: group.endDate?.toISOString().split('T')[0] || null,
+            sessions_per_week: group.sessionsPerWeek || [],
+            start_time: group.startTime,
+            end_time: group.endTime,
+            sessions: (group.sessions || []).map(session => ({
+                session_date: session.date?.toISOString().split('T')[0],
+                start_time: session.startTime,
+                end_time: session.endTime,
+            })),
+        }))
 }
+
 
 interface EnrolledEmployee {
     id: number
@@ -227,10 +230,8 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     }
 
     const addGroup = () => {
-        // Find the last group to copy its data
         const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null
 
-        // Create new group with data from the last group (if available)
         const newGroup: CourseGroup = {
             id: `g${Date.now()}`,
             name: `Group ${groups.length + 1}`,
@@ -261,24 +262,60 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         }
     }
 
-    const updateGroup = (groupId: string, field: string, value: any) => {
-        const updatedGroups = groups.map((group) =>
-            group.id === groupId ? { ...group, [field]: value } : group
+    // Helper function to sync session times with group times
+    const syncSessionTimesWithGroup = (groupId: string) => {
+        const group = groups.find((g) => g.id === groupId)
+        if (!group || group.sessions.length === 0) return
+
+        const updatedSessions = group.sessions.map((session) => ({
+            ...session,
+            startTime: group.startTime || session.startTime,
+            endTime: group.endTime || session.endTime,
+        }))
+
+        const updatedGroups = groups.map((g) =>
+            g.id === groupId
+                ? {
+                    ...g,
+                    sessions: updatedSessions,
+                    // Ensure the group times are preserved
+                    startTime: group.startTime,
+                    endTime: group.endTime
+                }
+                : g
         )
         onUpdateGroups(updatedGroups)
+    }
 
-        if (
-            [
-                "startDate",
-                "endDate",
-                "sessionsPerWeek",
-                "startTime",
-                "endTime",
-            ].includes(field)
-        ) {
-            // When sessionsPerWeek changes, recalculate all session dates
+    const updateGroup = (groupId: string, field: string, value: any) => {
+        // First, update the group's field
+        let updatedGroups = groups.map((group) =>
+            group.id === groupId ? { ...group, [field]: value } : group
+        )
+
+        // If we're updating startTime or endTime, we need to update sessions too
+        if (field === "startTime" || field === "endTime") {
             const group = updatedGroups.find((g) => g.id === groupId)
-            if (group && field === "sessionsPerWeek") {
+            if (group && group.sessions.length > 0) {
+                // Update all sessions with the new time
+                const updatedSessions = group.sessions.map((session) => ({
+                    ...session,
+                    startTime: field === "startTime" ? value : session.startTime,
+                    endTime: field === "endTime" ? value : session.endTime,
+                }))
+
+                updatedGroups = updatedGroups.map((g) =>
+                    g.id === groupId ? { ...g, sessions: updatedSessions } : g
+                )
+            }
+            onUpdateGroups(updatedGroups)
+            return
+        }
+
+        if (field === "sessionsPerWeek") {
+            // Only recalculate when sessionsPerWeek changes
+            const group = updatedGroups.find((g) => g.id === groupId)
+            if (group && group.sessions.length > 0) {
                 const startDate = group.startDate || new Date()
                 const sessionDays = group.sessionsPerWeek || DEFAULT_SESSION_DAYS
                 const sortedDays = [...sessionDays].sort((a, b) => a - b)
@@ -294,33 +331,34 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                     const dayOfWeek = currentDate.getDay()
                     if (sortedDays.includes(dayOfWeek)) {
                         if (group.endDate && currentDate > group.endDate) break
+                        // Preserve the original session status if it exists
+                        const originalSession = group.sessions[sessionCount]
                         newSessions.push({
-                            id: `s${Date.now()}-${sessionCount}`,
+                            id: originalSession?.id || `s${Date.now()}-${sessionCount}`,
                             date: new Date(currentDate),
                             startTime: startTime,
                             endTime: endTime,
-                            status: 'PLANNED'
+                            status: originalSession?.status || 'PLANNED'
                         })
                         sessionCount++
                     }
                     currentDate.setDate(currentDate.getDate() + 1)
                 }
 
-                const groupsWithRecalculatedSessions = updatedGroups.map((g) =>
+                updatedGroups = updatedGroups.map((g) =>
                     g.id === groupId ? { ...g, sessions: newSessions } : g
                 )
-                onUpdateGroups(groupsWithRecalculatedSessions)
+                onUpdateGroups(updatedGroups)
                 onSetTrainerSessionPage(1)
-            } else {
-                const resetSessions = updatedGroups.map((group) =>
-                    group.id === groupId ? { ...group, sessions: [] } : group
-                )
-                onUpdateGroups(resetSessions)
-                previousTotalSessionsRef.current[groupId] = 0
+                return
             }
         }
+
+        // For all other fields, just update normally
+        onUpdateGroups(updatedGroups)
     }
 
+    // Updated updateGroupSession with time sync
     const updateGroupSession = (
         groupId: string,
         sessionId: string,
@@ -337,6 +375,36 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                 }
                 : group
         )
+
+        // If updating time, check if all sessions have the same time and update the main group
+        if (field === "startTime" || field === "endTime") {
+            const group = updatedGroups.find((g) => g.id === groupId)
+            if (group && group.sessions.length > 0) {
+                const allSameStartTime = group.sessions.every(
+                    (s) => s.startTime === group.sessions[0].startTime
+                )
+                const allSameEndTime = group.sessions.every(
+                    (s) => s.endTime === group.sessions[0].endTime
+                )
+
+                // If all sessions have the same time, update the main group fields
+                if (allSameStartTime && field === "startTime") {
+                    const updatedWithGroupTime = updatedGroups.map((g) =>
+                        g.id === groupId ? { ...g, startTime: value } : g
+                    )
+                    onUpdateGroups(updatedWithGroupTime)
+                    return
+                }
+                if (allSameEndTime && field === "endTime") {
+                    const updatedWithGroupTime = updatedGroups.map((g) =>
+                        g.id === groupId ? { ...g, endTime: value } : g
+                    )
+                    onUpdateGroups(updatedWithGroupTime)
+                    return
+                }
+            }
+        }
+
         onUpdateGroups(updatedGroups)
     }
 
@@ -433,6 +501,41 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         updateGroup(groupId, "sessionsPerWeek", newDays)
     }
 
+    // New handler for start date changes that doesn't reset sessions
+    const handleStartDateChange = (groupId: string, date: Date | undefined) => {
+        if (!date) return
+        const group = groups.find((g) => g.id === groupId)
+        if (!group) return
+
+        // If sessions exist and new date is before first session date, warn user
+        if (group.sessions.length > 0) {
+            const firstSessionDate = group.sessions[0].date
+            if (firstSessionDate && date > firstSessionDate) {
+                // Show warning that some sessions might need to be removed
+                if (window.confirm("Some existing sessions are before the new start date. They will be removed. Continue?")) {
+                    // Filter out sessions before the new start date
+                    const filteredSessions = group.sessions.filter(
+                        (s) => s.date && s.date >= date
+                    )
+                    const updatedGroups = groups.map((g) =>
+                        g.id === groupId
+                            ? { ...g, startDate: date, sessions: filteredSessions }
+                            : g
+                    )
+                    onUpdateGroups(updatedGroups)
+                    return
+                }
+                return
+            }
+        }
+
+        // Just update the date without resetting sessions
+        const updatedGroups = groups.map((g) =>
+            g.id === groupId ? { ...g, startDate: date } : g
+        )
+        onUpdateGroups(updatedGroups)
+    }
+
     const handleGroupSessionDateChange = (
         groupId: string,
         sessionId: string,
@@ -451,7 +554,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             return
         }
 
-        if (date < group.startDate) {
+        if (group.startDate && date < group.startDate) {
             onSetGroupErrors({
                 ...groupErrors,
                 [groupId]: "Session date cannot be before the start date",
@@ -505,11 +608,14 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                         if (group.endDate && currentDate > group.endDate) {
                             break
                         }
+                        // Preserve existing session data if available
+                        const existingSession = group.sessions[sessionCount]
                         newSessions.push({
-                            id: `s${Date.now()}-${sessionCount}`,
+                            id: existingSession?.id || `s${Date.now()}-${sessionCount}`,
                             date: new Date(currentDate),
-                            startTime: startTime,
-                            endTime: endTime,
+                            startTime: existingSession?.startTime || startTime,
+                            endTime: existingSession?.endTime || endTime,
+                            status: existingSession?.status || 'PLANNED'
                         })
                         sessionCount++
                     }
@@ -615,7 +721,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                 <Calendar
                                     mode="single"
                                     selected={group.startDate}
-                                    onSelect={(date) => updateGroup(group.id, "startDate", date || undefined)}
+                                    onSelect={(date) => handleStartDateChange(group.id, date || undefined)}
                                     defaultMonth={group.startDate}
                                 />
                             </PopoverContent>
@@ -653,19 +759,12 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                     <div className="space-y-2">
                         <Label>Start Time <span className="text-red-500">*</span></Label>
                         <div className="relative">
-                            <HugeiconsIcon icon={Time02Icon} strokeWidth={1.5} className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <HugeiconsIcon icon={Time02Icon} strokeWidth={1.5} className="pointer-events-none absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 type="time"
                                 value={group.startTime || ""}
                                 onChange={(e) => {
                                     updateGroup(group.id, "startTime", e.target.value)
-                                    if (group.sessions.length > 0) {
-                                        const updatedSessions = group.sessions.map((s) => ({
-                                            ...s,
-                                            startTime: e.target.value,
-                                        }))
-                                        updateGroup(group.id, "sessions", updatedSessions)
-                                    }
                                 }}
                                 className="pl-8"
                             />
@@ -674,19 +773,12 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                     <div className="space-y-2">
                         <Label>End Time <span className="text-red-500">*</span></Label>
                         <div className="relative">
-                            <HugeiconsIcon icon={Time02Icon} strokeWidth={1.5} className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <HugeiconsIcon icon={Time02Icon} strokeWidth={1.5} className="pointer-events-none absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 type="time"
                                 value={group.endTime || ""}
                                 onChange={(e) => {
                                     updateGroup(group.id, "endTime", e.target.value)
-                                    if (group.sessions.length > 0) {
-                                        const updatedSessions = group.sessions.map((s) => ({
-                                            ...s,
-                                            endTime: e.target.value,
-                                        }))
-                                        updateGroup(group.id, "sessions", updatedSessions)
-                                    }
                                 }}
                                 className="pl-8"
                             />
@@ -752,15 +844,21 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                 const currentDate = new Date(startDate)
                                 let sessionCount = 0
 
+                                // Preserve existing sessions when possible
+                                const existingSessions = group.sessions || []
+
                                 while (sessionCount < value) {
                                     const dayOfWeek = currentDate.getDay()
                                     if (sortedDays.includes(dayOfWeek)) {
                                         if (group.endDate && currentDate > group.endDate) break
+                                        // Try to preserve existing session data
+                                        const existingSession = existingSessions[sessionCount]
                                         newSessions.push({
-                                            id: `s${Date.now()}-${sessionCount}`,
+                                            id: existingSession?.id || `s${Date.now()}-${sessionCount}`,
                                             date: new Date(currentDate),
-                                            startTime: startTime,
-                                            endTime: endTime,
+                                            startTime: existingSession?.startTime || startTime,
+                                            endTime: existingSession?.endTime || endTime,
+                                            status: existingSession?.status || 'PLANNED'
                                         })
                                         sessionCount++
                                     }
@@ -832,11 +930,21 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <div className="relative flex-1">
-                                                    <Input type="time" value={session.startTime || ""} onChange={(e) => updateGroupSession(group.id, session.id, "startTime", e.target.value)} className="h-7 text-xs" />
+                                                    <Input
+                                                        type="time"
+                                                        value={session.startTime || ""}
+                                                        onChange={(e) => updateGroupSession(group.id, session.id, "startTime", e.target.value)}
+                                                        className="h-7 text-xs"
+                                                    />
                                                 </div>
                                                 <span className="text-[10px] text-muted-foreground">to</span>
                                                 <div className="relative flex-1">
-                                                    <Input type="time" value={session.endTime || ""} onChange={(e) => updateGroupSession(group.id, session.id, "endTime", e.target.value)} className="h-7 text-xs" />
+                                                    <Input
+                                                        type="time"
+                                                        value={session.endTime || ""}
+                                                        onChange={(e) => updateGroupSession(group.id, session.id, "endTime", e.target.value)}
+                                                        className="h-7 text-xs"
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
