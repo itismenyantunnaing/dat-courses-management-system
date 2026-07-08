@@ -65,35 +65,43 @@ public class CourseEnrollmentService {
 
                 // Auto-create progress records for self-study courses
                 if (course.getCourseCategory() != null
-                        && course.getCourseCategory().getCourseType()
-                                == com.dat_management.backend.entity.CourseCategory.CourseType.SELF_STUDY) {
+        && course.getCourseCategory().getCourseType()
+            == com.dat_management.backend.entity.CourseCategory.CourseType.SELF_STUDY 
+        && "jlpt".equals(course.getSelfStudyType())) {
 
-                        List<com.dat_management.backend.entity.SelfStudySession> sessions =
-                                selfStudySessionRepository.findByCourseIdOrderBySessionNoAsc(course.getId());
+    List<com.dat_management.backend.entity.SelfStudySession> sessions =
+            selfStudySessionRepository.findByCourseIdOrderBySessionNoAsc(course.getId());
 
-                        Integer perDays = course.getSessionPerDays() != null ? course.getSessionPerDays() : 0;
-                        LocalDateTime enrollDate = enrollment.getEnrolledAt();
+    LocalDateTime enrollDate = enrollment.getEnrolledAt();
+    long cumulativeDays = 0;
 
-                        for (com.dat_management.backend.entity.SelfStudySession session : sessions) {
-                                int sessionIndex = session.getSessionNo() - 1; // 0-based
-                                LocalDateTime deadline = enrollDate.plusDays((long) sessionIndex * perDays);
+    for (com.dat_management.backend.entity.SelfStudySession session : sessions) {
+        Integer durationPerSession = session.getDurationPerSession() != null 
+                ? session.getDurationPerSession() 
+                : 0;
+        
+        // Add current session's duration to cumulative
+        cumulativeDays += durationPerSession;
+        
+        // Calculate deadline based on cumulative days
+        LocalDateTime deadline = enrollDate.plusDays(cumulativeDays);
 
-                                com.dat_management.backend.entity.SelfStudySessionProgress progress =
-                                        new com.dat_management.backend.entity.SelfStudySessionProgress();
-                                progress.setEnrollment(enrollment);
-                                progress.setSelfStudySession(session);
-                                progress.setSessionDeadline(deadline);
-                                progress.setCompletionStatus("NOT_STARTED");
-                                progress.setKanjiCount(0);
-                                progress.setVocabularyCount(0);
-                                progress.setGrammarCount(0);
-                                progress.setReadingMinutes(0);
-                                progress.setListeningMinutes(0);
-                                progress.setUpdatedAt(LocalDateTime.now());
+        com.dat_management.backend.entity.SelfStudySessionProgress progress =
+                new com.dat_management.backend.entity.SelfStudySessionProgress();
+        progress.setEnrollment(enrollment);
+        progress.setSelfStudySession(session);
+        progress.setSessionDeadline(deadline);
+        progress.setCompletionStatus("NOT_STARTED");
+        progress.setKanjiCount(0);
+        progress.setVocabularyCount(0);
+        progress.setGrammarCount(0);
+        progress.setReadingMinutes(0);
+        progress.setListeningMinutes(0);
+        progress.setUpdatedAt(LocalDateTime.now());
 
-                                progressRepository.save(progress);
-                        }
-                }
+        progressRepository.save(progress);
+    }
+}
 
                 return toDTO(enrollment);
         }

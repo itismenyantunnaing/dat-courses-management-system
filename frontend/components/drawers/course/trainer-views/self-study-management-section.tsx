@@ -27,6 +27,7 @@ import {
   Delete02Icon,
   Link02Icon,
   User02Icon,
+  Calendar03Icon,
 } from "@hugeicons/core-free-icons"
 import { format, addDays } from "date-fns"
 import { CourseSession } from "@/types/course"
@@ -36,18 +37,21 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { mainStore } from "@/store/mainStore"
 
-// Helper to format self-study sessions for API
 export const formatSelfStudySessionsForAPI = (sessions: CourseSession[], isJLPT: boolean) => {
-  return sessions.map(session => ({
-    session_date: session.date?.toISOString().split('T')[0],
+  return sessions.map((session, index) => ({
+    session_no: index + 1, // Use index instead of session.sessionNo
+    duration_per_session: session.durationPerSession || 7,
+    session_date: session.date?.toISOString().split('T')[0] || null,
     link: isJLPT ? null : (session.link || null),
-    kanji_count: isJLPT ? (session.kanjiCount || 0) : 0,
-    vocabulary_count: isJLPT ? (session.vocabularyCount || 0) : 0,
-    grammar_count: isJLPT ? (session.grammarCount || 0) : 0,
-    reading_minutes: isJLPT ? (session.readingMinutes || 0) : 0,
-    listening_minutes: isJLPT ? (session.listeningMinutes || 0) : 0,
-  }))
-}
+    kanji_target: isJLPT ? (session.kanjiCount || 0) : 0,
+    vocabulary_target: isJLPT ? (session.vocabularyCount || 0) : 0,
+    grammar_target: isJLPT ? (session.grammarCount || 0) : 0,
+    reading_target_minutes: isJLPT ? (session.readingMinutes || 0) : 0,
+    listening_target_minutes: isJLPT ? (session.listeningMinutes || 0) : 0,
+    study_time_target_minutes: session.studyTimeTargetMinutes || 0,
+    session_status: session.status || 'PLANNED'
+  }));
+};
 
 // Status colors and labels for enrolled employees
 const statusColors: Record<string, string> = {
@@ -81,10 +85,9 @@ interface EnrolledEmployee {
   pfImage?: string
 }
 
-interface LearnerSectionProps {
+interface SelfStudySectionProps {
   sessions: CourseSession[]
   selfStudyType: string
-  daysPerSession?: number
   totalKanji: number
   totalVocabulary: number
   totalGrammar: number
@@ -92,7 +95,6 @@ interface LearnerSectionProps {
   totalListeningMinutes: number
   onUpdateSessions: (sessions: CourseSession[]) => void
   onUpdateSelfStudyType: (type: string) => void
-  onUpdateDaysPerSession: (days: number | undefined) => void
   onUpdateTotals: (totals: {
     totalKanji: number
     totalVocabulary: number
@@ -107,13 +109,12 @@ interface LearnerSectionProps {
   selfStudyBaseDate: Date | null
   onSetSelfStudyBaseDate: (date: Date | null) => void
   courseId?: number | string
-  mode?: "add" | "edit" // Add mode prop
+  mode?: "add" | "edit"
 }
 
-export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
+export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
   sessions,
   selfStudyType,
-  daysPerSession,
   totalKanji,
   totalVocabulary,
   totalGrammar,
@@ -121,7 +122,6 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
   totalListeningMinutes,
   onUpdateSessions,
   onUpdateSelfStudyType,
-  onUpdateDaysPerSession,
   onUpdateTotals,
   sessionPage,
   onSetSessionPage,
@@ -136,18 +136,9 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
   const { enrollments } = mainStore()
 
   // Get enrolled employees for this course from store
-  // Only show when in edit mode and courseId is provided
   const enrolledEmployees = React.useMemo(() => {
-    // Only show enrolled employees when in edit mode and courseId is provided
     if (mode === "add" || !courseId) return []
-    
     if (!enrollments || enrollments.length === 0) return []
-
-    console.log("=== SELF-STUDY ENROLLMENTS (EDIT MODE) ===")
-    console.log("courseId:", courseId)
-    console.log("All enrollments from store:", enrollments)
-    
-    // Return all enrollments (they are already filtered by course)
     return enrollments
   }, [enrollments, courseId, mode])
 
@@ -168,25 +159,34 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
   const addSelfStudySession = () => {
     const baseDate = selfStudyBaseDate || sessions[0]?.date || new Date()
     const newIndex = sessions.length
-    const daysPerSessionValue = daysPerSession || 1
+    const defaultDuration = 7
+
+    // Calculate cumulative days from all previous sessions
+    let cumulativeDays = 0
+    for (let i = 0; i < sessions.length; i++) {
+      cumulativeDays += sessions[i]?.durationPerSession || 7
+    }
 
     const newSession: CourseSession = {
       id: `s${Date.now()}`,
-      date: addDays(baseDate, newIndex * daysPerSessionValue),
+      sessionNo: sessions.length + 1, // Add session number
+      date: addDays(baseDate, cumulativeDays),
+      durationPerSession: defaultDuration,
       kanjiCount: isJLPT ? 0 : undefined,
       vocabularyCount: isJLPT ? 0 : undefined,
       grammarCount: isJLPT ? 0 : undefined,
       readingMinutes: isJLPT ? 0 : undefined,
       listeningMinutes: isJLPT ? 0 : undefined,
       link: !isJLPT ? "" : undefined,
+      status: 'PLANNED'
     }
-    
+
     lastUpdateRef.current = ""
     onUpdateSessions([...sessions, newSession])
     const totalPages = Math.ceil((sessions.length + 1) / itemsPerPage)
     onSetSessionPage(totalPages)
   }
-
+  
   const removeSelfStudySession = (sessionId: string) => {
     onUpdateSessions(sessions.filter((s) => s.id !== sessionId))
   }
@@ -209,15 +209,40 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
     )
   }
 
+  // Helper function to recalculate all session dates based on cumulative durations
+  const recalculateSessionDates = (sessionsList: CourseSession[]): CourseSession[] => {
+    const baseDate = selfStudyBaseDate || sessionsList[0]?.date || new Date()
+    let cumulativeDays = 0
+
+    return sessionsList.map((session, index) => {
+      if (index === 0) {
+        // First session starts on base date
+        return {
+          ...session,
+          date: baseDate,
+          durationPerSession: session.durationPerSession || 7
+        }
+      } else {
+        // Calculate cumulative days from previous sessions
+        cumulativeDays = 0
+        for (let i = 0; i < index; i++) {
+          cumulativeDays += sessionsList[i]?.durationPerSession || 7
+        }
+        return {
+          ...session,
+          date: addDays(baseDate, cumulativeDays),
+          durationPerSession: session.durationPerSession || 7
+        }
+      }
+    })
+  }
+
   const lastUpdateRef = React.useRef<string>("")
 
   // Auto-calculate self-study session values from totals
   useEffect(() => {
     if (sessions.length > 0 && isJLPT) {
       const sessionCount = sessions.length
-      const daysPerSessionValue = daysPerSession
-
-      if (!daysPerSessionValue) return
 
       const avgKanji = Math.floor((totalKanji || 0) / sessionCount)
       const avgVocab = Math.floor((totalVocabulary || 0) / sessionCount)
@@ -231,11 +256,11 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
       const extraReading = (totalReadingMinutes || 0) % sessionCount
       const extraListening = (totalListeningMinutes || 0) % sessionCount
 
-      const baseDate = selfStudyBaseDate || sessions[0]?.date || new Date()
+      // First, recalculate dates based on current durations
+      const sessionsWithDates = recalculateSessionDates(sessions)
 
-      const updatedSessions = sessions.map((session, index) => ({
+      const updatedSessions = sessionsWithDates.map((session, index) => ({
         ...session,
-        date: addDays(baseDate, index * daysPerSessionValue),
         kanjiCount: avgKanji + (index < extraKanji ? 1 : 0),
         vocabularyCount: avgVocab + (index < extraVocab ? 1 : 0),
         grammarCount: avgGrammar + (index < extraGrammar ? 1 : 0),
@@ -244,12 +269,15 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
       }))
 
       const updateSignature = JSON.stringify({
-        totalKanji, totalVocabulary, totalGrammar,
-        totalReadingMinutes, totalListeningMinutes,
+        totalKanji,
+        totalVocabulary,
+        totalGrammar,
+        totalReadingMinutes,
+        totalListeningMinutes,
         sessionsLength: sessions.length,
         isJLPT,
-        daysPerSession,
-        baseDate: baseDate.getTime()
+        baseDate: (selfStudyBaseDate || sessions[0]?.date || new Date()).getTime(),
+        durations: sessions.map(s => s.durationPerSession || 7).join(',')
       })
 
       if (lastUpdateRef.current !== updateSignature) {
@@ -257,36 +285,27 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
         onUpdateSessions(updatedSessions)
       }
     }
-  }, [totalKanji, totalVocabulary, totalGrammar, totalReadingMinutes, totalListeningMinutes, sessions.length, isJLPT, daysPerSession, sessions, selfStudyBaseDate, onUpdateSessions])
+  }, [totalKanji, totalVocabulary, totalGrammar, totalReadingMinutes, totalListeningMinutes, sessions.length, isJLPT, selfStudyBaseDate, onUpdateSessions])
 
-  // Update dates for non-JLPT self-study when daysPerSession changes
+  // Update dates for non-JLPT self-study when duration changes
   useEffect(() => {
     if (sessions.length > 0 && !isJLPT) {
-      const daysPerSessionValue = daysPerSession
-
-      if (!daysPerSessionValue) return
-
-      const baseDate = selfStudyBaseDate || sessions[0]?.date || new Date()
-
-      const updatedSessions = sessions.map((session, index) => ({
-        ...session,
-        date: addDays(baseDate, index * daysPerSessionValue),
-      }))
+      const sessionsWithDates = recalculateSessionDates(sessions)
 
       const updateSignature = JSON.stringify({
         sessionsLength: sessions.length,
         isJLPT,
-        daysPerSession,
-        baseDate: baseDate.getTime(),
+        baseDate: (selfStudyBaseDate || sessions[0]?.date || new Date()).getTime(),
+        durations: sessions.map(s => s.durationPerSession || 7).join(','),
         type: 'non-jlpt-dates'
       })
 
       if (lastUpdateRef.current !== updateSignature) {
         lastUpdateRef.current = updateSignature
-        onUpdateSessions(updatedSessions)
+        onUpdateSessions(sessionsWithDates)
       }
     }
-  }, [daysPerSession, sessions.length, selfStudyBaseDate, isJLPT, onUpdateSessions, sessions])
+  }, [sessions.length, selfStudyBaseDate, isJLPT, onUpdateSessions])
 
   const totalSessionPages = Math.ceil(sessions.length / itemsPerPage)
   const paginatedSessions = sessions.slice(
@@ -415,8 +434,8 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
         </>
       )}
 
-      {/* Total Sessions & Days Per Session */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Total Sessions */}
+      <div className="grid gap-4 sm:grid-cols-1">
         <div className="space-y-2">
           <Label>
             Total Sessions <span className="text-red-500">*</span>
@@ -427,23 +446,30 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
             onChange={(e) => {
               const value = parseInt(e.target.value) || 0
               const baseDate = selfStudyBaseDate || sessions[0]?.date || new Date()
-              const daysPerSessionValue = daysPerSession || 1
 
               const newSessions: CourseSession[] = Array.from(
                 { length: value },
-                (_, i) => ({
-                  id: `s${Date.now()}-${i}`,
-                  date: addDays(baseDate, i * daysPerSessionValue),
-                  kanjiCount: isJLPT ? 0 : undefined,
-                  vocabularyCount: isJLPT ? 0 : undefined,
-                  grammarCount: isJLPT ? 0 : undefined,
-                  readingMinutes: isJLPT ? 0 : undefined,
-                  listeningMinutes: isJLPT ? 0 : undefined,
-                  link: !isJLPT ? "" : undefined,
-                  status: 'PLANNED'
-                })
+                (_, i) => {
+                  // Calculate cumulative days from previous sessions
+                  let cumulativeDays = 0
+                  for (let j = 0; j < i; j++) {
+                    cumulativeDays += sessions[j]?.durationPerSession || 7
+                  }
+                  return {
+                    id: `s${Date.now()}-${i}`,
+                    date: addDays(baseDate, cumulativeDays),
+                    durationPerSession: sessions[i]?.durationPerSession || 7, // Keep existing or default to 7
+                    kanjiCount: isJLPT ? 0 : undefined,
+                    vocabularyCount: isJLPT ? 0 : undefined,
+                    grammarCount: isJLPT ? 0 : undefined,
+                    readingMinutes: isJLPT ? 0 : undefined,
+                    listeningMinutes: isJLPT ? 0 : undefined,
+                    link: !isJLPT ? "" : undefined,
+                    status: 'PLANNED'
+                  }
+                }
               )
-              
+
               lastUpdateRef.current = ""
               onUpdateSessions(newSessions)
               onSetSessionPage(1)
@@ -457,25 +483,6 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
               ✓ {sessions.length} sessions configured
             </p>
           )}
-        </div>
-        <div className="space-y-2">
-          <Label>
-            Days Per Session <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            type="number"
-            value={daysPerSession ?? ""}
-            onChange={(e) => {
-              const value = parseInt(e.target.value)
-              onUpdateDaysPerSession(isNaN(value) ? undefined : value)
-            }}
-            placeholder="Enter days between sessions"
-            min={1}
-            required
-          />
-          <p className="text-xs text-muted-foreground">
-            Number of days between each session (e.g., 7 for weekly)
-          </p>
         </div>
       </div>
 
@@ -505,16 +512,16 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {paginatedSessions.map((session, idx) => {
                 const globalIndex = (sessionPage - 1) * itemsPerPage + idx
                 return (
                   <div
                     key={session.id}
-                    className="space-y-1 rounded-lg border bg-muted/5 p-2"
+                    className="space-y-2 rounded-lg border bg-muted/5 p-3"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-medium">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
                         Session #{globalIndex + 1}
                       </span>
                       <Button
@@ -531,6 +538,40 @@ export const Self_Study_Section: React.FC<LearnerSectionProps> = ({
                         />
                       </Button>
                     </div>
+
+                    {/* Duration Per Session - Independent per session */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Duration Between Sessions (days)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={session.durationPerSession ?? 7}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 1
+
+                          // Update ONLY this session's duration
+                          const updatedSessions = sessions.map((s) =>
+                            s.id === session.id ? { ...s, durationPerSession: value } : s
+                          )
+
+                          // Recalculate all dates based on updated durations
+                          const sessionsWithRecalculatedDates = recalculateSessionDates(updatedSessions)
+
+                          lastUpdateRef.current = ""
+                          onUpdateSessions(sessionsWithRecalculatedDates)
+                        }}
+                        className="h-8 text-sm"
+                        min={1}
+                      />
+                    </div>
+
+                    {/* Show date for reference */}
+                    {session.date && (
+                      <div className="text-xs text-muted-foreground">
+                        📅 {format(new Date(session.date), "MMM d, yyyy")}
+                      </div>
+                    )}
 
                     {/* JLPT Self-Study - Show metrics fields */}
                     {isJLPT ? (

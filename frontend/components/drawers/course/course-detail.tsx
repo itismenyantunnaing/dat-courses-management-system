@@ -788,8 +788,8 @@ export function CourseDetail({
     return progress?.completion_status === 'COMPLETED'
   }
 
-  // const TESTING_DATE = new Date('2026-07-9') // Change this for testing
-  const TESTING_DATE = new Date() // Uncomment for production
+  const TESTING_DATE = new Date('2026-07-14') // Change this for testing
+  // const TESTING_DATE = new Date() // Uncomment for production
 
   // Helper function to get session status - UPDATED to use TESTING_DATE
   const getSessionStatus = (sessionDate: Date | string | undefined) => {
@@ -1327,7 +1327,7 @@ export function CourseDetail({
                                         {/* Attendance Table */}
                                         <div className="overflow-x-auto">
                                           {/* Show attendance based on user role */}
-                                          {(userRole === "learner" || isAdmin) && (
+                                          {(userRole === "learner" || isAdmin)&& enrolledEmployees.length > 0 && (
                                             <table className="w-full text-sm">
                                               <thead>
                                                 <tr className="border-b">
@@ -1586,16 +1586,28 @@ export function CourseDetail({
                             <div className="flex items-center gap-4">
                               <span className="font-semibold text-sm">Session {index + 1}</span>
                               {statusBadge}
-
                             </div>
                             <div className="flex items-center gap-2 text-xs">
-                              <HugeiconsIcon icon={Calendar03Icon} strokeWidth={1.5} className="h-4 w-4 text-muted-foreground" />
-                              <span className={cn(
-                                "font-medium",
-                                isOverdue && !isCompleted ? "text-red-500" : "text-muted-foreground"
-                              )}>
-                                {sessionDate ? format(new Date(sessionDate), "MMM d, yyyy (EEE)") : "Dynamic based on enrollment"}
-                              </span>
+                              {isJLPT ? (
+                                // For JLPT: Show date
+                                <>
+                                  <HugeiconsIcon icon={Calendar03Icon} strokeWidth={1.5} className="h-4 w-4 text-muted-foreground" />
+                                  <span className={cn(
+                                    "font-medium",
+                                    isOverdue && !isCompleted ? "text-red-500" : "text-muted-foreground"
+                                  )}>
+                                    {sessionDate ? format(new Date(sessionDate), "MMM d, yyyy (EEE)") : "Dynamic based on enrollment"}
+                                  </span>
+                                </>
+                              ) : (
+                                // For "other" type: Show duration per session
+                                <>
+                                  <HugeiconsIcon icon={ClockIcon} strokeWidth={1.5} className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium text-muted-foreground">
+                                    Duration: {session.durationPerSession || 7} days
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
 
@@ -1896,114 +1908,7 @@ export function CourseDetail({
                             </div>
                           )}
 
-                          {/* Progress display for admins/approvers (read-only) */}
-                          {isJLPT && hasProgress && userRole === "learner" && (
-                            <div className="p-4 bg-muted/5">
-                              <p className="text-xs text-muted-foreground mb-2">📊 Progress (Read-Only):</p>
-                              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Kanji</span>
-                                    <span className="font-semibold text-primary">
-                                      {progress?.kanji_progress_percent || 0}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-muted rounded-full h-1.5">
-                                    <div
-                                      className="bg-primary rounded-full h-1.5 transition-all duration-300"
-                                      style={{
-                                        width: `${Math.min(progress?.kanji_progress_percent || 0, 100)}%`
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {progress?.kanji_count || 0} / {session.kanjiCount || 0}
-                                  </p>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Vocab</span>
-                                    <span className="font-semibold text-primary">
-                                      {progress?.vocabulary_progress_percent || 0}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-muted rounded-full h-1.5">
-                                    <div
-                                      className="bg-primary rounded-full h-1.5 transition-all duration-300"
-                                      style={{
-                                        width: `${Math.min(progress?.vocabulary_progress_percent || 0, 100)}%`
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {progress?.vocabulary_count || 0} / {session.vocabularyCount || 0}
-                                  </p>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Grammar</span>
-                                    <span className="font-semibold text-primary">
-                                      {progress?.grammar_progress_percent || 0}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-muted rounded-full h-1.5">
-                                    <div
-                                      className="bg-primary rounded-full h-1.5 transition-all duration-300"
-                                      style={{
-                                        width: `${Math.min(progress?.grammar_progress_percent || 0, 100)}%`
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {progress?.grammar_count || 0} / {session.grammarCount || 0}
-                                  </p>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Reading</span>
-                                    <span className="font-semibold text-primary">
-                                      {progress?.reading_progress_percent || 0}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-muted rounded-full h-1.5">
-                                    <div
-                                      className="bg-primary rounded-full h-1.5 transition-all duration-300"
-                                      style={{
-                                        width: `${Math.min(progress?.reading_progress_percent || 0, 100)}%`
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {progress?.reading_minutes || 0}min / {session.readingMinutes || 0}min
-                                  </p>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Listening</span>
-                                    <span className="font-semibold text-primary">
-                                      {progress?.listening_progress_percent || 0}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-muted rounded-full h-1.5">
-                                    <div
-                                      className="bg-primary rounded-full h-1.5 transition-all duration-300"
-                                      style={{
-                                        width: `${Math.min(progress?.listening_progress_percent || 0, 100)}%`
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {progress?.listening_minutes || 0}min / {session.listeningMinutes || 0}min
-                                  </p>
-                                </div>
-                              </div>
-                              {progress?.completion_status && (
-                                <Badge className="mt-2 text-[10px]" variant={progress.completion_status === 'COMPLETED' ? 'default' : 'secondary'}>
-                                  {progress.completion_status}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
+
 
                           {/* Non-JLPT - Show link if exists */}
                           {!isJLPT && session.link && (

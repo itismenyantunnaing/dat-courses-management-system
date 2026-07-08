@@ -23,6 +23,9 @@ public class SelfStudySessionDto {
         this.filePath = filepath;
     }
 
+    @JsonProperty("duration_per_session")
+    private Integer durationPerSession; // in days
+
     @JsonProperty("kanji_target")
     private Integer kanjiTarget;
 

@@ -40,6 +40,9 @@ public class SelfStudySession {
     @Column(nullable = false)
     private Short sessionNo;
 
+    @Column(name = "duration_per_session")
+    private Integer durationPerSession; // in days
+    
     private String filepath;
     private Integer kanjiTarget;
     private Integer vocabularyTarget;

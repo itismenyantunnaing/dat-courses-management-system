@@ -50,8 +50,6 @@ public class Course {
 
     private Short totalSessions;
 
-    private Integer sessionPerDays;
-
     private LocalDate startDate;
 
     private LocalDate endDate;

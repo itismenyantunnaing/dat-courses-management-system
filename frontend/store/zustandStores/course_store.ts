@@ -1,8 +1,8 @@
 // store/zustandStores/course_store.ts
-import { 
-  Course, 
-  CourseGroup, 
-  CourseSession, 
+import {
+  Course,
+  CourseGroup,
+  CourseSession,
   BackendCourseDto,
   BackendGroupDto,
   BackendSessionDto,
@@ -44,15 +44,15 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
   getAuthHeaders: () => {
     const state = get()
     const token = state.getToken ? state.getToken() : null
-    
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     }
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
-    
+
     return headers
   },
 
@@ -60,20 +60,20 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
   getMultipartAuthHeaders: () => {
     const state = get()
     const token = state.getToken ? state.getToken() : null
-    
+
     const headers: HeadersInit = {}
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
-    
+
     return headers
   },
 
   // Helper to transform backend course to frontend Course type
   transformBackendCourseToFrontend: (course: BackendCourseDto): Course => {
     const courseType = course.category?.course_type === 'SELF_STUDY' ? 'self-study' : 'trainer'
-    
+
     // Map groups
     const groups: CourseGroup[] = (course.groups || []).map((g: BackendGroupDto) => {
       const groupSessions: CourseSession[] = (g.sessions || []).map((s: BackendSessionDto) => ({
@@ -110,15 +110,17 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     })
 
     // Map self-study sessions
-    const sessions: CourseSession[] = (course.self_study_sessions || []).map((s: BackendSelfStudySessionDto) => ({
-      id: s.id?.toString() || '',
-      sessionNo: s.session_no,
-      date: undefined as any, // Date is calculated dynamically based on enrollment
+    const sessions: CourseSession[] = (course.self_study_sessions || []).map((s: BackendSelfStudySessionDto, index: number) => ({
+      id: s.id?.toString() || `s-${index}`,
+      sessionNo: s.session_no || index + 1,
+      date: s.session_date ? new Date(s.session_date) : undefined as any,
+      durationPerSession: s.duration_per_session || 7, // ✅ ADD THIS
       kanjiCount: s.kanji_target || 0,
       vocabularyCount: s.vocabulary_target || 0,
       grammarCount: s.grammar_target || 0,
       readingMinutes: s.reading_target_minutes || 0,
       listeningMinutes: s.listening_target_minutes || 0,
+      studyTimeTargetMinutes: s.study_time_target_minutes || 0,
       link: s.file_path || s.filepath || '',
       status: s.session_status,
     }))
@@ -130,7 +132,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     const categoryName = course.category?.course_category_name || ''
     // Try to find matching category from the store if it's already loaded
     const categoryValue = categoryName.toLowerCase().replace(/\s+/g, '-')
-    
+
     // Status mapping
     const statusMap: Record<string, string> = {
       'DRAFT': 'draft',
@@ -159,7 +161,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       groups: groups,
       self_study_sessions: sessions,
       daysPerSession: calculatedDaysPerSession,
-      mentionedLearners: [], 
+      mentionedLearners: [],
       selfStudyType: course.self_study_type || (categoryName.toLowerCase().includes('jlpt') ? 'jlpt' : 'other'),
       totalKanji: course.self_study_sessions?.reduce((sum: number, s: BackendSelfStudySessionDto) => sum + (s.kanji_target || 0), 0) || 0,
       totalVocabulary: course.self_study_sessions?.reduce((sum: number, s: BackendSelfStudySessionDto) => sum + (s.vocabulary_target || 0), 0) || 0,
@@ -170,6 +172,64 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
+  // Helper to transform frontend Course to backend request format
+  transformFrontendToBackendRequest: (course: Partial<Course>): any => {
+    const request: any = {}
+
+    if (course.title !== undefined) request.course_name = course.title
+    if (course.trainerName !== undefined) request.trainer_name = course.trainerName
+    if (course.selfStudyType !== undefined) request.self_study_type = course.selfStudyType
+    if (course.categoryId !== undefined) request.course_category_id = course.categoryId
+    if (course.targetLevel !== undefined) request.target_level = course.targetLevel
+    if (course.totalSessions !== undefined) request.total_sessions = course.totalSessions
+    if (course.startDate !== undefined) request.start_date = course.startDate
+    if (course.endDate !== undefined) request.end_date = course.endDate
+    if (course.registrationDeadline !== undefined) request.registration_deadline = course.registrationDeadline
+    if (course.status !== undefined) {
+      const statusMap: Record<string, string> = {
+        'active': 'OPEN',
+        'upcoming': 'CLOSED',
+        'completed': 'COMPLETED',
+        'draft': 'DRAFT'
+      }
+      request.status = statusMap[course.status] || course.status.toUpperCase()
+    }
+
+    // Handle groups
+    if (course.groups !== undefined) {
+      request.groups = course.groups.map((group: CourseGroup) => ({
+        group_name: group.name,
+        capacity: group.capacity === 'unlimited' ? null : group.capacity,
+        group_status: group.status,
+        sessions: group.sessions.map((session: CourseSession) => ({
+          session_no: session.sessionNo,
+          session_date: session.date ? session.date.toISOString().split('T')[0] : undefined,
+          start_time: session.startTime,
+          end_time: session.endTime,
+          session_status: session.status
+        }))
+      }))
+    }
+
+    // Handle self-study sessions - ✅ ADD duration_per_session
+    if (course.self_study_sessions !== undefined) {
+      request.self_study_sessions = course.self_study_sessions.map((session: CourseSession, index: number) => ({
+        session_no: index + 1, // Use index instead of session.sessionNo
+        duration_per_session: session.durationPerSession || 7, // ✅ ADD THIS with default
+        kanji_target: session.kanjiCount || 0,
+        vocabulary_target: session.vocabularyCount || 0,
+        grammar_target: session.grammarCount || 0,
+        reading_target_minutes: session.readingMinutes || 0,
+        listening_target_minutes: session.listeningMinutes || 0,
+        study_time_target_minutes: session.studyTimeTargetMinutes || 0,
+        file_path: session.link || '',
+        session_status: session.status || 'PLANNED'
+      }))
+    }
+
+    return request
+  },
+
   // ========== COURSE API ENDPOINTS ==========
 
   // GET /api/courses - Fetch all courses
@@ -177,7 +237,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({ ...state, error: null }))
     try {
       const headers = get().getAuthHeaders()
-      
+
       const response = await fetch(`${apiUrl}/api/courses`, {
         headers: headers
       })
@@ -189,7 +249,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       const data = await response.json()
 
       let transformedCourses: Course[] = []
-      
+
       if (data.courses && Array.isArray(data.courses)) {
         transformedCourses = data.courses.map((course: BackendCourseDto) => get().transformBackendCourseToFrontend(course))
       }
@@ -213,7 +273,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({ ...state, error: null }))
     try {
       const headers = get().getAuthHeaders()
-      
+
       const response = await fetch(`${apiUrl}/api/courses/${id}`, {
         headers: headers
       })
@@ -279,7 +339,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
 
       if (response.ok) {
         const transformedCourse = get().transformBackendCourseToFrontend(result.course as BackendCourseDto)
-        
+
         set((state: Course_StoreType) => ({
           ...state,
           courses: [transformedCourse, ...state.courses],
@@ -322,12 +382,15 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({ ...state, isUpdating: true, error: null }))
 
     try {
+      // Transform frontend course data to backend format
+      const backendRequest = get().transformFrontendToBackendRequest(courseData)
+
       const headers = get().getAuthHeaders()
-      
+
       const response = await fetch(`${apiUrl}/api/courses/${id}`, {
         method: 'PUT',
         headers: headers,
-        body: JSON.stringify(courseData),
+        body: JSON.stringify(backendRequest),
       })
 
       let result
@@ -348,14 +411,33 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(result.message || 'Failed to update course')
       }
 
-      const transformedCourse = get().transformBackendCourseToFrontend(result.course as BackendCourseDto)
+      // If the response contains the updated course, transform it
+      let transformedCourse = null
+      if (result.course) {
+        transformedCourse = get().transformBackendCourseToFrontend(result.course as BackendCourseDto)
+      } else {
+        // If no course returned, fetch the updated course
+        const fetchResult = await get().fetch_CourseData(id)
+        if (fetchResult.success && fetchResult.course) {
+          transformedCourse = fetchResult.course
+        }
+      }
 
-      set((state: Course_StoreType) => ({
-        ...state,
-        courses: state.courses.map((c: Course) => c.id === id.toString() ? transformedCourse : c),
-        isUpdating: false,
-        error: null
-      }))
+      if (transformedCourse) {
+        set((state: Course_StoreType) => ({
+          ...state,
+          courses: state.courses.map((c: Course) => c.id === id.toString() ? transformedCourse : c),
+          isUpdating: false,
+          error: null
+        }))
+      } else {
+        // If we can't get the updated course, just mark as updated
+        set((state: Course_StoreType) => ({
+          ...state,
+          isUpdating: false,
+          error: null
+        }))
+      }
 
       return {
         success: true,
@@ -507,7 +589,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
 
     try {
       const headers = get().getAuthHeaders()
-      
+
       const response = await fetch(`${apiUrl}/api/courses/${id}`, {
         method: 'DELETE',
         headers: headers,
@@ -523,7 +605,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
         } catch (e) {
           errorMessage = response.statusText || errorMessage
         }
-        
+
         set((state: Course_StoreType) => ({
           ...state,
           courses: previousCourses,
