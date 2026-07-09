@@ -344,14 +344,16 @@ export function CategoryDrawer({
 
   const handleCategorySelect = (
     value: string,
+    type: "trainer" | "self-study",
     selfStudyType?: "jlpt" | "other",
+    categoryId?: number,
     e?: React.MouseEvent
   ) => {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
-    onSelectCategory(value, selfStudyType)
+    onSelectCategory(value, type, selfStudyType, categoryId)
     onOpenChange(false)
   }
 
@@ -578,7 +580,7 @@ export function CategoryDrawer({
                     <TabsContent value={activeTab} className="mt-4">
                       <div className="flex flex-wrap gap-3">
                         {getFilteredCategories().map((category) => {
-                          const isSelected = selectedCategory === category.value
+                          const isSelected = selectedCategory?.categoryId === category.id
                           const isSelfStudyCategory =
                             category.type === "self-study"
 
@@ -603,14 +605,18 @@ export function CategoryDrawer({
                                 e.stopPropagation()
                                 if (isSelfStudyCategory) {
                                   handleCategorySelect(
-                                    category.value,
-                                    currentSelfStudyType,
+                                    category.value,       
+                                    category.type,         
+                                    currentSelfStudyType,  
+                                    category.id,          
                                     e
                                   )
                                 } else {
                                   handleCategorySelect(
-                                    category.value,
-                                    undefined,
+                                    category.value,      
+                                    category.type,         
+                                    undefined,           
+                                    category.id,          
                                     e
                                   )
                                 }

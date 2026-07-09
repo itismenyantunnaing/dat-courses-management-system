@@ -156,21 +156,22 @@ export interface CourseFormData {
   title: string
   trainerName?: string
   imageUrl?: string
-  courseType: "trainer" | "self-study" | ""
-  category: CourseCategory | ""
+  courseType: string
+  category: string
+  categoryId?: number
   registrationDeadline?: Date
   groups: CourseGroup[]
-  sessions: CourseSession[] // For self-study only
+  sessions: CourseSession[]
   selfStudyType?: "jlpt" | "other"
   daysPerSession?: number
-  mentionedLearners?: MentionedLearner[]
-  totalKanji?: number
-  totalVocabulary?: number
-  totalGrammar?: number
-  totalReadingMinutes?: number
-  totalListeningMinutes?: number
+  mentionedLearners: MentionedLearner[]
+  totalKanji: number
+  totalVocabulary: number
+  totalGrammar: number
+  totalReadingMinutes: number
+  totalListeningMinutes: number
+  status?: "active" | "upcoming" | "completed" | "draft"  // ← Add this
 }
-
 export interface CourseFormSubmitData {
   title: string
   trainerName?: string

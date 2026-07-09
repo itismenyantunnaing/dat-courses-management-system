@@ -166,7 +166,7 @@ export function CourseCard({ course, onView }: CourseCardProps) {
         )}
 
         {/* Status Badge */}
-        <div className="absolute top-3 right-3">
+        {/* <div className="absolute top-3 right-3">
           <Badge
             className={cn(
               "border-0 px-3 py-1 text-xs font-medium text-white",
@@ -175,7 +175,7 @@ export function CourseCard({ course, onView }: CourseCardProps) {
           >
             {COURSE_STATUS_LABELS[course.status]}
           </Badge>
-        </div>
+        </div> */}
       </div>
 
       {/* Content */}

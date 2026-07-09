@@ -39,7 +39,7 @@ import { mainStore } from "@/store/mainStore"
 
 export const formatSelfStudySessionsForAPI = (sessions: CourseSession[], isJLPT: boolean) => {
   return sessions.map((session, index) => ({
-    session_no: index + 1, // Use index instead of session.sessionNo
+    session_no: index + 1,
     duration_per_session: session.durationPerSession || 7,
     session_date: session.date?.toISOString().split('T')[0] || null,
     link: isJLPT ? null : (session.link || null),
@@ -110,6 +110,8 @@ interface SelfStudySectionProps {
   onSetSelfStudyBaseDate: (date: Date | null) => void
   courseId?: number | string
   mode?: "add" | "edit"
+  mainDurationPerSession?: number
+  onUpdateMainDurationPerSession?: (duration: number) => void
 }
 
 export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
@@ -131,6 +133,8 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
   onSetSelfStudyBaseDate,
   courseId,
   mode = "add",
+  mainDurationPerSession = 7,
+  onUpdateMainDurationPerSession,
 }) => {
   const isJLPT = isJLPTType(selfStudyType)
   const { enrollments } = mainStore()
@@ -180,17 +184,17 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
   const addSelfStudySession = () => {
     const baseDate = selfStudyBaseDate || sessions[0]?.date || new Date()
     const newIndex = sessions.length
-    const defaultDuration = 7
+    const defaultDuration = mainDurationPerSession || 7
 
     // Calculate cumulative days from all previous sessions
     let cumulativeDays = 0
     for (let i = 0; i < sessions.length; i++) {
-      cumulativeDays += sessions[i]?.durationPerSession || 7
+      cumulativeDays += sessions[i]?.durationPerSession || mainDurationPerSession || 7
     }
 
     const newSession: CourseSession = {
       id: `s${Date.now()}`,
-      sessionNo: sessions.length + 1, // Add session number
+      sessionNo: sessions.length + 1,
       date: addDays(baseDate, cumulativeDays),
       durationPerSession: defaultDuration,
       kanjiCount: isJLPT ? 0 : undefined,
@@ -247,18 +251,18 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
         return {
           ...session,
           date: baseDate,
-          durationPerSession: session.durationPerSession || 7
+          durationPerSession: session.durationPerSession || mainDurationPerSession || 7
         }
       } else {
         // Calculate cumulative days from previous sessions
         cumulativeDays = 0
         for (let i = 0; i < index; i++) {
-          cumulativeDays += sessionsList[i]?.durationPerSession || 7
+          cumulativeDays += sessionsList[i]?.durationPerSession || mainDurationPerSession || 7
         }
         return {
           ...session,
           date: addDays(baseDate, cumulativeDays),
-          durationPerSession: session.durationPerSession || 7
+          durationPerSession: session.durationPerSession || mainDurationPerSession || 7
         }
       }
     })
@@ -304,7 +308,7 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
         sessionsLength: sessions.length,
         isJLPT,
         baseDate: (selfStudyBaseDate || sessions[0]?.date || new Date()).getTime(),
-        durations: sessions.map(s => s.durationPerSession || 7).join(',')
+        durations: sessions.map(s => s.durationPerSession || mainDurationPerSession || 7).join(',')
       })
 
       if (lastUpdateRef.current !== updateSignature) {
@@ -312,7 +316,7 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
         onUpdateSessions(updatedSessions)
       }
     }
-  }, [totalKanji, totalVocabulary, totalGrammar, totalReadingMinutes, totalListeningMinutes, sessions.length, isJLPT, selfStudyBaseDate, onUpdateSessions])
+  }, [totalKanji, totalVocabulary, totalGrammar, totalReadingMinutes, totalListeningMinutes, sessions.length, isJLPT, selfStudyBaseDate, onUpdateSessions, mainDurationPerSession])
 
   // Update dates for non-JLPT self-study when duration changes
   useEffect(() => {
@@ -323,7 +327,7 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
         sessionsLength: sessions.length,
         isJLPT,
         baseDate: (selfStudyBaseDate || sessions[0]?.date || new Date()).getTime(),
-        durations: sessions.map(s => s.durationPerSession || 7).join(','),
+        durations: sessions.map(s => s.durationPerSession || mainDurationPerSession || 7).join(','),
         type: 'non-jlpt-dates'
       })
 
@@ -332,7 +336,7 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
         onUpdateSessions(sessionsWithDates)
       }
     }
-  }, [sessions.length, selfStudyBaseDate, isJLPT, onUpdateSessions])
+  }, [sessions.length, selfStudyBaseDate, isJLPT, onUpdateSessions, mainDurationPerSession])
 
   const totalSessionPages = Math.ceil(sessions.length / itemsPerPage)
   const paginatedSessions = sessions.slice(
@@ -461,8 +465,9 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
         </>
       )}
 
-      {/* Total Sessions */}
-      <div className="grid gap-4 sm:grid-cols-1">
+      {/* Total Sessions & Duration Per Session - Side by Side */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Total Sessions */}
         <div className="space-y-2">
           <Label>
             Total Sessions <span className="text-red-500">*</span>
@@ -474,7 +479,6 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
               const value = parseInt(e.target.value) || 0
               const baseDate = selfStudyBaseDate || sessions[0]?.date || new Date()
 
-              // Get current sessions to preserve their durations
               const currentSessions = sessions || []
 
               const newSessions: CourseSession[] = Array.from(
@@ -482,17 +486,15 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
                 (_, i) => {
                   let cumulativeDays = 0
                   for (let j = 0; j < i; j++) {
-                    // Use existing session duration if available, otherwise default to 7
-                    cumulativeDays += (currentSessions[j]?.durationPerSession || sessions[j]?.durationPerSession || 7)
+                    cumulativeDays += (currentSessions[j]?.durationPerSession || mainDurationPerSession || 7)
                   }
 
-                  // Check if session already exists
                   const existingSession = currentSessions[i]
 
                   return {
                     id: existingSession?.id || `s${Date.now()}-${i}`,
                     date: addDays(baseDate, cumulativeDays),
-                    durationPerSession: existingSession?.durationPerSession || 7,
+                    durationPerSession: existingSession?.durationPerSession || mainDurationPerSession || 7,
                     kanjiCount: isJLPT ? (existingSession?.kanjiCount || 0) : undefined,
                     vocabularyCount: isJLPT ? (existingSession?.vocabularyCount || 0) : undefined,
                     grammarCount: isJLPT ? (existingSession?.grammarCount || 0) : undefined,
@@ -517,6 +519,43 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
               ✓ {sessions.length} sessions configured
             </p>
           )}
+        </div>
+
+        {/* Duration Per Session - Side by side with Total Sessions */}
+        <div className="space-y-2">
+          <Label>
+            Duration Per Session (days)
+            <span className="ml-2 text-xs text-muted-foreground">
+              (applies to all sessions)
+            </span>
+          </Label>
+          <Input
+            type="number"
+            value={mainDurationPerSession || 7}
+            onChange={(e) => {
+              const value = parseInt(e.target.value) || 1
+              onUpdateMainDurationPerSession?.(value)
+
+              // If there are sessions, update them all
+              if (sessions.length > 0) {
+                const updatedSessions = sessions.map((session) => ({
+                  ...session,
+                  durationPerSession: value
+                }))
+                const sessionsWithRecalculatedDates = recalculateSessionDates(updatedSessions)
+                lastUpdateRef.current = ""
+                onUpdateSessions(sessionsWithRecalculatedDates)
+              }
+            }}
+            className="h-8 text-sm"
+            min={1}
+            disabled={sessions.length === 0}  // ← Disabled when sessions exist
+          />
+          <p className="text-xs text-muted-foreground">
+            {sessions.length === 0
+              ? "🔒 Duration is locked. Modify individual sessions below."
+              : "ℹ️ Set the default duration for new sessions."}
+          </p>
         </div>
       </div>
 
@@ -575,12 +614,17 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
 
                     {/* Duration Per Session - Independent per session */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        Duration Between Sessions (days)
-                      </Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">
+                          Duration Between Sessions (days)
+                        </Label>
+                        {session.durationPerSession === mainDurationPerSession && mainDurationPerSession !== undefined && (
+                          <span className="text-[10px] text-green-600">(synced)</span>
+                        )}
+                      </div>
                       <Input
                         type="number"
-                        value={session.durationPerSession ?? 7}
+                        value={session.durationPerSession ?? mainDurationPerSession ?? 7}
                         onChange={(e) => {
                           const value = parseInt(e.target.value) || 1
 
@@ -594,6 +638,14 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
 
                           lastUpdateRef.current = ""
                           onUpdateSessions(sessionsWithRecalculatedDates)
+
+                          // Check if all sessions now have the same duration, update main
+                          const allSame = sessionsWithRecalculatedDates.every(
+                            s => s.durationPerSession === value
+                          )
+                          if (allSame) {
+                            onUpdateMainDurationPerSession?.(value)
+                          }
                         }}
                         className="h-8 text-sm"
                         min={1}

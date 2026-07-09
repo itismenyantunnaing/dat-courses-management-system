@@ -113,12 +113,9 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
         status: s.session_status,
       }))
 
-      // Extract group-level times from the first session if available
       const firstSession = groupSessions[0]
       const startTime = firstSession?.startTime || "09:00"
       const endTime = firstSession?.endTime || "10:00"
-
-      // Synthesize sessionsPerWeek from unique days of the week in sessions
       const sessionsPerWeek = Array.from(new Set(groupSessions.map(s => s.date.getDay())))
 
       return {
@@ -153,21 +150,30 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       status: s.session_status,
     }))
 
-    // Calculate daysPerSession from sessions if possible
     let calculatedDaysPerSession: number | undefined = course.session_per_days;
 
-    // Get the category value for the frontend
-    const categoryName = course.category?.course_category_name || ''
-    const categoryValue = categoryName.toLowerCase().replace(/\s+/g, '-')
+    // ✅ IMPROVED: Get category ID from multiple possible sources
+    const categoryId = course.category?.id ||
+      course.course_category_id ||
+      (course.category as any)?.courseCategoryId ||
+      undefined;
 
-    // Status mapping
+    // Get the category name
+    const categoryName = course.category?.course_category_name || '';
+
+    // Get the category value (for display)
+    const categoryValue = categoryName.toLowerCase().replace(/\s+/g, '-');
+
+    // If there's a categoryId but no category name, try to find it from the store
+    // The store might have loaded categories separately
+
     const statusMap: Record<string, string> = {
       'DRAFT': 'draft',
       'OPEN': 'active',
       'CLOSED': 'upcoming',
       'COMPLETED': 'completed'
     }
-    const status = statusMap[course.status] || course.status?.toLowerCase() || 'draft'
+    const status = statusMap[course.status] || course.status?.toLowerCase() || ''
 
     return {
       id: course.id?.toString() || '',
@@ -175,7 +181,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       trainerName: course.trainer_name || '',
       imageUrl: course.image_path || '',
       courseType: courseType,
-      categoryId: course.course_category_id,
+      categoryId: categoryId,
       category: categoryValue,
       targetLevel: course.target_level,
       totalSessions: course.total_sessions,
@@ -224,29 +230,29 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
 
     // Fix date fields - use formatLocalDate for proper local date handling
     if (course.startDate !== undefined) {
-      request.start_date = isValidDate(course.startDate) 
-        ? formatLocalDate(course.startDate) 
+      request.start_date = isValidDate(course.startDate)
+        ? formatLocalDate(course.startDate)
         : course.startDate
     } else if (course.start_date !== undefined) {
       request.start_date = course.start_date
     }
 
     if (course.endDate !== undefined) {
-      request.end_date = isValidDate(course.endDate) 
-        ? formatLocalDate(course.endDate) 
+      request.end_date = isValidDate(course.endDate)
+        ? formatLocalDate(course.endDate)
         : course.endDate
     } else if (course.end_date !== undefined) {
       request.end_date = course.end_date
     }
 
     if (course.registrationDeadline !== undefined) {
-      request.registration_deadline = isValidDate(course.registrationDeadline) 
-        ? formatLocalDate(course.registrationDeadline) 
+      request.registration_deadline = isValidDate(course.registrationDeadline)
+        ? formatLocalDate(course.registrationDeadline)
         : course.registrationDeadline
     } else if (course.registration_deadline !== undefined) {
       request.registration_deadline = course.registration_deadline
     }
-    
+
     if (course.session_per_days !== undefined) request.session_per_days = course.session_per_days
 
     if (course.status !== undefined) {
@@ -482,18 +488,26 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   // POST /api/courses - Create a new course (with optional image)
-  add_CourseData: async (formData: FormData) => {
+  add_CourseData: async (data: FormData | Record<string, any>) => {
     set((state: Course_StoreType) => ({ ...state, isCreating: true, error: null }))
 
     try {
-      if (!(formData instanceof FormData)) {
-        throw new Error("Body is NOT FormData")
+      let body: BodyInit;
+      let headers: HeadersInit = {};
+
+      if (data instanceof FormData) {
+        body = data;
+      } else {
+        headers = get().getAuthHeaders();
+        body = JSON.stringify(data);
       }
 
       const response = await fetch(`${apiUrl}/api/courses`, {
         method: "POST",
-        body: formData,
+        headers: headers,
+        body: body,
       })
+
 
       let result
       const contentType = response.headers.get("content-type")

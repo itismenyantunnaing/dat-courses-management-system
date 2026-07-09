@@ -144,6 +144,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       imageUrl: initialData?.imageUrl || undefined,
       courseType: initialData?.courseType || "",
       category: initialData?.category || "",
+      categoryId: initialData?.categoryId || undefined,
       registrationDeadline: initialData?.registrationDeadline || undefined,
       groups: initialData?.groups?.length ? initialData.groups : [defaultGroup],
       sessions: initialData?.sessions?.length ? initialData.sessions : (initialData?.self_study_sessions || []),
@@ -155,6 +156,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       totalGrammar: initialData?.totalGrammar || 0,
       totalReadingMinutes: initialData?.totalReadingMinutes || 0,
       totalListeningMinutes: initialData?.totalListeningMinutes || 0,
+      status: initialData?.status || "draft",
     })
 
     const [selectedImage, setSelectedImage] = useState<File | null>(null)
@@ -185,6 +187,11 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       null
     )
     const [submitted, setSubmitted] = useState(false)
+    const [mainDurationPerSession, setMainDurationPerSession] = useState<number>(
+      initialData?.mainDurationPerSession ||
+      initialData?.sessions?.[0]?.durationPerSession ||
+      7
+    )
 
     // Check if self-study type is JLPT
     const isJLPT = useMemo(() => {
@@ -205,15 +212,31 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
     const isTrainer = formData.courseType === "trainer"
 
+    // Sync main duration when sessions change
+    useEffect(() => {
+      if (formData.sessions.length > 0) {
+        const firstDuration = formData.sessions[0]?.durationPerSession
+        const allSame = formData.sessions.every(
+          s => s.durationPerSession === firstDuration
+        )
+        if (allSame && firstDuration !== undefined && firstDuration > 0) {
+          setMainDurationPerSession(firstDuration)
+        }
+      }
+    }, [formData.sessions])
+
     // Update formData when initialData changes (for edit mode)
     useEffect(() => {
       if (mode === "edit" && initialData) {
+        const category = getCategoryByValue(initialData.category)
+
         setFormData({
           title: initialData.title || "",
           trainerName: initialData.trainerName || "",
           imageUrl: initialData.imageUrl || undefined,
           courseType: initialData.courseType || "",
           category: initialData.category || "",
+          categoryId: category?.id || undefined,
           registrationDeadline: initialData.registrationDeadline || undefined,
           groups: initialData.groups?.length ? initialData.groups : [defaultGroup],
           sessions: initialData.sessions?.length ? initialData.sessions : (initialData.self_study_sessions || []),
@@ -225,6 +248,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           totalGrammar: initialData.totalGrammar || 0,
           totalReadingMinutes: initialData.totalReadingMinutes || 0,
           totalListeningMinutes: initialData.totalListeningMinutes || 0,
+          status: initialData.status || "draft",
         })
 
         if (initialData.groups?.length > 0) {
@@ -236,6 +260,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           imageUrl: initialData.imageUrl,
           courseType: initialData.courseType,
           category: initialData.category,
+          categoryId: category?.id || undefined,
           registrationDeadline: initialData.registrationDeadline,
           groups: initialData.groups,
           sessions: initialData.sessions,
@@ -263,6 +288,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           formData.title !== initialFormDataRef.current.title ||
           formData.courseType !== initialFormDataRef.current.courseType ||
           formData.category !== initialFormDataRef.current.category ||
+          formData.categoryId !== initialFormDataRef.current.categoryId ||
           formData.registrationDeadline?.getTime() !==
           initialFormDataRef.current.registrationDeadline?.getTime() ||
           formData.selfStudyType !== initialFormDataRef.current.selfStudyType ||
@@ -390,7 +416,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         const groupsWithEmptyNames = formData.groups.filter(
           group => !group.name || group.name.trim() === ''
         )
-        
+
         if (groupsWithEmptyNames.length > 0) {
           groupsWithEmptyNames.forEach(group => {
             errors[group.id] = "Group name is required"
@@ -443,17 +469,14 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       }
 
       if (!formData.title || !formData.courseType) return
-
       const submitData = {
         title: formData.title,
         trainerName: formData.trainerName,
         imageUrl: imagePreview || undefined,
         courseType: formData.courseType as "trainer" | "self-study",
         category: formData.category,
-        registrationDeadline:
-          formData.courseType === "trainer"
-            ? formData.registrationDeadline
-            : undefined,
+        course_category_id: formData.categoryId,
+        registrationDeadline: formData.courseType === "trainer" ? formData.registrationDeadline : undefined,
         groups: formData.groups,
         sessions: formData.sessions,
         selfStudyType: formData.selfStudyType,
@@ -464,12 +487,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         totalGrammar: formData.totalGrammar,
         totalReadingMinutes: formData.totalReadingMinutes,
         totalListeningMinutes: formData.totalListeningMinutes,
-        formattedGroups: formData.courseType === "trainer"
-          ? formatGroupsForAPI(formData.groups)
-          : undefined,
-        formattedSessions: formData.courseType === "self-study"
-          ? formatSelfStudySessionsForAPI(formData.sessions, isJLPT)
-          : undefined,
+        status: formData.status || "draft",
+        formattedGroups: formData.courseType === "trainer" ? formatGroupsForAPI(formData.groups) : undefined,
+        formattedSessions: formData.courseType === "self-study" ? formatSelfStudySessionsForAPI(formData.sessions, isJLPT) : undefined,
       }
 
       onSubmit(submitData)
@@ -523,21 +543,29 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       setFormData((prev) => ({ ...prev, ...totals }))
     }, [])
 
-    // Helper function to get category label
-    const getCategoryLabel = (categoryValue: string) => {
-      const category = getCategoryByValue(categoryValue)
-      return category?.label || categoryValue
+    // Helper function to get category by ID
+    const getCategoryById = (categoryId?: number) => {
+      if (!categoryId) return undefined
+      const allCategories = getAllCategories()
+      return allCategories.find(cat => cat.id === categoryId)
     }
 
-    // Helper function to check if category is trainer type
-    const isTrainerCategory = (categoryValue: string) => {
-      const category = getCategoryByValue(categoryValue)
+    // Helper function to get category label by ID
+    const getCategoryLabelById = (categoryId?: number) => {
+      if (!categoryId) return ""
+      const category = getCategoryById(categoryId)
+      return category?.label || ""
+    }
+
+    // Helper function to check if category is trainer type by ID
+    const isTrainerCategoryById = (categoryId?: number) => {
+      const category = getCategoryById(categoryId)
       return category?.type === 'trainer'
     }
 
-    // Helper function to check if category is self-study type
-    const isSelfStudyCategory = (categoryValue: string) => {
-      const category = getCategoryByValue(categoryValue)
+    // Helper function to check if category is self-study type by ID
+    const isSelfStudyCategoryById = (categoryId?: number) => {
+      const category = getCategoryById(categoryId)
       return category?.type === 'self-study'
     }
 
@@ -554,9 +582,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Enter course title"
                   required
                 />
@@ -570,9 +596,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                   <Input
                     id="trainerName"
                     value={formData.trainerName || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, trainerName: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, trainerName: e.target.value })}
                     placeholder="Enter trainer name"
                     required={isTrainer}
                   />
@@ -589,21 +613,16 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                     variant="outline"
                     className="flex-1 justify-between"
                     onClick={() => setCategoryDrawerOpen(true)}
-                    disabled={categoriesLoading}
+                    disabled={categoriesLoading || initialData}
                   >
-                    {formData.category ? (
+                    {formData.categoryId ? (
                       <span>
-                        {getCategoryLabel(formData.category)}
-                        {formData.courseType === "self-study" &&
-                          formData.selfStudyType && (
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              (
-                              {formData.selfStudyType === "jlpt"
-                                ? "JLPT"
-                                : "Other"}
-                              )
-                            </span>
-                          )}
+                        {getCategoryLabelById(formData.categoryId)}
+                        {formData.courseType === "self-study" && formData.selfStudyType && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({formData.selfStudyType === "jlpt" ? "JLPT" : "Other"})
+                          </span>
+                        )}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">
@@ -613,26 +632,52 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                     <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
                   </Button>
                 </div>
-                {formData.category && (
+                {formData.categoryId && (
                   <p className="text-xs text-muted-foreground">
                     {
                       COURSE_TYPE_LABELS[
-                      isTrainerCategory(formData.category)
-                        ? "trainer"
-                        : "self-study"
+                      isTrainerCategoryById(formData.categoryId) ? "trainer" : "self-study"
                       ]
                     }
-                    {formData.courseType === "self-study" &&
-                      formData.selfStudyType && (
-                        <span>
-                          {" • "}
-                          {formData.selfStudyType === "jlpt"
-                            ? "JLPT Preparation"
-                            : "Other Self-Study"}
-                        </span>
-                      )}
+                    {formData.courseType === "self-study" && formData.selfStudyType && (
+                      <span>
+                        {" • "}
+                        {formData.selfStudyType === "jlpt" ? "JLPT Preparation" : "Other Self-Study"}
+                      </span>
+                    )}
                   </p>
                 )}
+              </div>
+
+              {/* ===== STATUS FIELD ===== */}
+              <div className="space-y-2">
+                <Label>
+                  Course Status <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.status || "draft"}
+                  onValueChange={(value: "active" | "upcoming" | "completed" | "draft") => {
+                    setFormData({ ...formData, status: value })
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="upcoming">Upcoming</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {formData.status === "draft" && "📝 Course is being created, not visible to learners"}
+                  {formData.status === "active" && "✅ Course is open for enrollment"}
+                  {formData.status === "upcoming" && "📅 Course is scheduled but not yet open"}
+                  {formData.status === "completed" && "🏁 Course has finished"}
+                </p>
               </div>
 
               {isTrainer && (
@@ -646,11 +691,10 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                       <Button
                         type="button"
                         variant="outline"
-                        className={`w-full justify-between text-left font-normal ${
-                          submitted && !formData.registrationDeadline
-                            ? "border-destructive"
-                            : ""
-                        }`}
+                        className={`w-full justify-between text-left font-normal ${submitted && !formData.registrationDeadline
+                          ? "border-destructive"
+                          : ""
+                          }`}
                       >
                         {formData.registrationDeadline ? (
                           formatLocalDateDisplay(formData.registrationDeadline)
@@ -740,7 +784,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
             <Self_Study_Section
               sessions={formData.sessions}
               selfStudyType={formData.selfStudyType}
-              daysPerSession={formData.daysPerSession}
               totalKanji={formData.totalKanji}
               totalVocabulary={formData.totalVocabulary}
               totalGrammar={formData.totalGrammar}
@@ -748,7 +791,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               totalListeningMinutes={formData.totalListeningMinutes}
               onUpdateSessions={handleUpdateSessions}
               onUpdateSelfStudyType={handleUpdateSelfStudyType}
-              onUpdateDaysPerSession={handleUpdateDaysPerSession}
               onUpdateTotals={handleUpdateTotals}
               sessionPage={sessionPage}
               onSetSessionPage={setSessionPage}
@@ -758,6 +800,8 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               onSetSelfStudyBaseDate={setSelfStudyBaseDate}
               courseId={initialData?.id}
               mode={mode}
+              mainDurationPerSession={mainDurationPerSession}
+              onUpdateMainDurationPerSession={setMainDurationPerSession}
             />
           )}
 
@@ -859,29 +903,28 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         <CategoryDrawer
           open={categoryDrawerOpen}
           onOpenChange={setCategoryDrawerOpen}
-          selectedCategory={formData.category}
+          selectedCategory={formData}
           selectedSelfStudyType={formData.selfStudyType}
-          onSelectCategory={(category, selfStudyType) => {
-            const isTrainerCat = isTrainerCategory(category)
-            const isSelfStudyCat = isSelfStudyCategory(category)
-
+          onSelectCategory={(categoryValue, categoryType, selfStudyType, categoryId) => {
             let courseType: "trainer" | "self-study" | "" = ""
-            if (isTrainerCat) courseType = "trainer"
-            else if (isSelfStudyCat) courseType = "self-study"
+            if (categoryType === "trainer") courseType = "trainer"
+            else if (categoryType === "self-study") courseType = "self-study"
 
             let newSelfStudyType: "jlpt" | "other" | undefined = undefined
             if (courseType === "self-study") {
               if (selfStudyType) {
                 newSelfStudyType = selfStudyType
               } else {
-                const categoryData = getCategoryByValue(category)
+                // Find the exact category by ID
+                const categoryData = getAllCategories().find(cat => cat.id === categoryId)
                 newSelfStudyType = categoryData?.selfStudyType || "other"
               }
             }
 
             setFormData({
               ...formData,
-              category: category,
+              category: categoryValue,
+              categoryId: categoryId,  // Store the ID
               courseType: courseType,
               registrationDeadline:
                 courseType === "trainer"

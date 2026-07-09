@@ -159,13 +159,16 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
     setIsSubmitting(true)
 
     try {
-      const category = getCategoryByValue(data.category)
+      const categoryId = data.course_category_id
 
-      if (!category) {
+      if (!categoryId) {
         alert('Please select a valid category')
         setIsSubmitting(false)
         return
       }
+
+      // Get the category for display/label purposes (optional)
+      const category = getCategoryByValue(data.category)
 
       const statusMap: Record<string, string> = {
         'active': 'OPEN',
@@ -174,7 +177,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
         'draft': 'DRAFT'
       }
 
-      const currentStatus = editingCourse?.status || 'draft'
+      const currentStatus = data.status || 'draft'
       const backendStatus = statusMap[currentStatus] || 'DRAFT'
 
       // Prepare groups for trainer courses
@@ -241,7 +244,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
       // Create the base course data
       const courseData: any = {
         course_name: data.title,
-        course_category_id: Number(category.id),
+        course_category_id: Number(categoryId), // ← Use categoryId directly
         trainer_name: data.trainerName || null,
         self_study_type: data.selfStudyType || null,
         target_level: data.targetLevel || null,
@@ -251,13 +254,11 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
         session_per_days: data.courseType === 'self-study' ? data.daysPerSession : null,
         start_date: null,
         end_date: null,
-        // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
         registration_deadline: data.registrationDeadline instanceof Date
           ? formatLocalDateForAPI(data.registrationDeadline)
           : data.registrationDeadline || null,
         status: backendStatus,
       }
-
       // ============ ADD DEFAULT GROUP 1 FOR SELF-STUDY ============
       if (data.courseType === 'self-study' && data.sessions && data.sessions.length > 0) {
         const existingGroup = editingCourse?.groups?.[0]
