@@ -422,8 +422,6 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const data = await response.json()
-      console.log("AAAAAAAAAAAAAAAAAAAAA")
-      console.log(data)
 
 
       let transformedCourses: Course[] = []

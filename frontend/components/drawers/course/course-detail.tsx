@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { SaveIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
+  TeacherFreeIcons,
   Calendar03Icon,
   UserGroupIcon,
   Edit03Icon,
@@ -420,17 +421,13 @@ export function CourseDetail({
 
   useEffect(() => {
     const loadEnrollments = async () => {
-      // Check if store already has enrollments
-      if (enrollments && enrollments.length > 0) {
-        return;
-      }
-
       if (!course.id) {
         return;
       }
 
       setIsLoadingEnrollments(true);
       try {
+        // The store will clear old enrollments automatically
         const result = await fetch_courseEnrollments(course.id);
       } catch (error) {
         console.error('Error loading enrollments:', error);
@@ -440,7 +437,7 @@ export function CourseDetail({
     };
 
     loadEnrollments();
-  }, [fetch_courseEnrollments, course.id]);
+  }, [course.id]);
 
 
 
@@ -1609,19 +1606,21 @@ export function CourseDetail({
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-sm">
-                    <HugeiconsIcon
-                      icon={Calendar03Icon}
-                      strokeWidth={1.5}
-                      className="h-5 w-5 shrink-0 text-muted-foreground"
-                    />
-                    <div>
-                      <p className="font-medium">Trainer Name</p>
-                      <p className="text-muted-foreground">
-                        {course.trainerName}
-                      </p>
+                  {course.courseType === "trainer" &&
+                    <div className="flex items-center gap-3 text-sm">
+                      <HugeiconsIcon
+                        icon={TeacherFreeIcons}
+                        strokeWidth={1.5}
+                        className="h-5 w-5 shrink-0 text-muted-foreground"
+                      />
+                      <div>
+                        <p className="font-medium">Trainer Name</p>
+                        <p className="text-muted-foreground">
+                          {course.trainerName}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  }
                   <div className="flex items-center gap-3 text-sm">
                     <HugeiconsIcon
                       icon={Calendar03Icon}

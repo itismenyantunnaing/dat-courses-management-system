@@ -618,9 +618,7 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
                         <Label className="text-xs text-muted-foreground">
                           Duration Between Sessions (days)
                         </Label>
-                        {session.durationPerSession === mainDurationPerSession && mainDurationPerSession !== undefined && (
-                          <span className="text-[10px] text-green-600">(synced)</span>
-                        )}
+                       
                       </div>
                       <Input
                         type="number"
@@ -872,95 +870,6 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
         )}
       </div>
 
-      {/* ================================================ */}
-      {/* ENROLLED EMPLOYEES - ONLY SHOW IN EDIT MODE */}
-      {/* ================================================ */}
-      {mode === "edit" && courseId && (
-        <>
-          {enrolledEmployees.length > 0 ? (
-            <div className="mt-6 pt-6 border-t">
-              <div className="flex items-center gap-2 mb-3">
-                <HugeiconsIcon
-                  icon={User02Icon}
-                  strokeWidth={1.5}
-                  className="h-5 w-5 text-muted-foreground"
-                />
-                <Label className="text-base font-semibold">
-                  Enrolled Employees
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({enrolledEmployees.length})
-                  </span>
-                </Label>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {enrolledEmployees.map((employee: any) => (
-                  <div
-                    key={employee.id}
-                    className="flex items-center gap-3 rounded-lg border bg-muted/5 p-3 transition-colors hover:bg-muted/10"
-                  >
-                    <Avatar className="h-10 w-10 rounded-lg shrink-0">
-                      <AvatarImage src={employee.pfImage || ""} />
-                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-medium">
-                        {getInitials(employee.employeeName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {employee.employeeName}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "h-4 px-1.5 py-0 text-[10px]",
-                            statusColors[employee.enrollmentStatus],
-                            "bg-opacity-10"
-                          )}
-                        >
-                          {statusLabels[employee.enrollmentStatus] || employee.enrollmentStatus}
-                        </Badge>
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {employee.email}
-                      </div>
-                      <div className="flex gap-2 text-xs text-muted-foreground">
-                        <span className="truncate">{employee.departmentName}</span>
-                        {employee.departmentName && employee.teamName && <span>•</span>}
-                        {employee.teamName && <span className="truncate">{employee.teamName}</span>}
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground shrink-0">
-                      {format(new Date(employee.enrolledAt), "MMM d, yyyy")}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-6 pt-6 border-t">
-              <div className="flex items-center gap-2 mb-3">
-                <HugeiconsIcon
-                  icon={User02Icon}
-                  strokeWidth={1.5}
-                  className="h-5 w-5 text-muted-foreground"
-                />
-                <Label className="text-base font-semibold">
-                  Enrolled Employees
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    (0)
-                  </span>
-                </Label>
-              </div>
-              <div className="flex items-center justify-center rounded-lg border border-dashed p-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No employees enrolled in this course yet
-                </p>
-              </div>
-            </div>
-          )}
-        </>
-      )}
     </>
   )
 }

@@ -26,4 +26,6 @@ public interface SelfStudySessionProgressRepository
                         Integer selfStudySessionId);
 
         List<SelfStudySessionProgress> findByEnrollment_Id(Integer enrollmentId);
+
+        void deleteByenrollment_id(Integer id);
 }

@@ -49,6 +49,7 @@ import { TrainerSection } from "./trainer-management-section"
 import { Self_Study_Section } from "./self-study-management-section"
 import { formatGroupsForAPI } from "./trainer-management-section"
 import { formatSelfStudySessionsForAPI } from "./self-study-management-section"
+import { EnrollEmployeesSection } from "./EnrollEmployeesSection"
 
 // Default session days constant
 const DEFAULT_SESSION_DAYS = [4, 5] // Thursday, Friday
@@ -427,6 +428,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       const errors: { [key: string]: string } = {}
 
       if (formData.courseType === "trainer") {
+        // Check for empty group names
         const groupsWithEmptyNames = formData.groups.filter(
           group => !group.name || group.name.trim() === ''
         )
@@ -438,6 +440,20 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           hasError = true
         }
 
+        // ADD CAPACITY VALIDATION FOR MULTIPLE GROUPS
+        if (formData.groups.length > 1) {
+          const groupsWithoutCapacity = formData.groups.filter(
+            group => group.capacity === undefined || group.capacity === null
+          )
+          if (groupsWithoutCapacity.length > 0) {
+            groupsWithoutCapacity.forEach(group => {
+              errors[group.id] = "Capacity is required when multiple groups exist"
+            })
+            hasError = true
+          }
+        }
+
+        // Check for sessions and other validations
         formData.groups.forEach((group) => {
           if (group.sessions.length === 0) {
             errors[group.id] = "At least one session is required"
@@ -476,13 +492,23 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
       if (hasError) {
         setGroupErrors(errors)
-        if (errors[Object.keys(errors)[0]] === "Group name is required") {
+
+        // Show appropriate alert message
+        const firstErrorKey = Object.keys(errors)[0]
+        const firstError = errors[firstErrorKey]
+
+        if (firstError === "Group name is required") {
           alert(`Please provide names for all ${formData.groups.length} groups before submitting.`)
+        } else if (firstError === "Capacity is required when multiple groups exist") {
+          alert(`Please set capacities for all  groups before submitting.`)
+        } else {
+          alert(firstError)
         }
         return
       }
 
       if (!formData.title || !formData.courseType) return
+
       const submitData = {
         title: formData.title,
         trainerName: formData.trainerName,
@@ -853,6 +879,25 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               mainDurationPerSession={mainDurationPerSession}
               onUpdateMainDurationPerSession={setMainDurationPerSession}
             />
+          )}
+
+          {/* ===================== ENROLLMENT SECTION (for ALL course types) ===================== */}
+          {formData.courseType && mode === "edit" && (
+            <div className="border-t pt-6 mt-6">
+              <EnrollEmployeesSection
+                allEmployees={employeeLearners}
+                courseId={initialData?.id}
+                onRefreshEnrollments={async () => {
+                  if (initialData?.id) {
+                    await fetch_courseEnrollments(initialData.id)
+                  }
+                }}
+                isSubmitting={isSubmitting}
+                groups={formData.groups}
+                activeGroupTab={activeGroupTab}
+                isTrainer={formData.courseType === "trainer"}
+              />
+            </div>
           )}
 
           {/* ===================== COURSE IMAGE ===================== */}

@@ -15,20 +15,26 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
   isEnrolling: false,
   isUnenrolling: false,
   isUpdatingEnrollment: false,
+  isLoadingEnrollments: false, // ✅ ADD THIS - declare the loading state
 
   // ==================== COURSE ENROLLMENT API ENDPOINTS ====================
 
   // GET /api/courses/:courseId/enrollments - Fetch all enrollments for a course
   fetch_courseEnrollments: async (courseId: number | string) => {
-    set((state: Course_StoreType) => ({ ...state, enrollmentError: null }))
-    try {
+    // ✅ Clear old enrollments and set loading state
+    set((state: Course_StoreType) => ({
+      ...state,
+      enrollments: [],
+      enrollmentError: null,
+      isLoadingEnrollments: true
+    }))
 
+    try {
       const headers = get().getAuthHeaders()
 
       const response = await fetch(`${apiUrl}/api/courses/${courseId}/enrollments`, {
         headers: headers
       })
-
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -36,16 +42,22 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
 
       const data = await response.json()
 
+      // ✅ Add courseId to each enrollment and update state
+      const enrollmentsWithCourseId = (data || []).map((enrollment: any) => ({
+        ...enrollment,
+        courseId: parseInt(courseId.toString())
+      }))
+
       // Store the enrollments in the store state
       set((state: Course_StoreType) => ({
         ...state,
-        enrollments: data,
-        enrollmentError: null
+        enrollments: enrollmentsWithCourseId,
+        enrollmentError: null,
+        isLoadingEnrollments: false // ✅ Set loading to false
       }))
 
-
       // Return the data directly so the component can use it
-      return data
+      return enrollmentsWithCourseId
 
     } catch (error) {
       console.error('❌ Error fetching course enrollments:', error)
@@ -53,7 +65,9 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
 
       set((state: Course_StoreType) => ({
         ...state,
-        enrollmentError: errorMessage
+        enrollments: [],
+        enrollmentError: errorMessage,
+        isLoadingEnrollments: false // ✅ Set loading to false on error too
       }))
 
       return []
@@ -61,26 +75,25 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   // POST /api/courses/:courseId/enroll - Enroll an employee in a course
-  enrollEmployee: async (courseId: number | string, courseGroupId: number) => {
+  enrollEmployee: async (courseId: number | string, courseGroupId: number, employeeId?: string) => {
     set((state: Course_StoreType) => ({ ...state, isEnrolling: true, enrollmentError: null }))
 
     try {
-      // Get employee ID from session
-      const employeeId = get().getUserId?.() || null
+      // If employeeId is not provided, use the logged-in user's ID
+      const targetEmployeeId = employeeId || get().getUserId?.() || null
 
-      if (!employeeId) {
-        throw new Error('Employee ID not found in session. Please log in again.')
+      if (!targetEmployeeId) {
+        throw new Error('Employee ID not found. Please log in again.')
       }
 
       const headers = get().getAuthHeaders()
 
-      // Simply create a new enrollment - works for both first-time and re-enrollment
-      console.log('🔵 Creating new enrollment for employee:', employeeId)
+      console.log('🔵 Creating new enrollment for employee:', targetEmployeeId)
       const response = await fetch(`${apiUrl}/api/courses/${courseId}/enroll`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
-          employeeId: employeeId,
+          employeeId: targetEmployeeId,
           courseGroupId: courseGroupId
         }),
       })
@@ -134,10 +147,8 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       }
     }
   },
-
-
+  
   // DELETE /api/courses/:courseId/enrollments/:enrollmentId - Cancel enrollment (soft delete)
-  // Alias as unenrollEmployee for better naming consistency
   cancelEnrollment: async (courseId: number | string, enrollmentId: number) => {
     set((state: Course_StoreType) => ({ ...state, isUnenrolling: true, enrollmentError: null }))
 
@@ -217,7 +228,6 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
   fetchMyCourses: async () => {
     set((state: Course_StoreType) => ({ ...state, enrollmentError: null }))
     try {
-      // Get employee ID from session
       const employeeId = get().getUserId?.() || null
 
       if (!employeeId) {
@@ -273,7 +283,6 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         }
       }
 
-      // Get all enrollments for the course
       const enrollments = await get().fetch_courseEnrollments(courseId)
 
       if (Array.isArray(enrollments)) {
@@ -282,7 +291,6 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
             enrollment.enrollmentStatus === 'APPROVED'
         )
 
-        // Get the specific enrollment if found
         const enrollment = enrollments.find(
           (enrollment: any) => enrollment.employeeId === employeeId
         )
@@ -413,7 +421,8 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({
       ...state,
       enrollments: [],
-      enrollmentError: null
+      enrollmentError: null,
+      isLoadingEnrollments: false
     }))
   },
 
@@ -424,7 +433,8 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       isEnrolling: false,
       isUnenrolling: false,
       isUpdatingEnrollment: false,
-      enrollmentError: null
+      enrollmentError: null,
+      isLoadingEnrollments: false
     }))
   }
 })

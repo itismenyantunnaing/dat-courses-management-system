@@ -133,7 +133,7 @@ public class CourseEnrollmentService {
                                 .orElseThrow(() -> new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND,
                                                 "Enrollment not found"));
-
+                progressRepository.deleteByenrollment_id(enrollmentId);
                 enrollmentRepository.deleteById(enrollmentId);
         }
 
