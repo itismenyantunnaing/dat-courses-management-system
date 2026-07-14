@@ -288,7 +288,6 @@ class EmployeeServiceTest {
     private static Division division(String name) {
         Division division = new Division();
         division.setDivisionName(name);
-        division.setDivisionCode(name.toUpperCase());
         division.setIsDeleted(false);
         return division;
     }
@@ -296,7 +295,6 @@ class EmployeeServiceTest {
     private static DepartmentDat departmentDat(String name, Division division) {
         DepartmentDat departmentDat = new DepartmentDat();
         departmentDat.setDeptName(name);
-        departmentDat.setDeptCode(name.toUpperCase());
         departmentDat.setDivision(division);
         departmentDat.setIsDeleted(false);
         return departmentDat;

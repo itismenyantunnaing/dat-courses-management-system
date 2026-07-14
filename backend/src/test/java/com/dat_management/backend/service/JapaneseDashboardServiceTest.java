@@ -266,13 +266,11 @@ class JapaneseDashboardServiceTest {
         Division division = new Division();
         division.setId(301);
         division.setDivisionName("Digital Division");
-        division.setDivisionCode("DIG");
         division.setIsDeleted(false);
 
         DepartmentDat departmentDat = new DepartmentDat();
         departmentDat.setId(id);
         departmentDat.setDeptName(name);
-        departmentDat.setDeptCode("PLT");
         departmentDat.setDivision(division);
         departmentDat.setIsDeleted(false);
         return departmentDat;

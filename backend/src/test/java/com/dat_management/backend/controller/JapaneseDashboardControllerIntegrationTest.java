@@ -170,14 +170,12 @@ class JapaneseDashboardControllerIntegrationTest {
     private Team createTeam(String divisionName, String divisionCode, String deptName, String deptCode, String teamName) {
         Division division = new Division();
         division.setDivisionName(divisionName);
-        division.setDivisionCode(divisionCode);
         division.setIsDeleted(false);
         Division savedDivision = divisionRepository.save(division);
 
         DepartmentDat departmentDat = new DepartmentDat();
         departmentDat.setDivision(savedDivision);
         departmentDat.setDeptName(deptName);
-        departmentDat.setDeptCode(deptCode);
         departmentDat.setIsDeleted(false);
         DepartmentDat savedDepartment = departmentDatRepository.save(departmentDat);
 

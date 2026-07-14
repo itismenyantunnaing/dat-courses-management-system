@@ -158,9 +158,9 @@ class CertificateControllerTest {
         CertificateResponseDto certificate = certificateDto(10, "EMP001", "JLPT", "N2", "VERIFIED");
 
         when(employeeService.getEmployeeById("EMP999")).thenReturn(verifier);
-        when(certificateService.verifyCertificate(10, verifier)).thenReturn(certificate);
+        when(certificateService.verifyCertificate(10, verifier, "")).thenReturn(certificate);
 
-        ResponseEntity<Map<String, Object>> response = controller.verifyCertificate(10, "EMP999");
+        ResponseEntity<Map<String, Object>> response = controller.verifyCertificate(10, "EMP999", "");
 
         Assertions.assertEquals(HttpStatus.OK, response.getStatusCode());
         Assertions.assertEquals(true, response.getBody().get("success"));

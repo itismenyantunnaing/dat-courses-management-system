@@ -156,7 +156,7 @@ class CertificateServiceTest {
         when(japaneseProfileRepository.save(any(EmployeeJapaneseProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(certificateRepository.save(certificate)).thenReturn(certificate);
 
-        CertificateResponseDto result = service.verifyCertificate(10, verifier);
+        CertificateResponseDto result = service.verifyCertificate(10, verifier, "");
 
         Assertions.assertEquals("VERIFIED", result.getVerificationStatus());
         Assertions.assertEquals("EMP999", result.getVerifiedByEmployeeId());
@@ -184,7 +184,7 @@ class CertificateServiceTest {
         when(certificateRepository.findById(10)).thenReturn(Optional.of(certificate));
         when(certificateRepository.save(certificate)).thenReturn(certificate);
 
-        CertificateResponseDto result = service.rejectCertificate(10, verifier);
+        CertificateResponseDto result = service.rejectCertificate(10, verifier, "");
 
         Assertions.assertEquals("REJECTED", result.getVerificationStatus());
         Assertions.assertEquals("EMP999", result.getVerifiedByEmployeeId());
