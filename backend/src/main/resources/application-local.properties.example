@@ -1,0 +1,12 @@
+# Copy this file to application-local.properties and fill in your values.
+# application-local.properties is gitignored and loaded via spring.profiles.active=local.
+
+spring.datasource.url=jdbc:mysql://localhost:3306/your-db-name?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=your-db-password
+
+# Generate a new secret for production; do not reuse values that were ever committed to git.
+
+jwt.secret=your-jwt-secret-key
+spring.mail.username=your-email@example.com
+spring.mail.password=your-app-password
