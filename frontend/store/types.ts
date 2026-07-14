@@ -18,7 +18,13 @@ import {
 } from "@/types/exam_progress_report"
 import type { JapaneseCertificate } from "@/types/certificate"
 import type { SessionData } from "@/types/session";
-import type { CategoryItem, Course, CourseCategoryData } from "@/types/course"
+import type { 
+  CategoryItem, 
+  Course, 
+  CourseCategoryData, 
+  BackendCourseDto,
+  BackendCategoryDto 
+} from "@/types/course"
 
 export interface Employee_StoreType {
   employee_data: Employee[]
@@ -125,7 +131,7 @@ export interface Session_StoreType {
 }
 
 export interface Course_StoreType {
-  // State
+  // ========== STATE ==========
   courses: Course[];
   error: string | null;
   isCreating: boolean;
@@ -134,27 +140,28 @@ export interface Course_StoreType {
   courseCategory_data: CourseCategoryData;
   isFormVisible: boolean;
   editingCourse: Course | null;
-  // Session methods (required for auth)
+
+  // ========== SESSION METHODS ==========
   getToken: () => string | null;
-  // Optional: add other session methods if needed
   getUserRole?: () => string | null;
   getUserName?: () => string | null;
   getUserEmail?: () => string | null;
   getUserId?: () => string | null;
 
-  // Helper methods
+  // ========== HELPER METHODS ==========
   getAuthHeaders: () => HeadersInit;
   getMultipartAuthHeaders: () => HeadersInit;
-  transformBackendCourseToFrontend: (course: import("@/types/course").BackendCourseDto) => Course;
+  transformBackendCourseToFrontend: (course: BackendCourseDto) => Course;
+  transformFrontendToBackendRequest: (course: Partial<Course>) => Record<string, unknown>;
 
-  // Course API methods
+  // ========== COURSE API METHODS ==========
   fetchAll_CourseData: () => Promise<void>;
   fetch_CourseData: (id: number | string) => Promise<{
     success: boolean;
     course?: Course;
     message?: string;
   }>;
-  add_CourseData: (formData: FormData) => Promise<{
+  add_CourseData: (formData: FormData | Record<string, unknown>) => Promise<{
     success: boolean;
     message?: string;
     course?: Course;
@@ -179,7 +186,7 @@ export interface Course_StoreType {
     message?: string;
   }>;
 
-  // Course Category API methods
+  // ========== COURSE CATEGORY API METHODS ==========
   fetch_courseCategories: () => Promise<void>;
   add_courseCategories: (categoryName: string, courseType: 'trainer' | 'self-study') => Promise<{
     success: boolean;
@@ -196,14 +203,136 @@ export interface Course_StoreType {
     message?: string;
   }>;
 
-  // Helper functions for categories
+  // ========== CATEGORY HELPER FUNCTIONS ==========
   getAllCategories: () => CategoryItem[];
   getCategoryByValue: (value: string) => CategoryItem | undefined;
   getCategoryByIdFromStore: (id: number) => CategoryItem | undefined;
   getCategoryType: (value: string) => string | null;
   getSelfStudyType: (value: string) => string;
 
-  // Legacy/Utility course operations
+  // ========== COURSE ENROLLMENT STATE ==========
+  enrollments: EnrolledEmployee[];
+  enrollmentError: string | null;
+  isEnrolling: boolean;
+  isUnenrolling: boolean;
+  isUpdatingEnrollment: boolean;
+
+  // ========== COURSE ENROLLMENT METHODS ==========
+  fetch_courseEnrollments: (courseId: number | string) => Promise<EnrolledEmployee[]>;
+  enrollEmployee: (courseId: number | string, courseGroupId: number) => Promise<{
+    success: boolean;
+    message?: string;
+    data?: EnrolledEmployee;
+  }>;
+  unenrollEmployee: (courseId: number | string, enrollmentId: number) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  cancelEnrollment: (courseId: number | string, enrollmentId: number) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  fetchMyCourses: () => Promise<{
+    success: boolean;
+    data?: Course[];
+    message?: string;
+  }>;
+  checkMyEnrollment: (courseId: number | string) => Promise<{
+    success: boolean;
+    isEnrolled: boolean;
+    enrollment?: EnrolledEmployee;
+    message?: string;
+  }>;
+  getMyEnrollment: (courseId: number | string) => EnrolledEmployee | null;
+  isMeEnrolled: (courseId: number | string) => boolean;
+  getEnrollmentByEmployeeId: (courseId: number | string, employeeId: string) => EnrolledEmployee | null;
+  isEmployeeEnrolled: (courseId: number | string, employeeId: string) => boolean;
+  getEnrollmentCountsByStatus: (courseId: number | string) => {
+    total: number;
+    approved: number;
+    pending: number;
+    cancelled: number;
+    completed: number;
+  };
+  clearEnrollments: () => void;
+  resetEnrollmentStates: () => void;
+
+  // ========== SELF-STUDY PROGRESS STATE ==========
+  studyProgress: StudyProgressData | null;
+  isFetchingProgress: boolean;
+  isAddingProgress: boolean;
+  isUpdatingProgress: boolean;
+  progressError: string | null;
+
+  // ========== SELF-STUDY PROGRESS METHODS ==========
+  fetch_studyProgress: (courseId: number | string) => Promise<{
+    success: boolean;
+    progress?: StudyProgressData;
+    message?: string;
+  }>;
+  add_studyProgress: (courseId: number | string, progressData: StudyProgressInput) => Promise<{
+    success: boolean;
+    message?: string;
+    data?: StudyProgressData;
+  }>;
+  update_studyProgress: (courseId: number | string, progressId: number, progressData: StudyProgressInput) => Promise<{
+    success: boolean;
+    message?: string;
+    data?: StudyProgressData;
+  }>;
+
+  // ========== ATTENDANCE STATE ==========
+  attendances: AttendanceRecord[];
+  isFetchingAttendance: boolean;
+  isCreatingAttendance: boolean;
+  isUpdatingAttendance: boolean;
+  attendanceError: string | null;
+
+  // ========== ATTENDANCE METHODS ==========
+  fetchAttendance: (courseId: number | string, groupId: number) => Promise<AttendanceRecord[]>;
+  createAttendance: (courseId: number | string, groupId: number, data: CreateAttendanceInput) => Promise<{
+    success: boolean;
+    message?: string;
+    data?: AttendanceRecord;
+  }>;
+  updateAttendance: (courseId: number | string, groupId: number, attendanceId: number, data: UpdateAttendanceInput) => Promise<{
+    success: boolean;
+    message?: string;
+    data?: AttendanceRecord;
+  }>;
+
+  // ========== GROUP CHANGE STATE ==========
+  groupChangeError: string | null;
+  isRequestingGroupChange: boolean;
+  isAdminChangingGroup: boolean;
+  isApprovingGroupChange: boolean;
+  isRejectingGroupChange: boolean;
+  groupChangeSuccess: string | null;
+
+  // ========== GROUP CHANGE METHODS ==========
+  requestGroupChange: (enrollmentId: number, groupId: number) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  adminChangeGroup: (enrollmentId: number, groupId: number) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  approveGroupChange: (enrollmentId: number) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  rejectGroupChange: (enrollmentId: number) => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  getGroupChangeRequests: (courseId: number | string) => GroupChangeRequest[];
+  getPendingGroupChangeCount: (courseId: number | string) => number;
+  hasPendingGroupChange: (enrollmentId: number) => boolean;
+  clearGroupChangeState: () => void;
+  resetGroupChangeStates: () => void;
+
+  // ========== LEGACY/UTILITY COURSE OPERATIONS ==========
   setCourses: (courses: Course[]) => void;
   addCourse: (course: Course) => void;
   updateCourse: (id: string, data: Partial<Course>) => void;
@@ -211,8 +340,103 @@ export interface Course_StoreType {
   getCourse: (id: string) => Course | undefined;
   initializeCourses: () => void;
 
-  // UI State methods
+  // ========== UI STATE METHODS ==========
   setIsFormVisible: (visible: boolean) => void;
   setEditingCourse: (course: Course | null) => void;
   resetForm: () => void;
+}
+
+// ========== SUPPORTING TYPES ==========
+
+export interface EnrolledEmployee {
+  id: number;
+  employeeId: string;
+  employeeName: string;
+  email: string;
+  departmentId: number;
+  departmentName: string;
+  teamId: number;
+  teamName: string;
+  position: string;
+  courseGroupId: number;
+  courseGroupName: string;
+  enrollmentStatus: string;
+  enrolledAt: string;
+  pfImage?: string;
+  groupChangeStatus?: string;
+  requestedCourseGroupId?: number;
+  requestedCourseGroupName?: string;
+}
+
+export interface StudyProgressData {
+  id?: number;
+  enrollment_id?: number;
+  employee_id?: string;
+  employee_name?: string;
+  self_study_session_id?: number;
+  session_no?: number;
+  session_deadline?: string;
+  kanji_count?: number;
+  vocabulary_count?: number;
+  grammar_count?: number;
+  reading_minutes?: number;
+  listening_minutes?: number;
+  completion_status?: string;
+  started_at?: string;
+  completed_at?: string;
+  updated_at?: string;
+  kanji_progress_percent?: number;
+  vocabulary_progress_percent?: number;
+  grammar_progress_percent?: number;
+  reading_progress_percent?: number;
+  listening_progress_percent?: number;
+}
+
+export interface StudyProgressInput {
+  enrollment_id?: number;
+  self_study_session_id?: number;
+  kanji_count?: number;
+  vocabulary_count?: number;
+  grammar_count?: number;
+  reading_minutes?: number;
+  listening_minutes?: number;
+  completion_status?: string;
+}
+
+export interface AttendanceRecord {
+  id: number;
+  enrollmentId: number;
+  employeeId: string;
+  employeeName: string;
+  courseSessionId: number;
+  sessionNo: number;
+  sessionDate: string;
+  attendanceStatus: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+  registeredAt: string;
+}
+
+export interface CreateAttendanceInput {
+  enrollmentId: number;
+  courseSessionId: number;
+  attendanceStatus: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+}
+
+export interface UpdateAttendanceInput {
+  enrollmentId?: number;
+  courseSessionId?: number;
+  attendanceStatus?: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+}
+
+export interface GroupChangeRequest {
+  id: number;
+  enrollmentId: number;
+  employeeName: string;
+  email: string;
+  courseGroupId: number;
+  courseGroupName: string;
+  requestedCourseGroupId: number;
+  requestedCourseGroupName: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NONE';
+  requestedAt: string;
+  processedAt?: string;
 }

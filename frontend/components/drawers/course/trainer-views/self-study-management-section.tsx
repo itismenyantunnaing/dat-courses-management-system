@@ -549,7 +549,7 @@ export const Self_Study_Section: React.FC<SelfStudySectionProps> = ({
             }}
             className="h-8 text-sm"
             min={1}
-            disabled={sessions.length === 0}  // ← Disabled when sessions exist
+            disabled={sessions.length === 0}  
           />
           <p className="text-xs text-muted-foreground">
             {sessions.length === 0

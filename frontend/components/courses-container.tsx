@@ -81,13 +81,14 @@ export function CoursesContainer({ searchPlaceholder = "Search courses..." }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
 
+
   // Fetch courses and categories from API on mount
   useEffect(() => {
     fetchAll_CourseData()
     fetch_courseCategories()
   }, [fetchAll_CourseData, fetch_courseCategories])
 
-  const userRole = "admin" // getUserRole()
+  const userRole = getUserRole()?.toLocaleLowerCase()
 
   const canEditTrainerCourses = userRole === "admin" || userRole === "approver"
   const isLearner = userRole === "learner"

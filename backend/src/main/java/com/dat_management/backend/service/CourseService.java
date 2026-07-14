@@ -23,13 +23,13 @@ import java.util.stream.Collectors;
 @Transactional
 public class CourseService {
 
-    private final CourseCategoryRepository   categoryRepo;
-    private final CourseRepository           courseRepo;
-    private final CourseGroupRepository      groupRepo;
-    private final CourseSessionRepository    sessionRepo;
+    private final CourseCategoryRepository categoryRepo;
+    private final CourseRepository courseRepo;
+    private final CourseGroupRepository groupRepo;
+    private final CourseSessionRepository sessionRepo;
     private final CourseEnrollmentRepository enrollmentRepo;
     private final SelfStudySessionRepository selfStudyRepo;
-    private final CourseImageStorageService  courseImageStorageService;
+    private final CourseImageStorageService courseImageStorageService;
 
     // =========================================================
     // API 1 — GET /api/courses
@@ -100,31 +100,41 @@ public class CourseService {
     }
 
     // =========================================================
-    // API 4 — PUT /api/courses/:id (UPDATED WITH PROPER GROUP AND SELF-STUDY HANDLING)
+    // API 4 — PUT /api/courses/:id
     // =========================================================
     public CourseDto updateCourse(Integer id, CourseUpdateDto req) {
         Course course = findCourseOrThrow(id);
 
         // Update basic fields
-        if (req.getCourseName() != null) course.setCourseName(req.getCourseName());
-        if (req.getTrainerName() != null) course.setTrainerName(req.getTrainerName());
-        if (req.getSelfStudyType() != null) course.setSelfStudyType(req.getSelfStudyType());
-        if (req.getTargetLevel() != null) course.setTargetLevel(req.getTargetLevel());
-        if (req.getTotalSessions() != null) course.setTotalSessions(req.getTotalSessions());
-        if (req.getStartDate() != null) course.setStartDate(req.getStartDate());
-        if (req.getEndDate() != null) course.setEndDate(req.getEndDate());
-        if (req.getRegistrationDeadline() != null) course.setRegistrationDeadline(req.getRegistrationDeadline());
-        if (req.getStatus() != null) course.setStatus(CourseStatus.valueOf(req.getStatus()));
-        if (req.getCourseCategoryId() != null) course.setCourseCategory(findCategoryOrThrow(req.getCourseCategoryId()));
+        if (req.getCourseName() != null)
+            course.setCourseName(req.getCourseName());
+        if (req.getTrainerName() != null)
+            course.setTrainerName(req.getTrainerName());
+        if (req.getSelfStudyType() != null)
+            course.setSelfStudyType(req.getSelfStudyType());
+        if (req.getTargetLevel() != null)
+            course.setTargetLevel(req.getTargetLevel());
+        if (req.getTotalSessions() != null)
+            course.setTotalSessions(req.getTotalSessions());
+        if (req.getStartDate() != null)
+            course.setStartDate(req.getStartDate());
+        if (req.getEndDate() != null)
+            course.setEndDate(req.getEndDate());
+        if (req.getRegistrationDeadline() != null)
+            course.setRegistrationDeadline(req.getRegistrationDeadline());
+        if (req.getStatus() != null)
+            course.setStatus(CourseStatus.valueOf(req.getStatus()));
+        if (req.getCourseCategoryId() != null)
+            course.setCourseCategory(findCategoryOrThrow(req.getCourseCategoryId()));
 
         course = courseRepo.save(course);
 
-        // Handle groups update with incremental logic
-        if (req.getGroups() != null) {
-            updateGroupsWithEnrollmentAwareness(course, req.getGroups());
+        // Handle groups update
+        if (req.getGroups() != null && !req.getGroups().isEmpty()) {
+            updateGroups(course, req.getGroups());
         }
 
-        // Handle self-study sessions update - UPDATE instead of DELETE + CREATE
+        // Handle self-study sessions update
         if (req.getSelfStudySessions() != null) {
             updateSelfStudySessions(course, req.getSelfStudySessions());
         }
@@ -137,8 +147,8 @@ public class CourseService {
     // =========================================================
     public void deleteCourse(Integer id) throws IOException {
         Course course = findCourseOrThrow(id);
-        
-        String imagePath = course.getImagePath(); 
+
+        String imagePath = course.getImagePath();
         if (imagePath != null && !imagePath.isEmpty()) {
             courseImageStorageService.deleteImage(imagePath);
         }
@@ -197,8 +207,10 @@ public class CourseService {
     public CategoryDto updateCategory(Integer id, String name, String type) {
         CourseCategory cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
-        if (name != null && !name.isBlank()) cat.setCourseCategoryName(name);
-        if (type != null && !type.isBlank()) cat.setCourseType(CourseType.valueOf(type));
+        if (name != null && !name.isBlank())
+            cat.setCourseCategoryName(name);
+        if (type != null && !type.isBlank())
+            cat.setCourseType(CourseType.valueOf(type));
         return toCategoryDto(categoryRepo.save(cat));
     }
 
@@ -266,8 +278,8 @@ public class CourseService {
         findCourseOrThrow(courseId);
         List<CourseEnrollment> enrollments = enrollmentRepo.findByCourseId(courseId);
         return enrollments.stream()
-            .map(this::toCourseEnrollmentDto)
-            .collect(Collectors.toList());
+                .map(this::toCourseEnrollmentDto)
+                .collect(Collectors.toList());
     }
 
     // =========================================================
@@ -277,23 +289,24 @@ public class CourseService {
     public List<SessionDto> getGroupSessions(Integer courseId, Integer groupId) {
         findCourseOrThrow(courseId);
         CourseGroup group = groupRepo.findById(groupId)
-            .orElseThrow(() -> new RuntimeException("Group not found with id: " + groupId));
+                .orElseThrow(() -> new RuntimeException("Group not found with id: " + groupId));
         if (!group.getCourse().getId().equals(courseId)) {
             throw new RuntimeException("Group does not belong to the specified course");
         }
         List<CourseSession> sessions = sessionRepo.findByCourseGroupIdOrderBySessionNoAsc(groupId);
         return sessions.stream()
-            .map(this::toSessionResponseDto)
-            .collect(Collectors.toList());
+                .map(this::toSessionResponseDto)
+                .collect(Collectors.toList());
     }
 
     // =========================================================
     // API 22 — PUT /api/courses/:id/groups/:groupId/sessions/:sessionId
     // =========================================================
     @Transactional
-    public Map<String, Object> updateSessionStatus(Integer courseId, Integer groupId, Integer sessionId, String sessionStatus) {
+    public Map<String, Object> updateSessionStatus(Integer courseId, Integer groupId, Integer sessionId,
+            String sessionStatus) {
         CourseSession session = sessionRepo.findById(sessionId)
-            .orElseThrow(() -> new RuntimeException("Session not found with id: " + sessionId));
+                .orElseThrow(() -> new RuntimeException("Session not found with id: " + sessionId));
         if (sessionStatus == null || sessionStatus.isEmpty()) {
             throw new RuntimeException("session_status is required");
         }
@@ -308,146 +321,533 @@ public class CourseService {
     }
 
     // =========================================================
-    // PRIVATE HELPERS
+    // PRIVATE HELPERS - GROUP MANAGEMENT
     // =========================================================
 
     /**
-     * Updates groups by matching on group_name:
-     * - If group_name exists in the course → UPDATE that group
-     * - If group_name doesn't exist → CREATE new group
-     * - Groups not in the request → DELETE (if no enrollments)
+     * Main group update logic:
+     * 
+     * Scenario 1: Auto-Creation (1 Group in Request)
+     * - Condition: Exactly 1 group, current capacity in DB is NULL, new capacity
+     * NOT NULL, enrollments > new capacity
+     * - Action: Create additional groups with SAME capacity, distribute enrollments
+     * evenly
+     * 
+     * Scenario 2: Multiple Groups (2+ Groups in Request)
+     * - Condition: User sends 2+ groups
+     * - Action: Update/Create groups, redistribute enrollments based on capacities,
+     * delete groups not in request
+     * 
+     * Scenario 3: Delete Group (Group not in request)
+     * - Condition: Group exists in DB but not in request
+     * - Action: Move all enrollments to other groups based on capacities, delete
+     * empty group
      */
-    private void updateGroupsWithEnrollmentAwareness(Course course, List<GroupRequestDto> groupRequests) {
+    private void updateGroups(Course course, List<GroupRequestDto> groupRequests) {
+        System.out.println("=== Starting updateGroups ===");
+        System.out.println("Number of groups in request: " + groupRequests.size());
+
         // Get existing groups for this course
         List<CourseGroup> existingGroups = groupRepo.findByCourseIdOrderByGroupNameAsc(course.getId());
-        
+
+        System.out.println("Existing groups in DB (" + existingGroups.size() + "): " +
+                existingGroups.stream().map(g -> g.getId() + ":" + g.getGroupName() +
+                        "(cap:" + g.getCapacity() + ", enrollments:" + groupRepo.countEnrollmentsByGroupId(g.getId())
+                        + ")")
+                        .collect(Collectors.joining(", ")));
+
         // Create a map of group name -> existing group for easy lookup
         Map<String, CourseGroup> existingGroupByName = existingGroups.stream()
-            .collect(Collectors.toMap(
-                CourseGroup::getGroupName,
-                Function.identity(),
-                (a, b) -> a
-            ));
-        
+                .collect(Collectors.toMap(
+                        CourseGroup::getGroupName,
+                        Function.identity(),
+                        (a, b) -> a));
+
         // Track which existing groups are still in the request
         Set<String> requestGroupNames = new HashSet<>();
-        
-        // Process each group from the request
+
+        // =========================================================
+        // Step 1: Process groups from the request (Update or Create)
+        // This updates capacities FIRST before any redistribution
+        // =========================================================
         for (GroupRequestDto gReq : groupRequests) {
             String groupName = gReq.getGroupName();
             if (groupName == null || groupName.trim().isEmpty()) {
                 throw new RuntimeException("Group name is required");
             }
-            
+
             // Check for duplicate group names within the request itself
             long duplicateInRequest = groupRequests.stream()
-                .filter(r -> groupName.equals(r.getGroupName()))
-                .count();
-            
+                    .filter(r -> groupName.equals(r.getGroupName()))
+                    .count();
+
             if (duplicateInRequest > 1) {
                 throw new RuntimeException(
-                    String.format("Duplicate group name '%s' found in the request", groupName)
-                );
+                        String.format("Duplicate group name '%s' found in the request", groupName));
             }
-            
+
             requestGroupNames.add(groupName);
-            
+
             // Check if this group name already exists in the course
             if (existingGroupByName.containsKey(groupName)) {
-                // EXISTING GROUP - Update it
+                // EXISTING GROUP - Update it (capacity is updated here FIRST)
                 CourseGroup group = existingGroupByName.get(groupName);
-                
+                System.out.println("Updating existing group: " + groupName + " (ID: " + group.getId() + ")");
+
+                Integer oldCapacity = group.getCapacity();
+                Integer newCapacity = gReq.getCapacity();
+                System.out.println("  Old capacity: " + oldCapacity + ", New capacity: " + newCapacity);
+
                 // Update group basic info
-                if (gReq.getCapacity() != null) {
-                    group.setCapacity(gReq.getCapacity());
-                }
+                group.setCapacity(newCapacity);
                 if (gReq.getGroupStatus() != null) {
                     group.setGroupStatus(GroupStatus.valueOf(gReq.getGroupStatus()));
                 }
                 group = groupRepo.save(group);
-                
+
                 // Update sessions for this group
                 updateSessionsForGroup(group, gReq.getSessions());
-                
+
             } else {
                 // NEW GROUP - Create it
+                System.out.println(
+                        "Creating new group from request: " + groupName + " with capacity: " + gReq.getCapacity());
                 CourseGroup group = saveGroup(course, gReq);
                 saveSessionsForGroup(course, group, gReq.getSessions());
+                existingGroups.add(group);
+                System.out.println("  Created group with ID: " + group.getId());
             }
         }
-        
-        // Delete groups that are no longer in the request (only if NO enrollments)
+
+        // =========================================================
+        // Step 2: Check for Auto-Creation (Only when exactly 1 group in request)
+        // Auto-creation creates new groups with capacities
+        // IMPORTANT: This MUST happen BEFORE redistribution
+        // =========================================================
+        Set<String> autoCreatedGroupNames = new HashSet<>();
+
+        if (groupRequests.size() == 1) {
+            System.out.println("Only 1 group in request. Checking if auto-creation needed...");
+            autoCreatedGroupNames = handleAutoCreation(course, groupRequests, existingGroups);
+            System.out.println("Auto-created groups: " + autoCreatedGroupNames);
+        }
+
+        // =========================================================
+        // Step 3: Redistribute enrollments based on updated capacities
+        // Now all groups (including auto-created ones) have been created
+        // =========================================================
+        // Check if there's any group with NULL capacity
+        boolean hasUnlimited = existingGroups.stream().anyMatch(g -> g.getCapacity() == null);
+
+        if (!hasUnlimited) {
+            System.out.println("Redistributing enrollments based on updated capacities...");
+            redistributeEnrollmentsBasedOnCapacities(course, existingGroups, groupRequests);
+        } else {
+            System.out.println("Found group with NULL capacity. Skipping redistribution.");
+        }
+
+        // =========================================================
+        // Step 4: Delete groups that are not in the request
+        // IMPORTANT: Do NOT delete auto-created groups
+        // =========================================================
+        System.out.println("Checking for groups to delete...");
+        List<CourseGroup> groupsToDelete = new ArrayList<>();
+
         for (CourseGroup existingGroup : existingGroups) {
+            // Skip auto-created groups - they should be kept
+            if (autoCreatedGroupNames.contains(existingGroup.getGroupName())) {
+                System.out.println("  Keeping auto-created group: " + existingGroup.getGroupName());
+                continue;
+            }
+
             if (!requestGroupNames.contains(existingGroup.getGroupName())) {
-                // Check for enrollments before deleting
                 long enrollmentCount = groupRepo.countEnrollmentsByGroupId(existingGroup.getId());
-                
+                System.out.println("  Group " + existingGroup.getGroupName() + " (ID: " + existingGroup.getId() +
+                        ") not in request. Enrollments: " + enrollmentCount);
+
                 if (enrollmentCount == 0) {
                     // Safe to delete - no enrollments
-                    sessionRepo.deleteByCourseGroupId(existingGroup.getId());
-                    groupRepo.delete(existingGroup);
+                    groupsToDelete.add(existingGroup);
                 } else {
-                    // Cannot delete group with enrollments
-                    throw new RuntimeException(
-                        String.format("Cannot delete group '%s' (ID: %d) because it has %d active enrollment(s)",
-                            existingGroup.getGroupName(),
-                            existingGroup.getId(),
-                            enrollmentCount
-                        )
-                    );
+                    // This group has enrollments but is not in the request
+                    // Move enrollments to available groups (capacities are already updated)
+                    System.out.println("    Moving " + enrollmentCount + " enrollments to other groups...");
+                    moveEnrollmentsToAvailableGroups(existingGroup, existingGroups);
+                    groupsToDelete.add(existingGroup);
                 }
+            }
+        }
+
+        // Delete groups
+        for (CourseGroup groupToDelete : groupsToDelete) {
+            System.out.println(
+                    "  Deleting group: " + groupToDelete.getGroupName() + " (ID: " + groupToDelete.getId() + ")");
+            sessionRepo.deleteByCourseGroupId(groupToDelete.getId());
+            groupRepo.delete(groupToDelete);
+        }
+
+        System.out.println("=== Finished updateGroups ===");
+    }
+
+    /**
+     * Auto-creation logic: Only called when exactly 1 group is in the request
+     * Condition: Current capacity in DB is NULL, new capacity NOT NULL, enrollments
+     * > new capacity
+     */
+    private Set<String> handleAutoCreation(Course course, List<GroupRequestDto> groupRequests,
+            List<CourseGroup> existingGroups) {
+        Set<String> autoCreatedGroupNames = new HashSet<>();
+
+        // Get the first (and only) group from the request
+        GroupRequestDto firstGroup = groupRequests.get(0);
+
+        // Find the existing group
+        CourseGroup mainGroup = existingGroups.stream()
+                .filter(g -> g.getGroupName().equals(firstGroup.getGroupName()))
+                .findFirst()
+                .orElse(null);
+
+        if (mainGroup == null) {
+            System.out.println("Main group not found in existing groups. Skipping auto-creation.");
+            return autoCreatedGroupNames;
+        }
+
+        // Get enrollments for the main group
+        List<CourseEnrollment> enrollments = enrollmentRepo.findByCourseGroupIdOrderByEnrolledAtAsc(mainGroup.getId());
+        int enrollmentCount = enrollments.size();
+
+        // Check conditions for auto-creation
+        Integer currentCapacity = mainGroup.getCapacity(); // Capacity in DB (already updated)
+
+        System.out.println("Auto-creation check for group: " + mainGroup.getGroupName());
+        System.out.println("  Current capacity: " + currentCapacity);
+        System.out.println("  Enrollments: " + enrollmentCount);
+
+        // Auto-creation happens when:
+        // 1. Capacity is NOT null
+        // 2. Enrollments > capacity
+        if (currentCapacity == null) {
+            System.out.println("  Capacity is NULL (unlimited). No auto-creation needed.");
+            return autoCreatedGroupNames;
+        }
+
+        if (enrollmentCount <= currentCapacity) {
+            System.out.println("  All enrollments fit within capacity. No auto-creation needed.");
+            return autoCreatedGroupNames;
+        }
+
+        // Need to create additional groups
+        int remainingEnrollments = enrollmentCount - currentCapacity;
+        int groupsNeeded = (int) Math.ceil((double) remainingEnrollments / currentCapacity);
+        System.out.println("  Need to create " + groupsNeeded + " additional groups with capacity " + currentCapacity);
+
+        // Create additional groups with SAME capacity as the original group
+        int baseNumber = existingGroups.size() + 1;
+
+        for (int i = 0; i < groupsNeeded; i++) {
+            String groupName = "Group " + (baseNumber + i);
+
+            // Ensure unique group name
+            while (isGroupNameTaken(groupName, existingGroups, groupRequests)) {
+                groupName = "Group " + (baseNumber + i) + "_" + System.currentTimeMillis();
+            }
+
+            // Create new group with SAME capacity as the original group
+            CourseGroup newGroup = new CourseGroup();
+            newGroup.setCourse(course);
+            newGroup.setGroupName(groupName);
+            newGroup.setCapacity(currentCapacity);
+            newGroup.setGroupStatus(GroupStatus.OPEN);
+            newGroup = groupRepo.save(newGroup);
+            System.out.println("  Auto-created group: " + groupName + " (ID: " + newGroup.getId() + ", capacity: "
+                    + currentCapacity + ")");
+
+            // Copy sessions from the main group
+            copySessionsFromGroup(course, newGroup, mainGroup);
+
+            // Add to existing groups list
+            existingGroups.add(newGroup);
+
+            // Track auto-created group name
+            autoCreatedGroupNames.add(groupName);
+        }
+
+        return autoCreatedGroupNames;
+    }
+
+    /**
+     * Redistributes enrollments based on group capacities
+     * This handles distribution across all groups
+     */
+    private void redistributeEnrollmentsBasedOnCapacities(Course course, List<CourseGroup> groups,
+            List<GroupRequestDto> groupRequests) {
+        System.out.println("=== Redistributing enrollments based on capacities ===");
+
+        // Get all enrollments for this course
+        List<CourseEnrollment> allEnrollments = enrollmentRepo.findByCourseId(course.getId());
+
+        if (allEnrollments.isEmpty()) {
+            System.out.println("No enrollments to redistribute");
+            return;
+        }
+
+        System.out.println("Total enrollments: " + allEnrollments.size());
+
+        // Check if any group has NULL capacity (unlimited)
+        boolean hasUnlimited = groups.stream().anyMatch(g -> g.getCapacity() == null);
+
+        if (hasUnlimited) {
+            System.out.println("Found group with NULL capacity (unlimited). No redistribution needed.");
+            return;
+        }
+
+        // If we reach here, all groups have finite capacities
+        // Calculate total capacity
+        int totalCapacity = groups.stream()
+                .filter(g -> g.getCapacity() != null)
+                .mapToInt(CourseGroup::getCapacity)
+                .sum();
+
+        System.out.println("Total capacity: " + totalCapacity);
+
+        if (totalCapacity < allEnrollments.size()) {
+            throw new RuntimeException(
+                    String.format("Total capacity (%d) is less than total enrollments (%d). " +
+                            "Please increase capacity or add more groups.",
+                            totalCapacity, allEnrollments.size()));
+        }
+
+        // Group enrollments by their current group
+        Map<Integer, List<CourseEnrollment>> enrollmentsByGroup = new HashMap<>();
+        for (CourseEnrollment enrollment : allEnrollments) {
+            Integer groupId = enrollment.getCourseGroup().getId();
+            enrollmentsByGroup.computeIfAbsent(groupId, k -> new ArrayList<>()).add(enrollment);
+        }
+
+        // Print current distribution
+        for (Map.Entry<Integer, List<CourseEnrollment>> entry : enrollmentsByGroup.entrySet()) {
+            CourseGroup group = groups.stream().filter(g -> g.getId().equals(entry.getKey())).findFirst().orElse(null);
+            System.out.println("  Current: Group " + (group != null ? group.getGroupName() : "Unknown") +
+                    " has " + entry.getValue().size() + " enrollments (capacity: "
+                    + (group != null ? group.getCapacity() : "N/A") + ")");
+        }
+
+        // Build capacity map
+        Map<Integer, Integer> groupCapacities = new HashMap<>();
+        Map<Integer, String> groupNames = new HashMap<>();
+
+        for (CourseGroup group : groups) {
+            groupNames.put(group.getId(), group.getGroupName());
+            if (group.getCapacity() != null) {
+                groupCapacities.put(group.getId(), group.getCapacity());
+            }
+        }
+
+        // Redistribute enrollments
+        List<CourseEnrollment> allEnrollmentsList = new ArrayList<>(allEnrollments);
+        Collections.sort(allEnrollmentsList, Comparator.comparing(CourseEnrollment::getEnrolledAt));
+
+        int enrollmentIndex = 0;
+        for (CourseGroup group : groups) {
+            if (group.getCapacity() == null)
+                continue;
+
+            int capacity = group.getCapacity();
+            List<CourseEnrollment> groupEnrollments = new ArrayList<>();
+
+            // Get existing enrollments for this group
+            List<CourseEnrollment> existing = enrollmentsByGroup.getOrDefault(group.getId(), new ArrayList<>());
+
+            // Keep existing enrollments if they fit within capacity
+            int keepCount = Math.min(existing.size(), capacity);
+            for (int i = 0; i < keepCount && i < existing.size(); i++) {
+                groupEnrollments.add(existing.get(i));
+            }
+
+            // Fill remaining capacity with other enrollments
+            int remainingCapacity = capacity - groupEnrollments.size();
+            while (remainingCapacity > 0 && enrollmentIndex < allEnrollmentsList.size()) {
+                CourseEnrollment enrollment = allEnrollmentsList.get(enrollmentIndex);
+                // Skip enrollments already assigned
+                if (!isEnrollmentAlreadyAssigned(enrollment, groupEnrollments)) {
+                    groupEnrollments.add(enrollment);
+                    remainingCapacity--;
+                }
+                enrollmentIndex++;
+            }
+
+            // Update enrollments for this group
+            for (CourseEnrollment enrollment : groupEnrollments) {
+                if (!enrollment.getCourseGroup().getId().equals(group.getId())) {
+                    enrollment.setCourseGroup(group);
+                    enrollmentRepo.save(enrollment);
+                    System.out
+                            .println("  Moved enrollment " + enrollment.getId() + " to group " + group.getGroupName());
+                }
+            }
+        }
+
+        // Check if all enrollments are assigned
+        int assignedCount = 0;
+        for (CourseGroup group : groups) {
+            if (group.getCapacity() != null) {
+                assignedCount += groupRepo.countEnrollmentsByGroupId(group.getId());
+            }
+        }
+
+        if (assignedCount < allEnrollments.size()) {
+            System.out.println("WARNING: Not all enrollments could be assigned. Unassigned: " +
+                    (allEnrollments.size() - assignedCount));
+        }
+    }
+
+    /**
+     * Checks if an enrollment is already assigned to a group
+     */
+    private boolean isEnrollmentAlreadyAssigned(CourseEnrollment enrollment, List<CourseEnrollment> assigned) {
+        return assigned.stream().anyMatch(e -> e.getId().equals(enrollment.getId()));
+    }
+
+    /**
+     * Moves enrollments from a group to available groups
+     * This is called when a group is being deleted (not in request)
+     */
+    private void moveEnrollmentsToAvailableGroups(CourseGroup sourceGroup, List<CourseGroup> allGroups) {
+        List<CourseEnrollment> enrollments = enrollmentRepo.findByCourseGroupId(sourceGroup.getId());
+
+        if (enrollments.isEmpty()) {
+            return;
+        }
+
+        // Find groups with available capacity (capacities are already updated)
+        List<CourseGroup> availableGroups = new ArrayList<>();
+        for (CourseGroup group : allGroups) {
+            if (group.getId().equals(sourceGroup.getId()))
+                continue;
+            if (group.getCapacity() == null) {
+                availableGroups.add(group);
+            } else {
+                long currentEnrollments = groupRepo.countEnrollmentsByGroupId(group.getId());
+                if (currentEnrollments < group.getCapacity()) {
+                    availableGroups.add(group);
+                }
+            }
+        }
+
+        if (availableGroups.isEmpty()) {
+            throw new RuntimeException(
+                    "Cannot move enrollments from group " + sourceGroup.getGroupName() +
+                            " - no available groups with capacity. Please check your capacity settings.");
+        }
+
+        // Sort available groups by capacity (largest first, unlimited first)
+        availableGroups.sort((g1, g2) -> {
+            if (g1.getCapacity() == null)
+                return -1;
+            if (g2.getCapacity() == null)
+                return 1;
+            return g2.getCapacity().compareTo(g1.getCapacity());
+        });
+
+        int enrollmentIndex = 0;
+        for (CourseGroup targetGroup : availableGroups) {
+            long currentEnrollments = groupRepo.countEnrollmentsByGroupId(targetGroup.getId());
+            int availableCapacity = targetGroup.getCapacity() == null ? Integer.MAX_VALUE
+                    : targetGroup.getCapacity() - (int) currentEnrollments;
+
+            int toMove = Math.min(availableCapacity, enrollments.size() - enrollmentIndex);
+
+            for (int i = 0; i < toMove && enrollmentIndex < enrollments.size(); i++) {
+                CourseEnrollment enrollment = enrollments.get(enrollmentIndex);
+                enrollment.setCourseGroup(targetGroup);
+                enrollmentRepo.save(enrollment);
+                System.out.println("    Moved enrollment " + enrollment.getId() +
+                        " from " + sourceGroup.getGroupName() + " to " + targetGroup.getGroupName());
+                enrollmentIndex++;
+            }
+
+            if (enrollmentIndex >= enrollments.size()) {
+                break;
+            }
+        }
+
+        if (enrollmentIndex < enrollments.size()) {
+            throw new RuntimeException(
+                    String.format("Could not move all enrollments from group %s. %d enrollments remain. " +
+                            "Please increase capacity of other groups.",
+                            sourceGroup.getGroupName(), enrollments.size() - enrollmentIndex));
+        }
+    }
+
+    /**
+     * Copies sessions from a source group to a target group
+     */
+    private void copySessionsFromGroup(Course course, CourseGroup targetGroup, CourseGroup sourceGroup) {
+        if (sourceGroup == null)
+            return;
+
+        List<CourseSession> sourceSessions = sessionRepo.findByCourseGroupIdOrderBySessionNoAsc(sourceGroup.getId());
+        if (!sourceSessions.isEmpty()) {
+            for (CourseSession session : sourceSessions) {
+                CourseSession newSession = new CourseSession();
+                newSession.setCourse(course);
+                newSession.setCourseGroup(targetGroup);
+                newSession.setSessionNo(session.getSessionNo());
+                newSession.setSessionDate(session.getSessionDate());
+                newSession.setStartTime(session.getStartTime());
+                newSession.setEndTime(session.getEndTime());
+                newSession.setSessionStatus(SessionStatus.PLANNED);
+                sessionRepo.save(newSession);
             }
         }
     }
 
     /**
      * Updates sessions for a group - handles add/update/delete incrementally
-     * This prevents duplicate key errors by checking for existing session numbers
      */
     private void updateSessionsForGroup(CourseGroup group, List<SessionDto> sessionReqs) {
-        if (sessionReqs == null) return;
-        
+        if (sessionReqs == null)
+            return;
+
         // Get existing sessions for this group
         List<CourseSession> existingSessions = sessionRepo.findByCourseGroupIdOrderBySessionNoAsc(group.getId());
-        
+
         // Map existing sessions by ID for easy lookup
         Map<Integer, CourseSession> existingSessionMap = existingSessions.stream()
-            .collect(Collectors.toMap(CourseSession::getId, Function.identity()));
-        
+                .collect(Collectors.toMap(CourseSession::getId, Function.identity()));
+
         // Map existing sessions by session number for duplicate checking
         Map<Integer, CourseSession> existingSessionByNo = existingSessions.stream()
-            .filter(s -> s.getSessionNo() != null)
-            .collect(Collectors.toMap(
-                s -> s.getSessionNo().intValue(),
-                Function.identity(), 
-                (a, b) -> a
-            ));
-        
+                .filter(s -> s.getSessionNo() != null)
+                .collect(Collectors.toMap(
+                        s -> s.getSessionNo().intValue(),
+                        Function.identity(),
+                        (a, b) -> a));
+
         // Track which sessions from the request are processed
         Set<Integer> requestSessionIds = new HashSet<>();
-        
+
         for (SessionDto sReq : sessionReqs) {
             if (sReq.getId() != null && existingSessionMap.containsKey(sReq.getId())) {
                 // === UPDATE EXISTING SESSION ===
                 CourseSession session = existingSessionMap.get(sReq.getId());
                 requestSessionIds.add(session.getId());
-                
+
                 // Update session fields
                 if (sReq.getSessionNo() != null) {
-                    // Check if the new session number conflicts with another existing session
                     Integer newSessionNo = sReq.getSessionNo().intValue();
-                    if (!newSessionNo.equals(session.getSessionNo() != null ? session.getSessionNo().intValue() : null)) {
+                    if (!newSessionNo
+                            .equals(session.getSessionNo() != null ? session.getSessionNo().intValue() : null)) {
                         CourseSession conflictingSession = existingSessionByNo.get(newSessionNo);
                         if (conflictingSession != null && !conflictingSession.getId().equals(session.getId())) {
-                            // Session number conflict - throw error
                             throw new RuntimeException(
-                                String.format("Session number %d already exists for this group", sReq.getSessionNo())
-                            );
+                                    String.format("Session number %d already exists for this group",
+                                            sReq.getSessionNo()));
                         }
                     }
                     session.setSessionNo(sReq.getSessionNo());
                 }
-                
+
                 if (sReq.getSessionDate() != null) {
                     session.setSessionDate(sReq.getSessionDate());
                 }
@@ -461,17 +861,15 @@ public class CourseService {
                     session.setSessionStatus(SessionStatus.valueOf(sReq.getSessionStatus()));
                 }
                 sessionRepo.save(session);
-                
+
             } else {
                 // === CREATE NEW SESSION ===
-                // Check if a session with this number already exists (to avoid duplicate key)
                 Integer newSessionNo = sReq.getSessionNo() != null ? sReq.getSessionNo().intValue() : null;
                 CourseSession existingByNo = existingSessionByNo.get(newSessionNo);
-                
+
                 if (existingByNo != null) {
-                    // If a session with this number exists, update it instead of creating duplicate
                     requestSessionIds.add(existingByNo.getId());
-                    
+
                     existingByNo.setSessionDate(sReq.getSessionDate());
                     existingByNo.setStartTime(sReq.getStartTime());
                     existingByNo.setEndTime(sReq.getEndTime());
@@ -479,9 +877,8 @@ public class CourseService {
                         existingByNo.setSessionStatus(SessionStatus.valueOf(sReq.getSessionStatus()));
                     }
                     sessionRepo.save(existingByNo);
-                    
+
                 } else {
-                    // Create new session
                     CourseSession newSession = new CourseSession();
                     newSession.setCourse(group.getCourse());
                     newSession.setCourseGroup(group);
@@ -489,23 +886,22 @@ public class CourseService {
                     newSession.setSessionDate(sReq.getSessionDate());
                     newSession.setStartTime(sReq.getStartTime());
                     newSession.setEndTime(sReq.getEndTime());
-                    newSession.setSessionStatus(sReq.getSessionStatus() != null ? 
-                        SessionStatus.valueOf(sReq.getSessionStatus()) : SessionStatus.PLANNED);
+                    newSession.setSessionStatus(
+                            sReq.getSessionStatus() != null ? SessionStatus.valueOf(sReq.getSessionStatus())
+                                    : SessionStatus.PLANNED);
                     sessionRepo.save(newSession);
                 }
             }
         }
-        
+
         // === DELETE SESSIONS NO LONGER IN REQUEST ===
         for (CourseSession existingSession : existingSessions) {
             if (!requestSessionIds.contains(existingSession.getId())) {
-                // Check if this session number is still in the request (maybe with a different ID)
                 boolean sessionNoStillExists = sessionReqs.stream()
-                    .anyMatch(s -> s.getSessionNo() != null && 
-                        s.getSessionNo().equals(existingSession.getSessionNo()));
-                
+                        .anyMatch(s -> s.getSessionNo() != null &&
+                                s.getSessionNo().equals(existingSession.getSessionNo()));
+
                 if (!sessionNoStillExists) {
-                    // Session is completely removed - delete it
                     sessionRepo.delete(existingSession);
                 }
             }
@@ -513,144 +909,121 @@ public class CourseService {
     }
 
     /**
-     * Updates self-study sessions by matching on session_no:
-     * - If session_no exists in the course → UPDATE that session
-     * - If session_no doesn't exist → CREATE new session
-     * - Sessions not in the request → DELETE (if no progress records)
+     * Updates self-study sessions by matching on id or session_no
      */
-    /**
- * Updates self-study sessions by matching on id or session_no:
- * - If id exists in the course → UPDATE that session
- * - If session_no exists in the course → UPDATE that session  
- * - If neither exists → CREATE new session
- * - Sessions not in the request → DELETE (if no progress records)
- */
-private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> sessionRequests) {
-    if (sessionRequests == null) return;
-    
-    // Get existing self-study sessions for this course
-    List<SelfStudySession> existingSessions = selfStudyRepo.findByCourseIdOrderBySessionNoAsc(course.getId());
-    
-    // Create maps for easy lookup
-    Map<Integer, SelfStudySession> existingSessionById = existingSessions.stream()
-        .collect(Collectors.toMap(SelfStudySession::getId, Function.identity(), (a, b) -> a));
-    
-    Map<Short, SelfStudySession> existingSessionByNo = existingSessions.stream()
-        .collect(Collectors.toMap(
-            SelfStudySession::getSessionNo,
-            Function.identity(),
-            (a, b) -> a
-        ));
-    
-    // Track which existing sessions are still in the request
-    Set<Integer> requestSessionIds = new HashSet<>();
-    
-    // Process each session from the request
-    for (SelfStudySessionDto sReq : sessionRequests) {
-        Short sessionNo = sReq.getSessionNo();
-        if (sessionNo == null) {
-            throw new RuntimeException("Session number is required");
-        }
-        
-        // Check for duplicate session numbers within the request itself
-        long duplicateInRequest = sessionRequests.stream()
-            .filter(s -> sessionNo.equals(s.getSessionNo()))
-            .count();
-        
-        if (duplicateInRequest > 1) {
-            throw new RuntimeException(
-                String.format("Duplicate session number '%d' found in the request", sessionNo)
-            );
-        }
-        
-        SelfStudySession sessionToUpdate = null;
-        
-        // First try to find by ID
-        if (sReq.getId() != null && existingSessionById.containsKey(sReq.getId())) {
-            sessionToUpdate = existingSessionById.get(sReq.getId());
-            requestSessionIds.add(sessionToUpdate.getId());
-        } 
-        // Then try to find by session_no
-        else if (existingSessionByNo.containsKey(sessionNo)) {
-            sessionToUpdate = existingSessionByNo.get(sessionNo);
-            requestSessionIds.add(sessionToUpdate.getId());
-        }
-        
-        if (sessionToUpdate != null) {
-            // EXISTING SESSION - Update it
-            // Update session fields
-            if (sReq.getFilePath() != null) {
-                sessionToUpdate.setFilepath(sReq.getFilePath());
+    private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> sessionRequests) {
+        if (sessionRequests == null)
+            return;
+
+        List<SelfStudySession> existingSessions = selfStudyRepo.findByCourseIdOrderBySessionNoAsc(course.getId());
+
+        Map<Integer, SelfStudySession> existingSessionById = existingSessions.stream()
+                .collect(Collectors.toMap(SelfStudySession::getId, Function.identity(), (a, b) -> a));
+
+        Map<Short, SelfStudySession> existingSessionByNo = existingSessions.stream()
+                .collect(Collectors.toMap(
+                        SelfStudySession::getSessionNo,
+                        Function.identity(),
+                        (a, b) -> a));
+
+        Set<Integer> requestSessionIds = new HashSet<>();
+
+        for (SelfStudySessionDto sReq : sessionRequests) {
+            Short sessionNo = sReq.getSessionNo();
+            if (sessionNo == null) {
+                throw new RuntimeException("Session number is required");
             }
-            if (sReq.getKanjiTarget() != null) {
-                sessionToUpdate.setKanjiTarget(sReq.getKanjiTarget());
-            }
-            if (sReq.getVocabularyTarget() != null) {
-                sessionToUpdate.setVocabularyTarget(sReq.getVocabularyTarget());
-            }
-            if (sReq.getGrammarTarget() != null) {
-                sessionToUpdate.setGrammarTarget(sReq.getGrammarTarget());
-            }
-            if (sReq.getReadingTargetMinutes() != null) {
-                sessionToUpdate.setReadingTargetMinutes(sReq.getReadingTargetMinutes());
-            }
-            if (sReq.getListeningTargetMinutes() != null) {
-                sessionToUpdate.setListeningTargetMinutes(sReq.getListeningTargetMinutes());
-            }
-            if (sReq.getDurationPerSession() != null) {
-                sessionToUpdate.setDurationPerSession(sReq.getDurationPerSession());
-            }
-            if (sReq.getSessionStatus() != null) {
-                sessionToUpdate.setSessionStatus(sReq.getSessionStatus());
-            }
-            // Always update the session_no if it changed
-            if (!sessionNo.equals(sessionToUpdate.getSessionNo())) {
-                // Check if the new session_no conflicts with another session
-                if (existingSessionByNo.containsKey(sessionNo) && 
-                    !existingSessionByNo.get(sessionNo).getId().equals(sessionToUpdate.getId())) {
-                    throw new RuntimeException(
-                        String.format("Session number %d already exists for this course", sessionNo)
-                    );
-                }
-                sessionToUpdate.setSessionNo(sessionNo);
-            }
-            sessionToUpdate.setUpdatedAt(LocalDateTime.now());
-            selfStudyRepo.save(sessionToUpdate);
-            
-        } else {
-            // NEW SESSION - Create it
-            SelfStudySession newSession = new SelfStudySession();
-            newSession.setCourse(course);
-            newSession.setSessionNo(sReq.getSessionNo());
-            newSession.setFilepath(sReq.getFilePath());
-            newSession.setKanjiTarget(sReq.getKanjiTarget());
-            newSession.setVocabularyTarget(sReq.getVocabularyTarget());
-            newSession.setGrammarTarget(sReq.getGrammarTarget());
-            newSession.setReadingTargetMinutes(sReq.getReadingTargetMinutes());
-            newSession.setListeningTargetMinutes(sReq.getListeningTargetMinutes());
-            newSession.setDurationPerSession(sReq.getDurationPerSession());
-            newSession.setSessionStatus(sReq.getSessionStatus() != null ? sReq.getSessionStatus() : "PLANNED");
-            newSession.setCreatedAt(LocalDateTime.now());
-            newSession.setUpdatedAt(LocalDateTime.now());
-            selfStudyRepo.save(newSession);
-        }
-    }
-    
-    // Delete sessions that are no longer in the request
-    for (SelfStudySession existingSession : existingSessions) {
-        if (!requestSessionIds.contains(existingSession.getId())) {
-            try {
-                selfStudyRepo.delete(existingSession);
-            } catch (Exception e) {
-                // If there's a foreign key constraint, throw a meaningful error
+
+            long duplicateInRequest = sessionRequests.stream()
+                    .filter(s -> sessionNo.equals(s.getSessionNo()))
+                    .count();
+
+            if (duplicateInRequest > 1) {
                 throw new RuntimeException(
-                    String.format("Cannot delete self-study session '%d' because it has associated progress records. Please remove the progress records first.",
-                        existingSession.getSessionNo())
-                );
+                        String.format("Duplicate session number '%d' found in the request", sessionNo));
+            }
+
+            SelfStudySession sessionToUpdate = null;
+
+            if (sReq.getId() != null && existingSessionById.containsKey(sReq.getId())) {
+                sessionToUpdate = existingSessionById.get(sReq.getId());
+                requestSessionIds.add(sessionToUpdate.getId());
+            } else if (existingSessionByNo.containsKey(sessionNo)) {
+                sessionToUpdate = existingSessionByNo.get(sessionNo);
+                requestSessionIds.add(sessionToUpdate.getId());
+            }
+
+            if (sessionToUpdate != null) {
+                if (sReq.getFilePath() != null) {
+                    sessionToUpdate.setFilepath(sReq.getFilePath());
+                }
+                if (sReq.getKanjiTarget() != null) {
+                    sessionToUpdate.setKanjiTarget(sReq.getKanjiTarget());
+                }
+                if (sReq.getVocabularyTarget() != null) {
+                    sessionToUpdate.setVocabularyTarget(sReq.getVocabularyTarget());
+                }
+                if (sReq.getGrammarTarget() != null) {
+                    sessionToUpdate.setGrammarTarget(sReq.getGrammarTarget());
+                }
+                if (sReq.getReadingTargetMinutes() != null) {
+                    sessionToUpdate.setReadingTargetMinutes(sReq.getReadingTargetMinutes());
+                }
+                if (sReq.getListeningTargetMinutes() != null) {
+                    sessionToUpdate.setListeningTargetMinutes(sReq.getListeningTargetMinutes());
+                }
+                if (sReq.getDurationPerSession() != null) {
+                    sessionToUpdate.setDurationPerSession(sReq.getDurationPerSession());
+                }
+                if (sReq.getSessionStatus() != null) {
+                    sessionToUpdate.setSessionStatus(sReq.getSessionStatus());
+                }
+                if (!sessionNo.equals(sessionToUpdate.getSessionNo())) {
+                    if (existingSessionByNo.containsKey(sessionNo) &&
+                            !existingSessionByNo.get(sessionNo).getId().equals(sessionToUpdate.getId())) {
+                        throw new RuntimeException(
+                                String.format("Session number %d already exists for this course", sessionNo));
+                    }
+                    sessionToUpdate.setSessionNo(sessionNo);
+                }
+                sessionToUpdate.setUpdatedAt(LocalDateTime.now());
+                selfStudyRepo.save(sessionToUpdate);
+
+            } else {
+                SelfStudySession newSession = new SelfStudySession();
+                newSession.setCourse(course);
+                newSession.setSessionNo(sReq.getSessionNo());
+                newSession.setFilepath(sReq.getFilePath());
+                newSession.setKanjiTarget(sReq.getKanjiTarget());
+                newSession.setVocabularyTarget(sReq.getVocabularyTarget());
+                newSession.setGrammarTarget(sReq.getGrammarTarget());
+                newSession.setReadingTargetMinutes(sReq.getReadingTargetMinutes());
+                newSession.setListeningTargetMinutes(sReq.getListeningTargetMinutes());
+                newSession.setDurationPerSession(sReq.getDurationPerSession());
+                newSession.setSessionStatus(sReq.getSessionStatus() != null ? sReq.getSessionStatus() : "PLANNED");
+                newSession.setCreatedAt(LocalDateTime.now());
+                newSession.setUpdatedAt(LocalDateTime.now());
+                selfStudyRepo.save(newSession);
+            }
+        }
+
+        for (SelfStudySession existingSession : existingSessions) {
+            if (!requestSessionIds.contains(existingSession.getId())) {
+                try {
+                    selfStudyRepo.delete(existingSession);
+                } catch (Exception e) {
+                    throw new RuntimeException(
+                            String.format(
+                                    "Cannot delete self-study session '%d' because it has associated progress records.",
+                                    existingSession.getSessionNo()));
+                }
             }
         }
     }
-}
+
+    // =========================================================
+    // PRIVATE HELPERS - DTO CONVERSIONS
+    // =========================================================
 
     private CourseDto toCourseDto(Course c, boolean includeEnrollments) {
         List<CourseGroup> groups = groupRepo.findByCourseIdOrderByGroupNameAsc(c.getId());
@@ -664,7 +1037,8 @@ private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> se
                             .startTime(s.getStartTime())
                             .endTime(s.getEndTime())
                             .sessionStatus(s.getSessionStatus() != null
-                                    ? s.getSessionStatus().name() : null)
+                                    ? s.getSessionStatus().name()
+                                    : null)
                             .build())
                     .collect(Collectors.toList());
             long regCount = groupRepo.countEnrollmentsByGroupId(g.getId());
@@ -755,7 +1129,8 @@ private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> se
     }
 
     private void saveSessionsForGroup(Course course, CourseGroup group, List<SessionDto> sessions) {
-        if (sessions == null) return;
+        if (sessions == null)
+            return;
         for (SessionDto s : sessions) {
             CourseSession cs = new CourseSession();
             cs.setCourse(course);
@@ -772,7 +1147,8 @@ private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> se
     }
 
     private void saveSelfStudySessions(Course course, List<SelfStudySessionDto> dtos) {
-        if (dtos == null) return;
+        if (dtos == null)
+            return;
         for (SelfStudySessionDto s : dtos) {
             SelfStudySession ss = new SelfStudySession();
             ss.setCourse(course);
@@ -793,19 +1169,31 @@ private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> se
 
     private SessionDto toSessionResponseDto(CourseSession session) {
         return SessionDto.builder()
-            .id(session.getId())
-            .sessionNo(session.getSessionNo())
-            .sessionDate(session.getSessionDate())
-            .startTime(session.getStartTime())
-            .endTime(session.getEndTime())
-            .sessionStatus(session.getSessionStatus() != null ? 
-                session.getSessionStatus().name() : null)
-            .build();
+                .id(session.getId())
+                .sessionNo(session.getSessionNo())
+                .sessionDate(session.getSessionDate())
+                .startTime(session.getStartTime())
+                .endTime(session.getEndTime())
+                .sessionStatus(session.getSessionStatus() != null ? session.getSessionStatus().name() : null)
+                .build();
     }
 
     private Course findCourseOrThrow(Integer id) {
         return courseRepo.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));
+    }
+
+    private boolean isGroupNameTaken(String groupName, List<CourseGroup> existingGroups,
+            List<GroupRequestDto> groupRequests) {
+        boolean nameExists = existingGroups.stream()
+                .anyMatch(g -> g.getGroupName().equals(groupName));
+
+        if (!nameExists) {
+            nameExists = groupRequests.stream()
+                    .anyMatch(r -> r.getGroupName() != null && r.getGroupName().equals(groupName));
+        }
+
+        return nameExists;
     }
 
     private CourseCategory findCategoryOrThrow(Integer id) {
@@ -818,21 +1206,21 @@ private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> se
         CourseGroup courseGroup = enrollment.getCourseGroup();
         Team team = employee.getTeam();
         DepartmentDat departmentDat = team != null ? team.getDepartmentDat() : null;
-        
+
         return CourseEnrollmentDto.builder()
-            .id(enrollment.getId())
-            .employeeId(employee.getId())
-            .employeeName(employee.getName())
-            .email(employee.getEmail())
-            .position(employee.getPosition())
-            .teamId(team != null ? team.getId() : null)
-            .teamName(team != null ? team.getTeamName() : null)
-            .departmentId(departmentDat != null ? departmentDat.getId() : null)
-            .departmentName(departmentDat != null ? departmentDat.getDeptName() : null)
-            .courseGroupId(courseGroup != null ? courseGroup.getId() : null)
-            .courseGroupName(courseGroup != null ? courseGroup.getGroupName() : null)
-            .enrollmentStatus(enrollment.getEnrollmentStatus())
-            .enrolledAt(enrollment.getEnrolledAt())
-            .build();
+                .id(enrollment.getId())
+                .employeeId(employee.getId())
+                .employeeName(employee.getName())
+                .email(employee.getEmail())
+                .position(employee.getPosition())
+                .teamId(team != null ? team.getId() : null)
+                .teamName(team != null ? team.getTeamName() : null)
+                .departmentId(departmentDat != null ? departmentDat.getId() : null)
+                .departmentName(departmentDat != null ? departmentDat.getDeptName() : null)
+                .courseGroupId(courseGroup != null ? courseGroup.getId() : null)
+                .courseGroupName(courseGroup != null ? courseGroup.getGroupName() : null)
+                .enrollmentStatus(enrollment.getEnrollmentStatus())
+                .enrolledAt(enrollment.getEnrolledAt())
+                .build();
     }
 }

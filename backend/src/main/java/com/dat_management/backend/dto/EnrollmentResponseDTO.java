@@ -27,4 +27,8 @@ public class EnrollmentResponseDTO {
 
     private String enrollmentStatus;
     private LocalDateTime enrolledAt;
+
+    private String groupChangeStatus;     
+    private Integer requestedCourseGroupId;
+    private String requestedCourseGroupName;
 }

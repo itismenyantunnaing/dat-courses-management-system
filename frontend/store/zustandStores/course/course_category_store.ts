@@ -169,98 +169,135 @@ export const courseCategoryStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   // PUT /api/course-categories/:id - Update an existing category
-  update_courseCategories: async (categoryId: number, categoryName: string, courseType: 'trainer' | 'self-study') => {
-    const previousData = get().courseCategory_data
-    const categoryKey = courseType === 'trainer' ? 'trainer' : 'selfStudy'
+// PUT /api/course-categories/:id - Update an existing category
+update_courseCategories: async (categoryId: number, categoryName: string, courseType: 'trainer' | 'self-study') => {
+  const previousData = get().courseCategory_data
+  
+  // Find the category in BOTH trainer and selfStudy lists
+  let foundCategory: CategoryItem | undefined
+  let currentCategoryKey: 'trainer' | 'selfStudy' | '' = ''
 
-    const currentCategory = previousData[categoryKey].find(
-      (cat: CategoryItem) => cat.id === categoryId
+  // Check in trainer list
+  const trainerCat = previousData.trainer.find((cat: CategoryItem) => cat.id === categoryId)
+  if (trainerCat) {
+    foundCategory = trainerCat
+    currentCategoryKey = 'trainer'
+  } else {
+    // Check in selfStudy list
+    const selfStudyCat = previousData.selfStudy.find((cat: CategoryItem) => cat.id === categoryId)
+    if (selfStudyCat) {
+      foundCategory = selfStudyCat
+      currentCategoryKey = 'selfStudy'
+    }
+  }
+
+  if (!foundCategory || !currentCategoryKey) {
+    return {
+      success: false,
+      message: 'Category not found'
+    }
+  }
+
+  const apiCourseType = courseType === 'trainer' ? 'TRAINER_PROVIDED' : 'SELF_STUDY'
+
+  const updatedCategory: CategoryItem = {
+    ...foundCategory,
+    value: categoryName.toLowerCase().replace(/\s+/g, '-'),
+    label: categoryName,
+    type: courseType,
+    ...(courseType === 'self-study' && {
+      selfStudyType: categoryName.toLowerCase().includes('jlpt') ? 'jlpt' : 'other'
+    })
+  }
+
+  // Update the category in the store optimistically
+  const newCategoryData = { ...previousData }
+  
+  // Remove from current list
+  if (currentCategoryKey === 'trainer') {
+    newCategoryData.trainer = newCategoryData.trainer.filter(
+      (cat: CategoryItem) => cat.id !== categoryId
     )
+  } else {
+    newCategoryData.selfStudy = newCategoryData.selfStudy.filter(
+      (cat: CategoryItem) => cat.id !== categoryId
+    )
+  }
+  
+  // Add to the appropriate list based on the new type
+  const targetKey = courseType === 'trainer' ? 'trainer' : 'selfStudy'
+  if (targetKey === 'trainer') {
+    newCategoryData.trainer = [...newCategoryData.trainer, updatedCategory]
+  } else {
+    newCategoryData.selfStudy = [...newCategoryData.selfStudy, updatedCategory]
+  }
 
-    if (!currentCategory) {
-      return {
-        success: false,
-        message: 'Category not found'
-      }
-    }
+  set((state: Course_StoreType) => ({
+    ...state,
+    courseCategory_data: newCategoryData,
+    isUpdating: true,
+    error: null
+  }))
 
-    const apiCourseType = courseType === 'trainer' ? 'TRAINER_PROVIDED' : 'SELF_STUDY'
+  try {
+    const headers = get().getAuthHeaders()
+    
+    // Just send the data to the backend - let the backend handle validation
+    const response = await fetch(`${apiUrl}/api/course-categories/${categoryId}`, {
+      method: 'PUT',
+      headers: headers,
+      body: JSON.stringify({
+        course_category_name: categoryName,
+        course_type: apiCourseType
+      }),
+    })
 
-    const updatedCategory: CategoryItem = {
-      ...currentCategory,
-      value: categoryName.toLowerCase().replace(/\s+/g, '-'),
-      label: categoryName,
-      type: courseType,
-      ...(courseType === 'self-study' && {
-        selfStudyType: categoryName.toLowerCase().includes('jlpt') ? 'jlpt' : 'other'
-      })
-    }
+    const result = await response.json()
 
-    set((state: Course_StoreType) => ({
-      ...state,
-      courseCategory_data: {
-        ...state.courseCategory_data,
-        [categoryKey]: state.courseCategory_data[categoryKey].map((cat: CategoryItem) =>
-          cat.id === categoryId ? updatedCategory : cat
-        )
-      },
-      isUpdating: true,
-      error: null
-    }))
-
-    try {
-      const headers = get().getAuthHeaders()
-      
-      const response = await fetch(`${apiUrl}/api/course-categories/${categoryId}`, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify({
-          course_category_name: categoryName,
-          course_type: apiCourseType
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        set((state: Course_StoreType) => ({
-          ...state,
-          courseCategory_data: previousData,
-          isUpdating: false,
-          error: result.message || 'Failed to update category'
-        }))
-        throw new Error(result.message || 'Failed to update category')
-      }
-
-      await get().fetch_courseCategories()
-
-      set((state: Course_StoreType) => ({
-        ...state,
-        isUpdating: false,
-        error: null
-      }))
-
-      return {
-        success: true,
-        message: 'Category updated successfully',
-        category: result.category
-      }
-
-    } catch (error) {
-      console.error('Error updating category:', error)
+    if (!response.ok) {
+      // Revert on error
       set((state: Course_StoreType) => ({
         ...state,
         courseCategory_data: previousData,
         isUpdating: false,
-        error: error instanceof Error ? error.message : 'Failed to update category'
+        error: result.message || 'Failed to update category'
       }))
-
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to update category'
+        message: result.message || 'Failed to update category'
       }
     }
-  },
+
+    // Refetch categories to get the latest data from backend
+    await get().fetch_courseCategories()
+
+    set((state: Course_StoreType) => ({
+      ...state,
+      isUpdating: false,
+      error: null
+    }))
+
+    return {
+      success: true,
+      message: 'Category updated successfully',
+      category: result.category
+    }
+
+  } catch (error) {
+    console.error('Error updating category:', error)
+    set((state: Course_StoreType) => ({
+      ...state,
+      courseCategory_data: previousData,
+      isUpdating: false,
+      error: error instanceof Error ? error.message : 'Failed to update category'
+    }))
+
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to update category'
+    }
+  }
+},
 
   // DELETE /api/course-categories/:id - Delete a category
   delete_courseCategories: async (categoryId: number) => {

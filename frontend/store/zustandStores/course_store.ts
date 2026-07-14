@@ -13,6 +13,7 @@ import { courseCategoryStore } from "./course/course_category_store"
 import { courseEnrollmentStore } from "./course/course_enrollment_store"
 import { courseSelfStudyProgressStore } from "./course/course_selfStudy_progress_store"
 import { courseAttendanceStore } from "./course/course_attendance_store"
+import { groupChangeStore } from "./course/course_groupChange_store"
 
 type StoreSet = (
   fn: (state: Course_StoreType) => Partial<Course_StoreType>
@@ -421,6 +422,9 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const data = await response.json()
+      console.log("AAAAAAAAAAAAAAAAAAAAA")
+      console.log(data)
+
 
       let transformedCourses: Course[] = []
 
@@ -829,6 +833,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
   ...courseEnrollmentStore(set, get),
   ...courseSelfStudyProgressStore(set, get),
   ...courseAttendanceStore(set, get),
+  ...groupChangeStore(set, get),
 
   // ========== LEGACY/UTILITY COURSE OPERATIONS ==========
 

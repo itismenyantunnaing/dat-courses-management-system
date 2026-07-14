@@ -1,9 +1,10 @@
 // types/course.ts
+
 export interface Course {
   id: string
   imageUrl?: string
   title: string
-  trainerName?: string
+  trainerName?: string  // ← Maps from backend 'trainer_name'
   courseType: "trainer" | "self-study"
   categoryId?: number
   category?: string
@@ -12,11 +13,11 @@ export interface Course {
   startDate?: Date
   endDate?: Date
   groups: CourseGroup[] // For trainer courses, at least one group
-  self_study_sessions: CourseSession[] // For self-study courses
+  self_study_sessions: CourseSession[] // For self-study courses - matches backend 'self_study_sessions'
   registrationDeadline?: Date // Registration deadline for the course
   // Self-study fields
-  selfStudyType?: string // Explicit self-study type (e.g., "JLPT", "NAT")
-  daysPerSession?: number // Number of days between sessions (e.g., 7 for weekly)
+  selfStudyType?: string // Explicit self-study type (e.g., "JLPT", "NAT") - maps from backend 'self_study_type'
+  daysPerSession?: number // Number of days between sessions - maps from backend 'session_per_days'
   totalKanji?: number
   totalVocabulary?: number
   totalGrammar?: number
@@ -74,12 +75,12 @@ export interface BackendGroupDto {
 export interface BackendCourseDto {
   id: number
   course_name: string
-  trainer_name?: string
-  self_study_type?: string
+  trainer_name?: string  // ← Maps to Course.trainerName
+  self_study_type?: string  // ← Maps to Course.selfStudyType
   course_category_id: number
   target_level?: string
   total_sessions?: number
-  session_per_days?: number
+  session_per_days?: number  // ← Maps to Course.daysPerSession
   start_date?: string
   end_date?: string
   registration_deadline?: string
@@ -89,7 +90,7 @@ export interface BackendCourseDto {
   updated_at: string
   category: BackendCategoryDto
   groups: BackendGroupDto[]
-  self_study_sessions: BackendSelfStudySessionDto[]
+  self_study_sessions: BackendSelfStudySessionDto[]  // ← Maps to Course.self_study_sessions
   image_path?: string
 }
 
@@ -121,7 +122,7 @@ export interface CourseWithDisplayFields extends Course {
 export interface CourseGroup {
   id: string
   name: string // e.g., "Group A", "Group 1"
-  capacity: number | "unlimited"
+  capacity: number | undefined
   status?: string
   startDate: Date
   endDate?: Date
@@ -170,8 +171,9 @@ export interface CourseFormData {
   totalGrammar: number
   totalReadingMinutes: number
   totalListeningMinutes: number
-  status?: "active" | "upcoming" | "completed" | "draft"  // ← Add this
+  status?: "active" | "upcoming" | "completed" | "draft"
 }
+
 export interface CourseFormSubmitData {
   title: string
   trainerName?: string

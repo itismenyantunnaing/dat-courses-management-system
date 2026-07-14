@@ -44,6 +44,9 @@ import {
     Calendar03Icon,
     ArrowDown01Icon,
     User02Icon,
+    RefreshIcon,
+    CheckCircleIcon,
+    AlertCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
@@ -88,7 +91,7 @@ export const formatGroupsForAPI = (groups: CourseGroup[]) => {
         .filter(group => group.name && group.name.trim() !== '')
         .map(group => ({
             group_name: group.name.trim(),
-            capacity: group.capacity === 'unlimited' ? null : group.capacity,
+            capacity: group.capacity === 'undefined' ? null : group.capacity,
             start_date: group.startDate?.toISOString().split('T')[0] || null,
             end_date: group.endDate?.toISOString().split('T')[0] || null,
             sessions_per_week: group.sessionsPerWeek || [],
@@ -101,7 +104,6 @@ export const formatGroupsForAPI = (groups: CourseGroup[]) => {
             })),
         }))
 }
-
 
 interface EnrolledEmployee {
     id: number
@@ -147,6 +149,13 @@ interface TrainerSectionProps {
     onDelete?: () => void
     isSubmitting?: boolean
     mode?: "add" | "edit"
+    courseId?: number | string
+    // Add these new props for group change
+    onAdminChangeGroup?: (enrollmentId: number, newGroupId: number) => Promise<void>
+    isChangingGroup?: boolean
+    groupChangeError?: string | null
+    groupChangeSuccess?: string | null
+    onRefreshEnrollments?: () => Promise<void>
 }
 
 export const TrainerSection: React.FC<TrainerSectionProps> = ({
@@ -175,13 +184,24 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     defaultGroup,
     isSubmitting,
     mode,
+    courseId,
+    onAdminChangeGroup,
+    isChangingGroup,
+    groupChangeError,
+    groupChangeSuccess,
+    onRefreshEnrollments,
 }) => {
     const previousTotalSessionsRef = React.useRef<{ [key: string]: number }>({})
-    const { enrollments } = mainStore()
+    const { enrollments, fetch_courseEnrollments } = mainStore()
 
     // State for available learners - track how many to show
     const [visibleLearnersCount, setVisibleLearnersCount] = useState(AVAILABLE_LEARNERS_PER_PAGE)
     const [searchQuery, setSearchQuery] = useState("")
+
+    // State for admin group change
+    const [changingEmployeeId, setChangingEmployeeId] = useState<number | null>(null)
+    const [selectedNewGroupId, setSelectedNewGroupId] = useState<string>("")
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
     // Reset when dialog opens/closes
     useEffect(() => {
@@ -190,6 +210,87 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             setSearchQuery("")
         }
     }, [learnersCommandOpen])
+
+
+
+    // Helper function to distribute capacity evenly
+    const distributeCapacity = (totalCapacity: number, numberOfGroups: number): number[] => {
+        if (numberOfGroups === 0) return [];
+
+        // Calculate base capacity per group
+        const baseCapacity = Math.floor(totalCapacity / numberOfGroups);
+        const remainder = totalCapacity % numberOfGroups;
+
+        // Distribute the remainder among the first few groups
+        return Array.from({ length: numberOfGroups }, (_, index) => {
+            return index < remainder ? baseCapacity + 1 : baseCapacity;
+        });
+    };
+
+    // Calculate total enrolled employees for this specific course
+    const getTotalEnrolledForCourse = () => {
+        if (!enrollments || enrollments.length === 0) return 0;
+
+        return enrollments.length;
+    };
+
+    // Initialize capacities based on total enrolled divided by number of groups
+    useEffect(() => {
+        // Only run if there are groups
+        if (groups.length === 0) return;
+
+        const totalEnrolled = getTotalEnrolledForCourse();
+
+        // Check if any group already has capacity set
+        const hasCapacity = groups.some(g => g.capacity !== undefined && g.capacity !== null);
+
+        // If capacities are already set, don't override them
+        if (hasCapacity) return;
+
+        // If no enrollments for this course, set all capacities to undefined (unlimited)
+        if (totalEnrolled === 0) {
+            // Only update if any group has a capacity value (not undefined)
+            const hasAnyCapacity = groups.some(g => g.capacity !== undefined);
+            if (hasAnyCapacity) {
+                const updatedGroups = groups.map(group => ({
+                    ...group,
+                    capacity: undefined
+                }));
+                onUpdateGroups(updatedGroups);
+            }
+            return;
+        }
+
+        // If only one group, set capacity to undefined (unlimited)
+        if (groups.length === 1) {
+            const updatedGroups = groups.map(group => ({
+                ...group,
+                capacity: undefined
+            }));
+            onUpdateGroups(updatedGroups);
+            return;
+        }
+
+        const numberOfGroups = groups.length;
+
+        // Calculate base capacity per group
+        const baseCapacity = Math.floor(totalEnrolled / numberOfGroups);
+        const remainder = totalEnrolled % numberOfGroups;
+
+        // Function to get capacity for each group
+        const getCapacityForGroup = (index: number) => {
+            const extra = index < remainder ? 1 : 0;
+            return baseCapacity + extra;
+        };
+
+        // Calculate capacity for each group
+        const updatedGroups = groups.map((group, index) => {
+            const capacity = getCapacityForGroup(index);
+            return { ...group, capacity };
+        });
+
+        onUpdateGroups(updatedGroups);
+    }, [enrollments, groups.length]);
 
     // Get the list of learners to display based on search
     const displayedLearners = React.useMemo(() => {
@@ -232,60 +333,347 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     const addGroup = () => {
         const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null
 
+        const totalEnrolled = getTotalEnrolledForCourse();
+        const newNumberOfGroups = groups.length + 1;
+
+        // If this is the first group
+        if (groups.length === 0) {
+            const newGroup: CourseGroup = {
+                id: `g${Date.now()}`,
+                name: `Group 1`,
+                capacity: undefined,
+                startDate: new Date(),
+                sessionsPerWeek: DEFAULT_SESSION_DAYS,
+                startTime: "09:00",
+                endTime: "10:00",
+                sessions: [],
+                registeredCount: 0,
+                status: undefined,
+                endDate: undefined,
+            }
+            onUpdateGroups([newGroup]);
+            onSetActiveGroupTab(newGroup.id);
+            onSetTrainerSessionPage(1);
+            return;
+        }
+
+        // Create a copy of the last group's sessions with new IDs
+        const copiedSessions = lastGroup?.sessions?.map(session => ({
+            ...session,
+            id: `s${Date.now()}-${Math.random()}`,
+            // Optionally adjust dates based on the new group's start date
+            // You can keep the same dates or shift them
+        })) || [];
+
+        // Calculate the date offset if you want to shift sessions
+        // For example, keep the same dates or shift by a week
+        const copiedSessionsWithAdjustedDates = lastGroup?.startDate && lastGroup?.sessions?.length > 0
+            ? copiedSessions.map((session, index) => {
+                // If you want to keep the same dates, just return as is
+                // Or you can shift them based on the new start date
+                return session;
+            })
+            : [];
+
+        if (!courseId) {
+            const newGroup: CourseGroup = {
+                id: `g${Date.now()}`,
+                name: `Group ${groups.length + 1}`,
+                capacity: undefined,
+                startDate: lastGroup?.startDate ? new Date(lastGroup.startDate) : new Date(),
+                sessionsPerWeek: lastGroup?.sessionsPerWeek ? [...lastGroup.sessionsPerWeek] : DEFAULT_SESSION_DAYS,
+                startTime: lastGroup?.startTime ?? "09:00",
+                endTime: lastGroup?.endTime ?? "10:00",
+                // Copy sessions from last group if available
+                sessions: copiedSessionsWithAdjustedDates.length > 0
+                    ? copiedSessionsWithAdjustedDates
+                    : (lastGroup?.sessions?.map(session => ({
+                        ...session,
+                        id: `s${Date.now()}-${Math.random()}`,
+                    })) || []),
+                registeredCount: 0,
+                status: lastGroup?.status,
+                endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
+            };
+            onUpdateGroups([...groups, newGroup]);
+            onSetActiveGroupTab(newGroup.id);
+            onSetTrainerSessionPage(1);
+            return;
+        }
+
+        // Check if any group has a capacity value (not undefined)
+        const hasCapacity = groups.some(g => g.capacity !== undefined && g.capacity !== null);
+
+        if (hasCapacity) {
+            // Groups have capacity values - redistribute based on total capacity
+            const totalCapacity = groups.reduce((sum, g) => {
+                if (g.capacity !== undefined && g.capacity !== null) {
+                    return sum + g.capacity;
+                }
+                return sum;
+            }, 0);
+
+            // If total capacity is 0, treat as no capacity
+            if (totalCapacity === 0) {
+                // Set all to undefined
+                const existingGroupsWithNoCapacity = groups.map(group => ({
+                    ...group,
+                    capacity: undefined
+                }));
+
+                const newGroup: CourseGroup = {
+                    id: `g${Date.now()}`,
+                    name: `Group ${groups.length + 1}`,
+                    capacity: undefined,
+                    startDate: lastGroup?.startDate ? new Date(lastGroup.startDate) : new Date(),
+                    sessionsPerWeek: lastGroup?.sessionsPerWeek ? [...lastGroup.sessionsPerWeek] : DEFAULT_SESSION_DAYS,
+                    startTime: lastGroup?.startTime ?? "09:00",
+                    endTime: lastGroup?.endTime ?? "10:00",
+                    // Copy sessions from last group
+                    sessions: copiedSessionsWithAdjustedDates.length > 0
+                        ? copiedSessionsWithAdjustedDates
+                        : (lastGroup?.sessions?.map(session => ({
+                            ...session,
+                            id: `s${Date.now()}-${Math.random()}`,
+                        })) || []),
+                    registeredCount: 0,
+                    status: lastGroup?.status,
+                    endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
+                };
+
+                onUpdateGroups([...existingGroupsWithNoCapacity, newGroup]);
+                onSetActiveGroupTab(newGroup.id);
+                onSetTrainerSessionPage(1);
+                return;
+            }
+
+            // Redistribute total capacity among all groups (including new one)
+            const baseCapacity = Math.floor(totalCapacity / newNumberOfGroups);
+            const remainder = totalCapacity % newNumberOfGroups;
+
+            const getCapacityForGroup = (index: number) => {
+                const extra = index < remainder ? 1 : 0;
+                return baseCapacity + extra;
+            };
+
+            // Update existing groups with new capacities
+            const existingGroupsWithCapacity = groups.map((group, index) => {
+                const capacity = getCapacityForGroup(index);
+                return { ...group, capacity };
+            });
+
+            // Create new group with redistributed capacity
+            const newGroup: CourseGroup = {
+                id: `g${Date.now()}`,
+                name: `Group ${groups.length + 1}`,
+                capacity: getCapacityForGroup(groups.length),
+                startDate: lastGroup?.startDate ? new Date(lastGroup.startDate) : new Date(),
+                sessionsPerWeek: lastGroup?.sessionsPerWeek ? [...lastGroup.sessionsPerWeek] : DEFAULT_SESSION_DAYS,
+                startTime: lastGroup?.startTime ?? "09:00",
+                endTime: lastGroup?.endTime ?? "10:00",
+                // Copy sessions from last group
+                sessions: copiedSessionsWithAdjustedDates.length > 0
+                    ? copiedSessionsWithAdjustedDates
+                    : (lastGroup?.sessions?.map(session => ({
+                        ...session,
+                        id: `s${Date.now()}-${Math.random()}`,
+                    })) || []),
+                registeredCount: 0,
+                status: lastGroup?.status,
+                endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
+            };
+
+            onUpdateGroups([...existingGroupsWithCapacity, newGroup]);
+            onSetActiveGroupTab(newGroup.id);
+            onSetTrainerSessionPage(1);
+            return;
+        }
+
+        // No capacity values exist - calculate based on enrolled employees
+        if (totalEnrolled === 0) {
+            // No enrollments, set all to undefined
+            const existingGroupsWithNoCapacity = groups.map(group => ({
+                ...group,
+                capacity: undefined
+            }));
+
+            const newGroup: CourseGroup = {
+                id: `g${Date.now()}`,
+                name: `Group ${groups.length + 1}`,
+                capacity: undefined,
+                startDate: lastGroup?.startDate ? new Date(lastGroup.startDate) : new Date(),
+                sessionsPerWeek: lastGroup?.sessionsPerWeek ? [...lastGroup.sessionsPerWeek] : DEFAULT_SESSION_DAYS,
+                startTime: lastGroup?.startTime ?? "09:00",
+                endTime: lastGroup?.endTime ?? "10:00",
+                // Copy sessions from last group
+                sessions: copiedSessionsWithAdjustedDates.length > 0
+                    ? copiedSessionsWithAdjustedDates
+                    : (lastGroup?.sessions?.map(session => ({
+                        ...session,
+                        id: `s${Date.now()}-${Math.random()}`,
+                    })) || []),
+                registeredCount: 0,
+                status: lastGroup?.status,
+                endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
+            };
+
+            onUpdateGroups([...existingGroupsWithNoCapacity, newGroup]);
+            onSetActiveGroupTab(newGroup.id);
+            onSetTrainerSessionPage(1);
+            return;
+        }
+
+        console.log(totalEnrolled)
+
+        // Calculate based on enrolled employees
+        const baseCapacity = Math.floor(totalEnrolled / newNumberOfGroups);
+        const remainder = totalEnrolled % newNumberOfGroups;
+
+        const getCapacityForGroup = (index: number) => {
+            const extra = index < remainder ? 1 : 0;
+            return baseCapacity + extra;
+        };
+
+        // Update existing groups with new capacities
+        const existingGroupsWithCapacity = groups.map((group, index) => {
+            const capacity = getCapacityForGroup(index);
+            return { ...group, capacity };
+        });
+
+        // Create new group
         const newGroup: CourseGroup = {
             id: `g${Date.now()}`,
             name: `Group ${groups.length + 1}`,
-            capacity: lastGroup?.capacity ?? "unlimited",
+            capacity: getCapacityForGroup(groups.length),
             startDate: lastGroup?.startDate ? new Date(lastGroup.startDate) : new Date(),
             sessionsPerWeek: lastGroup?.sessionsPerWeek ? [...lastGroup.sessionsPerWeek] : DEFAULT_SESSION_DAYS,
             startTime: lastGroup?.startTime ?? "09:00",
             endTime: lastGroup?.endTime ?? "10:00",
-            sessions: [],
+            // Copy sessions from last group
+            sessions: copiedSessionsWithAdjustedDates.length > 0
+                ? copiedSessionsWithAdjustedDates
+                : (lastGroup?.sessions?.map(session => ({
+                    ...session,
+                    id: `s${Date.now()}-${Math.random()}`,
+                })) || []),
             registeredCount: 0,
             status: lastGroup?.status,
             endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
         }
 
-        onUpdateGroups([...groups, newGroup])
-        onSetActiveGroupTab(newGroup.id)
-        onSetTrainerSessionPage(1)
-    }
+        onUpdateGroups([...existingGroupsWithCapacity, newGroup]);
+        onSetActiveGroupTab(newGroup.id);
+        onSetTrainerSessionPage(1);
+    };
+
 
     const removeGroup = (groupId: string) => {
         if (groups.length <= 1) return
-        const updatedGroups = groups.filter((g) => g.id !== groupId)
-        onUpdateGroups(updatedGroups)
+
+        // Get the total capacity of all groups (excluding undefined)
+        const totalCapacity = groups.reduce((sum, g) => {
+            if (g.capacity !== undefined && g.capacity !== null) {
+                return sum + g.capacity;
+            }
+            return sum;
+        }, 0);
+
+        // If no capacity values exist (all undefined), just remove the group
+        if (totalCapacity === 0) {
+            const updatedGroups = groups.filter((g) => g.id !== groupId);
+            onUpdateGroups(updatedGroups);
+
+            // Select the appropriate group after removal
+            if (activeGroupTab === groupId) {
+                const newActiveTab = getNewActiveTabAfterRemoval(groupId, updatedGroups);
+                if (newActiveTab) {
+                    onSetActiveGroupTab(newActiveTab);
+                }
+            }
+            return;
+        }
+
+        // Remove the group
+        const updatedGroups = groups.filter((g) => g.id !== groupId);
+        const numberOfRemainingGroups = updatedGroups.length;
+
+        // If only one group remains, set its capacity to undefined (unlimited)
+        if (numberOfRemainingGroups === 1) {
+            const finalGroups = updatedGroups.map(group => ({
+                ...group,
+                capacity: undefined
+            }));
+            onUpdateGroups(finalGroups);
+
+            // Select the appropriate group after removal
+            if (activeGroupTab === groupId) {
+                const newActiveTab = getNewActiveTabAfterRemoval(groupId, finalGroups);
+                if (newActiveTab) {
+                    onSetActiveGroupTab(newActiveTab);
+                }
+            }
+            return;
+        }
+
+        // Redistribute the total capacity among remaining groups
+        const baseCapacity = Math.floor(totalCapacity / numberOfRemainingGroups);
+        const remainder = totalCapacity % numberOfRemainingGroups;
+
+        const getCapacityForGroup = (index: number) => {
+            const extra = index < remainder ? 1 : 0;
+            return baseCapacity + extra;
+        };
+
+        // Recalculate capacities for remaining groups
+        const recalculatedGroups = updatedGroups.map((group, index) => {
+            const newCapacity = getCapacityForGroup(index);
+            return { ...group, capacity: newCapacity };
+        });
+
+        onUpdateGroups(recalculatedGroups);
+
+        // Select the appropriate group after removal
         if (activeGroupTab === groupId) {
-            if (updatedGroups.length > 0) {
-                onSetActiveGroupTab(updatedGroups[0].id)
+            const newActiveTab = getNewActiveTabAfterRemoval(groupId, recalculatedGroups);
+            if (newActiveTab) {
+                onSetActiveGroupTab(newActiveTab);
             }
         }
-    }
+    };
 
-    // Helper function to sync session times with group times
-    const syncSessionTimesWithGroup = (groupId: string) => {
-        const group = groups.find((g) => g.id === groupId)
-        if (!group || group.sessions.length === 0) return
+    // Helper function to determine which group to select after removal
+    const getNewActiveTabAfterRemoval = (removedGroupId: string, remainingGroups: CourseGroup[]): string | null => {
+        if (remainingGroups.length === 0) return null;
 
-        const updatedSessions = group.sessions.map((session) => ({
-            ...session,
-            startTime: group.startTime || session.startTime,
-            endTime: group.endTime || session.endTime,
-        }))
+        // Find the index of the removed group in the original list
+        const removedIndex = groups.findIndex(g => g.id === removedGroupId);
 
-        const updatedGroups = groups.map((g) =>
-            g.id === groupId
-                ? {
-                    ...g,
-                    sessions: updatedSessions,
-                    // Ensure the group times are preserved
-                    startTime: group.startTime,
-                    endTime: group.endTime
-                }
-                : g
-        )
-        onUpdateGroups(updatedGroups)
-    }
+        // If we can't find the index, select the first group
+        if (removedIndex === -1) {
+            return remainingGroups[0].id;
+        }
+
+        // Check if there's a group before the removed one
+        if (removedIndex > 0) {
+            // Find the group that was before the removed one
+            const previousGroup = groups[removedIndex - 1];
+            // Check if this group still exists in the remaining groups
+            if (previousGroup && remainingGroups.some(g => g.id === previousGroup.id)) {
+                return previousGroup.id;
+            }
+        }
+
+        // If no previous group exists or it was removed, check if there's a group after
+        if (removedIndex < groups.length - 1) {
+            const nextGroup = groups[removedIndex + 1];
+            if (nextGroup && remainingGroups.some(g => g.id === nextGroup.id)) {
+                return nextGroup.id;
+            }
+        }
+
+        // Fallback: select the first remaining group
+        return remainingGroups[0].id;
+    };
 
     const updateGroup = (groupId: string, field: string, value: any) => {
         // First, update the group's field
@@ -644,6 +1032,35 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         }
     }, [groups, onUpdateGroups])
 
+    // Handler for admin group change with real-time updates
+    const handleAdminGroupChange = async (enrollmentId: number, newGroupId: number) => {
+        if (!onAdminChangeGroup) return;
+
+        try {
+            // Call the API to change the group
+            await onAdminChangeGroup(enrollmentId, newGroupId);
+
+            // Reset states after successful change
+            setChangingEmployeeId(null);
+            setSelectedNewGroupId("");
+            setShowConfirmDialog(false);
+
+            // Refresh enrollments to get updated data
+            if (courseId && onRefreshEnrollments) {
+                await onRefreshEnrollments();
+            } else if (courseId) {
+                // Use the store's fetch function if available
+                const numericCourseId = typeof courseId === 'string' ? parseInt(courseId) : courseId;
+                await fetch_courseEnrollments(numericCourseId);
+            }
+
+        } catch (error) {
+            console.error("Error changing group:", error);
+            // Show error toast
+            alert(error instanceof Error ? error.message : "Failed to change group");
+        }
+    };
+
     const renderGroupFields = (group: CourseGroup) => {
         const groupError = groupErrors[group.id]
 
@@ -674,29 +1091,57 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                             <div className="flex-1">
                                 <Input
                                     type="number"
-                                    value={group.capacity === "unlimited" ? "" : (group.capacity ?? "")}
-                                    onChange={(e) =>
-                                        updateGroup(
-                                            group.id,
-                                            "capacity",
-                                            parseInt(e.target.value) || 0
-                                        )
-                                    }
+                                    value={group.capacity !== undefined && group.capacity !== null ? group.capacity : ""}
+                                    onChange={(e) => {
+                                        const value = e.target.value ? parseInt(e.target.value) : undefined;
+                                        if (value !== undefined && value > 0) {
+                                            // Update this group's capacity
+                                            const updatedGroups = groups.map((g) =>
+                                                g.id === group.id ? { ...g, capacity: value } : g
+                                            );
+                                            // Redistribute remaining capacity among other groups
+                                            const totalCapacity = value + groups
+                                                .filter(g => g.id !== group.id && g.capacity !== undefined && g.capacity !== null)
+                                                .reduce((sum, g) => sum + (g.capacity || 0), 0);
+
+                                            const otherGroups = updatedGroups.filter(g => g.id !== group.id && g.capacity !== undefined && g.capacity !== null);
+                                            if (otherGroups.length > 0) {
+                                                const remainingCapacity = totalCapacity - value;
+                                                const newCapacities = distributeCapacity(remainingCapacity, otherGroups.length);
+                                                const finalGroups = updatedGroups.map((g) => {
+                                                    if (g.id === group.id) return { ...g, capacity: value };
+                                                    if (g.capacity !== undefined && g.capacity !== null) {
+                                                        const index = otherGroups.findIndex(og => og.id === g.id);
+                                                        return { ...g, capacity: newCapacities[index] || 0 };
+                                                    }
+                                                    return g;
+                                                });
+                                                onUpdateGroups(finalGroups);
+                                            } else {
+                                                onUpdateGroups(updatedGroups);
+                                            }
+                                        } else {
+                                            updateGroup(group.id, "capacity", undefined);
+                                        }
+                                    }}
                                     placeholder="Enter capacity"
-                                    disabled={group.capacity === "unlimited"}
                                     min={1}
                                 />
                             </div>
                             <div className="flex items-center gap-2 whitespace-nowrap">
                                 <Switch
-                                    checked={group.capacity === "unlimited"}
+                                    checked={group.capacity === undefined && groups.length === 1}
                                     onCheckedChange={(checked) => {
-                                        updateGroup(
-                                            group.id,
-                                            "capacity",
-                                            checked ? "unlimited" : 1
-                                        )
+                                        if (checked) {
+                                            updateGroup(group.id, "capacity", undefined);
+                                        } else {
+                                            // When switching to limited, set a default capacity
+                                            const totalEnrolled = getTotalEnrolledForCourse();
+                                            const defaultCap = Math.max(Math.floor(totalEnrolled / groups.length) + 2, 5);
+                                            updateGroup(group.id, "capacity", defaultCap);
+                                        }
                                     }}
+                                    disabled={groups.length !== 1}
                                 />
                                 <Label className="cursor-pointer text-sm">Unlimited</Label>
                             </div>
@@ -1001,7 +1446,11 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         if (!activeGroup) return []
 
         const groupId = parseInt(activeGroup.id)
-        return enrollments.filter((emp: any) => emp.courseGroupId === groupId)
+
+        // Filter by group and course
+        let filtered = enrollments.filter((emp: any) => emp.courseGroupId === groupId);
+
+        return filtered;
     }, [enrollments, activeGroupTab, groups])
 
     return (
@@ -1127,7 +1576,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                     )}
                 </div>
 
-                {/* Right Column - Enrolled Employees (2 per row) */}
+                {/* Right Column - Enrolled Employees (2 per row) with Admin Group Change */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <Label className="text-base font-semibold flex items-center gap-2">
@@ -1143,33 +1592,154 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {currentGroupEnrolledEmployees.map((employee: any) => (
-                                <div key={employee.id} className="flex items-center gap-3 rounded-lg border bg-muted/5 p-3 transition-colors hover:bg-muted/10">
-                                    <Avatar className="h-10 w-10 rounded-lg shrink-0">
-                                        <AvatarImage src={employee.pfImage || ""} />
-                                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-medium">
-                                            {getInitials(employee.employeeName)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="truncate text-sm font-medium">{employee.employeeName}</span>
-                                            <Badge variant="outline" className={cn("h-4 px-1.5 py-0 text-[10px]", statusColors[employee.enrollmentStatus], "bg-opacity-10")}>
-                                                {statusLabels[employee.enrollmentStatus] || employee.enrollmentStatus}
-                                            </Badge>
+                            {currentGroupEnrolledEmployees.map((employee: any) => {
+                                // Check if this employee is currently being changed
+                                const isChanging = changingEmployeeId === employee.id;
+
+                                // Get available groups (all groups except current)
+                                const availableGroups = groups.filter(
+                                    (g) => parseInt(g.id) !== employee.courseGroupId
+                                );
+
+                                return (
+                                    <div key={employee.id} className="flex flex-col gap-2 rounded-lg border bg-muted/5 p-3 transition-colors hover:bg-muted/10">
+                                        <div className="flex items-start gap-3">
+                                            <Avatar className="h-10 w-10 rounded-lg shrink-0">
+                                                <AvatarImage src={employee.pfImage || ""} />
+                                                <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-medium">
+                                                    {getInitials(employee.employeeName)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="truncate text-sm font-medium">{employee.employeeName}</span>
+                                                    <Badge variant="outline" className={cn("h-4 px-1.5 py-0 text-[10px]", statusColors[employee.enrollmentStatus], "bg-opacity-10")}>
+                                                        {statusLabels[employee.enrollmentStatus] || employee.enrollmentStatus}
+                                                    </Badge>
+                                                </div>
+                                                <div className="truncate text-xs text-muted-foreground">{employee.email}</div>
+                                                <div className="flex gap-2 text-xs text-muted-foreground">
+                                                    <span className="truncate">{employee.departmentName}</span>
+                                                    {employee.departmentName && employee.teamName && <span>•</span>}
+                                                    {employee.teamName && <span className="truncate">{employee.teamName}</span>}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-xs text-muted-foreground">Group: {employee.courseGroupName}</span>
+                                                    <span className="text-xs text-muted-foreground">•</span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {format(new Date(employee.enrolledAt), "MMM d, yyyy")}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="truncate text-xs text-muted-foreground">{employee.email}</div>
-                                        <div className="flex gap-2 text-xs text-muted-foreground">
-                                            <span className="truncate">{employee.departmentName}</span>
-                                            {employee.departmentName && employee.teamName && <span>•</span>}
-                                            {employee.teamName && <span className="truncate">{employee.teamName}</span>}
-                                        </div>
+
+                                        {/* Admin Group Change Actions */}
+                                        {onAdminChangeGroup && availableGroups.length > 0 && (
+                                            <div className="border-t pt-2 mt-1">
+                                                {!isChanging ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 w-full justify-center text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                        onClick={() => {
+                                                            setChangingEmployeeId(employee.id);
+                                                            setSelectedNewGroupId("");
+                                                            setShowConfirmDialog(false);
+                                                        }}
+                                                        disabled={isChangingGroup}
+                                                    >
+                                                        <HugeiconsIcon icon={RefreshIcon} strokeWidth={2} className="h-3 w-3" />
+                                                        Change Group
+                                                    </Button>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <Select
+                                                            value={selectedNewGroupId}
+                                                            onValueChange={(value) => {
+                                                                setSelectedNewGroupId(value);
+                                                                setShowConfirmDialog(false);
+                                                            }}
+                                                            disabled={isChangingGroup}
+                                                        >
+                                                            <SelectTrigger className="h-7 flex-1 text-xs">
+                                                                <SelectValue placeholder="Select group..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectGroup>
+                                                                    {availableGroups.map((group) => (
+                                                                        <SelectItem
+                                                                            key={group.id}
+                                                                            value={group.id}
+                                                                            className="text-xs"
+                                                                        >
+                                                                            {group.name} {group.capacity ? `(Cap: ${group.capacity})` : '(Unlimited)'}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectGroup>
+                                                            </SelectContent>
+                                                        </Select>
+
+                                                        {!showConfirmDialog ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 px-2 text-xs"
+                                                                disabled={!selectedNewGroupId || isChangingGroup}
+                                                                onClick={() => setShowConfirmDialog(true)}
+                                                            >
+                                                                Confirm
+                                                            </Button>
+                                                        ) : (
+                                                            <>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="default"
+                                                                    size="sm"
+                                                                    className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700"
+                                                                    onClick={() => {
+                                                                        if (selectedNewGroupId) {
+                                                                            handleAdminGroupChange(
+                                                                                employee.id,
+                                                                                parseInt(selectedNewGroupId)
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                    disabled={!selectedNewGroupId || isChangingGroup}
+                                                                >
+                                                                    {isChangingGroup ? (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                                            Changing...
+                                                                        </span>
+                                                                    ) : (
+                                                                        'Yes'
+                                                                    )}
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="sm"
+                                                                    className="h-7 px-2 text-xs"
+                                                                    onClick={() => {
+                                                                        setChangingEmployeeId(null);
+                                                                        setSelectedNewGroupId("");
+                                                                        setShowConfirmDialog(false);
+                                                                    }}
+                                                                    disabled={isChangingGroup}
+                                                                >
+                                                                    Cancel
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="text-xs text-muted-foreground shrink-0">
-                                        {format(new Date(employee.enrolledAt), "MMM d, yyyy")}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

@@ -150,16 +150,33 @@ export function CategoryDrawer({
 
       if (value === "jlpt") {
         const lowerName = newName.toLowerCase()
-
         // Check if name already contains "jlpt" (case insensitive)
         if (!lowerName.includes('jlpt')) {
           // No JLPT found, add suffix
           newName = newName ? `JLPT-${newName}` : 'JLPT'
         }
       } else {
-        // If Other is selected, remove JLPT suffix if present (case insensitive)
-        const nameWithoutSuffix = newName.replace(/\s*-?\s*jlpt\s*$/i, '').trim()
-        newName = nameWithoutSuffix || newName
+        // If Other is selected, remove JLPT prefix and any JLPT-related words
+        // Remove "JLPT-" prefix (case insensitive)
+        newName = newName.replace(/^JLPT-\s*/i, '').trim()
+
+        // Remove "JLPT" anywhere in the name (case insensitive)
+        newName = newName.replace(/\bJLPT\b\s*/gi, '').trim()
+
+        // Remove "N5", "N4", "N3", "N2", "N1" (case insensitive)
+        newName = newName.replace(/\bN[1-5]\b\s*/gi, '').trim()
+
+        // Remove "N5", "N4", "N3", "N2", "N1" without word boundary (e.g., "N5-")
+        newName = newName.replace(/N[1-5][-\s]*/gi, '').trim()
+
+        // Clean up any double spaces or trailing separators
+        newName = newName.replace(/\s{2,}/g, ' ').trim()
+        newName = newName.replace(/[-\s]+$/, '').trim()
+
+        // If the name is empty after removing JLPT, use a default
+        if (!newName) {
+          newName = 'Other'
+        }
       }
 
       return {
@@ -205,12 +222,6 @@ export function CategoryDrawer({
     e.preventDefault()
     e.stopPropagation()
 
-    const userRole = getUserRole()
-    // if (userRole !== 'ADMIN' && userRole !== 'APPROVER') {
-    //   alert('You do not have permission to delete categories. Only administrators and approvers can perform this action.')
-    //   return
-    // }
-
     setCategoryToDelete(category)
     setDeleteDialogOpen(true)
   }
@@ -246,10 +257,23 @@ export function CategoryDrawer({
 
     let categoryName = formData.name.trim()
 
+    // Only add JLPT prefix if selfStudyType is 'jlpt' and name doesn't already have it
     if (formData.selfStudyType === "jlpt" && categoryName) {
       const lowerName = categoryName.toLowerCase()
+      // Check if name already has "jlpt" (with or without "JLPT-")
       if (!lowerName.includes('jlpt')) {
         categoryName = `JLPT-${categoryName}`
+      }
+    } else if (formData.selfStudyType === "other" && categoryName) {
+      // Remove any JLPT-related words if it's "other"
+      categoryName = categoryName.replace(/^JLPT-\s*/i, '').trim()
+      categoryName = categoryName.replace(/\bJLPT\b\s*/gi, '').trim()
+      categoryName = categoryName.replace(/\bN[1-5]\b\s*/gi, '').trim()
+      categoryName = categoryName.replace(/N[1-5][-\s]*/gi, '').trim()
+      categoryName = categoryName.replace(/\s{2,}/g, ' ').trim()
+
+      if (!categoryName) {
+        categoryName = 'Other'
       }
     }
 
@@ -257,6 +281,7 @@ export function CategoryDrawer({
       setDuplicateError('Category name is required')
       return
     }
+
 
     const isDuplicate = checkDuplicateCategory(
       categoryName,
@@ -605,18 +630,18 @@ export function CategoryDrawer({
                                 e.stopPropagation()
                                 if (isSelfStudyCategory) {
                                   handleCategorySelect(
-                                    category.value,       
-                                    category.type,         
-                                    currentSelfStudyType,  
-                                    category.id,          
+                                    category.value,
+                                    category.type,
+                                    currentSelfStudyType,
+                                    category.id,
                                     e
                                   )
                                 } else {
                                   handleCategorySelect(
-                                    category.value,      
-                                    category.type,         
-                                    undefined,           
-                                    category.id,          
+                                    category.value,
+                                    category.type,
+                                    undefined,
+                                    category.id,
                                     e
                                   )
                                 }

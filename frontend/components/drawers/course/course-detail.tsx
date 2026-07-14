@@ -1,4 +1,3 @@
-// components/drawers/course/course-detail.tsx
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
@@ -27,6 +26,9 @@ import {
   AlertCircleIcon,
   Clock04Icon,
   Alert01Icon,
+  RefreshIcon,
+  ArrowRight01Icon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import {
   Course,
@@ -71,6 +73,10 @@ interface EnrolledEmployee {
   enrollmentStatus: string
   enrolledAt: string
   pfImage?: string
+  // Group change fields
+  groupChangeStatus?: string
+  requestedCourseGroupId?: number
+  requestedCourseGroupName?: string
 }
 
 interface ProgressData {
@@ -195,6 +201,36 @@ const getAttendanceStatusIcon = (status: string) => {
   }
 }
 
+// Helper to get group change status color
+const getGroupChangeStatusColor = (status: string) => {
+  switch (status) {
+    case 'PENDING':
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200'
+    case 'APPROVED':
+      return 'bg-green-100 text-green-700 border-green-200'
+    case 'REJECTED':
+      return 'bg-red-100 text-red-700 border-red-200'
+    case 'NONE':
+    default:
+      return 'bg-gray-100 text-gray-700 border-gray-200'
+  }
+}
+
+// Helper to get group change status label
+const getGroupChangeStatusLabel = (status: string) => {
+  switch (status) {
+    case 'PENDING':
+      return 'Pending Review'
+    case 'APPROVED':
+      return 'Approved'
+    case 'REJECTED':
+      return 'Rejected'
+    case 'NONE':
+    default:
+      return 'Current Group'
+  }
+}
+
 export function CourseDetail({
   course,
   onEdit,
@@ -208,21 +244,30 @@ export function CourseDetail({
   const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false)
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [isUnenrolling, setIsUnenrolling] = useState(false)
-  const [enrolledEmployees, setEnrolledEmployees] = useState<EnrolledEmployee[]>([])
   const [currentUserEnrollment, setCurrentUserEnrollment] = useState<EnrolledEmployee | null>(null)
   const [savedProgress, setSavedProgress] = useState<{ [key: string]: ProgressData }>({})
   const [sessionInputs, setSessionInputs] = useState<{ [key: string]: any }>({})
   const [savingSessions, setSavingSessions] = useState<{ [key: string]: boolean }>({})
+
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("")
 
   // Attendance state
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [attendanceStatuses, setAttendanceStatuses] = useState<{ [key: string]: string }>({})
   const [savingAttendance, setSavingAttendance] = useState<{ [key: string]: boolean }>({})
   const [loadingAttendance, setLoadingAttendance] = useState(false)
+
+  // Group change states
+  const [selectedRequestGroupId, setSelectedRequestGroupId] = useState<string>("")
+  const [isRequestingGroupChange, setIsRequestingGroupChange] = useState(false)
+  const [processingGroupChangeId, setProcessingGroupChangeId] = useState<number | null>(null)
+
   // Check if user is enrolled
   const isUserEnrolled = !!currentUserEnrollment && currentUserEnrollment.enrollmentStatus === 'APPROVED'
+
   const {
     fetch_courseEnrollments,
+    enrollments,
     enrollEmployee,
     unenrollEmployee,
     getMyEnrollment,
@@ -235,12 +280,21 @@ export function CourseDetail({
     fetchAttendance,
     createAttendance,
     updateAttendance,
+    // Group change methods
+    requestGroupChange,
+    approveGroupChange,
+    rejectGroupChange,
+    isRequestingGroupChange: isStoreRequesting,
+    isApprovingGroupChange,
+    isRejectingGroupChange,
   } = mainStore();
+
+  console.log(course)
 
   // Get current user ID
   const currentUserId = getUserId?.() || null
 
-  const TESTING_DATE = new Date('2026-07-26')
+  const TESTING_DATE = new Date('2026-07-16')
   // const TESTING_DATE = new Date()
 
   // Helper function to get session status
@@ -281,15 +335,8 @@ export function CourseDetail({
       : course.sessions || []
 
     return sessionsList.findIndex((s) => {
-      // ✅ Use the same logic as the debug log - get date from savedProgress first
       const progress = savedProgress[s.id?.toString()]
       const sessionDate = progress?.session_deadline ? new Date(progress.session_deadline) : s.date
-
-      console.log(`Session ${s.id}:`, {
-        hasProgress: !!progress,
-        sessionDate,
-        status: getSessionStatus(sessionDate)
-      })
 
       if (!sessionDate) return false
       const sessionStatus = getSessionStatus(sessionDate)
@@ -314,7 +361,6 @@ export function CourseDetail({
   const loadAttendance = async () => {
     setLoadingAttendance(true)
     try {
-      // Fetch attendance for each group
       const groups = course.groups || []
       let allAttendance: AttendanceRecord[] = []
 
@@ -327,7 +373,6 @@ export function CourseDetail({
         }
       }
 
-      // Replace the entire attendance records state
       setAttendanceRecords(allAttendance)
     } catch (error) {
       console.error('Error loading attendance:', error)
@@ -336,8 +381,6 @@ export function CourseDetail({
     }
   }
 
-  console.log(studyProgress)
-
   // Update saved progress when studyProgress changes
   useEffect(() => {
     if (studyProgress && studyProgress.progress && Array.isArray(studyProgress.progress)) {
@@ -345,16 +388,12 @@ export function CourseDetail({
 
       studyProgress.progress.forEach((p: ProgressData) => {
         if (p.self_study_session_id) {
-          // Use composite key: session_id + employee_id to differentiate
-          // For the current user, use the simple key for backward compatibility
           if (p.employee_id === currentUserId) {
-            // Use simple key for current user (for existing code to work)
             progressMap[p.self_study_session_id.toString()] = {
               ...p,
               id: p.id
             }
           } else {
-            // For other users, use composite key
             const compositeKey = `${p.self_study_session_id}-${p.employee_id}`
             progressMap[compositeKey] = {
               ...p,
@@ -364,57 +403,46 @@ export function CourseDetail({
         }
       })
       setSavedProgress(progressMap)
-
-      // Debug: Log what's stored
-      console.log('Saved Progress Map:', progressMap)
-      console.log('Current User ID:', currentUserId)
     }
   }, [studyProgress, currentUserId])
 
-  // Check if current user is enrolled
+  // Check if current user is enrolled (excluding CANCELLED) - USING STORE ENROLLMENTS
   useEffect(() => {
-    if (enrolledEmployees.length > 0 && currentUserId) {
-      const userEnrollment = enrolledEmployees.find(
-        emp => emp.employeeId === currentUserId
+    if (enrollments.length > 0 && currentUserId) {
+      const userEnrollment = enrollments.find(
+        (emp: any) => emp.employeeId === currentUserId && emp.enrollmentStatus !== 'CANCELLED'
       )
       setCurrentUserEnrollment(userEnrollment || null)
     } else {
       setCurrentUserEnrollment(null)
     }
-  }, [enrolledEmployees, currentUserId])
+  }, [enrollments, currentUserId])
 
   useEffect(() => {
     const loadEnrollments = async () => {
-      setIsLoadingEnrollments(true)
-      try {
-        const result = await fetch_courseEnrollments(course.id)
-        console.log('Enrollment result:', result)
-
-        if (Array.isArray(result)) {
-          console.log('Setting enrollments from array:', result)
-          setEnrolledEmployees(result)
-        } else if (result && result.success && Array.isArray(result.data)) {
-          console.log('Setting enrollments from result.data:', result.data)
-          setEnrolledEmployees(result.data)
-        } else if (result && result.data && Array.isArray(result.data)) {
-          console.log('Setting enrollments from data:', result.data)
-          setEnrolledEmployees(result.data)
-        } else {
-          console.log('Unexpected result format:', result)
-          setEnrolledEmployees([])
-        }
-      } catch (error) {
-        console.error('Error loading enrollments:', error)
-        setEnrolledEmployees([])
-      } finally {
-        setIsLoadingEnrollments(false)
+      // Check if store already has enrollments
+      if (enrollments && enrollments.length > 0) {
+        return;
       }
-    }
 
-    if (course.id) {
-      loadEnrollments()
-    }
-  }, [fetch_courseEnrollments, course.id])
+      if (!course.id) {
+        return;
+      }
+
+      setIsLoadingEnrollments(true);
+      try {
+        const result = await fetch_courseEnrollments(course.id);
+      } catch (error) {
+        console.error('Error loading enrollments:', error);
+      } finally {
+        setIsLoadingEnrollments(false);
+      }
+    };
+
+    loadEnrollments();
+  }, [fetch_courseEnrollments, course.id]);
+
+
 
   // Initialize session inputs
   useEffect(() => {
@@ -444,43 +472,42 @@ export function CourseDetail({
     setSessionInputs(initialInputs)
   }, [course, savedProgress])
 
-  // Update the enrollment status check
+  // Update the enrollment status check - USING STORE ENROLLMENTS
   useEffect(() => {
-    if (enrolledEmployees.length > 0 && currentUserId) {
-      const enrollment = enrolledEmployees.find(
-        emp => emp.employeeId === currentUserId
+    if (enrollments.length > 0 && currentUserId) {
+      const enrollment = enrollments.find(
+        (emp: any) => emp.employeeId === currentUserId
       )
       setCurrentUserEnrollment(enrollment || null)
     } else {
       setCurrentUserEnrollment(null)
     }
-  }, [enrolledEmployees, currentUserId])
-
+  }, [enrollments, currentUserId])
 
   // Check if registration deadline has passed
   const isRegistrationDeadlinePassed = useMemo(() => {
     if (!course.registrationDeadline) return false
     const deadline = new Date(course.registrationDeadline)
     const today = new Date()
-    // Compare dates without time
     return deadline.setHours(0, 0, 0, 0) < today.setHours(0, 0, 0, 0)
   }, [course.registrationDeadline])
 
-
-  // Group employees by courseGroupId
+  // Group employees by courseGroupId - filter out CANCELLED
   const getEmployeesByGroup = (groupId: number) => {
-    return enrolledEmployees.filter(emp => emp.courseGroupId === groupId)
+    return enrollments.filter(emp => emp.courseGroupId === groupId && emp.enrollmentStatus !== 'CANCELLED')
   }
 
-  // Get unique statuses from enrolled employees
+  // Get unique statuses from enrolled employees (excluding CANCELLED)
   const getUniqueStatuses = (employees: EnrolledEmployee[]) => {
-    const statuses = employees.map(emp => emp.enrollmentStatus)
+    const statuses = employees
+      .filter(emp => emp.enrollmentStatus !== 'CANCELLED')
+      .map(emp => emp.enrollmentStatus)
     return [...new Set(statuses)]
   }
 
-  // Filter employees by status
+  // Filter employees by status (excluding CANCELLED)
   const getEmployeesByStatus = (employees: EnrolledEmployee[], status: string) => {
-    return employees.filter(emp => emp.enrollmentStatus === status)
+    return employees.filter(emp => emp.enrollmentStatus === status && emp.enrollmentStatus !== 'CANCELLED')
   }
 
   // Get attendance for a specific session and employee
@@ -505,8 +532,8 @@ export function CourseDetail({
   const getTotalCapacity = () => {
     if (course.courseType === "trainer") {
       const capacities = course.groups?.map((g) => g.capacity) || []
-      const hasUnlimited = capacities.some((c) => c === "unlimited")
-      if (hasUnlimited) return "Unlimited"
+      const hasUnlimited = capacities.some((c) => c === undefined)
+      if (hasUnlimited) return undefined
       const total = capacities.reduce(
         (sum, c) => sum + (typeof c === "number" ? c : 0),
         0
@@ -540,7 +567,6 @@ export function CourseDetail({
     }
     return null
   }
-
 
   const totalSessions = getTotalSessions()
   const totalCapacity = getTotalCapacity()
@@ -591,23 +617,19 @@ export function CourseDetail({
       return
     }
 
-    // Get the first group ID (you might want to let user select which group)
-    const firstGroupId = parseInt(course.groups[0].id)
+    const groupId = selectedGroupId || course.groups[0].id
+    const groupIdNum = parseInt(groupId)
 
     setIsEnrolling(true)
     try {
-      const result = await enrollEmployee(course.id, firstGroupId)
+      const result = await enrollEmployee(course.id, groupIdNum)
 
       if (result.success) {
         alert(result.message || 'Successfully enrolled in the course!')
 
-        // Refresh enrollments to show updated list
-        const refreshResult = await fetch_courseEnrollments(course.id)
-        if (Array.isArray(refreshResult)) {
-          setEnrolledEmployees(refreshResult)
-        }
+        // Refresh enrollments - store will be updated automatically
+        await fetch_courseEnrollments(course.id)
 
-        // Call the parent onRegister callback if provided
         if (onRegister) {
           onRegister(course)
         }
@@ -640,13 +662,9 @@ export function CourseDetail({
         alert(result.message || 'Successfully unenrolled from the course')
         setCurrentUserEnrollment(null)
 
-        // Refresh enrollments to show updated list
-        const refreshResult = await fetch_courseEnrollments(course.id)
-        if (Array.isArray(refreshResult)) {
-          setEnrolledEmployees(refreshResult)
-        }
+        // Refresh enrollments - store will be updated automatically
+        await fetch_courseEnrollments(course.id)
 
-        // Call the parent onRegister callback if provided
         if (onRegister) {
           onRegister(course)
         }
@@ -665,7 +683,6 @@ export function CourseDetail({
     const numValue = parseInt(value) || 0
     const session = course.self_study_sessions?.find(s => String(s.id) === String(sessionId))
 
-    // Get the max value based on the field
     let maxValue = Infinity
     if (field === 'kanjiCount') maxValue = session?.kanjiCount || 0
     else if (field === 'vocabularyCount') maxValue = session?.vocabularyCount || 0
@@ -673,7 +690,6 @@ export function CourseDetail({
     else if (field === 'readingMinutes') maxValue = session?.readingMinutes || 0
     else if (field === 'listeningMinutes') maxValue = session?.listeningMinutes || 0
 
-    // Clamp the value
     const clampedValue = Math.min(numValue, maxValue)
 
     setSessionInputs(prev => ({
@@ -781,7 +797,6 @@ export function CourseDetail({
       return
     }
 
-    // Find if attendance already exists
     const existingAttendance = getAttendanceForSession(sessionId, enrollmentId)
 
     setSavingAttendance(prev => ({
@@ -792,7 +807,6 @@ export function CourseDetail({
     try {
       let result
       if (existingAttendance) {
-        // Update existing attendance
         result = await updateAttendance(
           course.id,
           groupId,
@@ -804,7 +818,6 @@ export function CourseDetail({
           }
         )
       } else {
-        // Create new attendance
         result = await createAttendance(
           course.id,
           groupId,
@@ -818,7 +831,6 @@ export function CourseDetail({
 
       if (result.success) {
         alert(`Attendance ${existingAttendance ? 'updated' : 'recorded'} successfully!`)
-        // Refresh attendance
         await loadAttendance()
       } else {
         alert(result.message || 'Failed to save attendance')
@@ -833,6 +845,104 @@ export function CourseDetail({
       }))
     }
   }
+
+  // ==================== GROUP CHANGE HANDLERS ====================
+
+  // Learner requests group change
+  const handleRequestGroupChange = async () => {
+    if (!currentUserEnrollment) {
+      alert('You are not enrolled in this course');
+      return;
+    }
+
+    if (!selectedRequestGroupId) {
+      alert('Please select a group to request');
+      return;
+    }
+
+    // Find the selected group to get its name
+    const selectedGroup = course.groups?.find(g => g.id === selectedRequestGroupId);
+    const groupName = selectedGroup?.name || `Group ${selectedRequestGroupId}`;
+
+    if (!confirm(`Are you sure you want to request to change to "${groupName}"?`)) {
+      return;
+    }
+
+    setIsRequestingGroupChange(true);
+    try {
+      const result = await requestGroupChange(
+        currentUserEnrollment.id,
+        parseInt(selectedRequestGroupId)
+      );
+
+      if (result.success) {
+        alert('Group change request submitted successfully!');
+        setSelectedRequestGroupId("");
+
+        // Refresh enrollments - store will be updated automatically
+        await fetch_courseEnrollments(course.id);
+      } else {
+        alert(result.message || 'Failed to submit group change request');
+      }
+    } catch (error) {
+      console.error('Error requesting group change:', error);
+      alert(error instanceof Error ? error.message : 'Failed to request group change');
+    } finally {
+      setIsRequestingGroupChange(false);
+    }
+  };
+
+  // Admin approves group change
+  const handleApproveGroupChange = async (enrollmentId: number) => {
+    if (!confirm('Are you sure you want to approve this group change request?')) {
+      return;
+    }
+
+    setProcessingGroupChangeId(enrollmentId);
+    try {
+      const result = await approveGroupChange(enrollmentId);
+
+      if (result.success) {
+        alert('Group change request approved successfully!');
+
+        // Refresh enrollments - store will be updated automatically
+        await fetch_courseEnrollments(course.id);
+      } else {
+        alert('Failed to approve group change');
+      }
+    } catch (error) {
+      console.error('Error approving group change:', error);
+      alert(error instanceof Error ? error.message : 'Failed to approve group change');
+    } finally {
+      setProcessingGroupChangeId(null);
+    }
+  };
+
+  // Admin rejects group change
+  const handleRejectGroupChange = async (enrollmentId: number) => {
+    if (!confirm('Are you sure you want to reject this group change request?')) {
+      return;
+    }
+
+    setProcessingGroupChangeId(enrollmentId);
+    try {
+      const result = await rejectGroupChange(enrollmentId);
+
+      if (result.success) {
+        alert('Group change request rejected successfully!');
+
+        // Refresh enrollments - store will be updated automatically
+        await fetch_courseEnrollments(course.id);
+      } else {
+        alert(result.message || 'Failed to reject group change');
+      }
+    } catch (error) {
+      console.error('Error rejecting group change:', error);
+      alert(error instanceof Error ? error.message : 'Failed to reject group change');
+    } finally {
+      setProcessingGroupChangeId(null);
+    }
+  };
 
   // Show loading state while fetching enrollments
   if (isLoadingEnrollments) {
@@ -857,7 +967,7 @@ export function CourseDetail({
     return progress?.completion_status === 'COMPLETED'
   }
 
-
+  console.log(enrollments)
 
   return (
     <div className="flex h-full gap-6">
@@ -993,46 +1103,108 @@ export function CourseDetail({
             )}
 
             {isLearner && (
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleRegister}
-                  className="flex-1 gap-2"
-                  disabled={isUserEnrolled || course.status === "completed" || isEnrolling || isRegistrationDeadlinePassed}
-                  variant={isUserEnrolled ? "outline" : "default"}
-                >
-                  {isEnrolling ? (
-                    <>
-                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></span>
-                      Enrolling...
-                    </>
-                  ) : isUserEnrolled ? (
-                    "Registered"
-                  ) : course.status === "completed" ? (
-                    "Course Completed"
-                  ) : isRegistrationDeadlinePassed ? (
-                    "Registration Closed"
-                  ) : (
-                    "Enroll course"
-                  )}
-                </Button>
+              <div className="space-y-3">
+                {/* Group Selection - Only show if there are multiple groups */}
+                {course.groups && course.groups.length > 1 && !isUserEnrolled && (
+                  <div className="space-y-1">
+                    <Select
+                      value={selectedGroupId || ""}
+                      onValueChange={setSelectedGroupId}
+                      disabled={isUserEnrolled || course.status === "completed" || isRegistrationDeadlinePassed}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="" disabled className="text-muted-foreground">
+                          Select a group
+                        </SelectItem>
+                        {course.groups.map((group) => {
+                          const groupIndex = course.groups.indexOf(group)
+                          const groupEmployees = getEmployeesByGroup(parseInt(group.id))
+                          const isFull = group.capacity !== undefined && groupEmployees.length >= (group.capacity as number || 0)
 
-                {isUserEnrolled && (
+                          return (
+                            <SelectItem
+                              key={group.id}
+                              value={group.id}
+                              disabled={isFull}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <span>Group {groupIndex + 1}: {group.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {groupEmployees.length}/{group.capacity === undefined ? "∞" : group.capacity}
+                                  {isFull && " (Full)"}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {selectedGroupId && (
+                      <p className="text-xs text-muted-foreground">
+                        Selected group capacity: {
+                          (() => {
+                            const group = course.groups.find(g => g.id === selectedGroupId)
+                            if (!group) return "N/A"
+                            const groupEmployees = getEmployeesByGroup(parseInt(group.id))
+                            return `${groupEmployees.length}/${group.capacity === undefined ? "∞" : group.capacity}`
+                          })()
+                        }
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Enrollment Buttons */}
+                <div className="flex gap-2">
                   <Button
-                    onClick={handleUnenroll}
-                    variant="destructive"
-                    className="gap-2"
-                    disabled={isUnenrolling}
+                    onClick={handleRegister}
+                    className="flex-1 gap-2"
+                    disabled={
+                      isUserEnrolled ||
+                      course.status === "completed" ||
+                      isEnrolling ||
+                      isRegistrationDeadlinePassed ||
+                      (course.groups && course.groups.length > 1 && !selectedGroupId)
+                    }
+                    variant={isUserEnrolled ? "outline" : "default"}
                   >
-                    {isUnenrolling ? (
+                    {isEnrolling ? (
                       <>
-                        <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
-                        Unenrolling...
+                        <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></span>
+                        Enrolling...
                       </>
+                    ) : isUserEnrolled ? (
+                      "Registered"
+                    ) : course.status === "completed" ? (
+                      "Course Completed"
+                    ) : isRegistrationDeadlinePassed ? (
+                      "Registration Closed"
                     ) : (
-                      "Unenroll"
+                      "Enroll course"
                     )}
                   </Button>
-                )}
+
+                  {isUserEnrolled && !isRegistrationDeadlinePassed && (
+                    <Button
+                      onClick={handleUnenroll}
+                      variant="destructive"
+                      className="gap-2"
+                      disabled={isUnenrolling}
+                    >
+                      {isUnenrolling ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
+                          Unenrolling...
+                        </>
+                      ) : (
+                        "Unenroll"
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </CardHeader>
@@ -1073,21 +1245,383 @@ export function CourseDetail({
                 Sessions ({course.self_study_sessions?.length || course.sessions?.length || 0})
               </TabsTrigger>
             )}
-            {/* <TabsTrigger value="announcements">
-              <HugeiconsIcon
-                icon={Megaphone02Icon}
-                strokeWidth={1.5}
-                className="h-4 w-4"
-              />
-              Announcements ({announcements.length})
-            </TabsTrigger> */}
+            {/* === ADD GROUP CHANGE TABS === */}
+            {course.courseType === "trainer" && isLearner && isUserEnrolled && (
+              <TabsTrigger value="group-change">
+                <HugeiconsIcon icon={RefreshIcon} strokeWidth={1.5} className="h-4 w-4" />
+                Change Group
+              </TabsTrigger>
+            )}
+            {course.courseType === "trainer" && isAdmin && (
+              <TabsTrigger value="group-requests">
+                <HugeiconsIcon icon={UserGroupIcon} strokeWidth={1.5} className="h-4 w-4" />
+                Group Requests
+                {(() => {
+                  const pendingRequests = enrollments.filter(
+                    (e: any) => e.groupChangeStatus === 'PENDING'
+                  );
+                  return pendingRequests.length > 0 && (
+                    <Badge className="ml-1 bg-red-500 text-white text-[10px] px-1.5">
+                      {pendingRequests.length}
+                    </Badge>
+                  );
+                })()}
+              </TabsTrigger>
+            )}
           </TabsList>
+
+          {/* === LEARNER GROUP CHANGE TAB === */}
+          {course.courseType === "trainer" && isLearner && isUserEnrolled && (
+            <TabsContent value="group-change">
+              <Card>
+                <CardHeader className="bg-muted/30">
+                  <h4 className="text-lg font-semibold flex items-center gap-2">
+                    <HugeiconsIcon icon={RefreshIcon} strokeWidth={1.5} className="h-5 w-5" />
+                    Request Group Change
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Request to move to a different group. An admin will review your request.
+                  </p>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  {/* Current Group Info */}
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-lg font-semibold text-primary">
+                          {currentUserEnrollment?.courseGroupName || 'N/A'}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className={cn(
+                        getGroupChangeStatusColor(currentUserEnrollment?.groupChangeStatus || 'NONE')
+                      )}>
+                        {getGroupChangeStatusLabel(currentUserEnrollment?.groupChangeStatus || 'NONE')}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Group Change Request Form */}
+                  {currentUserEnrollment?.groupChangeStatus !== 'PENDING' ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Select New Group</Label>
+                        <Select
+                          value={selectedRequestGroupId}
+                          onValueChange={setSelectedRequestGroupId}
+                          disabled={isRequestingGroupChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Choose a group..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {course.groups?.map((group) => {
+                              const groupId = parseInt(group.id);
+                              const isCurrentGroup = groupId === currentUserEnrollment?.courseGroupId;
+
+
+                              return (
+                                <SelectItem
+                                  key={group.id}
+                                  value={group.id}
+                                  disabled={isCurrentGroup}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <span>
+                                      {group.name}
+                                      {isCurrentGroup && " (Current)"}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        {selectedRequestGroupId && (
+                          <p className="text-xs text-muted-foreground">
+                            You are requesting to move to: {
+                              course.groups?.find(g => g.id === selectedRequestGroupId)?.name
+                            }
+                          </p>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={handleRequestGroupChange}
+                        disabled={!selectedRequestGroupId || isRequestingGroupChange || isStoreRequesting}
+                        className="w-full gap-2"
+                      >
+                        {(isRequestingGroupChange || isStoreRequesting) ? (
+                          <>
+                            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                            Submitting Request...
+                          </>
+                        ) : (
+                          <>
+                            <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="h-4 w-4" />
+                            Submit Group Change Request
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-center">
+                      <HugeiconsIcon icon={AlertCircleIcon} strokeWidth={2} className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-yellow-700">Request Pending</p>
+                      <p className="text-xs text-yellow-600 mt-1">
+                        Your group change request is being reviewed by an admin.
+                        You will be notified when it's approved or rejected.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Requested Group: {currentUserEnrollment?.requestedCourseGroupName || 'N/A'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Request History/Status */}
+                  {currentUserEnrollment?.groupChangeStatus === 'APPROVED' && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+                      <HugeiconsIcon icon={CheckCircle} strokeWidth={2} className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-green-700">Request Approved!</p>
+                      <p className="text-xs text-green-600 mt-1">
+                        Your group change has been approved. You are now in: {currentUserEnrollment?.courseGroupName}
+                      </p>
+                    </div>
+                  )}
+
+                  {currentUserEnrollment?.groupChangeStatus === 'REJECTED' && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+                      <HugeiconsIcon icon={AlertCircleIcon} strokeWidth={2} className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-red-700">Request Rejected</p>
+                      <p className="text-xs text-red-600 mt-1">
+                        Your group change request was rejected. You can submit a new request.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* === ADMIN GROUP REQUESTS TAB === */}
+          {course.courseType === "trainer" && isAdmin && (
+            <TabsContent value="group-requests">
+              <Card>
+                <CardHeader className="bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-lg font-semibold flex items-center gap-2">
+                        <HugeiconsIcon icon={UserGroupIcon} strokeWidth={1.5} className="h-5 w-5" />
+                        Group Change Requests
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Review and manage group change requests from learners
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        await fetch_courseEnrollments(course.id);
+                      }}
+                      className="gap-2"
+                    >
+                      <HugeiconsIcon icon={RefreshIcon} strokeWidth={2} className="h-4 w-4" />
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {(() => {
+                    // Use enrollments from store directly
+                    const pendingRequests = enrollments.filter(
+                      (e: any) => e.groupChangeStatus === 'PENDING'
+                    );
+                    const approvedRequests = enrollments.filter(
+                      (e: any) => e.groupChangeStatus === 'APPROVED'
+                    );
+                    const rejectedRequests = enrollments.filter(
+                      (e: any) => e.groupChangeStatus === 'REJECTED'
+                    );
+
+                    if (pendingRequests.length === 0 && approvedRequests.length === 0 && rejectedRequests.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <HugeiconsIcon icon={UserGroupIcon} strokeWidth={1.5} className="h-12 w-12 text-muted-foreground/50 mx-auto" />
+                          <p className="mt-2 text-sm text-muted-foreground">No group change requests found</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-6">
+                        {/* Pending Requests */}
+                        {pendingRequests.length > 0 && (
+                          <div>
+                            <h5 className="text-sm font-medium text-yellow-700 mb-3 flex items-center gap-2">
+                              <Badge className="bg-yellow-500 text-white">Pending ({pendingRequests.length})</Badge>
+                            </h5>
+                            <div className="space-y-3">
+                              {pendingRequests.map((request: any) => {
+                                const isProcessing = processingGroupChangeId === request.id;
+                                return (
+                                  <div key={request.id} className="rounded-lg border border-yellow-200 bg-yellow-50/30 p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div className="flex items-start gap-3 flex-1">
+                                        <Avatar className="h-10 w-10 shrink-0">
+                                          <AvatarImage src={request.pfImage || ""} />
+                                          <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                            {getInitials(request.employeeName)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-sm font-medium">{request.employeeName}</p>
+                                          <p className="text-xs text-muted-foreground">{request.email}</p>
+                                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
+                                            <span className="text-muted-foreground">Current: <span className="font-medium">{request.courseGroupName}</span></span>
+                                            <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={1.5} className="h-3 w-3 text-muted-foreground" />
+                                            <span className="text-muted-foreground">Requested: <span className="font-medium text-yellow-700">{request.requestedCourseGroupName || 'Unknown'}</span></span>
+                                          </div>
+                                          <p className="text-xs text-muted-foreground mt-1">
+                                            Department: {request.departmentName} • Team: {request.teamName}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <Button
+                                          size="sm"
+                                          className="h-8 gap-1 bg-green-600 hover:bg-green-700 text-white"
+                                          onClick={() => handleApproveGroupChange(request.id)}
+                                          disabled={isProcessing || isApprovingGroupChange}
+                                        >
+                                          {isProcessing && isApprovingGroupChange ? (
+                                            <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-current" />
+                                          ) : (
+                                            <>
+                                              <HugeiconsIcon icon={CheckCircle} strokeWidth={2} className="h-3 w-3" />
+                                              Approve
+                                            </>
+                                          )}
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          className="h-8 gap-1"
+                                          onClick={() => handleRejectGroupChange(request.id)}
+                                          disabled={isProcessing || isRejectingGroupChange}
+                                        >
+                                          {isProcessing && isRejectingGroupChange ? (
+                                            <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-current" />
+                                          ) : (
+                                            <>
+                                              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="h-3 w-3" />
+                                              Reject
+                                            </>
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Approved Requests */}
+                        {approvedRequests.length > 0 && (
+                          <div>
+                            <h5 className="text-sm font-medium text-green-700 mb-3 flex items-center gap-2">
+                              <Badge className="bg-green-500 text-white">Approved ({approvedRequests.length})</Badge>
+                            </h5>
+                            <div className="space-y-2">
+                              {approvedRequests.map((request: any) => (
+                                <div key={request.id} className="rounded-lg border border-green-200 bg-green-50/30 p-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <Avatar className="h-8 w-8 shrink-0">
+                                        <AvatarImage src={request.pfImage || ""} />
+                                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                                          {getInitials(request.employeeName)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <p className="text-sm font-medium">{request.employeeName}</p>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                          <span>Old: {request.courseGroupName}</span>
+                                          <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={1.5} className="h-3 w-3" />
+                                          <span className="text-green-700 font-medium">New: {request.requestedCourseGroupName || request.courseGroupName}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <Badge className="bg-green-500 text-white text-[10px]">
+                                      Approved
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Rejected Requests */}
+                        {rejectedRequests.length > 0 && (
+                          <div>
+                            <h5 className="text-sm font-medium text-red-700 mb-3 flex items-center gap-2">
+                              <Badge className="bg-red-500 text-white">Rejected ({rejectedRequests.length})</Badge>
+                            </h5>
+                            <div className="space-y-2">
+                              {rejectedRequests.map((request: any) => (
+                                <div key={request.id} className="rounded-lg border border-red-200 bg-red-50/30 p-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <Avatar className="h-8 w-8 shrink-0">
+                                        <AvatarImage src={request.pfImage || ""} />
+                                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                                          {getInitials(request.employeeName)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <p className="text-sm font-medium">{request.employeeName}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          Requested: {request.requestedCourseGroupName || 'Unknown'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Badge className="bg-red-500 text-white text-[10px]">
+                                      Rejected
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* Information Tab */}
           <TabsContent value="information">
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-sm">
+                    <HugeiconsIcon
+                      icon={Calendar03Icon}
+                      strokeWidth={1.5}
+                      className="h-5 w-5 shrink-0 text-muted-foreground"
+                    />
+                    <div>
+                      <p className="font-medium">Trainer Name</p>
+                      <p className="text-muted-foreground">
+                        {course.trainerName}
+                      </p>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-3 text-sm">
                     <HugeiconsIcon
                       icon={Calendar03Icon}
@@ -1230,7 +1764,6 @@ export function CourseDetail({
                             </div>
                           )}
 
-
                           {course.totalGrammar && (
                             <div className="flex items-center gap-3 text-sm">
                               <HugeiconsIcon
@@ -1293,376 +1826,397 @@ export function CourseDetail({
             course.groups.length > 0 && (
               <TabsContent value="groups">
                 <div className="space-y-6">
-                  {course.groups.map((group, index) => {
-                    const groupEmployees = getEmployeesByGroup(parseInt(group.id))
-                    const uniqueStatuses = getUniqueStatuses(groupEmployees)
+                  {course.groups
+                    // Filter groups based on user role
+                    .filter((group) => {
+                      // Admin: show all groups
+                      if (isAdmin) return true;
+                      // Learner: only show their enrolled group
+                      if (isLearner && currentUserEnrollment) {
+                        return parseInt(group.id) === currentUserEnrollment.courseGroupId;
+                      }
+                      // Learner not enrolled: show no groups
+                      return false;
+                    })
+                    .map((group, index) => {
+                      const groupEmployees = getEmployeesByGroup(parseInt(group.id))
+                      const uniqueStatuses = getUniqueStatuses(groupEmployees)
 
-                    return (
-                      <Card key={index} className="overflow-hidden">
-                        <CardHeader className="bg-muted/30 pb-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="text-lg font-semibold">Group {index + 1}: {group.name}</h4>
-                              <div className="mt-1 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                                <span>
-                                  <span className="font-medium">Capacity:</span>{" "}
-                                  {group.capacity === "unlimited" ? "Unlimited" : group.capacity}
-                                </span>
-                                <span>
-                                  <span className="font-medium">Enrolled:</span>{" "}
-                                  {groupEmployees.length}
-                                </span>
-                                <span>
-                                  <span className="font-medium">Sessions:</span>{" "}
-                                  {group.sessions.length}
-                                </span>
-                                <span>
-                                  <span className="font-medium">Start:</span>{" "}
-                                  {group.startDate ? format(group.startDate, "MMM d, yyyy") : "TBD"}
-                                </span>
-                                {group.endDate && (
+                      return (
+                        <Card key={index} className="overflow-hidden">
+                          <CardHeader className="bg-muted/30 pb-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="text-lg font-semibold">{group.name}</h4>
+                                <div className="mt-1 flex flex-wrap gap-4 text-sm text-muted-foreground">
                                   <span>
-                                    <span className="font-medium">End:</span>{" "}
-                                    {format(group.endDate, "MMM d, yyyy")}
+                                    <span className="font-medium">Capacity:</span>{" "}
+                                    {group.capacity === undefined ? "Unlimited" : group.capacity}
                                   </span>
-                                )}
+                                  <span>
+                                    <span className="font-medium">Enrolled:</span>{" "}
+                                    {groupEmployees.length}
+                                  </span>
+                                  <span>
+                                    <span className="font-medium">Sessions:</span>{" "}
+                                    {group.sessions.length}
+                                  </span>
+                                  <span>
+                                    <span className="font-medium">Start:</span>{" "}
+                                    {group.startDate ? format(group.startDate, "MMM d, yyyy") : "TBD"}
+                                  </span>
+                                  {group.endDate && (
+                                    <span>
+                                      <span className="font-medium">End:</span>{" "}
+                                      {format(group.endDate, "MMM d, yyyy")}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
+                              <Badge variant={group.status === "ACTIVE" ? "default" : "secondary"}>
+                                {group.status || "Active"}
+                              </Badge>
                             </div>
-                            <Badge variant={group.status === "ACTIVE" ? "default" : "secondary"}>
-                              {group.status || "Active"}
-                            </Badge>
-                          </div>
-                        </CardHeader>
+                          </CardHeader>
 
-                        <CardContent className="pt-4">
-                          {/* Group Sessions with Attendance */}
-                          <div className="mb-4">
-                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                              <HugeiconsIcon
-                                icon={Calendar05Icon}
-                                strokeWidth={1.5}
-                                className="h-4 w-4"
-                              />
-                              Sessions & Attendance ({group.sessions.length})
-                            </h5>
+                          <CardContent className="pt-4">
+                            {/* Group Sessions with Attendance */}
+                            <div className="mb-4">
+                              <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                <HugeiconsIcon
+                                  icon={Calendar05Icon}
+                                  strokeWidth={1.5}
+                                  className="h-4 w-4"
+                                />
+                                Sessions & Attendance ({group.sessions.length})
+                              </h5>
 
-                            {/* Show attendance only for enrolled users or admins */}
-                            {(userRole === "learner" || isAdmin) && (
-                              <div className="space-y-4">
-                                {group.sessions.map((session, idx) => {
-                                  const sessionId = session.id
-                                  const sessionDate = session.date ? new Date(session.date) : null
-                                  const currentDate = TESTING_DATE || new Date()
+                              {/* Show attendance only for enrolled users or admins */}
+                              {(userRole === "learner" || isAdmin) && (
+                                <div className="space-y-4">
+                                  {group.sessions.map((session, idx) => {
+                                    const sessionId = session.id
+                                    const sessionDate = session.date ? new Date(session.date) : null
+                                    const currentDate = TESTING_DATE || new Date()
 
-                                  // Determine session status based on date
-                                  const isFutureSession = sessionDate ? sessionDate.getTime() > currentDate.getTime() : false
-                                  const isToday = sessionDate ? sessionDate.toDateString() === currentDate.toDateString() : false
-                                  const isPast = sessionDate ? sessionDate.getTime() < currentDate.getTime() && !isToday : false
-                                  const isOverdue = isPast && !isToday
+                                    // Determine session status based on date
+                                    const isFutureSession = sessionDate ? sessionDate.getTime() > currentDate.getTime() : false
+                                    const isToday = sessionDate ? sessionDate.toDateString() === currentDate.toDateString() : false
+                                    const isPast = sessionDate ? sessionDate.getTime() < currentDate.getTime() && !isToday : false
+                                    const isOverdue = isPast && !isToday
 
-                                  // Determine if attendance can be edited
-                                  const canEditAttendance = isAdmin || (userRole === "learner" && (isToday || isPast))
+                                    // Determine if attendance can be edited
+                                    const canEditAttendance = isAdmin || (userRole === "learner" && (isToday || isPast))
 
-                                  // For learners: show all sessions but with different states
-                                  const isSessionLocked = userRole === "learner" && (isFutureSession || isOverdue)
+                                    // For learners: show all sessions but with different states
+                                    const isSessionLocked = userRole === "learner" && (isFutureSession || isOverdue)
 
-                                  return (
-                                    <Card key={idx} className={cn(
-                                      "bg-muted/5 border-muted",
-                                      isFutureSession && userRole === "learner" && "opacity-70",
-                                      isOverdue && userRole === "learner" && "border-red-200 bg-red-50/5",
-                                      isOverdue && isAdmin && "border-orange-200 bg-orange-50/5",
-                                      isFutureSession && isAdmin && "border-blue-200 bg-blue-50/5"
-                                    )}>
-                                      <div className="p-3">
-                                        {/* Session Header */}
-                                        <div className="flex items-center justify-between mb-3">
-                                          <div className="flex items-center gap-4">
-                                            <span className="font-medium text-sm">Session {session.sessionNo || idx + 1}</span>
-                                            <span className="text-xs text-muted-foreground">
-                                              {sessionDate ? format(sessionDate, "MMM d, yyyy") : "TBD"}
-                                            </span>
-                                            {session.startTime && session.endTime && (
+                                    return (
+                                      <Card key={idx} className={cn(
+                                        "bg-muted/5 border-muted",
+                                        isFutureSession && userRole === "learner" && "opacity-70",
+                                        isOverdue && userRole === "learner" && "border-red-200 bg-red-50/5",
+                                        isOverdue && isAdmin && "border-orange-200 bg-orange-50/5",
+                                        isFutureSession && isAdmin && "border-blue-200 bg-blue-50/5"
+                                      )}>
+                                        <div className="p-3">
+                                          {/* Session Header */}
+                                          <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-4">
+                                              <span className="font-medium text-sm">Session {session.sessionNo || idx + 1}</span>
                                               <span className="text-xs text-muted-foreground">
-                                                {session.startTime} - {session.endTime}
+                                                {sessionDate ? format(sessionDate, "MMM d, yyyy") : "TBD"}
                                               </span>
-                                            )}
-                                            <Badge variant="outline" className="text-[10px]">
-                                              {session.status || ""}
-                                            </Badge>
-                                            {isFutureSession && (
-                                              <Badge className="text-[10px] bg-blue-500 text-white">
-                                                Upcoming
+                                              {session.startTime && session.endTime && (
+                                                <span className="text-xs text-muted-foreground">
+                                                  {session.startTime} - {session.endTime}
+                                                </span>
+                                              )}
+                                              <Badge variant="outline" className="text-[10px]">
+                                                {session.status || ""}
                                               </Badge>
-                                            )}
-                                            {isOverdue && (
-                                              <Badge className="text-[10px] bg-red-500 text-white">
-                                                Overdue
-                                              </Badge>
-                                            )}
-                                            {isToday && (
-                                              <Badge className="text-[10px] bg-green-500 text-white">
-                                                Today
-                                              </Badge>
+                                              {isFutureSession && (
+                                                <Badge className="text-[10px] bg-blue-500 text-white">
+                                                  Upcoming
+                                                </Badge>
+                                              )}
+                                              {isOverdue && (
+                                                <Badge className="text-[10px] bg-red-500 text-white">
+                                                  Overdue
+                                                </Badge>
+                                              )}
+                                              {isToday && (
+                                                <Badge className="text-[10px] bg-green-500 text-white">
+                                                  Today
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            {isSessionLocked && userRole === "learner" && (
+                                              <div className="text-xs flex items-center gap-1">
+                                                {isFutureSession ? (
+                                                  <span className="text-blue-500 flex items-center gap-1">
+                                                    <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-3 w-3" />
+                                                    Coming Soon
+                                                  </span>
+                                                ) : isOverdue ? (
+                                                  <span className="text-red-500 flex items-center gap-1">
+                                                    <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-3 w-3" />
+                                                    Locked
+                                                  </span>
+                                                ) : null}
+                                              </div>
                                             )}
                                           </div>
-                                          {isSessionLocked && userRole === "learner" && (
-                                            <div className="text-xs flex items-center gap-1">
-                                              {isFutureSession ? (
-                                                <span className="text-blue-500 flex items-center gap-1">
-                                                  <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-3 w-3" />
-                                                  Coming Soon
-                                                </span>
-                                              ) : isOverdue ? (
-                                                <span className="text-red-500 flex items-center gap-1">
-                                                  <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-3 w-3" />
-                                                  Locked
-                                                </span>
-                                              ) : null}
-                                            </div>
-                                          )}
-                                        </div>
 
-                                        {/* Attendance Table - Show for all sessions */}
-                                        <div className="overflow-x-auto">
-                                          {enrolledEmployees.length > 0 ? (
-                                            <table className="w-full text-sm">
-                                              <thead>
-                                                <tr className="border-b">
-                                                  <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Employee</th>
-                                                  <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Department</th>
-                                                  <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Status</th>
-                                                  <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Action</th>
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                {/* Show ALL enrolled employees in the group */}
-                                                {groupEmployees
-                                                  .filter(employee => {
-                                                    // For learners: show ONLY the current user
-                                                    if (userRole === "learner") {
-                                                      return employee.employeeId === currentUserId;
-                                                    }
-                                                    // For admins: show ALL employees
-                                                    return true;
-                                                  })
-                                                  .map((employee) => {
-                                                    // Try to find attendance for this employee for this session
-                                                    const attendance = getAttendanceForSession(
-                                                      parseInt(sessionId),
-                                                      employee.id
-                                                    )
-                                                    const key = `${sessionId}-${employee.id}`
-                                                    const currentStatus = attendanceStatuses[key] || attendance?.attendanceStatus || ''
-                                                    const isSaving = savingAttendance[key] || false
+                                          {/* Attendance Table - Show for all sessions */}
+                                          <div className="overflow-x-auto">
+                                            {groupEmployees.length > 0 ? (
+                                              <table className="w-full text-sm">
+                                                <thead>
+                                                  <tr className="border-b">
+                                                    <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Employee</th>
+                                                    <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Department</th>
+                                                    <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Status</th>
+                                                    <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Action</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {/* Show ALL enrolled employees in the group (excluding CANCELLED) */}
+                                                  {groupEmployees
+                                                    .filter(employee => {
+                                                      // For learners: show ONLY the current user
+                                                      if (userRole === "learner") {
+                                                        return employee.employeeId === currentUserId;
+                                                      }
+                                                      // For admins: show ALL employees (excluding CANCELLED)
+                                                      return true;
+                                                    })
+                                                    .map((employee) => {
+                                                      // Try to find attendance for this employee for this session
+                                                      const attendance = getAttendanceForSession(
+                                                        parseInt(sessionId),
+                                                        employee.id
+                                                      )
+                                                      const key = `${sessionId}-${employee.id}`
+                                                      const currentStatus = attendanceStatuses[key] || attendance?.attendanceStatus || ''
+                                                      const isSaving = savingAttendance[key] || false
 
-                                                    // Determine if attendance can be edited
-                                                    const canEdit = isAdmin || (userRole === "learner" && canEditAttendance && employee.employeeId === currentUserId)
+                                                      // Determine if attendance can be edited
+                                                      const canEdit = isAdmin || (userRole === "learner" && canEditAttendance && employee.employeeId === currentUserId)
 
-                                                    return (
-                                                      <tr key={employee.id} className="border-b border-muted/50">
-                                                        <td className="py-2 px-2">
-                                                          <div className="flex items-center gap-2">
-                                                            <Avatar className="h-6 w-6">
-                                                              <AvatarImage src={employee.pfImage || ""} />
-                                                              <AvatarFallback className="text-[10px]">
-                                                                {getInitials(employee.employeeName)}
-                                                              </AvatarFallback>
-                                                            </Avatar>
-                                                            <span className="text-xs font-medium">
-                                                              {truncateText(employee.employeeName, 20)}
-                                                            </span>
-                                                          </div>
-                                                        </td>
-                                                        <td className="py-2 px-2 text-xs text-muted-foreground">
-                                                          {truncateText(employee.departmentName, 20)}
-                                                        </td>
-                                                        <td className="py-2 px-2">
-                                                          {attendance && attendance.attendanceStatus ? (
-                                                            <Badge className={cn(
-                                                              "text-[10px]",
-                                                              getAttendanceStatusColor(attendance.attendanceStatus)
-                                                            )}>
-                                                              <HugeiconsIcon
-                                                                icon={getAttendanceStatusIcon(attendance.attendanceStatus)}
-                                                                strokeWidth={2}
-                                                                className="h-3 w-3 mr-1"
-                                                              />
-                                                              {attendance.attendanceStatus}
-                                                            </Badge>
-                                                          ) : (
-                                                            <span className="text-xs text-muted-foreground">
-                                                              {isFutureSession && userRole === "learner" ? "Pending" : "Not recorded"}
-                                                            </span>
-                                                          )}
-                                                        </td>
-                                                        <td className="py-2 px-2">
-                                                          {canEdit ? (
+                                                      return (
+                                                        <tr key={employee.id} className="border-b border-muted/50">
+                                                          <td className="py-2 px-2">
                                                             <div className="flex items-center gap-2">
-                                                              <Select
-                                                                value={currentStatus}
-                                                                onValueChange={(value) =>
-                                                                  handleAttendanceStatusChange(sessionId, employee.id.toString(), value)
-                                                                }
-                                                                disabled={isSaving || isSessionLocked}
-                                                              >
-                                                                <SelectTrigger className="h-7 w-[130px] text-xs">
-                                                                  <SelectValue placeholder="Select status" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                  <SelectItem value="PRESENT">✅ Present</SelectItem>
-                                                                  <SelectItem value="ABSENT">❌ Absent</SelectItem>
-                                                                  <SelectItem value="LATE">⏰ Late</SelectItem>
-                                                                  <SelectItem value="EXCUSED">📝 Excused</SelectItem>
-                                                                </SelectContent>
-                                                              </Select>
-                                                              <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-7 px-2 text-xs"
-                                                                onClick={() => handleSaveAttendance(
-                                                                  parseInt(sessionId),
-                                                                  employee.id,
-                                                                  parseInt(group.id)
-                                                                )}
-                                                                disabled={!currentStatus || isSaving || isSessionLocked}
-                                                              >
-                                                                {isSaving ? (
-                                                                  <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></span>
-                                                                ) : (
-                                                                  <HugeiconsIcon icon={SaveIcon} strokeWidth={2} className="h-3 w-3" />
-                                                                )}
-                                                              </Button>
+                                                              <Avatar className="h-6 w-6">
+                                                                <AvatarImage src={employee.pfImage || ""} />
+                                                                <AvatarFallback className="text-[10px]">
+                                                                  {getInitials(employee.employeeName)}
+                                                                </AvatarFallback>
+                                                              </Avatar>
+                                                              <span className="text-xs font-medium">
+                                                                {truncateText(employee.employeeName, 20)}
+                                                              </span>
                                                             </div>
-                                                          ) : (
-                                                            <span className="text-xs text-muted-foreground">
-                                                              {isFutureSession ? "Coming Soon" : isOverdue ? "Locked" : "No access"}
-                                                            </span>
-                                                          )}
-                                                        </td>
-                                                      </tr>
-                                                    )
-                                                  })}
-                                              </tbody>
-                                            </table>
-                                          ) : (
-                                            <div className="text-center py-6 text-sm text-muted-foreground">
-                                              No employees enrolled in this group yet.
+                                                          </td>
+                                                          <td className="py-2 px-2 text-xs text-muted-foreground">
+                                                            {truncateText(employee.departmentName, 20)}
+                                                          </td>
+                                                          <td className="py-2 px-2">
+                                                            {attendance && attendance.attendanceStatus ? (
+                                                              <Badge className={cn(
+                                                                "text-[10px]",
+                                                                getAttendanceStatusColor(attendance.attendanceStatus)
+                                                              )}>
+                                                                <HugeiconsIcon
+                                                                  icon={getAttendanceStatusIcon(attendance.attendanceStatus)}
+                                                                  strokeWidth={2}
+                                                                  className="h-3 w-3 mr-1"
+                                                                />
+                                                                {attendance.attendanceStatus}
+                                                              </Badge>
+                                                            ) : (
+                                                              <span className="text-xs text-muted-foreground">
+                                                                {isFutureSession && userRole === "learner" ? "Pending" : "Not recorded"}
+                                                              </span>
+                                                            )}
+                                                          </td>
+                                                          <td className="py-2 px-2">
+                                                            {canEdit ? (
+                                                              <div className="flex items-center gap-2">
+                                                                <Select
+                                                                  value={currentStatus}
+                                                                  onValueChange={(value) =>
+                                                                    handleAttendanceStatusChange(sessionId, employee.id.toString(), value)
+                                                                  }
+                                                                  disabled={isSaving || isSessionLocked}
+                                                                >
+                                                                  <SelectTrigger className="h-7 w-[130px] text-xs">
+                                                                    <SelectValue placeholder="Select status" />
+                                                                  </SelectTrigger>
+                                                                  <SelectContent>
+                                                                    <SelectItem value="PRESENT">✅ Present</SelectItem>
+                                                                    <SelectItem value="ABSENT">❌ Absent</SelectItem>
+                                                                    <SelectItem value="LATE">⏰ Late</SelectItem>
+                                                                    <SelectItem value="EXCUSED">📝 Excused</SelectItem>
+                                                                  </SelectContent>
+                                                                </Select>
+                                                                <Button
+                                                                  size="sm"
+                                                                  variant="outline"
+                                                                  className="h-7 px-2 text-xs"
+                                                                  onClick={() => handleSaveAttendance(
+                                                                    parseInt(sessionId),
+                                                                    employee.id,
+                                                                    parseInt(group.id)
+                                                                  )}
+                                                                  disabled={!currentStatus || isSaving || isSessionLocked}
+                                                                >
+                                                                  {isSaving ? (
+                                                                    <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></span>
+                                                                  ) : (
+                                                                    <HugeiconsIcon icon={SaveIcon} strokeWidth={2} className="h-3 w-3" />
+                                                                  )}
+                                                                </Button>
+                                                              </div>
+                                                            ) : (
+                                                              <span className="text-xs text-muted-foreground">
+                                                                {isFutureSession ? "Coming Soon" : isOverdue ? "Locked" : "No access"}
+                                                              </span>
+                                                            )}
+                                                          </td>
+                                                        </tr>
+                                                      )
+                                                    })}
+                                                </tbody>
+                                              </table>
+                                            ) : (
+                                              <div className="text-center py-6 text-sm text-muted-foreground">
+                                                No employees enrolled in this group yet.
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Status Messages based on session state */}
+                                          {isFutureSession && userRole === "learner" && (
+                                            <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                              <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                                                <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
+                                                📅 This session is scheduled for {sessionDate ? format(sessionDate, "MMM d, yyyy") : "TBD"}.
+                                                Attendance will be available on the session date.
+                                              </p>
+                                            </div>
+                                          )}
+
+                                          {isOverdue && userRole === "learner" && (
+                                            <div className="mt-3 p-2 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-800">
+                                              <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+                                                <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-4 w-4" />
+                                                ⚠️ This session is overdue. Attendance can be viewed but not modified.
+                                              </p>
+                                            </div>
+                                          )}
+
+                                          {isOverdue && isAdmin && (
+                                            <div className="mt-3 p-2 bg-orange-50 dark:bg-orange-950/20 rounded border border-orange-200 dark:border-orange-800">
+                                              <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-2">
+                                                <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-4 w-4" />
+                                                ⚠️ This session is overdue. As an admin, you can still modify attendance records.
+                                              </p>
+                                            </div>
+                                          )}
+
+                                          {isFutureSession && isAdmin && (
+                                            <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                              <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                                                <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
+                                                📅 This is a future session. As an admin, you can pre-record attendance.
+                                              </p>
+                                            </div>
+                                          )}
+
+                                          {isToday && userRole === "learner" && (
+                                            <div className="mt-3 p-2 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-800">
+                                              <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-2">
+                                                <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
+                                                ✅ Today's session - Attendance can be recorded.
+                                              </p>
                                             </div>
                                           )}
                                         </div>
+                                      </Card>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
 
-                                        {/* Status Messages based on session state */}
-                                        {isFutureSession && userRole === "learner" && (
-                                          <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
-                                            <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                                              <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
-                                              📅 This session is scheduled for {sessionDate ? format(sessionDate, "MMM d, yyyy") : "TBD"}.
-                                              Attendance will be available on the session date.
-                                            </p>
-                                          </div>
-                                        )}
+                            {/* Enrolled Employees for this Group - with Status Tabs */}
+                            {groupEmployees.length > 0 && (
+                              <div>
+                                <div className="flex items-center justify-between mb-3">
+                                  <h5 className="text-sm font-medium flex items-center gap-2">
+                                    <HugeiconsIcon
+                                      icon={User02Icon}
+                                      strokeWidth={1.5}
+                                      className="h-4 w-4"
+                                    />
+                                    Enrolled Employees ({groupEmployees.length})
+                                  </h5>
+                                </div>
 
-                                        {isOverdue && userRole === "learner" && (
-                                          <div className="mt-3 p-2 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-800">
-                                            <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
-                                              <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-4 w-4" />
-                                              ⚠️ This session is overdue. Attendance can be viewed but not modified.
-                                            </p>
-                                          </div>
-                                        )}
+                                {/* Status Tabs */}
+                                <Tabs defaultValue={uniqueStatuses[0]?.toLowerCase() || "all"} className="mb-4">
+                                  <TabsList className="mb-3">
+                                    {uniqueStatuses.map((status) => (
+                                      <TabsTrigger key={status} value={status.toLowerCase()} className="text-xs">
+                                        {capitalizeFirstLetter(status)} ({getEmployeesByStatus(groupEmployees, status).length})
+                                      </TabsTrigger>
+                                    ))}
+                                  </TabsList>
 
-                                        {isOverdue && isAdmin && (
-                                          <div className="mt-3 p-2 bg-orange-50 dark:bg-orange-950/20 rounded border border-orange-200 dark:border-orange-800">
-                                            <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-2">
-                                              <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} className="h-4 w-4" />
-                                              ⚠️ This session is overdue. As an admin, you can still modify attendance records.
-                                            </p>
+                                  {/* Status filtered employees */}
+                                  {uniqueStatuses.map((status) => (
+                                    <TabsContent key={status} value={status.toLowerCase()}>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {getEmployeesByStatus(groupEmployees, status).map((employee) => (
+                                          <div key={employee.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
+                                            <Avatar className="h-10 w-10 shrink-0">
+                                              <AvatarImage src={employee.pfImage || ""} />
+                                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                                {getInitials(employee.employeeName)}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0 flex-1">
+                                              <p className="text-sm font-medium truncate" title={employee.employeeName}>
+                                                {employee.employeeName}
+                                              </p>
+                                              <p className="text-xs text-muted-foreground truncate" title={`${employee.departmentName} • ${employee.teamName}`}>
+                                                {truncateText(employee.departmentName, 25)}
+                                                {employee.teamName && ` • ${truncateText(employee.teamName, 20)}`}
+                                              </p>
+                                            </div>
                                           </div>
-                                        )}
-
-                                        {isFutureSession && isAdmin && (
-                                          <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
-                                            <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                                              <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
-                                              📅 This is a future session. As an admin, you can pre-record attendance.
-                                            </p>
-                                          </div>
-                                        )}
-
-                                        {isToday && userRole === "learner" && (
-                                          <div className="mt-3 p-2 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-800">
-                                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-2">
-                                              <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-4 w-4" />
-                                              ✅ Today's session - Attendance can be recorded.
-                                            </p>
-                                          </div>
-                                        )}
+                                        ))}
                                       </div>
-                                    </Card>
-                                  )
-                                })}
+                                    </TabsContent>
+                                  ))}
+                                </Tabs>
                               </div>
                             )}
-                          </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
 
-                          {/* Enrolled Employees for this Group - with Status Tabs */}
-                          {groupEmployees.length > 0 && (
-                            <div>
-                              <div className="flex items-center justify-between mb-3">
-                                <h5 className="text-sm font-medium flex items-center gap-2">
-                                  <HugeiconsIcon
-                                    icon={User02Icon}
-                                    strokeWidth={1.5}
-                                    className="h-4 w-4"
-                                  />
-                                  Enrolled Employees ({groupEmployees.length})
-                                </h5>
-                              </div>
-
-                              {/* Status Tabs */}
-                              <Tabs defaultValue={uniqueStatuses[0]?.toLowerCase() || "all"} className="mb-4">
-                                <TabsList className="mb-3">
-                                  {uniqueStatuses.map((status) => (
-                                    <TabsTrigger key={status} value={status.toLowerCase()} className="text-xs">
-                                      {capitalizeFirstLetter(status)} ({getEmployeesByStatus(groupEmployees, status).length})
-                                    </TabsTrigger>
-                                  ))}
-                                </TabsList>
-
-                                {/* Status filtered employees */}
-                                {uniqueStatuses.map((status) => (
-                                  <TabsContent key={status} value={status.toLowerCase()}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                      {getEmployeesByStatus(groupEmployees, status).map((employee) => (
-                                        <div key={employee.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
-                                          <Avatar className="h-10 w-10 shrink-0">
-                                            <AvatarImage src={employee.pfImage || ""} />
-                                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                                              {getInitials(employee.employeeName)}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-medium truncate" title={employee.employeeName}>
-                                              {employee.employeeName}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground truncate" title={`${employee.departmentName} • ${employee.teamName}`}>
-                                              {truncateText(employee.departmentName, 25)}
-                                              {employee.teamName && ` • ${truncateText(employee.teamName, 20)}`}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </TabsContent>
-                                ))}
-                              </Tabs>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
+                  {/* Show message if learner is not enrolled in any group */}
+                  {isLearner && !currentUserEnrollment && (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground">
+                        You are not enrolled in any group for this course.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             )}
@@ -1674,29 +2228,9 @@ export function CourseDetail({
                 <h3 className="text-lg font-semibold">Sessions</h3>
                 <div className="flex flex-col gap-3">
                   {(() => {
-                    // In the sessions list map function
                     const sessionsList = course.self_study_sessions?.length > 0
                       ? course.self_study_sessions
                       : course.sessions || []
-
-                    // Debug: Log all sessions with their actual date
-                    console.log('📋 All Sessions:', sessionsList.map((s, i) => {
-                      const progress = savedProgress[s.id?.toString()]
-                      const sessionDate = progress?.session_deadline ? new Date(progress.session_deadline) : s.date
-                      return {
-                        index: i,
-                        id: s.id,
-                        date: sessionDate,
-                        dateType: typeof sessionDate,
-                        status: getSessionStatus(sessionDate),
-                        hasProgress: !!progress
-                      }
-                    }))
-
-                    console.log('🎯 First Future Session Index:', firstFutureSessionIndex)
-
-
-
 
                     return sessionsList.map((session, index) => {
                       const isJLPT = isJLPTType(course.selfStudyType as any)
@@ -1711,19 +2245,12 @@ export function CourseDetail({
                       const isToday = sessionStatus === 'today'
                       const isPastOrToday = sessionStatus === 'overdue' || sessionStatus === 'today'
 
-                      // ✅ Session is editable if:
-                      // 1. It's TODAY, OR
-                      // 2. It's the FIRST future session
                       const isEditable = isJLPT && isUserEnrolled && !isCompleted && userRole === "learner" &&
                         (sessionStatus === 'today' || (sessionStatus === 'future' && index === firstFutureSessionIndex));
 
-                      // ✅ Session is locked if:
-                      // 1. It's OVERDUE, OR
-                      // 2. It's FUTURE but NOT the first future session
                       const isLocked = isJLPT && isUserEnrolled && !isCompleted && userRole === "learner" &&
                         (sessionStatus === 'overdue' || (sessionStatus === 'future' && index !== firstFutureSessionIndex));
 
-                      // Calculate overall progress percentage
                       const overallProgress = hasProgress ? Math.round(
                         ((progress?.kanji_progress_percent || 0) +
                           (progress?.vocabulary_progress_percent || 0) +
@@ -1732,7 +2259,6 @@ export function CourseDetail({
                           (progress?.listening_progress_percent || 0)) / 5
                       ) : 0
 
-                      // Determine session status display
                       let statusBadge = null
                       if (isCompleted) {
                         statusBadge = (
@@ -1777,7 +2303,6 @@ export function CourseDetail({
                           )}
                         >
                           <div className="flex flex-col">
-                            {/* Header - Session Info */}
                             <div className="flex-1 p-4 bg-muted/10 flex items-center justify-between">
                               <div className="flex items-center gap-4">
                                 <span className="font-semibold text-sm">Session {index + 1}</span>
@@ -1815,7 +2340,6 @@ export function CourseDetail({
                               </div>
                             </div>
 
-                            {/* Static Totals Display - Target from backend */}
                             {isJLPT && (
                               <div className="p-4 bg-muted/5">
                                 <p className="text-xs text-muted-foreground mb-2">🎯 Session Targets:</p>
@@ -1844,7 +2368,6 @@ export function CourseDetail({
                               </div>
                             )}
 
-                            {/* Progress Display - Shows for users with progress */}
                             {isJLPT && isUserEnrolled && hasProgress && userRole === "learner" && (
                               <div className="p-4 bg-muted/10">
                                 <div className="flex items-center justify-between mb-3">
@@ -1863,9 +2386,7 @@ export function CourseDetail({
                                   </div>
                                 </div>
 
-                                {/* Progress Bars with Percentages */}
                                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
-                                  {/* Kanji Progress */}
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-xs">
                                       <span className="text-muted-foreground">Kanji</span>
@@ -1886,7 +2407,6 @@ export function CourseDetail({
                                     </p>
                                   </div>
 
-                                  {/* Vocabulary Progress */}
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-xs">
                                       <span className="text-muted-foreground">Vocab</span>
@@ -1907,7 +2427,6 @@ export function CourseDetail({
                                     </p>
                                   </div>
 
-                                  {/* Grammar Progress */}
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-xs">
                                       <span className="text-muted-foreground">Grammar</span>
@@ -1928,7 +2447,6 @@ export function CourseDetail({
                                     </p>
                                   </div>
 
-                                  {/* Reading Progress */}
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-xs">
                                       <span className="text-muted-foreground">Reading</span>
@@ -1949,7 +2467,6 @@ export function CourseDetail({
                                     </p>
                                   </div>
 
-                                  {/* Listening Progress */}
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-xs">
                                       <span className="text-muted-foreground">Listening</span>
@@ -1971,7 +2488,6 @@ export function CourseDetail({
                                   </div>
                                 </div>
 
-                                {/* Overall Progress */}
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-2 mt-1">
                                   <span>
                                     Overall Progress:
@@ -1988,7 +2504,6 @@ export function CourseDetail({
                               </div>
                             )}
 
-                            {/* ✅ Progress Input - Shows for TODAY sessions and FIRST future session */}
                             {isEditable && (
                               <div className="p-4 bg-muted/10">
                                 <p className="text-xs text-muted-foreground mb-2">
@@ -2098,7 +2613,6 @@ export function CourseDetail({
                               </div>
                             )}
 
-                            {/* ✅ Locked message for overdue or future sessions (except first future) */}
                             {isLocked && (
                               <div className="p-4 bg-red-50 dark:bg-red-950/20 border-t border-red-200 dark:border-red-800">
                                 <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
@@ -2112,7 +2626,6 @@ export function CourseDetail({
                               </div>
                             )}
 
-                            {/* Non-JLPT - Show link if exists */}
                             {!isJLPT && session.link && (
                               <div className="p-4 bg-muted/5">
                                 <div className="flex items-center gap-2 text-[11px]">
@@ -2135,10 +2648,8 @@ export function CourseDetail({
                   })()}
                 </div>
 
-                {/* Enrolled Employees Section - shown at the bottom */}
-                {/* Filter out cancelled employees */}
                 {(() => {
-                  const activeEmployees = enrolledEmployees.filter(e => e.enrollmentStatus !== 'CANCELLED')
+                  const activeEmployees = enrollments.filter(e => e.enrollmentStatus !== 'CANCELLED')
 
                   return activeEmployees.length > 0 && (
                     <div className="mt-8">

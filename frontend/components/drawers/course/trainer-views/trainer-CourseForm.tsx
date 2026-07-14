@@ -103,9 +103,16 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       fetch_EmployeeData,
       courseCategory_data,
       fetch_courseCategories,
+      fetch_courseEnrollments,
       getCategoryByValue,
       getAllCategories,
-      isLoading: categoriesLoading
+      isLoading: categoriesLoading,
+      // Add these from the store
+      adminChangeGroup,
+      isAdminChangingGroup,
+      groupChangeError,
+      groupChangeSuccess,
+      clearGroupChangeState,
     } = mainStore()
 
     // Fetch employees on mount if not already loaded
@@ -123,11 +130,18 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       }
     }, [courseCategory_data.trainer.length, courseCategory_data.selfStudy.length, fetch_courseCategories])
 
+    // Clean up group change state when component unmounts
+    useEffect(() => {
+      return () => {
+        clearGroupChangeState?.()
+      }
+    }, [clearGroupChangeState])
+
     const defaultGroup = useMemo(
       () => ({
         id: `g${Date.now()}`,
         name: "Group 1",
-        capacity: "unlimited" as const,
+        capacity: undefined,
         startDate: getTodayLocal(), // Use local date
         sessionsPerWeek: DEFAULT_SESSION_DAYS,
         startTime: "09:00",
@@ -274,7 +288,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           totalListeningMinutes: initialData.totalListeningMinutes,
         }))
       }
-    }, [initialData, mode, defaultGroup])
+    }, [initialData, mode, defaultGroup, getCategoryByValue])
 
     // Check for changes in edit mode
     useEffect(() => {
@@ -494,6 +508,36 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
       onSubmit(submitData)
     }
+
+    // Handler for admin group change
+    const handleAdminChangeGroup = async (enrollmentId: number, newGroupId: number) => {
+      if (!initialData?.id) {
+        console.error('Course ID is required for group change');
+        alert('Course ID is required for group change');
+        return;
+      }
+
+      try {
+        // Extract the course ID from initialData
+        const courseId = typeof initialData.id === 'string' ? parseInt(initialData.id) : initialData.id;
+
+        // Call the adminChangeGroup function from the store
+        const result = await adminChangeGroup(enrollmentId, newGroupId);
+
+        if (result.success) {
+          // Refresh the enrollments to reflect the change
+          await fetch_courseEnrollments(courseId);
+
+          // Show success toast
+          alert('Group changed successfully!');
+        } else {
+          alert(result.message || 'Failed to change group');
+        }
+      } catch (error) {
+        console.error('Failed to change group:', error);
+        alert(error instanceof Error ? error.message : 'Failed to change group');
+      }
+    };
 
     // Handler functions for TrainerSection
     const handleUpdateGroups = React.useCallback((groups: CourseGroup[]) => {
@@ -776,6 +820,12 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               defaultGroup={defaultGroup}
               isSubmitting={isSubmitting}
               mode={mode}
+              courseId={initialData?.id}
+              // Pass the admin group change props
+              onAdminChangeGroup={handleAdminChangeGroup}
+              isChangingGroup={isAdminChangingGroup}
+              groupChangeError={groupChangeError}
+              groupChangeSuccess={groupChangeSuccess}
             />
           )}
 

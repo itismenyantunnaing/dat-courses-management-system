@@ -2,6 +2,7 @@ package com.dat_management.backend.repository;
 
 import com.dat_management.backend.entity.CourseEnrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,4 +27,12 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
     boolean existsEnrollment(
             @Param("employeeId") String employeeId,
             @Param("courseId") Integer courseId);
+    
+     @Query("SELECT e FROM CourseEnrollment e WHERE e.courseGroup.id = :groupId ORDER BY e.enrolledAt ASC")
+    List<CourseEnrollment> findByCourseGroupIdOrderByEnrolledAtAsc(@Param("groupId") Integer groupId);
+    
+    @Modifying
+    @Query("UPDATE CourseEnrollment e SET e.courseGroup.id = :newGroupId WHERE e.id = :enrollmentId")
+    void updateEnrollmentGroup(@Param("enrollmentId") Integer enrollmentId, 
+                               @Param("newGroupId") Integer newGroupId);
 }
