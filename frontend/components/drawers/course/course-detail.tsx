@@ -1127,10 +1127,10 @@ export function CourseDetail({
                               value={group.id}
                               disabled={isFull}
                             >
-                              <div className="flex items-center justify-between w-full">
-                                <span>Group {groupIndex + 1}: {group.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {groupEmployees.length}/{group.capacity === undefined ? "∞" : group.capacity}
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <span>{group.name}</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  ({groupEmployees.length}/{group.capacity === undefined ? "∞" : group.capacity})
                                   {isFull && " (Full)"}
                                 </span>
                               </div>

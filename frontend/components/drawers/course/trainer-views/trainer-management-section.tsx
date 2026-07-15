@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useCallback,useRef } from "react"
+import React, { useEffect, useCallback, useRef } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -44,7 +44,6 @@ import { cn } from "@/lib/utils"
 import { mainStore } from "@/store/mainStore"
 
 const DEFAULT_SESSION_DAYS = [4, 5]
-const AVAILABLE_LEARNERS_PER_PAGE = 10
 
 export const formatGroupsForAPI = (groups: CourseGroup[]) => {
     return groups
@@ -106,6 +105,8 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     trainerItemsPerPage,
     onSetTrainerItemsPerPage,
     courseId,
+    onGroupAdded,
+    onGroupRemoved,
 }) => {
     const previousTotalSessionsRef = useRef<{ [key: string]: number }>({})
     const { enrollments } = mainStore()
@@ -124,6 +125,15 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     const getTotalEnrolledForCourse = useCallback(() => {
         if (!enrollments || enrollments.length === 0) return 0;
         return enrollments.length;
+    }, [enrollments]);
+
+    // Get enrolled count for a specific group
+    const getGroupEnrolledCount = useCallback((groupId: string | number) => {
+        if (!enrollments || enrollments.length === 0) return 0;
+        const numericGroupId = typeof groupId === 'string' ? parseInt(groupId.replace('g', '')) : groupId;
+        return enrollments.filter(
+            (e: any) => e.courseGroupId === numericGroupId && e.enrollmentStatus !== 'CANCELLED'
+        ).length;
     }, [enrollments]);
 
     // Initialize capacities based on total enrolled divided by number of groups
@@ -217,6 +227,11 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             onUpdateGroups([newGroup]);
             onSetActiveGroupTab(newGroup.id);
             onSetTrainerSessionPage(1);
+            // Call the callback with the new group
+            if (onGroupAdded) {
+                onGroupAdded(newGroup, [newGroup]);
+            }
+
             return;
         }
 
@@ -251,6 +266,10 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             onUpdateGroups([...groups, newGroup]);
             onSetActiveGroupTab(newGroup.id);
             onSetTrainerSessionPage(1);
+            // Call the callback with the new group
+            if (onGroupAdded) {
+                onGroupAdded(newGroup, [...groups, newGroup]);
+            }
             return;
         }
 
@@ -399,6 +418,10 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         onUpdateGroups([...existingGroupsWithCapacity, newGroup]);
         onSetActiveGroupTab(newGroup.id);
         onSetTrainerSessionPage(1);
+        // Call the callback with the new group
+        if (onGroupAdded) {
+            onGroupAdded(newGroup, [...existingGroupsWithCapacity, newGroup]);
+        }
     }, [groups, courseId, getTotalEnrolledForCourse, onUpdateGroups, onSetActiveGroupTab, onSetTrainerSessionPage]);
 
 
@@ -420,6 +443,10 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                 if (newActiveTab) {
                     onSetActiveGroupTab(newActiveTab);
                 }
+            }
+            // Call the callback after removal
+            if (onGroupRemoved) {
+                onGroupRemoved(groupId, updatedGroups);
             }
             return;
         }
@@ -462,6 +489,10 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             if (newActiveTab) {
                 onSetActiveGroupTab(newActiveTab);
             }
+        }
+        // Call the callback after removal
+        if (onGroupRemoved) {
+            onGroupRemoved(groupId, recalculatedGroups);
         }
     }, [groups, activeGroupTab, onUpdateGroups, onSetActiveGroupTab]);
 
@@ -842,7 +873,22 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                     value={group.capacity !== undefined && group.capacity !== null ? group.capacity : ""}
                                     onChange={(e) => {
                                         const value = e.target.value ? parseInt(e.target.value) : undefined;
+
+                                        // Get current enrolled count for this group
+                                        const enrolledCount = getGroupEnrolledCount(group.id);
+
                                         if (value !== undefined && value > 0) {
+                                            //  Check if capacity is less than enrolled count
+                                            if (value < enrolledCount) {
+                                                // Revert to previous valid value or show error
+                                                return;
+                                            }
+
+                                            // Clear any previous errors for this group
+                                            const newErrors = { ...groupErrors };
+                                            delete newErrors[group.id];
+                                            onSetGroupErrors(newErrors);
+
                                             const updatedGroups = groups.map((g) =>
                                                 g.id === group.id ? { ...g, capacity: value } : g
                                             );
@@ -867,13 +913,19 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                                 onUpdateGroups(updatedGroups);
                                             }
                                         } else {
-                                            updateGroup(group.id, "capacity", undefined);
+                                            // Only allow undefined if there's only one group OR enrolled count is 0
+                                            if (groups.length === 1 || enrolledCount === 0) {
+                                                updateGroup(group.id, "capacity", undefined);
+                                            } 
                                         }
                                     }}
                                     placeholder={groups.length > 1 ? "Enter capacity" : "Optional"}
                                     min={1}
                                     required={groups.length > 1}
-                                    className={groups.length > 1 && (group.capacity === undefined || group.capacity === null) ? "border-destructive" : ""}
+                                    className={cn(
+                                        groups.length > 1 && (group.capacity === undefined || group.capacity === null) ? "border-destructive" : "",
+                                        groupErrors[group.id] ? "border-destructive" : ""
+                                    )}
                                 />
                             </div>
                             <div className="flex items-center gap-2 whitespace-nowrap">

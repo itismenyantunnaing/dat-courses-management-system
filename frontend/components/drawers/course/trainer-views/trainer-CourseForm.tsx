@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useEffect, forwardRef, useMemo } from "react"
+import React, { useState, useRef, useEffect, forwardRef, useMemo, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -639,6 +639,38 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       return category?.type === 'self-study'
     }
 
+
+    const handleGroupAdded = useCallback(async (group: CourseGroup, allGroups: CourseGroup[]) => {
+      console.log('Group Added:', group);
+      console.log('All Groups after addition:', allGroups);
+
+      // Update the form data
+      setFormData((prev) => ({
+        ...prev,
+        groups: allGroups
+      }));
+
+      // The redistribution will be triggered by the EnrollEmployeesSection
+      // when it detects the groups prop has changed
+      setActiveGroupTab(group.id);
+    }, [setFormData, setActiveGroupTab]);
+
+    const handleGroupRemoved = useCallback(async (groupId: string, remainingGroups: CourseGroup[]) => {
+      console.log('Group Removed - ID:', groupId);
+      console.log('Remaining Groups:', remainingGroups);
+
+      // Update the form data
+      setFormData((prev) => ({
+        ...prev,
+        groups: remainingGroups
+      }));
+
+      if (remainingGroups.length > 0) {
+        setActiveGroupTab(remainingGroups[0].id);
+      }
+    }, [setFormData, setActiveGroupTab]);
+
+
     return (
       <>
         <form ref={ref} onSubmit={handleSubmit} className="space-y-6">
@@ -852,6 +884,8 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               isChangingGroup={isAdminChangingGroup}
               groupChangeError={groupChangeError}
               groupChangeSuccess={groupChangeSuccess}
+              onGroupAdded={handleGroupAdded}
+              onGroupRemoved={handleGroupRemoved}
             />
           )}
 
@@ -892,6 +926,10 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                     await fetch_courseEnrollments(initialData.id)
                   }
                 }}
+                onAdminChangeGroup={handleAdminChangeGroup}
+                isChangingGroup={isAdminChangingGroup}
+                groupChangeError={groupChangeError}
+                groupChangeSuccess={groupChangeSuccess}
                 isSubmitting={isSubmitting}
                 groups={formData.groups}
                 activeGroupTab={activeGroupTab}

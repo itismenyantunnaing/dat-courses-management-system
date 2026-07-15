@@ -129,8 +129,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       <SidebarProvider className="w-full overflow-hidden">
         <AppSidebar
           userRole={
-            // userData.role.toLowerCase() as "admin" | "learner" | "approver"
-            "admin"
+            userData.role.toLowerCase() as "admin" | "learner" | "approver"
+            // "admin"
           }
           userData={{ name: userData.name, email: userData.email }}
           onTabChange={setActiveTab}
