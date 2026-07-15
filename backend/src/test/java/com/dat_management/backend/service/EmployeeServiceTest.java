@@ -232,7 +232,9 @@ class EmployeeServiceTest {
         EmployeeRequestDTO valid = request("EMP001", "Alice Admin");
         EmployeeRequestDTO invalid = request(null, "Missing Id");
 
-        when(employeeRepository.existsByIdAndIsDeletedFalse("EMP001")).thenReturn(false);
+//        Removed this line because this method has been left out
+//        in createSingleInNewTransaction(210:234) in EmployeeService.java
+//        when(employeeRepository.existsByIdAndIsDeletedFalse("EMP001")).thenReturn(false);
         when(passwordEncoder.encode("changeme123")).thenReturn("encoded-default");
         when(employeeRepository.saveAndFlush(any(Employee.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

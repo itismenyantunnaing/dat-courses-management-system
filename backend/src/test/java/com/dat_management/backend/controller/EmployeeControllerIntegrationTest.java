@@ -37,6 +37,9 @@ class EmployeeControllerIntegrationTest {
     private EmployeeRepository employeeRepository;
 
     @Autowired
+    private com.dat_management.backend.repository.EmployeeJapaneseProfileRepository japaneseProfileRepository;
+
+    @Autowired
     private RoleRepository roleRepository;
 
     @Autowired
@@ -50,6 +53,8 @@ class EmployeeControllerIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        // delete dependent tables first to avoid FK constraint violations
+        japaneseProfileRepository.deleteAll();
         employeeRepository.deleteAll();
         teamRepository.deleteAll();
         departmentDatRepository.deleteAll();

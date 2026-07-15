@@ -56,6 +56,9 @@ class HolidayControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // Ensure a clean holiday table before each test. Some tests may run outside
+        // transactional context and seed data; clearing here keeps each test deterministic.
+        holidayRepository.deleteAll();
 
     }
 

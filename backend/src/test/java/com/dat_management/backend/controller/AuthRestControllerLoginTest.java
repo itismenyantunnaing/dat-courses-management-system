@@ -59,7 +59,7 @@ class AuthRestControllerLoginTest {
                 null,
                 springUser.getAuthorities());
 
-        when(employeeRepository.findById("EMP001")).thenReturn(Optional.of(employee));
+        when(employeeRepository.findByIdAndIsDeletedFalse("EMP001")).thenReturn(Optional.of(employee));
         when(passwordEncoder.matches("correct-password", "encoded-password")).thenReturn(true);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
@@ -87,7 +87,7 @@ class AuthRestControllerLoginTest {
         AuthRestController controller = controller();
         LoginRequest request = loginRequest("UNKNOWN", "any-password");
 
-        when(employeeRepository.findById("UNKNOWN")).thenReturn(Optional.empty());
+        when(employeeRepository.findByIdAndIsDeletedFalse("UNKNOWN")).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = controller.login(request);
 
@@ -104,7 +104,7 @@ class AuthRestControllerLoginTest {
         Employee employee = buildUser("EMP003", "encoded-password", 0, lockedUntil);
         LoginRequest request = loginRequest("EMP003", "correct-password");
 
-        when(employeeRepository.findById("EMP003")).thenReturn(Optional.of(employee));
+        when(employeeRepository.findByIdAndIsDeletedFalse("EMP003")).thenReturn(Optional.of(employee));
 
         ResponseEntity<?> response = controller.login(request);
 
@@ -122,7 +122,7 @@ class AuthRestControllerLoginTest {
         Employee employee = buildUser("EMP002", "encoded-password", 1, null);
         LoginRequest request = loginRequest("EMP002", "wrong-password");
 
-        when(employeeRepository.findById("EMP002")).thenReturn(Optional.of(employee));
+        when(employeeRepository.findByIdAndIsDeletedFalse("EMP002")).thenReturn(Optional.of(employee));
         when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
 
         ResponseEntity<?> response = controller.login(request);
@@ -143,7 +143,7 @@ class AuthRestControllerLoginTest {
         Employee employee = buildUser("EMP003", "encoded-password", 2, null);
         LoginRequest request = loginRequest("EMP003", "wrong-password");
 
-        when(employeeRepository.findById("EMP003")).thenReturn(Optional.of(employee));
+        when(employeeRepository.findByIdAndIsDeletedFalse("EMP003")).thenReturn(Optional.of(employee));
         when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
 
         ResponseEntity<?> response = controller.login(request);

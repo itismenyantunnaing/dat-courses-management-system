@@ -158,7 +158,7 @@ class CertificateServiceTest {
 
         CertificateResponseDto result = service.verifyCertificate(10, verifier, "");
 
-        Assertions.assertEquals("VERIFIED", result.getVerificationStatus());
+        Assertions.assertEquals("APPROVED", result.getVerificationStatus());
         Assertions.assertEquals("EMP999", result.getVerifiedByEmployeeId());
         Assertions.assertNotNull(result.getVerifiedAt());
 

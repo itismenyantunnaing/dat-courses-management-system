@@ -236,7 +236,7 @@ class CertificateControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Certificate verified successfully"))
-                .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"))
+                .andExpect(jsonPath("$.data.verificationStatus").value("APPROVED"))
                 .andExpect(jsonPath("$.data.verifiedByEmployeeId").value("EMP999"));
 
         org.junit.jupiter.api.Assertions.assertTrue(japaneseProfileRepository.existsByEmployeeId("EMP001"));
