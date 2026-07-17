@@ -25,7 +25,7 @@ public class CourseStatsService {
     private final CourseGroupRepository courseGroupRepository;
 
     // Single threshold for all course types
-    private static final Double COMPLETION_THRESHOLD = 0.8; // 80%
+    private static final Double COMPLETION_THRESHOLD = 0.5; // 80%
 
     @Transactional(readOnly = true)
     public List<CourseStatsDTO> getCourseStats() {

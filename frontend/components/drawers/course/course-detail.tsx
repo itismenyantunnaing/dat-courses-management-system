@@ -295,8 +295,8 @@ export function CourseDetail({
   // Get current user ID
   const currentUserId = getUserId?.() || null
 
-  // const TESTING_DATE = new Date('2026-07-16')
-  const TESTING_DATE = new Date()
+  const TESTING_DATE = new Date('2026-08-7')
+  // const TESTING_DATE = new Date()
 
   // Helper function to get session status
   const getSessionStatus = (sessionDate: Date | string | undefined) => {

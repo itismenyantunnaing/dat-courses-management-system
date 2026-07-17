@@ -64,15 +64,7 @@ const mockTotalStats = {
   completionRate: 72,
 }
 
-// Course categories for filtering
-const courseCategories = [
-  { value: "JLPT Exam Target", label: "JLPT Exam Target" },
-  { value: "JLPT Exam Practice", label: "JLPT Exam Practice" },
-  { value: "Technical Japanese", label: "Technical Japanese" },
-  { value: "Professional Mindset", label: "Professional Mindset" },
-  { value: "NGLP", label: "NGLP" },
-  { value: "Offshore Certification", label: "Offshore Certification" },
-]
+
 
 // Certification Types
 const certificationTypes = [
@@ -315,11 +307,11 @@ const mockAttendanceDataByCategory: Record<
 
 // Mock Certification Progress Data for Pie Chart
 const mockCertificationProgressData = [
-  { name: "JLPT N1", value: 30, fill: "#FF6B6B" },
-  { name: "JLPT N2", value: 60, fill: "#FFB74D" },
-  { name: "JLPT N3", value: 85, fill: "#FFD93D" },
-  { name: "JLPT N4", value: 45, fill: "#8EC5FF" },
-  { name: "JLPT N5", value: 70, fill: "#2B7FFF" },
+  { name: "JLPT N1", value: 3, fill: "#FF6B6B" },
+  { name: "JLPT N2", value: 6, fill: "#FFB74D" },
+  { name: "JLPT N3", value: 8, fill: "#FFD93D" },
+  { name: "JLPT N4", value: 4, fill: "#8EC5FF" },
+  { name: "JLPT N5", value: 7, fill: "#2B7FFF" },
 ]
 
 // Chart configs
@@ -459,9 +451,41 @@ export default function AdminDashboardContainer() {
     teams,
     apiResponse,
     employee_data,
+
+    // for Employees at Risk
     fetchRiskData,
-    riskData
+    riskData,
+
+    // for Course Statistics 
+    fetchAll_CourseData,
+    courses,
+    fetch_courseCategories,
+    courseCategory_data,
+    fetchCourseStats,
+    courseStats,
   } = mainStore()
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        await fetch_EmployeeData()
+        await fetch_AllData()
+        await fetch_dat_departments()
+        await fetch_teams()
+        await fetchAll_CourseData()
+        await fetch_courseCategories()
+        await fetchCourseStats()
+        await fetchRiskData()
+      } catch (error) {
+        console.error("Error loading data:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [fetchAll_CourseData, fetchCourseStats, fetchRiskData, fetch_AllData, fetch_EmployeeData, fetch_courseCategories, fetch_dat_departments, fetch_teams])
 
   // Create department options with "All Departments" prepended
   const departmentOptions = useMemo(() => {
@@ -481,6 +505,27 @@ export default function AdminDashboardContainer() {
     }
     return []
   }, [teamDisplayData])
+
+  const combinedCourseCategories = useMemo(() => {
+    if (!courseCategory_data) return [];
+
+    // Combine trainer and selfStudy arrays
+    const trainerCategories = courseCategory_data.trainer || [];
+    const selfStudyCategories = courseCategory_data.selfStudy || [];
+
+    // Merge them into one array
+    return [...trainerCategories, ...selfStudyCategories];
+  }, [courseCategory_data]);
+
+  // Set default selected values to the first category when data loads
+  useEffect(() => {
+    if (combinedCourseCategories.length > 0) {
+      const firstCategory = combinedCourseCategories[0];
+      setSelectedCategory(firstCategory.value);
+      setSelectedAttendanceCategory(firstCategory.value);
+    }
+  }, [combinedCourseCategories]);
+
 
   // Get teams for JLPT department
   const getJlptTeams = (dept: string) => {
@@ -593,8 +638,8 @@ export default function AdminDashboardContainer() {
 
   // Filter course data based on selected category
   const getFilteredCourseData = () => {
-    return mockCourseStatistics.filter(
-      (course) => course.category === selectedCategory
+    return courseStats.filter(
+      (course) => course.category.toLowerCase() === selectedCategory
     )
   }
 
@@ -610,24 +655,7 @@ export default function AdminDashboardContainer() {
 
   const filteredCertificationData = mockCertificationProgressData
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true)
-      try {
-        await fetch_EmployeeData()
-        await fetch_AllData()
-        await fetch_dat_departments()
-        await fetch_teams()
-        await fetchRiskData()
-      } catch (error) {
-        console.error("Error loading data:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
 
-    loadData()
-  }, [fetchRiskData, fetch_AllData, fetch_EmployeeData, fetch_dat_departments, fetch_teams])
 
   // Update JLPT teams when JLPT department changes
   const handleJlptDepartmentChange = (dept: string) => {
@@ -656,6 +684,8 @@ export default function AdminDashboardContainer() {
       </div>
     )
   }
+  console.log("AAAAAAAAAAA")
+  console.log(courseStats)
 
   return (
     <div className="container mx-auto space-y-6 p-6">
@@ -677,7 +707,7 @@ export default function AdminDashboardContainer() {
         />
         <StatCard
           title="Total Courses"
-          value={mockTotalStats.totalCourses}
+          value={courses?.length}
           icon={CourseIcon}
           description="Available for learning"
           trend={{ value: 12, direction: "up" }}
@@ -706,7 +736,7 @@ export default function AdminDashboardContainer() {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {courseCategories.map((category) => (
+                {combinedCourseCategories.map((category) => (
                   <SelectItem key={category.value} value={category.value}>
                     {category.label}
                   </SelectItem>
@@ -1004,7 +1034,7 @@ export default function AdminDashboardContainer() {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {courseCategories.map((category) => (
+                  {combinedCourseCategories.map((category) => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
                     </SelectItem>
@@ -1205,3 +1235,4 @@ export default function AdminDashboardContainer() {
     </div>
   )
 }
+
