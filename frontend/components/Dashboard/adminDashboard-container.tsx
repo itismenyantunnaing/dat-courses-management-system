@@ -64,8 +64,6 @@ const mockTotalStats = {
   completionRate: 72,
 }
 
-
-
 // Certification Types
 const certificationTypes = [
   { value: "JLPT", label: "JLPT" },
@@ -250,59 +248,77 @@ const mockCourseStatistics = [
   },
 ]
 
-// Mock Attendance Data by Course Category
+// Mock Attendance Data by Category - Day by day
+const generateAttendanceDataByCategory = (category: string) => {
+  const data = []
+  const startDate = new Date("2026-04-01")
+  const endDate = new Date("2026-06-30")
+  let currentDate = new Date(startDate)
+
+  // Base attendance varies by category
+  let baseAttendance = 80
+  let variation = 15
+  switch (category) {
+    case "JLPT Exam Target":
+      baseAttendance = 85
+      variation = 12
+      break
+    case "JLPT Exam Practice":
+      baseAttendance = 82
+      variation = 15
+      break
+    case "Technical Japanese":
+      baseAttendance = 78
+      variation = 18
+      break
+    case "Professional Mindset":
+      baseAttendance = 80
+      variation = 14
+      break
+    case "NGLP":
+      baseAttendance = 72
+      variation = 20
+      break
+    case "Offshore Certification":
+      baseAttendance = 75
+      variation = 16
+      break
+    default:
+      baseAttendance = 80
+      variation = 15
+  }
+
+  while (currentDate <= endDate) {
+    const dayOfWeek = currentDate.getDay()
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+    let attendance = baseAttendance + (Math.random() - 0.5) * variation
+    if (isWeekend) {
+      attendance = attendance - 15 + Math.random() * 10
+    }
+    data.push({
+      date: currentDate.toISOString().split("T")[0],
+      attendance: Math.min(Math.max(Math.round(attendance), 40), 100),
+    })
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  return data
+}
+
+// Generate attendance data for each category
 const mockAttendanceDataByCategory: Record<
   string,
-  { month: string; attendance: number }[]
+  { date: string; attendance: number }[]
 > = {
-  "JLPT Exam Target": [
-    { month: "Jan", attendance: 85 },
-    { month: "Feb", attendance: 88 },
-    { month: "Mar", attendance: 82 },
-    { month: "Apr", attendance: 90 },
-    { month: "May", attendance: 87 },
-    { month: "Jun", attendance: 92 },
-  ],
-  "JLPT Exam Practice": [
-    { month: "Jan", attendance: 80 },
-    { month: "Feb", attendance: 83 },
-    { month: "Mar", attendance: 79 },
-    { month: "Apr", attendance: 85 },
-    { month: "May", attendance: 82 },
-    { month: "Jun", attendance: 88 },
-  ],
-  "Technical Japanese": [
-    { month: "Jan", attendance: 78 },
-    { month: "Feb", attendance: 82 },
-    { month: "Mar", attendance: 85 },
-    { month: "Apr", attendance: 80 },
-    { month: "May", attendance: 88 },
-    { month: "Jun", attendance: 86 },
-  ],
-  "Professional Mindset": [
-    { month: "Jan", attendance: 82 },
-    { month: "Feb", attendance: 86 },
-    { month: "Mar", attendance: 80 },
-    { month: "Apr", attendance: 84 },
-    { month: "May", attendance: 88 },
-    { month: "Jun", attendance: 85 },
-  ],
-  NGLP: [
-    { month: "Jan", attendance: 72 },
-    { month: "Feb", attendance: 75 },
-    { month: "Mar", attendance: 78 },
-    { month: "Apr", attendance: 82 },
-    { month: "May", attendance: 79 },
-    { month: "Jun", attendance: 84 },
-  ],
-  "Offshore Certification": [
-    { month: "Jan", attendance: 75 },
-    { month: "Feb", attendance: 78 },
-    { month: "Mar", attendance: 72 },
-    { month: "Apr", attendance: 76 },
-    { month: "May", attendance: 80 },
-    { month: "Jun", attendance: 77 },
-  ],
+  "JLPT Exam Target": generateAttendanceDataByCategory("JLPT Exam Target"),
+  "JLPT Exam Practice": generateAttendanceDataByCategory("JLPT Exam Practice"),
+  "Technical Japanese": generateAttendanceDataByCategory("Technical Japanese"),
+  "Professional Mindset": generateAttendanceDataByCategory(
+    "Professional Mindset"
+  ),
+  NGLP: generateAttendanceDataByCategory("NGLP"),
+  "Offshore Certification": generateAttendanceDataByCategory(
+    "Offshore Certification"
+  ),
 }
 
 // Mock Certification Progress Data for Pie Chart
@@ -350,8 +366,8 @@ const courseChartConfig = {
 
 const attendanceChartConfig = {
   attendance: {
-    label: "Attendance %",
-    color: "var(--chart-1)",
+    label: "Attendance",
+    color: "#5a9cff",
   },
 }
 
@@ -428,11 +444,13 @@ const TruncatedSelectItem = ({
 
 export default function AdminDashboardContainer() {
   // Separate filters for JLPT
-  const [jlptDepartment, setJlptDepartment] = useState<string>("All Departments")
+  const [jlptDepartment, setJlptDepartment] =
+    useState<string>("All Departments")
   const [jlptTeam, setJlptTeam] = useState<string>("All Teams")
 
   // Separate filters for Communication
-  const [commDepartment, setCommDepartment] = useState<string>("All Departments")
+  const [commDepartment, setCommDepartment] =
+    useState<string>("All Departments")
   const [commTeam, setCommTeam] = useState<string>("All Teams")
 
   const [selectedCategory, setSelectedCategory] =
@@ -440,6 +458,7 @@ export default function AdminDashboardContainer() {
   const [selectedAttendanceCategory, setSelectedAttendanceCategory] =
     useState<string>("JLPT Exam Target")
   const [selectedCertType, setSelectedCertType] = useState<string>("JLPT")
+  const [timeRange, setTimeRange] = useState<string>("90d")
   const [isLoading, setIsLoading] = useState(true)
   const {
     fetch_EmployeeData,
@@ -456,7 +475,7 @@ export default function AdminDashboardContainer() {
     fetchRiskData,
     riskData,
 
-    // for Course Statistics 
+    // for Course Statistics
     fetchAll_CourseData,
     courses,
     fetch_courseCategories,
@@ -485,13 +504,26 @@ export default function AdminDashboardContainer() {
     }
 
     loadData()
-  }, [fetchAll_CourseData, fetchCourseStats, fetchRiskData, fetch_AllData, fetch_EmployeeData, fetch_courseCategories, fetch_dat_departments, fetch_teams])
+  }, [
+    fetchAll_CourseData,
+    fetchCourseStats,
+    fetchRiskData,
+    fetch_AllData,
+    fetch_EmployeeData,
+    fetch_courseCategories,
+    fetch_dat_departments,
+    fetch_teams,
+  ])
 
   // Create department options with "All Departments" prepended
   const departmentOptions = useMemo(() => {
-    const options = [{ id: 'all', deptName: 'All Departments' }]
+    const options = [{ id: "all", deptName: "All Departments" }]
 
-    if (dat_departments && Array.isArray(dat_departments) && dat_departments.length > 0) {
+    if (
+      dat_departments &&
+      Array.isArray(dat_departments) &&
+      dat_departments.length > 0
+    ) {
       options.push(...dat_departments)
     }
 
@@ -500,32 +532,44 @@ export default function AdminDashboardContainer() {
 
   // Get unique teams from teamDisplayData
   const allTeams = useMemo(() => {
-    if (teamDisplayData && Array.isArray(teamDisplayData) && teamDisplayData.length > 0) {
+    if (
+      teamDisplayData &&
+      Array.isArray(teamDisplayData) &&
+      teamDisplayData.length > 0
+    ) {
       return teamDisplayData.map((item: any) => item.team_name)
     }
     return []
   }, [teamDisplayData])
 
   const combinedCourseCategories = useMemo(() => {
-    if (!courseCategory_data) return [];
+    if (!courseCategory_data) return []
 
     // Combine trainer and selfStudy arrays
-    const trainerCategories = courseCategory_data.trainer || [];
-    const selfStudyCategories = courseCategory_data.selfStudy || [];
+    const trainerCategories = courseCategory_data.trainer || []
+    const selfStudyCategories = courseCategory_data.selfStudy || []
 
     // Merge them into one array
-    return [...trainerCategories, ...selfStudyCategories];
-  }, [courseCategory_data]);
+    return [...trainerCategories, ...selfStudyCategories]
+  }, [courseCategory_data])
+
+  // Create attendance categories with "All Categories" option
+  const attendanceCategories = useMemo(() => {
+    const categories = [{ value: "All", label: "All Categories" }]
+    if (combinedCourseCategories.length > 0) {
+      categories.push(...combinedCourseCategories)
+    }
+    return categories
+  }, [combinedCourseCategories])
 
   // Set default selected values to the first category when data loads
   useEffect(() => {
     if (combinedCourseCategories.length > 0) {
-      const firstCategory = combinedCourseCategories[0];
-      setSelectedCategory(firstCategory.value);
-      setSelectedAttendanceCategory(firstCategory.value);
+      const firstCategory = combinedCourseCategories[0]
+      setSelectedCategory(firstCategory.value)
+      setSelectedAttendanceCategory(firstCategory.value)
     }
-  }, [combinedCourseCategories]);
-
+  }, [combinedCourseCategories])
 
   // Get teams for JLPT department
   const getJlptTeams = (dept: string) => {
@@ -533,10 +577,16 @@ export default function AdminDashboardContainer() {
       return ["All Teams", ...allTeams]
     }
 
-    if (teamDisplayData && Array.isArray(teamDisplayData) && teamDisplayData.length > 0) {
+    if (
+      teamDisplayData &&
+      Array.isArray(teamDisplayData) &&
+      teamDisplayData.length > 0
+    ) {
       const filteredTeams = teamDisplayData
         .filter((item: any) => {
-          const deptItem = dat_departments?.find((d: any) => d.id === item.deptId)
+          const deptItem = dat_departments?.find(
+            (d: any) => d.id === item.deptId
+          )
           return deptItem?.deptName === dept
         })
         .map((item: any) => item.team_name)
@@ -555,10 +605,16 @@ export default function AdminDashboardContainer() {
       return ["All Teams", ...allTeams]
     }
 
-    if (teamDisplayData && Array.isArray(teamDisplayData) && teamDisplayData.length > 0) {
+    if (
+      teamDisplayData &&
+      Array.isArray(teamDisplayData) &&
+      teamDisplayData.length > 0
+    ) {
       const filteredTeams = teamDisplayData
         .filter((item: any) => {
-          const deptItem = dat_departments?.find((d: any) => d.id === item.deptId)
+          const deptItem = dat_departments?.find(
+            (d: any) => d.id === item.deptId
+          )
           return deptItem?.deptName === dept
         })
         .map((item: any) => item.team_name)
@@ -577,17 +633,26 @@ export default function AdminDashboardContainer() {
 
     if (jlptDepartment === "All Departments" && jlptTeam === "All Teams") {
       filteredTeams = teamDisplayData || []
-    } else if (jlptDepartment !== "All Departments" && jlptTeam === "All Teams") {
-      const deptItem = dat_departments?.find((d: any) => d.deptName === jlptDepartment)
+    } else if (
+      jlptDepartment !== "All Departments" &&
+      jlptTeam === "All Teams"
+    ) {
+      const deptItem = dat_departments?.find(
+        (d: any) => d.deptName === jlptDepartment
+      )
       if (deptItem) {
-        filteredTeams = (teamDisplayData || []).filter((item: any) => item.deptId === deptItem.id)
+        filteredTeams = (teamDisplayData || []).filter(
+          (item: any) => item.deptId === deptItem.id
+        )
       }
     } else if (jlptTeam !== "All Teams") {
-      filteredTeams = (teamDisplayData || []).filter((item: any) => item.team_name === jlptTeam)
+      filteredTeams = (teamDisplayData || []).filter(
+        (item: any) => item.team_name === jlptTeam
+      )
     }
 
-    const levels = ['N1', 'N2', 'N3', 'N4', 'N5']
-    const aggregatedData = levels.map(level => {
+    const levels = ["N1", "N2", "N3", "N4", "N5"]
+    const aggregatedData = levels.map((level) => {
       let current = 0
       let target = 0
 
@@ -608,16 +673,34 @@ export default function AdminDashboardContainer() {
 
     if (commDepartment === "All Departments" && commTeam === "All Teams") {
       filteredTeams = teamDisplayData || []
-    } else if (commDepartment !== "All Departments" && commTeam === "All Teams") {
-      const deptItem = dat_departments?.find((d: any) => d.deptName === commDepartment)
+    } else if (
+      commDepartment !== "All Departments" &&
+      commTeam === "All Teams"
+    ) {
+      const deptItem = dat_departments?.find(
+        (d: any) => d.deptName === commDepartment
+      )
       if (deptItem) {
-        filteredTeams = (teamDisplayData || []).filter((item: any) => item.deptId === deptItem.id)
+        filteredTeams = (teamDisplayData || []).filter(
+          (item: any) => item.deptId === deptItem.id
+        )
       }
     } else if (commTeam !== "All Teams") {
-      filteredTeams = (teamDisplayData || []).filter((item: any) => item.team_name === commTeam)
+      filteredTeams = (teamDisplayData || []).filter(
+        (item: any) => item.team_name === commTeam
+      )
     }
 
-    const levels = ['Level 0', 'Level 1 | G1', 'Level 1 | G2', 'Level 1 | G3', 'Level 2 | G1', 'Level 2 | G2', 'Level 2 | G3', 'Level 3']
+    const levels = [
+      "Level 0",
+      "Level 1 | G1",
+      "Level 1 | G2",
+      "Level 1 | G3",
+      "Level 2 | G1",
+      "Level 2 | G2",
+      "Level 2 | G3",
+      "Level 3",
+    ]
     const aggregatedData = levels.map((level, index) => {
       let current = 0
       let target = 0
@@ -645,25 +728,45 @@ export default function AdminDashboardContainer() {
 
   const filteredCourseData = getFilteredCourseData()
 
-  // Get attendance data for selected category
+  // Get attendance data for selected category and time range
   const getAttendanceData = () => {
-    return (
-      mockAttendanceDataByCategory[selectedAttendanceCategory] ||
-      mockAttendanceDataByCategory["JLPT Exam Target"]
-    )
+    let data = []
+
+    if (selectedAttendanceCategory === "All") {
+      // Combine all categories - use JLPT Exam Target as default
+      data = mockAttendanceDataByCategory["JLPT Exam Target"]
+    } else {
+      data =
+        mockAttendanceDataByCategory[selectedAttendanceCategory] ||
+        mockAttendanceDataByCategory["JLPT Exam Target"]
+    }
+
+    // Filter by time range
+    const referenceDate = new Date("2026-06-30")
+    let daysToSubtract = 90
+    if (timeRange === "30d") {
+      daysToSubtract = 30
+    } else if (timeRange === "7d") {
+      daysToSubtract = 7
+    }
+    const startDate = new Date(referenceDate)
+    startDate.setDate(startDate.getDate() - daysToSubtract)
+
+    return data.filter((item) => {
+      const date = new Date(item.date)
+      return date >= startDate
+    })
   }
 
+  const filteredAttendanceData = getAttendanceData()
+
   const filteredCertificationData = mockCertificationProgressData
-
-
 
   // Update JLPT teams when JLPT department changes
   const handleJlptDepartmentChange = (dept: string) => {
     setJlptDepartment(dept)
     setJlptTeam("All Teams")
   }
-
-
 
   // Update Communication teams when Communication department changes
   const handleCommDepartmentChange = (dept: string) => {
@@ -675,17 +778,15 @@ export default function AdminDashboardContainer() {
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-96">
+        <div className="flex h-96 items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
             <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
           </div>
         </div>
       </div>
     )
   }
-  console.log("AAAAAAAAAAA")
-  console.log(courseStats)
 
   return (
     <div className="container mx-auto space-y-6 p-6">
@@ -1014,27 +1115,26 @@ export default function AdminDashboardContainer() {
         </Card>
       </div>
 
-      {/* Third Row - Attendance Analysis with Course Category Select */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Attendance Analysis with Course Category Select */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Attendance Analysis</CardTitle>
-              <CardDescription>
-                Monthly attendance trends by course category
-              </CardDescription>
-            </div>
+      {/* Third Row - Attendance Analysis Full Width - Interactive Area Chart */}
+      <Card className="pt-0">
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0 py-5 sm:flex-row">
+          <div className="grid flex-1 gap-1">
+            <CardTitle>Attendance Analysis</CardTitle>
+            <CardDescription>
+              Daily attendance trends by course category
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
             <Select
               value={selectedAttendanceCategory}
               onValueChange={setSelectedAttendanceCategory}
             >
-              <SelectTrigger className="max-w-[200px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {combinedCourseCategories.map((category) => (
+                  {attendanceCategories.map((category) => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
                     </SelectItem>
@@ -1042,59 +1142,111 @@ export default function AdminDashboardContainer() {
                 </SelectGroup>
               </SelectContent>
             </Select>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={attendanceChartConfig}
-              className="h-[250px] w-full"
-            >
-              <AreaChart
-                accessibilityLayer
-                data={getAttendanceData()}
-                margin={{
-                  left: 10,
-                  right: 10,
-                }}
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger
+                className="w-[140px] rounded-lg"
+                aria-label="Select time range"
               >
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tickFormatter={(value) => value.slice(0, 3)}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent />}
-                />
-                <Area
-                  dataKey="attendance"
-                  type="natural"
-                  fill="#D3E7FF"
-                  fillOpacity={0.4}
-                  stroke="#9FCEFF"
-                />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-          <CardFooter>
-            <div className="flex w-full flex-col items-center gap-2">
-              <div className="flex items-center gap-2 leading-none font-medium">
-                <HugeiconsIcon
-                  icon={AnalyticsUpIcon}
-                  strokeWidth={2}
-                  className="h-4 w-4 text-green-600"
-                />
-                Attendance up by 5.2% this month
-              </div>
-              <div className="flex items-center gap-2 leading-none text-muted-foreground">
-                January - June 2026
-              </div>
+                <SelectValue placeholder="Last 3 months" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectGroup>
+                  <SelectItem value="90d" className="rounded-lg">
+                    Last 3 months
+                  </SelectItem>
+                  <SelectItem value="30d" className="rounded-lg">
+                    Last 30 days
+                  </SelectItem>
+                  <SelectItem value="7d" className="rounded-lg">
+                    Last 7 days
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <ChartContainer
+            config={attendanceChartConfig}
+            className="aspect-auto h-[300px] w-full"
+          >
+            <AreaChart
+              accessibilityLayer
+              data={filteredAttendanceData}
+              margin={{
+                left: 12,
+                right: 12,
+              }}
+            >
+              <defs>
+                <linearGradient id="fillAttendance" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor="var(--color-attendance)"
+                    stopOpacity={0.8}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--color-attendance)"
+                    stopOpacity={0.1}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={32}
+                tickFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                }}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(value) => {
+                      return new Date(value).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    }}
+                    indicator="dot"
+                  />
+                }
+              />
+              <Area
+                dataKey="attendance"
+                type="natural"
+                fill="url(#fillAttendance)"
+                stroke="var(--color-attendance)"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
+        <CardFooter>
+          <div className="flex w-full flex-col items-center gap-2">
+            <div className="flex items-center gap-2 leading-none font-medium">
+              <HugeiconsIcon
+                icon={AnalyticsUpIcon}
+                strokeWidth={2}
+                className="h-4 w-4 text-green-600"
+              />
+              Attendance up by 5.2% this month
             </div>
-          </CardFooter>
-        </Card>
+          </div>
+        </CardFooter>
+      </Card>
 
+      {/* Fourth Row - Certification Progress and Employees at Risk */}
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Certification Progress - Pie Chart with Type Select only */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -1162,77 +1314,84 @@ export default function AdminDashboardContainer() {
             </div>
           </CardFooter>
         </Card>
-      </div>
 
-      {/* Fourth Row - Employees at Risk with Department and Team */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Employees at Risk</CardTitle>
-          <CardDescription>Employees needing attention</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : !riskData || !riskData.atRiskStudents || riskData.atRiskStudents.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No employees at risk at this time
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left text-sm font-medium text-muted-foreground">
-                    <th className="pr-4 pb-2">Name</th>
-                    <th className="pr-4 pb-2">Course</th>
-                    <th className="pr-4 pb-2">Department</th>
-                    <th className="pr-4 pb-2">Team</th>
-                    <th className="pr-4 pb-2">Issue</th>
-                    <th className="pb-2">Risk</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {riskData.atRiskStudents.map((employee, index) => (
-                    <tr key={index} className="border-b last:border-0">
-                      <td className="py-2 pr-4 text-sm font-medium">
-                        {employee.name}
-                      </td>
-                      <td className="py-2 pr-4 text-sm text-muted-foreground">
-                        {employee.course || '-'}
-                      </td>
-                      <td className="py-2 pr-4 text-sm text-muted-foreground">
-                        <span className="block max-w-[150px] truncate" title={employee.department}>
-                          {employee.department}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-4 text-sm text-muted-foreground">
-                        {employee.team}
-                      </td>
-                      <td className="py-2 pr-4 text-sm text-muted-foreground">
-                        {employee.issue}
-                      </td>
-                      <td className="py-2">
-                        <div className="flex items-center gap-2">
-                          <Progress value={employee.risk} className="h-2 w-20" />
-                          <Badge
-                            variant={
-                              employee.risk > 75 ? "destructive" : "outline"
-                            }
-                          >
-                            {employee.risk}%
-                          </Badge>
-                        </div>
-                      </td>
+        {/* Employees at Risk with Department and Team */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Employees at Risk</CardTitle>
+            <CardDescription>Employees needing attention</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+              </div>
+            ) : !riskData ||
+              !riskData.atRiskStudents ||
+              riskData.atRiskStudents.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                No employees at risk at this time
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b text-left text-sm font-medium text-muted-foreground">
+                      <th className="pr-4 pb-2">Name</th>
+                      <th className="pr-4 pb-2">Course</th>
+                      <th className="pr-4 pb-2">Department</th>
+                      <th className="pr-4 pb-2">Team</th>
+                      <th className="pr-4 pb-2">Issue</th>
+                      <th className="pb-2">Risk</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </thead>
+                  <tbody>
+                    {riskData.atRiskStudents.map((employee, index) => (
+                      <tr key={index} className="border-b last:border-0">
+                        <td className="py-2 pr-4 text-sm font-medium">
+                          {employee.name}
+                        </td>
+                        <td className="py-2 pr-4 text-sm text-muted-foreground">
+                          {employee.course || "-"}
+                        </td>
+                        <td className="py-2 pr-4 text-sm text-muted-foreground">
+                          <span
+                            className="block max-w-[150px] truncate"
+                            title={employee.department}
+                          >
+                            {employee.department}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4 text-sm text-muted-foreground">
+                          {employee.team}
+                        </td>
+                        <td className="py-2 pr-4 text-sm text-muted-foreground">
+                          {employee.issue}
+                        </td>
+                        <td className="py-2">
+                          <div className="flex items-center gap-2">
+                            <Progress
+                              value={employee.risk}
+                              className="h-2 w-20"
+                            />
+                            <Badge
+                              variant={
+                                employee.risk > 75 ? "destructive" : "outline"
+                              }
+                            >
+                              {employee.risk}%
+                            </Badge>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
-
