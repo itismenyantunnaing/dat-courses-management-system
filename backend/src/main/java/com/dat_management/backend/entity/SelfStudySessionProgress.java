@@ -48,6 +48,8 @@ public class SelfStudySessionProgress {
     private Integer readingMinutes = 0;
     private Integer listeningMinutes = 0;
 
+    private LocalDateTime sessionDeadline;
+
     private String completionStatus;
     // NOT_STARTED, IN_PROGRESS, COMPLETED
 

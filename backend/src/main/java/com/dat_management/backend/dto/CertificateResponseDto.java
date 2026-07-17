@@ -13,6 +13,8 @@ public class CertificateResponseDto {
     private Integer id;
     private String employeeId;
     private String employeeName;
+    private String email;
+    private String teamName;
     private String certificateType;
     private String japaneseLevel;
     private String filePath;
@@ -20,4 +22,6 @@ public class CertificateResponseDto {
     private String verifiedByEmployeeId;
     private String verifiedByEmployeeName;
     private LocalDateTime verifiedAt;
+    private String remark;
+    private LocalDateTime createdAt;
 }

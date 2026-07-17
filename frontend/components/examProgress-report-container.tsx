@@ -121,7 +121,6 @@ export function ExamProgressReportContainer() {
 
       // Log the dates after loading
       const dates = getTargetDates()
-      console.log('Dates after loading:', dates)
 
       isDataLoadedRef.current = true
       setIsLoading(false)

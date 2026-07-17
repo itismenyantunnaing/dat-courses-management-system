@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -38,35 +38,103 @@ export function EditDivDeptTeamDialog({
   onEdit,
 }: EditDivDeptTeamDialogProps) {
   const [name, setName] = useState("")
-  const [selectedDivisionId, setSelectedDivisionId] = useState<number | null>(null)
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null)
+  const [selectedDivisionId, setSelectedDivisionId] = useState<number | null>(
+    null
+  )
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<
+    number | null
+  >(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
 
-  const { 
-    divisions, 
+  const {
+    divisions,
     dat_departments,
-    fetch_divisions, 
+    fetch_divisions,
     fetch_dat_departments,
-    fetch_teams 
+    fetch_teams,
+    teams,
   } = mainStore()
 
   // Reset and fetch data when dialog opens
   useEffect(() => {
     if (open) {
+      setIsDataLoaded(false)
       fetch_divisions()
       fetch_dat_departments()
       fetch_teams()
-      
+
       if (itemName) {
         setName(itemName)
       }
-      
-      // Reset parent selections
-      setSelectedDivisionId(null)
-      setSelectedDepartmentId(null)
+
       setIsSubmitting(false)
     }
   }, [open, itemName, fetch_divisions, fetch_dat_departments, fetch_teams])
+
+  // Find and set the current parent when data is loaded
+  useEffect(() => {
+    if (!open || isDataLoaded) return
+
+    if (itemType === "department") {
+      // Find the department by name to get its divisionId
+      const department = dat_departments.find(
+        (d: any) => d.deptName === itemName
+      )
+      if (department && department.divisionId) {
+        // Check if the division exists in the list
+        const divisionExists = divisions.some(
+          (d: any) => d.id === department.divisionId
+        )
+        if (divisionExists) {
+          setSelectedDivisionId(department.divisionId)
+          setIsDataLoaded(true)
+          return
+        }
+      }
+
+      // If department not found or division doesn't exist, auto-select first division
+      if (divisions.length > 0 && selectedDivisionId === null) {
+        setSelectedDivisionId(divisions[0].id)
+        setIsDataLoaded(true)
+      }
+    } else if (itemType === "team") {
+      // Find the team by name to get its departmentDatId
+      const team = teams.find((t: any) => t.teamName === itemName)
+      if (team && team.departmentDatId) {
+        // Check if the department exists in the list
+        const departmentExists = dat_departments.some(
+          (d: any) => d.id === team.departmentDatId
+        )
+        if (departmentExists) {
+          setSelectedDepartmentId(team.departmentDatId)
+          setIsDataLoaded(true)
+          return
+        }
+      }
+
+      // If team not found or department doesn't exist, auto-select first department
+      if (dat_departments.length > 0 && selectedDepartmentId === null) {
+        setSelectedDepartmentId(dat_departments[0].id)
+        setIsDataLoaded(true)
+      }
+    } else {
+      setIsDataLoaded(true)
+    }
+  }, [
+    open,
+    itemType,
+    itemName,
+    divisions,
+    dat_departments,
+    teams,
+    selectedDivisionId,
+    selectedDepartmentId,
+    isDataLoaded,
+  ])
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -75,9 +143,11 @@ export function EditDivDeptTeamDialog({
     }
 
     // Check if any changes were made
-    if (name.trim() === itemName && 
-        (itemType !== "department" || selectedDivisionId === null) &&
-        (itemType !== "team" || selectedDepartmentId === null)) {
+    if (
+      name.trim() === itemName &&
+      (itemType !== "department" || selectedDivisionId === null) &&
+      (itemType !== "team" || selectedDepartmentId === null)
+    ) {
       onOpenChange(false)
       return
     }
@@ -110,6 +180,7 @@ export function EditDivDeptTeamDialog({
       setName("")
       setSelectedDivisionId(null)
       setSelectedDepartmentId(null)
+      setIsDataLoaded(false)
       onOpenChange(false)
     } catch (error) {
       console.error("Error updating item:", error)
@@ -123,8 +194,53 @@ export function EditDivDeptTeamDialog({
     setName("")
     setSelectedDivisionId(null)
     setSelectedDepartmentId(null)
-    setIsSubmitting(false)
+    setIsDataLoaded(false)
     onOpenChange(false)
+  }
+
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent dialog from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when dialog closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - only prevent if clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
   }
 
   const getTitle = () => {
@@ -177,24 +293,81 @@ export function EditDivDeptTeamDialog({
     }
   }
 
+  const getCurrentParentName = () => {
+    if (itemType === "department") {
+      if (selectedDivisionId) {
+        const division = divisions.find((d: any) => d.id === selectedDivisionId)
+        return division?.divisionName || division?.name || "Unknown Division"
+      }
+      return "No division selected"
+    } else if (itemType === "team") {
+      if (selectedDepartmentId) {
+        const department = dat_departments.find(
+          (d: any) => d.id === selectedDepartmentId
+        )
+        if (department) {
+          return `${department.deptName || department.name} (${department.divisionName || "No Division"})`
+        }
+        return "Unknown Department"
+      }
+      return "No department selected"
+    }
+    return ""
+  }
+
   const hasChanges = () => {
     if (!name.trim()) return false
-    if (name.trim() === itemName) {
-      // For department, check if division changed
-      if (itemType === "department" && selectedDivisionId === null) return false
-      // For team, check if department changed
-      if (itemType === "team" && selectedDepartmentId === null) return false
-      return true
+
+    // If name changed, always allow save
+    if (name.trim() !== itemName) return true
+
+    // If name is the same, check if parent changed
+    if (itemType === "department") {
+      // Find the current department to get its original divisionId
+      const department = dat_departments.find(
+        (d: any) => d.deptName === itemName
+      )
+      if (department) {
+        const originalDivisionId = department.divisionId
+        return (
+          selectedDivisionId !== null &&
+          selectedDivisionId !== originalDivisionId
+        )
+      }
+      return false
     }
-    return true
+
+    if (itemType === "team") {
+      // Find the current team to get its original departmentDatId
+      const team = teams.find((t: any) => t.teamName === itemName)
+      if (team) {
+        const originalDepartmentId = team.departmentDatId
+        return (
+          selectedDepartmentId !== null &&
+          selectedDepartmentId !== originalDepartmentId
+        )
+      }
+      return false
+    }
+
+    return false
   }
 
   // Show parent select for department AND team
   const showParentSelect = itemType === "department" || itemType === "team"
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="sm:max-w-[425px]"
+        onPointerDownOutside={handlePointerDownOutside}
+        onEscapeKeyDown={(e) => {
+          // Prevent escape key from closing when dropdown is open
+          if (isInteractingWithDropdown) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
           <DialogDescription>{getDescription()}</DialogDescription>
@@ -208,8 +381,8 @@ export function EditDivDeptTeamDialog({
               </Label>
               <Select
                 value={
-                  itemType === "department" 
-                    ? selectedDivisionId?.toString() || "" 
+                  itemType === "department"
+                    ? selectedDivisionId?.toString() || ""
                     : selectedDepartmentId?.toString() || ""
                 }
                 onValueChange={(value) => {
@@ -219,9 +392,17 @@ export function EditDivDeptTeamDialog({
                     setSelectedDepartmentId(Number(value))
                   }
                 }}
+                onOpenChange={handleDropdownOpenChange}
+                disabled={!isDataLoaded}
               >
-                <SelectTrigger id="parent-select" className="w-full">
-                  <SelectValue placeholder={`Select ${getParentLabel().toLowerCase()}`} />
+                <SelectTrigger
+                  id="parent-select"
+                  className="w-full"
+                  data-dropdown-trigger
+                >
+                  <SelectValue
+                    placeholder={`Select ${getParentLabel().toLowerCase()}`}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -240,21 +421,16 @@ export function EditDivDeptTeamDialog({
                           </SelectItem>
                         ))
                       )
+                    ) : dat_departments.length === 0 ? (
+                      <SelectItem value="no-items" disabled>
+                        No departments available
+                      </SelectItem>
                     ) : (
-                      dat_departments.length === 0 ? (
-                        <SelectItem value="no-items" disabled>
-                          No departments available
+                      dat_departments.map((dept: any) => (
+                        <SelectItem key={dept.id} value={dept.id.toString()}>
+                          {dept.deptName || dept.name}
                         </SelectItem>
-                      ) : (
-                        dat_departments.map((dept: any) => (
-                          <SelectItem
-                            key={dept.id}
-                            value={dept.id.toString()}
-                          >
-                            {dept.deptName || dept.name}
-                          </SelectItem>
-                        ))
-                      )
+                      ))
                     )}
                   </SelectGroup>
                 </SelectContent>
@@ -291,30 +467,7 @@ export function EditDivDeptTeamDialog({
             />
           </div>
 
-          {/* Show current parent info */}
-          {showParentSelect && (
-            <div className="rounded-md bg-muted/50 p-3 text-sm">
-              <p className="text-muted-foreground">
-                <span className="font-medium">Current {getParentLabel()}:</span>{" "}
-                {itemType === "department" ? (
-                  selectedDivisionId ? (
-                    divisions.find((d: any) => d.id === selectedDivisionId)?.divisionName || "Select a division"
-                  ) : (
-                    "Select a division to change"
-                  )
-                ) : (
-                  selectedDepartmentId ? (
-                    dat_departments.find((d: any) => d.id === selectedDepartmentId)?.deptName || "Select a department"
-                  ) : (
-                    "Select a department to change"
-                  )
-                )}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Select a new {getParentLabel().toLowerCase()} to change the parent, or keep the current selection.
-              </p>
-            </div>
-          )}
+          
         </div>
         <DialogFooter className="flex gap-2">
           <Button
@@ -328,7 +481,7 @@ export function EditDivDeptTeamDialog({
           <Button
             className="flex-1"
             onClick={handleSubmit}
-            disabled={!hasChanges() || isSubmitting}
+            disabled={!hasChanges() || isSubmitting || !isDataLoaded}
           >
             {isSubmitting ? "Saving..." : "Save Changes"}
           </Button>

@@ -1,4 +1,3 @@
-
 export const CERTIFICATE_TYPES = [
   'JLPT', 
   'NAT_TEST', 
@@ -21,8 +20,11 @@ export interface JapaneseCertificate {
   verifiedAt?: Date | null
   employeeId?: string
   employeeName?: string
+  email?: string
+  teamName?: string
   verifiedByEmployeeId?: string | null
   verifiedByEmployeeName?: string | null
-  createdAt?: Date
+  createdAt?: Date | null
   updatedAt?: Date
+  remark?: string | null 
 }

@@ -38,8 +38,8 @@ interface TechnicalAbilityHeadersDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialCategories?: Category[]
-  onSaveCategory?: (data: any) => Promise<void>  // For single update (with id)
-  onBulkCreate?: (data: any[]) => Promise<void>   // For bulk create (no ids)
+  onSaveCategory?: (data: any) => Promise<void>
+  onBulkCreate?: (data: any[]) => Promise<void>
   editingCategory?: Category | null
 }
 
@@ -69,14 +69,14 @@ export function TechnicalAbilityHeadersDrawer({
         setCategories([{ ...editingCategory }])
         setOriginalCategories([{ ...editingCategory }])
       } else if (initialCategories.length > 0) {
-        const sortedCategories = initialCategories.map(cat => ({
+        const sortedCategories = initialCategories.map((cat) => ({
           ...cat,
           skillSubCategories: [...cat.skillSubCategories]
             .sort((a, b) => (a.id || 0) - (b.id || 0))
-            .map(sub => ({
+            .map((sub) => ({
               ...sub,
-              skills: [...sub.skills].sort((a, b) => (a.id || 0) - (b.id || 0))
-            }))
+              skills: [...sub.skills].sort((a, b) => (a.id || 0) - (b.id || 0)),
+            })),
         }))
         setCategories(sortedCategories)
         setOriginalCategories(JSON.parse(JSON.stringify(sortedCategories)))
@@ -87,10 +87,10 @@ export function TechnicalAbilityHeadersDrawer({
             skillSubCategories: [
               {
                 subCategoryName: generateUniqueEmptyId(),
-                skills: [{ skillName: "" }]
-              }
-            ]
-          }
+                skills: [{ skillName: "" }],
+              },
+            ],
+          },
         ])
         setOriginalCategories([])
       }
@@ -113,12 +113,12 @@ export function TechnicalAbilityHeadersDrawer({
         skillSubCategories: [
           {
             subCategoryName: newEmptyId,
-            skills: [{ skillName: "" }]
-          }
-        ]
-      }
+            skills: [{ skillName: "" }],
+          },
+        ],
+      },
     ])
-    setEmptyCounter(prev => prev + 1)
+    setEmptyCounter((prev) => prev + 1)
   }
 
   const handleRemoveCategory = (index: number) => {
@@ -141,10 +141,10 @@ export function TechnicalAbilityHeadersDrawer({
     const newEmptyId = generateUniqueEmptyId()
     updated[categoryIndex].skillSubCategories.push({
       subCategoryName: newEmptyId,
-      skills: [{ skillName: "" }]
+      skills: [{ skillName: "" }],
     })
     setCategories(updated)
-    setEmptyCounter(prev => prev + 1)
+    setEmptyCounter((prev) => prev + 1)
   }
 
   const handleRemoveSubCategory = (categoryIndex: number, subIndex: number) => {
@@ -153,14 +153,18 @@ export function TechnicalAbilityHeadersDrawer({
       setError("Cannot remove the last sub-category")
       return
     }
-    updated[categoryIndex].skillSubCategories = updated[categoryIndex].skillSubCategories.filter(
-      (_, i) => i !== subIndex
-    )
+    updated[categoryIndex].skillSubCategories = updated[
+      categoryIndex
+    ].skillSubCategories.filter((_, i) => i !== subIndex)
     setCategories(updated)
     setError(null)
   }
 
-  const handleSubCategoryChange = (categoryIndex: number, subIndex: number, value: string) => {
+  const handleSubCategoryChange = (
+    categoryIndex: number,
+    subIndex: number,
+    value: string
+  ) => {
     const updated = [...categories]
     updated[categoryIndex].skillSubCategories[subIndex].subCategoryName = value
     setCategories(updated)
@@ -168,34 +172,47 @@ export function TechnicalAbilityHeadersDrawer({
 
   const handleAddSkill = (categoryIndex: number, subIndex: number) => {
     const updated = [...categories]
-    updated[categoryIndex].skillSubCategories[subIndex].skills.push({ 
-      skillName: "" 
+    updated[categoryIndex].skillSubCategories[subIndex].skills.push({
+      skillName: "",
     })
     setCategories(updated)
   }
 
-  const handleRemoveSkill = (categoryIndex: number, subIndex: number, skillIndex: number) => {
+  const handleRemoveSkill = (
+    categoryIndex: number,
+    subIndex: number,
+    skillIndex: number
+  ) => {
     const updated = [...categories]
-    if (updated[categoryIndex].skillSubCategories[subIndex].skills.length <= 1) {
+    if (
+      updated[categoryIndex].skillSubCategories[subIndex].skills.length <= 1
+    ) {
       setError("Cannot remove the last skill")
       return
     }
-    updated[categoryIndex].skillSubCategories[subIndex].skills = updated[categoryIndex].skillSubCategories[subIndex].skills.filter(
-      (_, i) => i !== skillIndex
-    )
+    updated[categoryIndex].skillSubCategories[subIndex].skills = updated[
+      categoryIndex
+    ].skillSubCategories[subIndex].skills.filter((_, i) => i !== skillIndex)
     setCategories(updated)
     setError(null)
   }
 
-  const handleSkillChange = (categoryIndex: number, subIndex: number, skillIndex: number, value: string) => {
+  const handleSkillChange = (
+    categoryIndex: number,
+    subIndex: number,
+    skillIndex: number,
+    value: string
+  ) => {
     const updated = [...categories]
-    updated[categoryIndex].skillSubCategories[subIndex].skills[skillIndex].skillName = value
+    updated[categoryIndex].skillSubCategories[subIndex].skills[
+      skillIndex
+    ].skillName = value
     setCategories(updated)
   }
 
   // Check if a name is a generated empty ID
   const isEmptyGeneratedName = (name: string) => {
-    return name && name.startsWith('empty-')
+    return name && name.startsWith("empty-")
   }
 
   // Get display name (show "empty" placeholder for generated IDs)
@@ -206,132 +223,149 @@ export function TechnicalAbilityHeadersDrawer({
     return name
   }
 
- const handleSubmit = async () => {
-  // Filter out completely empty categories
-  const validCategories = categories
-    .map(cat => ({
-      ...cat,
-      // If category name is empty, use the generated ID if it exists, otherwise keep empty
-      categoryName: cat.categoryName.trim() || cat.categoryName || generateUniqueEmptyId(),
-      skillSubCategories: cat.skillSubCategories
-        .filter(sub => 
-          sub.subCategoryName.trim() !== '' || 
-          sub.skills.some(skill => skill.skillName.trim() !== '')
-        )
-        .map(sub => ({
-          ...sub,
-          // If subcategory name is empty, use the generated ID if it exists, otherwise keep empty
-          subCategoryName: sub.subCategoryName.trim() || sub.subCategoryName || generateUniqueEmptyId(),
-          skills: sub.skills.filter(skill => skill.skillName.trim() !== '')
-        }))
-    }))
-    .filter(cat => cat.skillSubCategories.length > 0)
+  const handleSubmit = async () => {
+    // First, filter out empty categories and subcategories
+    const validCategories = categories
+      .map((cat) => ({
+        ...cat,
+        categoryName:
+          cat.categoryName.trim() ||
+          cat.categoryName ||
+          generateUniqueEmptyId(),
+        skillSubCategories: cat.skillSubCategories
+          .map((sub) => ({
+            ...sub,
+            subCategoryName:
+              sub.subCategoryName.trim() ||
+              sub.subCategoryName ||
+              generateUniqueEmptyId(),
+            skills: sub.skills.filter((skill) => skill.skillName.trim() !== ""),
+          }))
+          .filter((sub) => sub.skills.length > 0),
+      }))
+      .filter((cat) => cat.skillSubCategories.length > 0)
 
-  if (validCategories.length === 0) {
-    setError("Please add at least one category with data")
-    return
-  }
-
-  // Validate each category
-  for (const category of validCategories) {
-    // Only validate if category name is not a generated empty ID AND is actually empty
-    // Check both conditions: not starting with 'empty-' AND empty string
-    if (!category.categoryName.startsWith('empty-') && !category.categoryName.trim()) {
-      setError("Category name is required")
+    if (validCategories.length === 0) {
+      setError("Please add at least one category with skills")
       return
     }
-    for (const sub of category.skillSubCategories) {
-      if (!sub.subCategoryName.startsWith('empty-') && !sub.subCategoryName.trim()) {
-        setError("Sub-category name is required for all sub-categories")
+
+    for (const category of validCategories) {
+      if (
+        !category.categoryName.startsWith("empty-") &&
+        !category.categoryName.trim()
+      ) {
+        setError("Category name is required")
         return
       }
-      for (const skill of sub.skills) {
-        if (!skill.skillName.trim()) {
-          setError("Skill name is required for all skills")
+
+      for (const sub of category.skillSubCategories) {
+        if (
+          !sub.subCategoryName.startsWith("empty-") &&
+          !sub.subCategoryName.trim()
+        ) {
+          setError("Sub-category name is required for all sub-categories")
           return
+        }
+
+        for (const skill of sub.skills) {
+          if (!skill.skillName.trim()) {
+            setError("Skill name is required for all skills")
+            return
+          }
         }
       }
     }
+
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const categoriesWithIds = validCategories.filter((cat) => cat.id)
+      const categoriesWithoutIds = validCategories.filter((cat) => !cat.id)
+
+      for (const category of categoriesWithIds) {
+        const updateData = {
+          id: category.id,
+          categoryName: category.categoryName,
+          skillSubCategories: category.skillSubCategories.map((sub) => ({
+            ...(sub.id ? { id: sub.id } : {}),
+            subCategoryName: sub.subCategoryName,
+            skills: sub.skills.map((skill) => ({
+              ...(skill.id ? { id: skill.id } : {}),
+              skillName: skill.skillName,
+            })),
+          })),
+        }
+        if (onSaveCategory) {
+          await onSaveCategory(updateData)
+        }
+      }
+
+      if (categoriesWithoutIds.length > 0 && onBulkCreate) {
+        const createData = categoriesWithoutIds.map((cat) => ({
+          categoryName: cat.categoryName,
+          skillSubCategories: cat.skillSubCategories.map((sub) => ({
+            subCategoryName: sub.subCategoryName,
+            skills: sub.skills.map((skill) => ({
+              skillName: skill.skillName,
+            })),
+          })),
+        }))
+        await onBulkCreate(createData)
+      }
+
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Save error:", err)
+      setError(err instanceof Error ? err.message : "Failed to save categories")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  setIsSubmitting(true)
-  setError(null)
-
-  try {
-    // Separate categories with IDs (updates) from those without (creates)
-    const categoriesWithIds = validCategories.filter(cat => cat.id)
-    const categoriesWithoutIds = validCategories.filter(cat => !cat.id)
-
-    // 1. Handle updates (categories with IDs) - use onSaveCategory
-    for (const category of categoriesWithIds) {
-      const updateData = {
-        id: category.id,
-        categoryName: category.categoryName,
-        skillSubCategories: category.skillSubCategories.map(sub => ({
-          ...(sub.id ? { id: sub.id } : {}),
-          subCategoryName: sub.subCategoryName,
-          skills: sub.skills.map(skill => ({
-            ...(skill.id ? { id: skill.id } : {}),
-            skillName: skill.skillName
-          }))
-        }))
-      }
-      console.log('Updating category:', JSON.stringify(updateData, null, 2))
-      if (onSaveCategory) {
-        await onSaveCategory(updateData)
-      }
+  // Handle pointer down outside - prevent drawer from closing when interacting with content
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on interactive elements inside the drawer
+    if (
+      target.closest("input") ||
+      target.closest("button") ||
+      target.closest('[role="dialog"]')
+    ) {
+      // Don't prevent default for these elements
+      return
     }
-
-    // 2. Handle creates (categories without IDs) - use onBulkCreate
-    if (categoriesWithoutIds.length > 0 && onBulkCreate) {
-      const createData = categoriesWithoutIds.map(cat => ({
-        categoryName: cat.categoryName,
-        skillSubCategories: cat.skillSubCategories.map(sub => ({
-          subCategoryName: sub.subCategoryName,
-          skills: sub.skills.map(skill => ({
-            skillName: skill.skillName
-          }))
-        }))
-      }))
-      console.log('Creating new categories:', JSON.stringify(createData, null, 2))
-      await onBulkCreate(createData)
-    }
-
-    onOpenChange(false)
-  } catch (err) {
-    console.error('Save error:', err)
-    setError(err instanceof Error ? err.message : "Failed to save categories")
-  } finally {
-    setIsSubmitting(false)
   }
-}
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      direction="right"
+      onPointerDownOutside={handlePointerDownOutside}
+    >
       <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>
-            {editingCategory ? "Edit Technical Category" : "Manage Technical Ability"}
-          </DrawerTitle>
-          <p className="text-sm text-muted-foreground mt-1">
             {editingCategory
-              ? "Update the selected category structure"
-              : "Add or manage technical skill categories and sub-categories"
-            }
-          </p>
+              ? "Edit Technical Category"
+              : "Manage Technical Ability"}
+          </DrawerTitle>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 py-4">
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md mb-4">
+              <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
 
             <div className="space-y-6">
               {categories.map((category, catIndex) => (
-                <div key={catIndex} className="border rounded-lg p-4 space-y-4">
+                <div key={catIndex} className="space-y-4 rounded-lg border p-4">
                   <div className="flex items-center justify-between">
                     <Label className="text-base font-semibold">
                       Category {catIndex + 1}
@@ -346,15 +380,20 @@ export function TechnicalAbilityHeadersDrawer({
                         </Badge>
                       )}
                     </Label>
-                    {!editingCategory && (
+                    {/* ✅ Only show delete icon for categories WITHOUT id (new categories) */}
+                    {!category.id && !editingCategory && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveCategory(catIndex)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
                         disabled={categories.length <= 1}
                       >
-                        <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
                       </Button>
                     )}
                   </div>
@@ -363,7 +402,9 @@ export function TechnicalAbilityHeadersDrawer({
                     <Label>Category Name</Label>
                     <Input
                       value={getDisplayName(category.categoryName)}
-                      onChange={(e) => handleCategoryChange(catIndex, e.target.value)}
+                      onChange={(e) =>
+                        handleCategoryChange(catIndex, e.target.value)
+                      }
                       placeholder="empty"
                       className="w-full"
                     />
@@ -374,68 +415,102 @@ export function TechnicalAbilityHeadersDrawer({
                   <div className="space-y-4">
                     <Label>Sub-Categories</Label>
                     {category.skillSubCategories.map((sub, subIndex) => (
-                      <div key={subIndex} className="border-l-2 border-blue-200 pl-4 space-y-3">
+                      <div
+                        key={subIndex}
+                        className="space-y-3 border-l-2 border-blue-200 pl-4"
+                      >
                         <div className="flex items-center justify-between">
                           <Label className="text-sm font-medium">
                             Sub-Category {subIndex + 1}
-                            {sub.id && (
-                              <Badge variant="outline" className="ml-2 text-xs">
-                                ID: {sub.id}
-                              </Badge>
-                            )}
                             {isEmptyGeneratedName(sub.subCategoryName) && (
-                              <Badge variant="secondary" className="ml-2 text-xs">
+                              <Badge
+                                variant="secondary"
+                                className="ml-2 text-xs"
+                              >
                                 Empty
                               </Badge>
                             )}
                           </Label>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveSubCategory(catIndex, subIndex)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            disabled={category.skillSubCategories.length <= 1}
-                          >
-                            <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-3 w-3" />
-                          </Button>
+                          {/* ✅ Only show delete icon for sub-categories WITHOUT id (new) */}
+                          {!sub.id && !editingCategory && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleRemoveSubCategory(catIndex, subIndex)
+                              }
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              disabled={category.skillSubCategories.length <= 1}
+                            >
+                              <HugeiconsIcon
+                                icon={Delete02Icon}
+                                strokeWidth={2}
+                                className="h-3 w-3"
+                              />
+                            </Button>
+                          )}
                         </div>
 
                         <div className="space-y-2">
                           <Label className="text-xs">Sub-Category Name</Label>
                           <Input
                             value={getDisplayName(sub.subCategoryName)}
-                            onChange={(e) => handleSubCategoryChange(catIndex, subIndex, e.target.value)}
+                            onChange={(e) =>
+                              handleSubCategoryChange(
+                                catIndex,
+                                subIndex,
+                                e.target.value
+                              )
+                            }
                             placeholder="empty"
-                            className="text-sm w-full"
+                            className="w-full text-sm"
                           />
                         </div>
 
                         <div className="space-y-2">
                           <Label className="text-xs">Skills</Label>
                           {sub.skills.map((skill, skillIndex) => (
-                            <div key={skillIndex} className="flex items-center gap-2">
+                            <div
+                              key={skillIndex}
+                              className="flex items-center gap-2"
+                            >
                               <div className="flex-1">
                                 <Input
                                   value={skill.skillName}
-                                  onChange={(e) => handleSkillChange(catIndex, subIndex, skillIndex, e.target.value)}
+                                  onChange={(e) =>
+                                    handleSkillChange(
+                                      catIndex,
+                                      subIndex,
+                                      skillIndex,
+                                      e.target.value
+                                    )
+                                  }
                                   placeholder="Enter skill name"
                                   className="text-sm"
                                 />
                               </div>
-                              {skill.id && (
-                                <Badge variant="outline" className="text-xs">
-                                  ID: {skill.id}
-                                </Badge>
+                              {/* ✅ Only show delete icon for skills WITHOUT id (new) */}
+                              {!skill.id && !editingCategory && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleRemoveSkill(
+                                      catIndex,
+                                      subIndex,
+                                      skillIndex
+                                    )
+                                  }
+                                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  disabled={sub.skills.length <= 1}
+                                >
+                                  <HugeiconsIcon
+                                    icon={Delete02Icon}
+                                    strokeWidth={2}
+                                    className="h-3 w-3"
+                                  />
+                                </Button>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveSkill(catIndex, subIndex, skillIndex)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                disabled={sub.skills.length <= 1}
-                              >
-                                <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-3 w-3" />
-                              </Button>
                             </div>
                           ))}
                           <Button
@@ -444,7 +519,11 @@ export function TechnicalAbilityHeadersDrawer({
                             onClick={() => handleAddSkill(catIndex, subIndex)}
                             className="text-xs"
                           >
-                            <HugeiconsIcon icon={AddIcon} strokeWidth={2} className="h-3 w-3 mr-1" />
+                            <HugeiconsIcon
+                              icon={AddIcon}
+                              strokeWidth={2}
+                              className="mr-1 h-3 w-3"
+                            />
                             Add Skill
                           </Button>
                         </div>
@@ -455,7 +534,11 @@ export function TechnicalAbilityHeadersDrawer({
                       size="sm"
                       onClick={() => handleAddSubCategory(catIndex)}
                     >
-                      <HugeiconsIcon icon={AddIcon} strokeWidth={2} className="h-3 w-3 mr-1" />
+                      <HugeiconsIcon
+                        icon={AddIcon}
+                        strokeWidth={2}
+                        className="mr-1 h-3 w-3"
+                      />
                       Add Sub-Category
                     </Button>
                   </div>
@@ -468,20 +551,29 @@ export function TechnicalAbilityHeadersDrawer({
                   onClick={handleAddCategory}
                   className="w-full"
                 >
-                  <HugeiconsIcon icon={AddIcon} strokeWidth={2} className="h-4 w-4 mr-1" />
+                  <HugeiconsIcon
+                    icon={AddIcon}
+                    strokeWidth={2}
+                    className="mr-1 h-4 w-4"
+                  />
                   Add Category
                 </Button>
               )}
 
-              <div className="bg-blue-50 p-4 rounded-md">
+              <div className="rounded-md bg-blue-50 p-4">
                 <p className="text-sm text-blue-800">
-                  <span className="font-semibold">{categories.length}</span> categor{categories.length !== 1 ? 'ies' : 'y'} configured
+                  <span className="font-semibold">{categories.length}</span>{" "}
+                  categor{categories.length !== 1 ? "ies" : "y"} configured
                 </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Total sub-categories: {categories.reduce((acc, cat) => acc + cat.skillSubCategories.length, 0)}
+                <p className="mt-1 text-xs text-blue-600">
+                  Total sub-categories:{" "}
+                  {categories.reduce(
+                    (acc, cat) => acc + cat.skillSubCategories.length,
+                    0
+                  )}
                 </p>
                 {hasChanges() && (
-                  <p className="text-xs text-orange-600 mt-1">
+                  <p className="mt-1 text-xs text-orange-600">
                     You have unsaved changes
                   </p>
                 )}
@@ -492,13 +584,6 @@ export function TechnicalAbilityHeadersDrawer({
 
         <DrawerFooter className="shrink-0 border-t">
           <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !hasChanges()}
-            >
-              {isSubmitting ? "Saving..." : "Save Changes"}
-            </Button>
             <DrawerClose asChild>
               <Button
                 variant="outline"
@@ -508,6 +593,13 @@ export function TechnicalAbilityHeadersDrawer({
                 Cancel
               </Button>
             </DrawerClose>
+            <Button
+              className="flex-1"
+              onClick={handleSubmit}
+              disabled={isSubmitting || !hasChanges()}
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </DrawerFooter>
       </DrawerContent>

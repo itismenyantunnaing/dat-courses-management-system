@@ -1,5 +1,15 @@
 package com.dat_management.backend.service;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.dat_management.backend.dto.CertificateResponseDto;
 import com.dat_management.backend.entity.Employee;
 import com.dat_management.backend.entity.EmployeeCertificate;
@@ -8,16 +18,8 @@ import com.dat_management.backend.entity.EmployeeCertificate.VerificationStatus;
 import com.dat_management.backend.entity.EmployeeJapaneseProfile;
 import com.dat_management.backend.repository.EmployeeCertificateRepository;
 import com.dat_management.backend.repository.EmployeeJapaneseProfileRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +40,10 @@ public class CertificateService {
         if (certificate.getEmployee() != null) {
             dto.setEmployeeId(certificate.getEmployee().getId());
             dto.setEmployeeName(certificate.getEmployee().getName());
+            dto.setEmail(certificate.getEmployee().getEmail());
+            if (certificate.getEmployee().getTeam() != null) {
+                dto.setTeamName(certificate.getEmployee().getTeam().getTeamName());
+            }
         }
 
         dto.setCertificateType(
@@ -47,6 +53,8 @@ public class CertificateService {
         dto.setVerificationStatus(
                 certificate.getVerificationStatus() != null ? certificate.getVerificationStatus().name() : null);
         dto.setVerifiedAt(certificate.getVerifiedAt());
+        dto.setRemark(certificate.getRemark());
+        dto.setCreatedAt(certificate.getCreatedAt());
 
         if (certificate.getVerifiedBy() != null) {
             dto.setVerifiedByEmployeeId(certificate.getVerifiedBy().getId());
@@ -81,8 +89,8 @@ public class CertificateService {
 
         return switch (certificateType) {
             case JLPT -> EmployeeJapaneseProfile.JapaneseExamType.JLPT;
-            case NAT_TEST -> EmployeeJapaneseProfile.JapaneseExamType.NAT_TEST;
-            case TOP_J -> EmployeeJapaneseProfile.JapaneseExamType.TOP_J;
+            case NAT_TEST -> EmployeeJapaneseProfile.JapaneseExamType.NAT;
+            case TOP_J -> EmployeeJapaneseProfile.JapaneseExamType.TopJ;
             case BJT -> EmployeeJapaneseProfile.JapaneseExamType.BJT;
             case OTHER -> null;
         };
@@ -155,6 +163,30 @@ public class CertificateService {
                 }
             }
         }
+    }
+
+    @Transactional
+    public CertificateResponseDto verifyCertificate(
+            Integer id,
+            Employee verifier,
+            String remark) {
+
+        EmployeeCertificate certificate = certificateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Certificate not found with ID: " + id));
+
+        certificate.setVerificationStatus(VerificationStatus.APPROVED);
+        certificate.setVerifiedBy(verifier);
+        certificate.setVerifiedAt(LocalDateTime.now());
+        certificate.setRemark(remark);
+
+        updateApprovedJapaneseProfile(
+                certificate.getEmployee(),
+                certificate.getCertificateType(),
+                certificate.getJapaneseLevel());
+
+        EmployeeCertificate verifiedCertificate = certificateRepository.save(certificate);
+
+        return toDto(verifiedCertificate);
     }
 
     @Transactional
@@ -241,35 +273,21 @@ public class CertificateService {
     }
 
     @Transactional
-    public CertificateResponseDto verifyCertificate(Integer id, Employee verifier) {
+    public CertificateResponseDto rejectCertificate(
+            Integer id,
+            Employee verifier,
+            String remark) {
+
         EmployeeCertificate certificate = certificateRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Certificate not found with ID: " + id));
 
-        // Set to VERIFIED
-        certificate.setVerificationStatus(VerificationStatus.VERIFIED);
-        certificate.setVerifiedBy(verifier);
-        certificate.setVerifiedAt(LocalDateTime.now());
-
-        updateApprovedJapaneseProfile(
-                certificate.getEmployee(),
-                certificate.getCertificateType(),
-                certificate.getJapaneseLevel());
-
-        EmployeeCertificate verifiedCertificate = certificateRepository.save(certificate);
-        return toDto(verifiedCertificate);
-    }
-
-    @Transactional
-    public CertificateResponseDto rejectCertificate(Integer id, Employee verifier) {
-        EmployeeCertificate certificate = certificateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Certificate not found with ID: " + id));
-
-        // Set to REJECTED
         certificate.setVerificationStatus(VerificationStatus.REJECTED);
         certificate.setVerifiedBy(verifier);
         certificate.setVerifiedAt(LocalDateTime.now());
+        certificate.setRemark(remark);
 
         EmployeeCertificate rejectedCertificate = certificateRepository.save(certificate);
+
         return toDto(rejectedCertificate);
     }
 

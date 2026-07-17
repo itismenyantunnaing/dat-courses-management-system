@@ -21,7 +21,7 @@ import { login, sendOtp, verifyOtp, resetPassword } from "@/app/actions/auth"
 import { EyeIcon, ViewOffIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085"
 
 export function LoginForm({
   className,

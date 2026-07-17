@@ -47,7 +47,7 @@ public class AuthRestController {
         @PostMapping("/login")
         public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
 
-                Employee employee = employeeRepository.findById(request.getUserId())
+                Employee employee = employeeRepository.findByIdAndIsDeletedFalse(request.getUserId())
                                 .orElse(null);
 
                 if (employee == null) {

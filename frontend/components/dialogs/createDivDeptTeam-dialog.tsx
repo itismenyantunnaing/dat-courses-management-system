@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -40,16 +40,23 @@ export function AddDivDeptTeamDialog({
   onAdd,
 }: AddDivDeptTeamDialogProps) {
   const [name, setName] = useState("")
-  const [selectedDivisionId, setSelectedDivisionId] = useState<number | null>(null)
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null)
+  const [selectedDivisionId, setSelectedDivisionId] = useState<number | null>(
+    null
+  )
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<
+    number | null
+  >(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
 
-  const { 
-    divisions, 
-    dat_departments, 
-    fetch_divisions, 
+  const {
+    divisions,
+    dat_departments,
+    fetch_divisions,
     fetch_dat_departments,
-    fetch_teams 
+    fetch_teams,
   } = mainStore()
 
   // Fetch data when dialog opens
@@ -112,6 +119,51 @@ export function AddDivDeptTeamDialog({
     onOpenChange(false)
   }
 
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent dialog from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when dialog closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - only prevent if clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
+
   const getTitle = () => {
     switch (itemType) {
       case "division":
@@ -172,8 +224,17 @@ export function AddDivDeptTeamDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="sm:max-w-[425px]"
+        onPointerDownOutside={handlePointerDownOutside}
+        onEscapeKeyDown={(e) => {
+          // Prevent escape key from closing when dropdown is open
+          if (isInteractingWithDropdown) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
           <DialogDescription>{getDescription()}</DialogDescription>
@@ -183,12 +244,13 @@ export function AddDivDeptTeamDialog({
           {(itemType === "department" || itemType === "team") && (
             <div className="space-y-2">
               <Label htmlFor="parent-select">
-                {itemType === "department" ? "Division" : "Department"} <span className="text-red-500">*</span>
+                {itemType === "department" ? "Division" : "Department"}{" "}
+                <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={
-                  itemType === "department" 
-                    ? selectedDivisionId?.toString() || "" 
+                  itemType === "department"
+                    ? selectedDivisionId?.toString() || ""
                     : selectedDepartmentId?.toString() || ""
                 }
                 onValueChange={(value) => {
@@ -198,9 +260,16 @@ export function AddDivDeptTeamDialog({
                     setSelectedDepartmentId(Number(value))
                   }
                 }}
+                onOpenChange={handleDropdownOpenChange}
               >
-                <SelectTrigger id="parent-select" className="w-full">
-                  <SelectValue placeholder={`Select ${itemType === "department" ? "division" : "department"}`} />
+                <SelectTrigger
+                  id="parent-select"
+                  className="w-full"
+                  data-dropdown-trigger
+                >
+                  <SelectValue
+                    placeholder={`Select ${itemType === "department" ? "division" : "department"}`}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -220,22 +289,17 @@ export function AddDivDeptTeamDialog({
                           </SelectItem>
                         ))
                       )
+                    ) : // Show departments for team creation
+                    dat_departments.length === 0 ? (
+                      <SelectItem value="no-items" disabled>
+                        No departments available
+                      </SelectItem>
                     ) : (
-                      // Show departments for team creation
-                      dat_departments.length === 0 ? (
-                        <SelectItem value="no-items" disabled>
-                          No departments available
+                      dat_departments.map((dept: any) => (
+                        <SelectItem key={dept.id} value={dept.id.toString()}>
+                          {dept.deptName || dept.name}
                         </SelectItem>
-                      ) : (
-                        dat_departments.map((dept: any) => (
-                          <SelectItem
-                            key={dept.id}
-                            value={dept.id.toString()}
-                          >
-                            {dept.deptName || dept.name}
-                          </SelectItem>
-                        ))
-                      )
+                      ))
                     )}
                   </SelectGroup>
                 </SelectContent>

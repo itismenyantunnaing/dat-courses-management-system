@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Drawer,
   DrawerClose,
@@ -47,7 +47,7 @@ export function DevelopmentHeadersDrawer({
 
   // Check if there are new types added
   const hasNewTypes = () => {
-    return types.some(type => !originalTypes.includes(type))
+    return types.some((type) => !originalTypes.includes(type))
   }
 
   const handleAddType = () => {
@@ -84,24 +84,43 @@ export function DevelopmentHeadersDrawer({
 
     try {
       // Only send the new types that were added
-      const newTypes = types.filter(type => !originalTypes.includes(type))
+      const newTypes = types.filter((type) => !originalTypes.includes(type))
       await onSave?.(newTypes)
       onOpenChange(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save development types")
+      setError(
+        err instanceof Error ? err.message : "Failed to save development types"
+      )
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  // Handle pointer down outside - prevent drawer from closing when interacting with content
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on interactive elements inside the drawer
+    if (
+      target.closest("input") ||
+      target.closest("button") ||
+      target.closest('[role="dialog"]')
+    ) {
+      // Don't prevent default for these elements
+      return
+    }
+  }
+
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      direction="right"
+      onPointerDownOutside={handlePointerDownOutside}
+    >
       <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>Manage Development Types</DrawerTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add new development capability types
-          </p>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
@@ -123,18 +142,19 @@ export function DevelopmentHeadersDrawer({
                     className="flex-1"
                   />
                   <Button onClick={handleAddType} variant="outline">
-                    <HugeiconsIcon icon={AddIcon} strokeWidth={2} className="h-4 w-4 mr-1" />
+                    <HugeiconsIcon
+                      icon={AddIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
                     Add
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Press Enter or click Add to add a new development type
-                </p>
               </div>
 
               {/* Error message */}
               {error && (
-                <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+                <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
                   {error}
                 </div>
               )}
@@ -143,7 +163,7 @@ export function DevelopmentHeadersDrawer({
               <div className="space-y-3">
                 <Label>Current Development Types</Label>
                 {types.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-8 border-2 border-dashed rounded-md">
+                  <div className="rounded-md border-2 border-dashed py-8 text-center text-sm text-muted-foreground">
                     No development types added yet
                   </div>
                 ) : (
@@ -151,7 +171,7 @@ export function DevelopmentHeadersDrawer({
                     {types.map((type, index) => (
                       <div
                         key={index}
-                        className="flex items-center p-3 bg-muted/50 rounded-md"
+                        className="flex items-center rounded-md bg-muted/50 p-3"
                       >
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-sm">
@@ -160,9 +180,13 @@ export function DevelopmentHeadersDrawer({
                           <span className="font-medium">
                             {type}
                             {originalTypes.includes(type) ? (
-                              <span className="text-xs text-green-600 ml-2">(existing)</span>
+                              <span className="ml-2 text-xs text-green-600">
+                                (existing)
+                              </span>
                             ) : (
-                              <span className="text-xs text-blue-600 ml-2">(new)</span>
+                              <span className="ml-2 text-xs text-blue-600">
+                                (new)
+                              </span>
                             )}
                           </span>
                         </div>
@@ -173,14 +197,19 @@ export function DevelopmentHeadersDrawer({
               </div>
 
               {/* Summary */}
-              <div className="bg-blue-50 p-4 rounded-md">
+              <div className="rounded-md bg-blue-50 p-4">
                 <p className="text-sm text-blue-800">
-                  <span className="font-semibold">{types.length}</span> development type{types.length !== 1 ? 's' : ''} configured
+                  <span className="font-semibold">{types.length}</span>{" "}
+                  development type{types.length !== 1 ? "s" : ""} configured
                 </p>
-                <p className="text-xs text-blue-600 mt-1">
+                <p className="mt-1 text-xs text-blue-600">
                   {hasNewTypes() ? (
                     <span className="text-green-600">
-                      {types.filter(type => !originalTypes.includes(type)).length} new type(s) ready to add
+                      {
+                        types.filter((type) => !originalTypes.includes(type))
+                          .length
+                      }{" "}
+                      new type(s) ready to add
                     </span>
                   ) : (
                     "No new types to add"
@@ -193,13 +222,6 @@ export function DevelopmentHeadersDrawer({
 
         <DrawerFooter className="shrink-0 border-t">
           <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={handleSubmit}
-              disabled={isSubmitting || types.length === 0 || !hasNewTypes()}
-            >
-              {isSubmitting ? "Saving..." : "Save Development Types"}
-            </Button>
             <DrawerClose asChild>
               <Button
                 variant="outline"
@@ -209,6 +231,13 @@ export function DevelopmentHeadersDrawer({
                 Cancel
               </Button>
             </DrawerClose>
+            <Button
+              className="flex-1"
+              onClick={handleSubmit}
+              disabled={isSubmitting || types.length === 0 || !hasNewTypes()}
+            >
+              {isSubmitting ? "Saving..." : "Save Development Types"}
+            </Button>
           </div>
         </DrawerFooter>
       </DrawerContent>

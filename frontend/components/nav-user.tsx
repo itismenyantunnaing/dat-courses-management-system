@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/purity */
 "use client"
 
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -29,104 +29,112 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   UnfoldMoreIcon,
-  NotificationIcon,
   LogoutIcon,
   UserAccountIcon,
   Key02Icon,
-  Camera01Icon,
-  Delete02Icon,
+  Settings02Icon,
+  Setting06Icon,
+  NotificationIcon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { CardContent } from "@/components/ui/card"
 import ChangePassword from "./dialogs/changePassword-dialog"
-import { NotificationsDrawer } from "./drawers/notifications-drawer"
-import { logout } from "@/app/actions/auth" // ✅ Import logout action
-import { useRouter } from "next/navigation" // ✅ Import useRouter
+import { PersonalInformationDialog } from "./dialogs/personalInformation-dialog"
+import { LogoutDialog } from "./dialogs/logout-dialog"
+import { SettingDialog } from "./dialogs/setting-dialog"
+import { logout } from "@/app/actions/auth"
+import { mainStore } from "@/store/mainStore"
 
-export function NavUser({
-  user,
-}: {
-  user: {
-    name: string
-    email: string
-    avatar: string
-    department?: string
-    team?: string
-  }
-}) {
-  const router = useRouter() // ✅ Initialize router
+export function NavUser() {
   const { isMobile } = useSidebar()
-  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
+  const { profile } = mainStore()
+
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
   const [changePasswordDialogOpen, setChangePasswordDialogOpen] =
     useState(false)
   const [personalInfoDialogOpen, setPersonalInfoDialogOpen] = useState(false)
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
 
-  // Profile states
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [profileImage, setProfileImage] = useState(user.avatar)
-  const [isUploading, setIsUploading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Configuration states - Outlook is default
+  const [config, setConfig] = useState({
+    fileUploadSize: 5,
+    sessionTimeout: 30,
+    jwtExpiry: 24,
+    maxLoginAttempts: 5,
+    smtp: {
+      gmailHost: "smtp.gmail.com",
+      gmailPassword: "",
+      gmailDefault: false,
+      outlookHost: "smtp.office365.com",
+      outlookPassword: "",
+      outlookDefault: true,
+    },
+  })
+
+  // Notification Settings states
+  const [notificationSettings, setNotificationSettings] = useState({
+    courseAnnouncements: true,
+    jlptExamAnnouncements: true,
+    certificateUpdates: true,
+    systemNotifications: true,
+    emailNotifications: true,
+  })
 
   // Change Password Flow States
   const [changePasswordStep, setChangePasswordStep] = useState("old-password")
 
-  // ✅ Updated handleLogout function
   const handleLogout = async () => {
     setIsLoading(true)
     try {
       await logout()
     } catch (error) {
       console.error("Logout failed:", error)
-      // Optionally show error message to user
     } finally {
       setIsLoading(false)
       setLogoutDialogOpen(false)
     }
   }
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setIsUploading(true)
-      setTimeout(() => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          setProfileImage(reader.result as string)
-          setIsUploading(false)
-        }
-        reader.readAsDataURL(file)
-      }, 1000)
-    }
-  }
-
-  const handleRemoveImage = () => {
-    setProfileImage("")
-  }
-
-  const handleSavePersonalInfo = async () => {
+  const handleSavePersonalInfo = async (image: string) => {
     setIsLoading(true)
     try {
-      console.log("Saving profile image:", profileImage)
-      setPersonalInfoDialogOpen(false)
+      console.log("Saving profile image:", image)
+      // Add your API call here
     } catch (error) {
       console.error("Failed to save:", error)
+      throw error
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Reset password form function
+  const handleSaveSettings = async (
+    updatedConfig: any,
+    updatedNotificationSettings: any
+  ) => {
+    setIsLoading(true)
+    try {
+      console.log("Saving settings:", {
+        updatedConfig,
+        updatedNotificationSettings,
+      })
+      setConfig(updatedConfig)
+      setNotificationSettings(updatedNotificationSettings)
+      setSettingsDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to save settings:", error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const resetPasswordForm = () => {
     setChangePasswordStep("old-password")
   }
 
-  // Change Password Callbacks
   const handleChangePasswordStep = (step: string) => {
-    console.log("Change password step:", step)
     setChangePasswordStep(step)
   }
 
@@ -135,11 +143,8 @@ export function NavUser({
     newPassword: string
     oldPassword?: string
   }) => {
-    console.log("Password changed successfully")
     setIsLoading(true)
     try {
-      // API call to change password
-      // await changePassword(data.oldPassword, data.newPassword)
       console.log("Password updated successfully")
       setChangePasswordDialogOpen(false)
       resetPasswordForm()
@@ -151,9 +156,24 @@ export function NavUser({
   }
 
   const handleChangePasswordClose = () => {
-    console.log("Close change password dialog")
     setChangePasswordDialogOpen(false)
     resetPasswordForm()
+  }
+
+  if (!profile) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" className="animate-pulse">
+            <div className="h-8 w-8 rounded-lg bg-muted" />
+            <div className="flex-1">
+              <div className="h-4 w-24 rounded bg-muted" />
+              <div className="mt-1 h-3 w-32 rounded bg-muted" />
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
   }
 
   return (
@@ -167,19 +187,26 @@ export function NavUser({
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarImage
+                    src={
+                      profile.profilePhotoPath ||
+                      profile.avatar ||
+                      "/avatars/default.jpg"
+                    }
+                    alt={profile.name}
+                  />
                   <AvatarFallback className="rounded-lg">
-                    {user.name
-                      .split(" ")
+                    {profile.name
+                      ?.split(" ")
                       .map((n) => n[0])
                       .join("")
                       .toUpperCase()
-                      .slice(0, 2)}
+                      .slice(0, 2) || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+                  <span className="truncate font-medium">{profile.name}</span>
+                  <span className="truncate text-xs">{profile.email}</span>
                 </div>
                 <HugeiconsIcon
                   icon={UnfoldMoreIcon}
@@ -197,19 +224,26 @@ export function NavUser({
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarImage
+                      src={
+                        profile.profilePhotoPath ||
+                        profile.avatar ||
+                        "/avatars/default.jpg"
+                      }
+                      alt={profile.name}
+                    />
                     <AvatarFallback className="rounded-lg">
-                      {user.name
-                        .split(" ")
+                      {profile.name
+                        ?.split(" ")
                         .map((n) => n[0])
                         .join("")
                         .toUpperCase()
-                        .slice(0, 2)}
+                        .slice(0, 2) || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs">{user.email}</span>
+                    <span className="truncate font-medium">{profile.name}</span>
+                    <span className="truncate text-xs">{profile.email}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
@@ -236,11 +270,11 @@ export function NavUser({
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault()
-                    setNotificationDrawerOpen(true)
+                    setSettingsDialogOpen(true)
                   }}
                 >
-                  <HugeiconsIcon icon={NotificationIcon} strokeWidth={2} />
-                  Notifications
+                  <HugeiconsIcon icon={Setting06Icon} strokeWidth={2} />
+                  Setting
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -259,170 +293,30 @@ export function NavUser({
       </SidebarMenu>
 
       {/* Personal Information Dialog */}
-      <Dialog
+      <PersonalInformationDialog
         open={personalInfoDialogOpen}
         onOpenChange={setPersonalInfoDialogOpen}
-      >
-        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[500px]">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle>Personal Information</DialogTitle>
-            <DialogDescription>
-              View your personal information and update your profile picture.
-            </DialogDescription>
-          </DialogHeader>
+        profile={profile}
+        onSave={handleSavePersonalInfo}
+      />
 
-          <div className="flex-1 overflow-y-auto px-6 py-2">
-            {/* Profile Image Section */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="relative">
-                <Avatar className="h-24 w-24 cursor-pointer transition-opacity hover:opacity-80">
-                  <AvatarImage src={profileImage} alt={user.name} />
-                  <AvatarFallback className="text-2xl">
-                    {user.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="absolute -right-2 -bottom-2 h-8 w-8 rounded-full"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                >
-                  <HugeiconsIcon
-                    icon={Camera01Icon}
-                    strokeWidth={2}
-                    className="h-4 w-4"
-                  />
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-              </div>
-              {isUploading && (
-                <p className="text-sm text-muted-foreground">Uploading...</p>
-              )}
-              {profileImage && profileImage !== user.avatar && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRemoveImage}
-                  className="text-destructive"
-                >
-                  <HugeiconsIcon
-                    icon={Delete02Icon}
-                    strokeWidth={2}
-                    className="mr-2 h-4 w-4"
-                  />
-                  Remove Photo
-                </Button>
-              )}
-              <p className="text-center text-xs text-muted-foreground">
-                Supported formats: JPG, PNG, GIF (Max 5MB)
-              </p>
-            </div>
-
-            <Separator className="my-4" />
-
-            {/* Employee Information */}
-            <div className="py-2">
-              <CardContent className="space-y-4 p-0">
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Employee Name
-                  </Label>
-                  <p className="text-base font-medium">{user.name}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Email Address
-                  </Label>
-                  <p className="text-base font-medium">{user.email}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Department
-                  </Label>
-                  <p className="text-base font-medium">
-                    {user.department || "Software Engineering"}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">Team</Label>
-                  <p className="text-base font-medium">
-                    {user.team || "Block Chain"}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Staff ID
-                  </Label>
-                  <p className="text-base font-medium">25-00287</p>
-                </div>
-              </CardContent>
-            </div>
-          </div>
-
-          <DialogFooter className="border-t p-6 pt-4">
-            <Button
-              className="flex-1"
-              variant="outline"
-              onClick={() => setPersonalInfoDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={handleSavePersonalInfo}
-              disabled={isLoading}
-            >
-              {isLoading ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Notifications Drawer - Separated Component */}
-      <NotificationsDrawer
-        open={notificationDrawerOpen}
-        onOpenChange={setNotificationDrawerOpen}
+      {/* Setting Dialog */}
+      <SettingDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+        config={config}
+        notificationSettings={notificationSettings}
+        onSave={handleSaveSettings}
+        isLoading={isLoading}
       />
 
       {/* Logout Dialog */}
-      <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Logout</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to logout? You will need to login again to
-              access your account.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setLogoutDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleLogout}
-              disabled={isLoading}
-            >
-              {isLoading ? "Logging out..." : "Logout"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <LogoutDialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+        onConfirm={handleLogout}
+        isLoading={isLoading}
+      />
 
       {/* Change Password Dialog */}
       <Dialog

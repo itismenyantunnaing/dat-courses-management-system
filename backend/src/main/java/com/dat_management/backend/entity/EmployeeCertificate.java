@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
@@ -54,14 +55,23 @@ public class EmployeeCertificate {
 
     private String filePath;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.STRING) 
     private VerificationStatus verificationStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "verified_by")
     private Employee verifiedBy;
 
+    private String remark;
+    
     private LocalDateTime verifiedAt;
+
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 
     public enum CertificateType {
         JLPT,
@@ -73,7 +83,7 @@ public class EmployeeCertificate {
 
     public enum VerificationStatus {
         PENDING,
-        VERIFIED,
-        REJECTED
+        APPROVED,
+        REJECTED,
     }
 }

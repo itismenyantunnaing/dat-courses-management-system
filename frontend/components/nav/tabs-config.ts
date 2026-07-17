@@ -155,9 +155,9 @@ export const allTabs = [
         if (invalid.length > 0) {
           const shouldContinue = confirm(
             `⚠️ ${invalid.length} rows have missing or invalid data.\n\n` +
-              `Valid rows: ${valid.length}\n` +
-              `Invalid rows: ${invalid.length}\n\n` +
-              `Continue with ${valid.length} valid rows?`
+            `Valid rows: ${valid.length}\n` +
+            `Invalid rows: ${invalid.length}\n\n` +
+            `Continue with ${valid.length} valid rows?`
           )
 
           if (!shouldContinue) {
@@ -255,6 +255,11 @@ export const allTabs = [
         }
 
         alert(`✅ ${message}`)
+
+        if (store && store.fetch_EmployeeData) {
+          await store.fetch_EmployeeData()
+        }
+
 
         return {
           success: importedCount > 0,
@@ -573,11 +578,11 @@ export const allTabs = [
             // Use the actual category/subcategory from the header, or generate empty-{randomNumber}
             const categoryKey = info.category && info.category.trim() !== ''
               ? info.category
-              : 'Uncategorized';
+              : `empty-${getRandomNumber()}`;
 
             const subcategoryKey = info.subcategory && info.subcategory.trim() !== ''
               ? info.subcategory
-              : 'Uncategorized';
+              : `empty-${getRandomNumber()}`;
 
             if (!categoryMap.has(categoryKey)) {
               categoryMap.set(categoryKey, new Map());
@@ -1251,6 +1256,8 @@ export const allTabs = [
 
         // Extract current target data from Excel
         const extractedData = await extractCurrentTargetDataFromExcel(file)
+        console.log("AAAA")
+        console.log(extractedData)
 
         if (!extractedData.success || extractedData.data.length === 0) {
           alert(
@@ -1275,19 +1282,10 @@ export const allTabs = [
         try {
           console.log("📋 Checking employee data in store...")
 
-          // Check if employee_data is empty
           if (!store.employee_data || store.employee_data.length === 0) {
             console.log("📋 Employee data is empty. Fetching from API...")
-
-            // Show loading message
-            const loadingMessage =
-              "Fetching employee data from system. Please wait..."
-            console.log(loadingMessage)
-
-            // Fetch employee data
             await store.fetch_EmployeeData()
 
-            // Get fresh state after fetch
             const freshStore = (window as any).mainStore?.getState()
             if (
               !freshStore ||
@@ -1308,11 +1306,9 @@ export const allTabs = [
             )
           }
 
-          // Get the latest employee data (either from store or after fetch)
           const currentStore = (window as any).mainStore?.getState()
           const employeeData = currentStore?.employee_data || []
 
-          // Extract employee IDs
           existingEmployeeIds = new Set(
             employeeData.map(
               (emp: any) => emp.id || emp.employeeId || emp.staffId
@@ -1323,7 +1319,6 @@ export const allTabs = [
             `📋 Extracted ${existingEmployeeIds.size} unique employee IDs`
           )
 
-          // Log first few IDs for debugging
           if (existingEmployeeIds.size > 0) {
             const sampleIds = Array.from(existingEmployeeIds).slice(0, 5)
             console.log("📋 Sample employee IDs:", sampleIds)
@@ -1342,7 +1337,6 @@ export const allTabs = [
         let invalid: { data: CurrentTargetRow; errors: string[] }[] = []
 
         if (existingEmployeeIds.size > 0) {
-          // Use employee validation
           const result = validateCurrentTargetDataWithEmployees(
             extractedData.data,
             existingEmployeeIds
@@ -1350,7 +1344,6 @@ export const allTabs = [
           valid = result.valid
           invalid = result.invalid
         } else {
-          // Fallback to basic validation (only checks Staff ID presence and duplicates)
           console.warn(
             "⚠️ No employee data available. Using basic validation only."
           )
@@ -1364,7 +1357,6 @@ export const allTabs = [
         )
         console.log(`📊 Valid: ${valid.length}, Invalid: ${invalid.length}`)
 
-        // Log all invalid rows with details
         if (invalid.length > 0) {
           console.warn(`⚠️ ${invalid.length} invalid rows found:`)
           console.table(
@@ -1375,7 +1367,6 @@ export const allTabs = [
             }))
           )
 
-          // Separate errors by type
           const missingEmployeeErrors = invalid.filter((item) =>
             item.errors.some((e) => e.includes("does NOT exist"))
           )
@@ -1414,7 +1405,20 @@ export const allTabs = [
           return { success: false, message: "No valid data" }
         }
 
-        // ===== DOUBLE-CHECK: Filter out any records with invalid employee IDs =====
+        // ===== FETCH EXISTING TARGET DATES FROM DATABASE =====
+        console.log("📋 Fetching existing target dates from database...")
+        let existingTargetDates: any[] = []
+        try {
+          await store.fetch_TargetDates()
+          const freshStore = (window as any).mainStore?.getState()
+          existingTargetDates = freshStore?.japaneseTargetDates_Data || []
+          console.log(`✅ Found ${existingTargetDates.length} existing target dates in database`)
+        } catch (error) {
+          console.warn("⚠️ Error fetching target dates:", error)
+          console.log("📋 Proceeding without existing target dates check")
+        }
+
+        // ===== TRANSFORM DATA =====
         const apiData = transformToApiFormat(valid)
         let filteredApiData = apiData
 
@@ -1451,16 +1455,152 @@ export const allTabs = [
           return { success: false, message: "No valid records to import" }
         }
 
-        const shouldProceed = confirm(
-          `You are about to import ${filteredApiData.length} current target profiles into the database. This may take a few moments.\n\n` +
-            `Continue?`
-        )
+        // ===== HELPER: Extract date from header string =====
+        const extractDateFromHeader = (header: string | null): string | null => {
+          if (!header) return null
 
-        if (!shouldProceed) {
-          return { success: false, message: "Import cancelled by user" }
+          const monthMap: { [key: string]: string } = {
+            'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+            'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+            'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+          }
+
+          let month = ''
+          let year = ''
+
+          const patterns = [
+            /on\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*[-]?\s*(\d{4})/i,
+            /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*[-]?\s*(\d{4})/i,
+            /(\d{1,2})\/(\d{4})/,
+            /(\d{4})[-/](\d{1,2})/
+          ]
+
+          for (const pattern of patterns) {
+            const match = header.match(pattern)
+            if (match) {
+              // If it's a month name pattern
+              if (match[1].match(/[a-zA-Z]/)) {
+                const monthKey = match[1].substring(0, 3).toLowerCase()
+                month = monthMap[monthKey] || '01'
+                year = match[2]
+              }
+              // If it's a numeric pattern (MM/YYYY)
+              else if (match[1].match(/^\d+$/)) {
+                month = match[1].padStart(2, '0')
+                year = match[2]
+              }
+              break
+            }
+          }
+
+          if (!month || !year) {
+            console.warn(`⚠️ Could not extract date from: "${header}"`)
+            return null
+          }
+
+          return `${year}-${month}-15`
         }
 
-        // Import in smaller batches for better reliability
+        // ===== EXTRACT DATES FROM DYNAMIC HEADERS (GLOBAL) =====
+        const dynamicHeaders = extractedData.dynamicHeaders || {}
+        console.log("📋 Dynamic headers from Excel:", dynamicHeaders)
+
+        // Extract the raw header strings - these already contain the dates
+        const examHeader = dynamicHeaders['ExamDate'] || null
+        const target1CommHeader = dynamicHeaders['Target 1 Communication Level'] || null
+        const target2CommHeader = dynamicHeaders['Target 2 Communication Level'] || null
+        const target1JlptHeader = dynamicHeaders['Target 1 JLPT / NAT Test Level'] || null
+        const target2JlptHeader = dynamicHeaders['Target 2 JLPT / NAT Test Level'] || null
+
+        console.log("📅 Raw headers from Excel:")
+        console.log(`  Exam Date header: ${examHeader}`)
+        console.log(`  Target 1 Communication: ${target1CommHeader}`)
+        console.log(`  Target 2 Communication: ${target2CommHeader}`)
+        console.log(`  Target 1 JLPT: ${target1JlptHeader}`)
+        console.log(`  Target 2 JLPT: ${target2JlptHeader}`)
+
+        // Convert to actual dates (YYYY-MM-DD) - GLOBAL dates
+        const examDate = extractDateFromHeader(examHeader)
+        const target1Date = extractDateFromHeader(target1CommHeader) || extractDateFromHeader(target1JlptHeader)
+        const target2Date = extractDateFromHeader(target2CommHeader) || extractDateFromHeader(target2JlptHeader)
+
+        console.log("📅 Converted dates (GLOBAL):")
+        console.log(`  Exam Date: ${examDate || 'Not found'}`)
+        console.log(`  Target 1 Date: ${target1Date || 'Not found'}`)
+        console.log(`  Target 2 Date: ${target2Date || 'Not found'}`)
+
+        // ===== PROCESS GLOBAL TARGET DATES (ONLY 1 RECORD) =====
+        console.log("\n🔄 Processing global target dates...")
+        let targetDatesCreated = false
+        let targetDatesUpdated = false
+        let targetDatesSkipped = false
+
+        // Prepare the target dates data - ONLY include non-null values
+        const targetDatesData: any = {}
+        if (target1Date) targetDatesData.target1Date = target1Date
+        if (target2Date) targetDatesData.target2Date = target2Date
+        if (examDate) targetDatesData.examDate = examDate
+
+        // Check if we have any dates to save
+        if (Object.keys(targetDatesData).length === 0) {
+          console.log("⏭️ No valid target dates to save - skipping")
+          targetDatesSkipped = true
+        } else {
+          console.log("📤 Global target dates data (filtered):", targetDatesData)
+
+          // Check if target dates already exist in the database
+          const existingTargetDate = existingTargetDates.length > 0 ? existingTargetDates[0] : null
+
+          // Show confirmation
+          let confirmMessage = `📋 Target Dates Import Plan:\n\n`
+          confirmMessage += `📅 Dates from Excel (converted):\n`
+          confirmMessage += `  • Exam Date: ${examDate || 'Not found'}\n`
+          confirmMessage += `  • Target 1: ${target1Date || 'Not found'}\n`
+          confirmMessage += `  • Target 2: ${target2Date || 'Not found'}\n\n`
+          confirmMessage += `📊 Action: ${existingTargetDate ? 'UPDATE' : 'CREATE'} global target dates\n`
+          confirmMessage += `📊 Records to import: ${filteredApiData.length}\n\n`
+          confirmMessage += `Continue?`
+
+          const shouldProceed = confirm(confirmMessage)
+          if (!shouldProceed) {
+            return { success: false, message: "Import cancelled by user" }
+          }
+
+          try {
+            if (existingTargetDate) {
+              // UPDATE existing target dates (global)
+              const id = existingTargetDate.id || existingTargetDate._id
+              console.log(`  🔄 Updating global target dates (ID: ${id})`)
+              console.log(`  📤 Data:`, targetDatesData)
+              const result = await store.update_TargetDates(id, targetDatesData)
+              console.log(`  ✅ Updated global target dates: ${result}`)
+              targetDatesUpdated = true
+            } else {
+              // CREATE new target dates (global)
+              console.log(`  ➕ Creating global target dates`)
+              console.log(`  📤 Data:`, targetDatesData)
+              const result = await store.add_TargetDates(targetDatesData)
+              console.log(`  ✅ Created global target dates: ${result}`)
+              targetDatesCreated = true
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            console.error(`  ❌ Failed to process global target dates:`, errorMessage)
+
+            const continueImport = confirm(
+              `⚠️ Failed to update/create global target dates:\n\n` +
+              `${errorMessage}\n\n` +
+              `Do you want to continue with the main data import?`
+            )
+
+            if (!continueImport) {
+              return { success: false, message: "Import cancelled due to target dates failure" }
+            }
+          }
+        }
+
+        // ===== IMPORT CURRENT TARGET DATA (the main data) =====
+        console.log("\n📦 Importing current target data...")
         const BATCH_SIZE = 25
         let importedCount = 0
         const totalBatches = Math.ceil(filteredApiData.length / BATCH_SIZE)
@@ -1469,21 +1609,17 @@ export const allTabs = [
           const batch = filteredApiData.slice(i, i + BATCH_SIZE)
           const batchNumber = Math.floor(i / BATCH_SIZE) + 1
           const startIndex = i
-          let batchImported = false
 
           try {
             console.log(`\n📦 Processing Batch ${batchNumber}/${totalBatches}`)
             await store.bulkCreate_CurrentTargetData(batch)
             importedCount += batch.length
             console.log(`✅ Batch ${batchNumber} completed successfully`)
-            batchImported = true
           } catch (error) {
-            // Don't log the full error here - it's handled by retry
             console.warn(
               `⚠️ Batch ${batchNumber} failed as batch, retrying individually...`
             )
 
-            // Try to import failed batch one by one
             let successCount = 0
             for (let j = 0; j < batch.length; j++) {
               const recordIndex = startIndex + j
@@ -1491,14 +1627,12 @@ export const allTabs = [
                 await store.bulkCreate_CurrentTargetData([batch[j]])
                 importedCount++
                 successCount++
-                // Log progress every 10 records
                 if (successCount % 10 === 0 || successCount === batch.length) {
                   console.log(
                     `   📊 Imported ${successCount}/${batch.length} records from batch ${batchNumber}`
                   )
                 }
               } catch (retryError) {
-                // Silently log the failure (or skip logging entirely)
                 console.debug(
                   `   ⚠️ Record ${recordIndex + 1} (${batch[j].employeeId || "NO_ID"}) failed`
                 )
@@ -1517,10 +1651,25 @@ export const allTabs = [
           }
         }
 
+        // ===== FINAL SUMMARY =====
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
-        const finalMessage = `Successfully imported ${importedCount} out of ${filteredApiData.length} records in ${totalTime}s.`
+
+        let targetDatesStatus = '⚠️ Not set'
+        if (targetDatesCreated) targetDatesStatus = '✅ Created'
+        else if (targetDatesUpdated) targetDatesStatus = '✅ Updated'
+        else if (targetDatesSkipped) targetDatesStatus = '⏭️ Skipped (no dates found)'
+
+        const finalMessage =
+          `✅ Import completed in ${totalTime}s!\n\n` +
+          `📊 Current Target Data: ${importedCount} records imported\n` +
+          `📅 Global Target Dates: ${targetDatesStatus}\n\n` +
+          `📅 Dates applied:\n` +
+          `  • Exam Date: ${examDate || 'Not set'}\n` +
+          `  • Target 1: ${target1Date || 'Not set'}\n` +
+          `  • Target 2: ${target2Date || 'Not set'}`
+
         console.log(`\n📊 Import completed: ${finalMessage}`)
-        alert(`✅ ${finalMessage}`)
+        alert(finalMessage)
 
         return { success: true, message: finalMessage }
       } catch (error) {

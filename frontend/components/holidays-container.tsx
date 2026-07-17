@@ -385,7 +385,7 @@ export function HolidaysContainer({
 
   return (
     <>
-      <div className="flex flex-col gap-4 py-6">
+      <div className="flex flex-col gap-4 py-4">
         <CardContent className="px-4">
           {/* Search and New Button */}
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -423,7 +423,6 @@ export function HolidaysContainer({
           <div
             className={cn(
               "relative overflow-x-auto rounded-md border-y",
-              isSelectionActive && "pointer-events-none"
             )}
             style={{ zIndex: 1 }}
           >
@@ -514,17 +513,10 @@ export function HolidaysContainer({
             </Table>
           </div>
 
-          {/* Overlay and Selection Bar */}
+          {/* Selection Bar */}
           {isSelectionActive && (
             <>
-              {/* Overlay - Click to clear selection */}
-              <div
-                className="pointer-events-auto absolute inset-0 z-40 cursor-pointer bg-black/4"
-                onClick={handleClearSelection}
-              />
-
-              {/* Selection Bar */}
-              <div className="absolute top-35 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
+              <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
                 <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">

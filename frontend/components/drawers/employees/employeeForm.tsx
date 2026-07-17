@@ -18,6 +18,12 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { PlusSignIcon } from "@hugeicons/core-free-icons"
 import { useEffect, useState, useMemo } from "react"
 import { mainStore } from "@/store/mainStore"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export interface EmployeeFormData {
   div: string
@@ -41,6 +47,36 @@ interface EmployeeFormProps {
   onDropdownOpenChange?: (isOpen: boolean) => void
 }
 
+// Helper component for truncated select items with tooltip
+const TruncatedSelectItem = ({
+  value,
+  label,
+  disabled = false,
+}: {
+  value: string
+  label: string
+  disabled?: boolean
+}) => {
+  return (
+    <SelectItem value={value} disabled={disabled}>
+      {label.length > 30 ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block max-w-[275px] truncate">{label}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-sm">{label}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="block max-w-[200px] truncate">{label}</span>
+      )}
+    </SelectItem>
+  )
+}
+
 export function EmployeeForm({
   data,
   onChange,
@@ -50,40 +86,17 @@ export function EmployeeForm({
   onAddTeam,
   onDropdownOpenChange,
 }: EmployeeFormProps) {
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
 
   const {
-    fetch_EmployeeData,
-    fetch_roles,
-    fetch_divisions,
-    fetch_dat_departments,
-    fetch_teams,
+    employee_data,
     divisions,
     dat_departments,
     teams,
     roles,
   } = mainStore()
 
-  useEffect(() => {
-    const loadOptions = async () => {
-      setIsLoading(true)
-      try {
-        // Fetch all data in parallel for better performance
-        await Promise.all([
-          fetch_roles(),
-          fetch_divisions(),
-          fetch_dat_departments(),
-          fetch_teams(),
-          fetch_EmployeeData()
-        ])
-      } catch (error) {
-        console.error("Failed to fetch employee options:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadOptions()
-  }, [])
+ 
 
   // Filter departments based on selected division
   const filteredDepartments = useMemo(() => {
@@ -100,7 +113,7 @@ export function EmployeeForm({
     return dat_departments.filter(
       (dept: any) => dept.divisionId === selectedDivision.id
     )
-  }, [data.div, dat_departments, divisions])
+  }, [data.div])
 
   // Filter teams based on selected department
   const filteredTeams = useMemo(() => {
@@ -117,7 +130,7 @@ export function EmployeeForm({
     return teams.filter(
       (team: any) => team.departmentDatId === selectedDepartment.id
     )
-  }, [data.dept_dat, teams, dat_departments])
+  }, [data.dept_dat])
 
   // Handle division change - reset department and team
   const handleDivisionChange = (value: string) => {
@@ -150,7 +163,7 @@ export function EmployeeForm({
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-muted-foreground">Loading form options...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     )
@@ -229,9 +242,11 @@ export function EmployeeForm({
               <SelectContent>
                 <SelectGroup>
                   {divisions.map((option: any) => (
-                    <SelectItem key={option.id} value={option.divisionName}>
-                      {option.divisionName}
-                    </SelectItem>
+                    <TruncatedSelectItem
+                      key={option.id}
+                      value={option.divisionName}
+                      label={option.divisionName}
+                    />
                   ))}
                 </SelectGroup>
                 <SelectSeparator />
@@ -269,20 +284,32 @@ export function EmployeeForm({
               required
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={data.div ? "Select department" : "Select division first"} />
+                <SelectValue
+                  placeholder={
+                    data.div ? "Select department" : "Select division first"
+                  }
+                />
               </SelectTrigger>
               <SelectContent className="max-h-64">
                 <SelectGroup>
                   <SelectLabel>Departments</SelectLabel>
                   {filteredDepartments.length === 0 ? (
-                    <SelectItem value="no-departments" disabled>
-                      {data.div ? "No departments available for this division" : "Please select a division first"}
-                    </SelectItem>
+                    <TruncatedSelectItem
+                      value="no-departments"
+                      label={
+                        data.div
+                          ? "No departments available for this division"
+                          : "Please select a division first"
+                      }
+                      disabled
+                    />
                   ) : (
                     filteredDepartments.map((option: any) => (
-                      <SelectItem key={option.id} value={option.deptName}>
-                        {option.deptName}
-                      </SelectItem>
+                      <TruncatedSelectItem
+                        key={option.id}
+                        value={option.deptName}
+                        label={option.deptName}
+                      />
                     ))
                   )}
                 </SelectGroup>
@@ -322,20 +349,32 @@ export function EmployeeForm({
               onOpenChange={onDropdownOpenChange}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={data.dept_dat ? "Select team" : "Select department first"} />
+                <SelectValue
+                  placeholder={
+                    data.dept_dat ? "Select team" : "Select department first"
+                  }
+                />
               </SelectTrigger>
               <SelectContent className="max-h-64">
                 <SelectGroup>
                   <SelectLabel>Teams</SelectLabel>
                   {filteredTeams.length === 0 ? (
-                    <SelectItem value="no-teams" disabled>
-                      {data.dept_dat ? "No teams available for this department" : "Please select a department first"}
-                    </SelectItem>
+                    <TruncatedSelectItem
+                      value="no-teams"
+                      label={
+                        data.dept_dat
+                          ? "No teams available for this department"
+                          : "Please select a department first"
+                      }
+                      disabled
+                    />
                   ) : (
                     filteredTeams.map((option: any) => (
-                      <SelectItem key={option.id} value={option.teamName}>
-                        {option.teamName}
-                      </SelectItem>
+                      <TruncatedSelectItem
+                        key={option.id}
+                        value={option.teamName}
+                        label={option.teamName}
+                      />
                     ))
                   )}
                 </SelectGroup>
@@ -383,9 +422,11 @@ export function EmployeeForm({
               <SelectContent>
                 <SelectGroup>
                   {roles.map((option: any) => (
-                    <SelectItem key={option.id} value={option.roleName}>
-                      {option.roleName}
-                    </SelectItem>
+                    <TruncatedSelectItem
+                      key={option.id}
+                      value={option.roleName}
+                      label={option.roleName}
+                    />
                   ))}
                 </SelectGroup>
               </SelectContent>

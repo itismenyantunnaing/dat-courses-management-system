@@ -40,8 +40,9 @@ public class SelfStudySession {
     @Column(nullable = false)
     private Short sessionNo;
 
-    private LocalDateTime sessionDeadline;
-
+    @Column(name = "duration_per_session")
+    private Integer durationPerSession; // in days
+    
     private String filepath;
     private Integer kanjiTarget;
     private Integer vocabularyTarget;
@@ -56,5 +57,3 @@ public class SelfStudySession {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-
-

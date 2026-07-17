@@ -4,7 +4,7 @@ import type { Certificates_StoreType } from "../types"
 type StoreSet = (fn: (state: Certificates_StoreType) => Partial<Certificates_StoreType>) => void
 type StoreGet = () => Certificates_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
 
 // Helper function to transform file path to URL
 const getImageUrl = (filePath: string): string => {
@@ -24,20 +24,42 @@ const getImageUrl = (filePath: string): string => {
   return `/uploads/certificates/${filename}`;
 };
 
-// Helper to transform certificate data from API
-const transformCertificate = (cert: JapaneseCertificate): JapaneseCertificate => {
+// Helper to transform certificate data from API (receiving from backend)
+const transformCertificate = (cert: any): JapaneseCertificate => {
+  // Handle various possible status formats from backend
+  let status = cert.verificationStatus?.toLowerCase() || 'pending';
+
+  // Handle both 'verified' and 'approved' statuses
+  if (status === 'verified') {
+    status = 'approved';
+  }
+
+  // Ensure status is one of the valid values
+  if (!['approved', 'pending', 'rejected'].includes(status)) {
+    status = 'pending';
+  }
+
   return {
     id: String(cert.id || ''),
     certificateType: cert.certificateType,
     japaneseLevel: cert.japaneseLevel,
     filePath: getImageUrl(cert.filePath || ''),
-    verificationStatus: (cert.verificationStatus?.toLowerCase() || 'pending') as 'approved' | 'pending' | 'rejected',
+    verificationStatus: status as 'approved' | 'pending' | 'rejected',
     verifiedAt: cert.verifiedAt ? new Date(cert.verifiedAt) : null,
     employeeId: cert.employeeId || '',
     employeeName: cert.employeeName || '',
+    email: cert.email || '',
+    teamName: cert.teamName || '',
     verifiedByEmployeeId: cert.verifiedByEmployeeId || null,
     verifiedByEmployeeName: cert.verifiedByEmployeeName || null,
+    createdAt: cert.createdAt ? new Date(cert.createdAt) : null,
+    remark: cert.remark || null,
   };
+};
+
+// Helper to map status to uppercase for backend (when sending)
+const mapStatusToBackend = (status: string): string => {
+  return status.toUpperCase(); // 'pending' -> 'PENDING', 'approved' -> 'APPROVED', etc.
 };
 
 // Helper to get userId from the combined store
@@ -53,6 +75,8 @@ const getUserIdFromStore = (get: StoreGet) => {
 
 export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   certificateData: [] as JapaneseCertificate[],
+  pendingCertificates: [] as JapaneseCertificate[],
+  allCertificates: [] as JapaneseCertificate[],
 
   fetch_CertificateData: async (userId?: string) => {
     // Use provided userId or get from session
@@ -62,6 +86,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       set(() => ({ certificateData: [] }))
       return []
     }
+
 
     try {
       const response = await fetch(`${apiUrl}/api/certificates/my?employeeId=${userIdParam}`);
@@ -78,6 +103,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
         ? certificates.map(transformCertificate)
         : [];
 
+
       set(() => ({ certificateData: transformedData }))
 
       return transformedData
@@ -85,6 +111,72 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
     } catch (error) {
       console.log('❌ Error fetching certificates:', error);
       set(() => ({ certificateData: [] }))
+      return []
+    }
+  },
+
+  // Fetch pending certificates (for approver)
+  fetch_PendingCertificates: async (approverId?: string) => {
+    const userIdParam = approverId || getUserIdFromStore(get);
+
+    if (!userIdParam) {
+      set(() => ({ pendingCertificates: [] }))
+      return []
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/certificates/pending?employeeId=${userIdParam}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const certificates = result.data || [];
+
+      const transformedData = Array.isArray(certificates)
+        ? certificates.map(transformCertificate)
+        : [];
+
+      set(() => ({ pendingCertificates: transformedData }))
+      return transformedData
+
+    } catch (error) {
+      console.log('❌ Error fetching pending certificates:', error);
+      set(() => ({ pendingCertificates: [] }))
+      return []
+    }
+  },
+
+  // Fetch all certificates (for approver)
+  fetch_AllCertificates: async (approverId?: string) => {
+    const userIdParam = approverId || getUserIdFromStore(get);
+
+    if (!userIdParam) {
+      set(() => ({ allCertificates: [] }))
+      return []
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/certificates/all?employeeId=${userIdParam}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const certificates = result.data || [];
+
+      const transformedData = Array.isArray(certificates)
+        ? certificates.map(transformCertificate)
+        : [];
+
+      set(() => ({ allCertificates: transformedData }))
+      return transformedData
+
+    } catch (error) {
+      console.log('❌ Error fetching all certificates:', error);
+      set(() => ({ allCertificates: [] }))
       return []
     }
   },
@@ -243,6 +335,81 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return `Failed to delete certificate: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   },
+
+  // Verify certificate
+  verify_CertificateData: async (id: string, remark?: string) => {
+    const userId = getUserIdFromStore(get);
+
+    if (!userId) {
+      return 'User not authenticated'
+    }
+
+    try {
+      const url = new URL(`${apiUrl}/api/certificates/${id}/verify`);
+      url.searchParams.append('employeeId', userId);
+      if (remark) {
+        url.searchParams.append('remark', remark);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'PUT',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData}`);
+      }
+
+      // Refresh both my certificates and all certificates
+      await get().fetch_CertificateData(userId);
+      await get().fetch_AllCertificates(userId);
+      await get().fetch_PendingCertificates(userId);
+
+      return 'Certificate verified successfully.';
+
+    } catch (error) {
+      console.log('❌ Error verifying certificate:', error);
+      return `Failed to verify certificate: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+  },
+
+  // Reject certificate
+  reject_CertificateData: async (id: string, remark?: string) => {
+    const userId = getUserIdFromStore(get);
+
+    if (!userId) {
+      return 'User not authenticated'
+    }
+
+    try {
+      const url = new URL(`${apiUrl}/api/certificates/${id}/reject`);
+      url.searchParams.append('employeeId', userId);
+      if (remark) {
+        url.searchParams.append('remark', remark);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'PUT',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData}`);
+      }
+
+      // Refresh both my certificates and all certificates
+      await get().fetch_CertificateData(userId);
+      await get().fetch_AllCertificates(userId);
+      await get().fetch_PendingCertificates(userId);
+
+      return 'Certificate rejected successfully.';
+
+    } catch (error) {
+      console.log('❌ Error rejecting certificate:', error);
+      return `Failed to reject certificate: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+  },
+
 
 
 });

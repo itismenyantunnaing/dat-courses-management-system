@@ -10,6 +10,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.dat_management.backend.dto.EmployeeJapaneseProfileResponse;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -40,6 +42,7 @@ public class EmployeeWithSkillsResponseDTO {
     private ManagementSkillInfo managementSkill;
     private List<DevelopmentSkillInfo> developmentSkills;
     private List<TechnicalSkillGroup> technicalSkills;
+    private EmployeeJapaneseProfileResponse japaneseProfile;
     
     // ==================== LANGUAGE SKILL (without employeeId) ====================
     @Data

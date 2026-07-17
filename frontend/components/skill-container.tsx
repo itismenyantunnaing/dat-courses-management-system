@@ -15,6 +15,12 @@ import { CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -57,31 +63,49 @@ import {
   Delete02Icon,
   ViewIcon,
   Settings01Icon,
+  EyeIcon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
-import { EmployeeSkill, SkillSubCategory, SkillCategory, Skill, DevelopmentCapability, EmployeeDevelopmentExperience, LanguageSkill, type ManagementScore } from "@/types/skillset"
+import {
+  EmployeeSkill,
+  SkillSubCategory,
+  SkillCategory,
+  Skill,
+  DevelopmentCapability,
+  EmployeeDevelopmentExperience,
+  LanguageSkill,
+  type ManagementScore,
+} from "@/types/skillset"
 import { Employee } from "@/types/employee"
 import { SkillsetDrawer } from "@/components/drawers/skillset/skillSet-drawer"
 import { DevelopmentHeadersDrawer } from "@/components/drawers/skillset/developmentHeaders-drawer"
 import { TechnicalAbilityHeadersDrawer } from "@/components/drawers/skillset/technicalAbilityHeaders-drawer"
 import type { EmployeeJapaneseLevel } from "@/types/current_target"
 
-const STROKE_WIDTH = 2;
+const STROKE_WIDTH = 2
 
 type GroupedSkill = {
-  skill_id: number;
-  skill_name: string;
-  sub_category_name: string;
-};
+  skill_id: number
+  skill_name: string
+  sub_category_name: string
+}
 
-const BorderedTableCell = ({ children, className = "", ...props }: React.ComponentProps<typeof TableCell>) => (
+const BorderedTableCell = ({
+  children,
+  className = "",
+  ...props
+}: React.ComponentProps<typeof TableCell>) => (
   <TableCell className={`border-r border-l ${className}`} {...props}>
     {children}
   </TableCell>
 )
 
-const BorderedTableHead = ({ children, className = "", ...props }: React.ComponentProps<typeof TableHead>) => (
+const BorderedTableHead = ({
+  children,
+  className = "",
+  ...props
+}: React.ComponentProps<typeof TableHead>) => (
   <TableHead className={`border-r border-l ${className}`} {...props}>
     {children}
   </TableHead>
@@ -89,50 +113,78 @@ const BorderedTableHead = ({ children, className = "", ...props }: React.Compone
 
 const getExperienceLevelColor = (level: string): string => {
   const levelColors: Record<string, string> = {
-    "Expert": "bg-yellow-100 text-yellow-800",
-    "Architecture": "bg-indigo-100 text-indigo-800",
-    "Optimization": "bg-orange-100 text-orange-800",
+    Expert: "bg-yellow-100 text-yellow-800",
+    Architecture: "bg-indigo-100 text-indigo-800",
+    Optimization: "bg-orange-100 text-orange-800",
     "Component Design": "bg-cyan-100 text-cyan-800",
-    "Deployment": "bg-teal-100 text-teal-800",
+    Deployment: "bg-teal-100 text-teal-800",
     "Type Safety": "bg-pink-100 text-pink-800",
     "API Development": "bg-emerald-100 text-emerald-800",
     "Query Optimization": "bg-amber-100 text-amber-800",
     "Database Administration": "bg-red-100 text-red-800",
-    "Caching": "bg-lime-100 text-lime-800",
+    Caching: "bg-lime-100 text-lime-800",
     "Framework Expert": "bg-violet-100 text-violet-800",
-    "Microservices": "bg-fuchsia-100 text-fuchsia-800",
+    Microservices: "bg-fuchsia-100 text-fuchsia-800",
     "Cloud Architecture": "bg-sky-100 text-sky-800",
-    "Migration": "bg-rose-100 text-rose-800",
-    "Scripting": "bg-stone-100 text-stone-800",
+    Migration: "bg-rose-100 text-rose-800",
+    Scripting: "bg-stone-100 text-stone-800",
     "Data Modeling": "bg-neutral-100 text-neutral-800",
     "State Management": "bg-blue-100 text-blue-800",
     "Real-time Apps": "bg-green-100 text-green-800",
-    "DevOps": "bg-indigo-100 text-indigo-800",
+    DevOps: "bg-indigo-100 text-indigo-800",
     "Performance Tuning": "bg-orange-100 text-orange-800",
     "Type Integration": "bg-purple-100 text-purple-800",
-    "Setup": "bg-gray-100 text-gray-800",
+    Setup: "bg-gray-100 text-gray-800",
   }
   return levelColors[level] || "bg-gray-100 text-gray-800"
 }
 
 export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
+  const [language, setLanguage] = useState<"eng" | "japan">("eng")
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null)
-  const [developmentHeadersDrawerOpen, setDevelopmentHeadersDrawerOpen] = useState(false)
-  const [technicalHeadersDrawerOpen, setTechnicalHeadersDrawerOpen] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [developmentHeadersDrawerOpen, setDevelopmentHeadersDrawerOpen] =
+    useState(false)
+  const [technicalHeadersDrawerOpen, setTechnicalHeadersDrawerOpen] =
+    useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [employeeToDelete, setEmployeeToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [employeeToDelete, setEmployeeToDelete] = useState<{
+    id: string
+    name: string
+  } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [employees, setEmployees] = useState<Employee[]>([])
-  const [japaneseLevelMap, setJapaneseLevelMap] = useState<Map<string, string | null>>(new Map());
-  const [skillMap, setSkillMap] = useState<Map<string, Map<string, { years: number | null; level: string | null }>>>(new Map());
-  const [devCapMap, setDevCapMap] = useState<Map<string, Map<string, { years: number | null; experience_process: string | null }>>>(new Map());
-  const [languageSkillMap, setLanguageSkillMap] = useState<Map<string, { language_skill_level: string | number | null; jlpt_highest_level: string | null }>>(new Map());
-  const [managementScoresMap, setManagementScoresMap] = useState<Map<string, ManagementScore>>(new Map());
+  const [japaneseLevelMap, setJapaneseLevelMap] = useState<
+    Map<string, string | null>
+  >(new Map())
+  const [skillMap, setSkillMap] = useState<
+    Map<string, Map<string, { years: number | null; level: string | null }>>
+  >(new Map())
+  const [devCapMap, setDevCapMap] = useState<
+    Map<
+      string,
+      Map<string, { years: number | null; experience_process: string | null }>
+    >
+  >(new Map())
+  const [languageSkillMap, setLanguageSkillMap] = useState<
+    Map<
+      string,
+      {
+        language_skill_level: string | number | null
+        jlpt_highest_level: string | null
+      }
+    >
+  >(new Map())
+  const [managementScoresMap, setManagementScoresMap] = useState<
+    Map<string, ManagementScore>
+  >(new Map())
 
   // Column visibility state using radio-style selection
   const [selectedSection, setSelectedSection] = useState<string>("all")
@@ -157,11 +209,11 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     add_devCapHeaders,
     update_SkillCategory,
     add_BulkSkillCategories,
-  } = mainStore();
+  } = mainStore()
 
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
+      setIsLoading(true)
       await Promise.all([
         fetch_EmployeeData(),
         fetch_EmployeeJapaneseLevel(),
@@ -170,182 +222,219 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
         fetch_devCapHeaders(),
         fetch_devCapData(),
         fetch_languageSkillData(),
-        fetch_managementScoreData()
-      ]);
-      setIsLoading(false);
-    };
+        fetch_managementScoreData(),
+      ])
+      setIsLoading(false)
+    }
 
-    loadData();
-  }, [fetch_EmployeeData, fetch_SkillHeaders, fetch_SkillData, fetch_devCapHeaders, fetch_devCapData]);
+    loadData()
+  }, [
+    fetch_EmployeeData,
+    fetch_SkillHeaders,
+    fetch_SkillData,
+    fetch_devCapHeaders,
+    fetch_devCapData,
+  ])
+
+  // Add this helper function to get the correct header text
+  const getHeaderText = (header: { header_name: string; header_name_japan?: string }) => {
+    if (language === "japan" && header.header_name_japan) {
+      return header.header_name_japan
+    }
+    return header.header_name
+  }
 
   // Employee data
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
-      setEmployees(employee_data);
+      setEmployees(employee_data)
     }
-  }, [employee_data]);
+  }, [employee_data])
 
   console.log(skillData)
 
   // Build Japanese level map for quick lookup: employee_id -> jlptHighestLevel
   useEffect(() => {
     if (employeeJapaneseLevel_Data && employeeJapaneseLevel_Data.length > 0) {
-      const map = new Map<string, string | null>();
+      const map = new Map<string, string | null>()
 
       employeeJapaneseLevel_Data.forEach((item: EmployeeJapaneseLevel) => {
         // Store jlptHighestLevel field
-        map.set(item.employee_id, item.jlptHighestLevel || null);
-      });
+        map.set(item.employee_id, item.jlptHighestLevel || null)
+      })
 
-      setJapaneseLevelMap(map);
+      setJapaneseLevelMap(map)
     }
-  }, [employeeJapaneseLevel_Data]);
+  }, [employeeJapaneseLevel_Data])
 
   // Build skill map for quick lookup: employee_id -> Map<skillName, { years, level }>
   useEffect(() => {
-
     if (skillData && skillData.length > 0) {
-      const map = new Map<string, Map<string, { years: number | null; level: string | null }>>();
+      const map = new Map<
+        string,
+        Map<string, { years: number | null; level: string | null }>
+      >()
 
       skillData.forEach((skill: EmployeeSkill) => {
         // Get employee ID
-        const employeeId = skill.employeeId;
+        const employeeId = skill.employeeId
 
         if (!employeeId) {
-          console.warn('Skill missing employeeId:', skill);
-          return;
+          console.warn("Skill missing employeeId:", skill)
+          return
         }
 
         if (!map.has(employeeId)) {
-          map.set(employeeId, new Map());
+          map.set(employeeId, new Map())
         }
 
-        const employeeSkillMap = map.get(employeeId)!;
+        const employeeSkillMap = map.get(employeeId)!
 
         // Use skillName as the key instead of skillId
-        const skillName = skill.skillName;
+        const skillName = skill.skillName
 
         if (!skillName) {
-          console.warn('Skill missing skillName:', skill);
-          return;
+          console.warn("Skill missing skillName:", skill)
+          return
         }
 
         employeeSkillMap.set(skillName, {
           years: skill.yearsOfExperience || 0,
-          level: skill.experienceLevel || null
-        });
-      });
+          level: skill.experienceLevel || null,
+        })
+      })
 
-      setSkillMap(map);
+      setSkillMap(map)
     } else {
-      console.log('No skillData available');
+      console.log("No skillData available")
     }
-  }, [skillData]);
+  }, [skillData])
 
   // Build devCap map for quick lookup: employee_id -> Map<developmentTypeName, { years, experience_process }>
   useEffect(() => {
     if (devCap_data && devCap_data.length > 0) {
-      const map = new Map<string, Map<string, { years: number | null; experience_process: string | null }>>();
+      const map = new Map<
+        string,
+        Map<string, { years: number | null; experience_process: string | null }>
+      >()
 
       devCap_data.forEach((devCap: DevelopmentCapability) => {
-        const employeeId = devCap.employeeId;
+        const employeeId = devCap.employeeId
 
         if (!map.has(employeeId)) {
-          map.set(employeeId, new Map());
+          map.set(employeeId, new Map())
         }
 
-        const employeeDevCapMap = map.get(employeeId)!;
-        const typeName = devCap.developmentTypeName;
+        const employeeDevCapMap = map.get(employeeId)!
+        const typeName = devCap.developmentTypeName
 
         employeeDevCapMap.set(typeName, {
           years: devCap.yearsOfExperience || 0,
-          experience_process: devCap.processName
-        });
-      });
+          experience_process: devCap.processName,
+        })
+      })
 
-      setDevCapMap(map);
+      setDevCapMap(map)
     }
-  }, [devCap_data]);
+  }, [devCap_data])
 
   // Build language skill map for quick lookup: staff_id -> { language_skill_level, jlpt_highest_level }
   useEffect(() => {
     if (languageSkill_data && languageSkill_data.length > 0) {
-      const map = new Map<string, { language_skill_level: string | number | null; jlpt_highest_level: string | null }>();
+      const map = new Map<
+        string,
+        {
+          language_skill_level: string | number | null
+          jlpt_highest_level: string | null
+        }
+      >()
 
       languageSkill_data.forEach((skill: LanguageSkill) => {
         // Handle both camelCase (from API) and snake_case (from mock data)
-        const employeeId = skill.employeeId;
-        const languageLevel = skill.languageSkillLevel === undefined ? "" : skill.languageSkillLevel;
+        const employeeId = skill.employeeId
+        const languageLevel =
+          skill.languageSkillLevel === undefined ? "" : skill.languageSkillLevel
 
         map.set(employeeId, {
-          language_skill_level: languageLevel !== undefined ? languageLevel : null,
-          jlpt_highest_level: skill.jlpt_highest_level || null
-        });
-      });
+          language_skill_level:
+            languageLevel !== undefined ? languageLevel : null,
+          jlpt_highest_level: skill.jlpt_highest_level || null,
+        })
+      })
 
-      setLanguageSkillMap(map);
+      setLanguageSkillMap(map)
     }
-  }, [languageSkill_data]);
+  }, [languageSkill_data])
 
   // Build management scores map for quick lookup: employee_id -> ManagementScore
   useEffect(() => {
     if (managementScores_Data && managementScores_Data.length > 0) {
-      const map = new Map<string, ManagementScore>();
+      const map = new Map<string, ManagementScore>()
       managementScores_Data.forEach((score: ManagementScore) => {
-        map.set(score.employeeId, score);
-      });
-      setManagementScoresMap(map);
+        map.set(score.employeeId, score)
+      })
+      setManagementScoresMap(map)
     }
-  }, [managementScores_Data]);
+  }, [managementScores_Data])
 
   // Build dynamic skills list from skill_headers (API returns camelCase)
   const dynamicSkillsList = useMemo(() => {
-    const skills: { id: number; name: string; category: string; sub_category: string }[] = [];
-    (skill_headers || []).forEach((category: SkillCategory) => {
-      // API returns: categoryName, skillSubCategories
-      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-        // API returns: subCategoryName, skills
-        subCategory.skills?.forEach((skill: Skill) => {
-          // API returns: id, skillName
-          skills.push({
-            id: skill.id,
-            name: skill.skillName,
-            category: category.categoryName,
-            sub_category: subCategory.subCategoryName,
-          });
-        });
-      });
-    });
-    return skills;
-  }, [skill_headers]);
+    const skills: {
+      id: number
+      name: string
+      category: string
+      sub_category: string
+    }[] = []
+      ; (skill_headers || []).forEach((category: SkillCategory) => {
+        // API returns: categoryName, skillSubCategories
+        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+          // API returns: subCategoryName, skills
+          subCategory.skills?.forEach((skill: Skill) => {
+            // API returns: id, skillName
+            skills.push({
+              id: skill.id,
+              name: skill.skillName,
+              category: category.categoryName,
+              sub_category: subCategory.subCategoryName,
+            })
+          })
+        })
+      })
+    return skills
+  }, [skill_headers])
 
   // Group skills by category
   const dynamicSkillsByCategory = useMemo(() => {
-    const grouped: Record<string, GroupedSkill[]> = {};
-    (skill_headers || []).forEach((category: SkillCategory) => {
-      const categoryName = category.categoryName;
-      grouped[categoryName] = [];
-      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-        subCategory.skills?.forEach((skill: Skill) => {
-          grouped[categoryName].push({
-            skill_id: skill.id,
-            skill_name: skill.skillName,
-            sub_category_name: subCategory.subCategoryName,
-          });
-        });
-      });
-    });
-    return grouped;
-  }, [skill_headers]);
+    const grouped: Record<string, GroupedSkill[]> = {}
+      ; (skill_headers || []).forEach((category: SkillCategory) => {
+        const categoryName = category.categoryName
+        grouped[categoryName] = []
+        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+          subCategory.skills?.forEach((skill: Skill) => {
+            grouped[categoryName].push({
+              skill_id: skill.id,
+              skill_name: skill.skillName,
+              sub_category_name: subCategory.subCategoryName,
+            })
+          })
+        })
+      })
+    return grouped
+  }, [skill_headers])
 
   const filteredEmployees = employees.filter((employee) => {
-    return employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.id?.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+    return (
+      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.id?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage)
+  const paginatedEmployees = filteredEmployees.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  )
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value))
@@ -353,7 +442,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
   }
 
   const handlePrevious = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
-  const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+  const handleNext = () =>
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
   const handleDeleteClick = (employee: { id: string; name: string }) => {
     setEmployeeToDelete(employee)
@@ -377,7 +467,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
   const handleRowClick = (employee: Employee) => {
     setSelectedEmployee({
       id: employee.id,
-      name: employee.name
+      name: employee.name,
     })
     setDrawerOpen(true)
   }
@@ -394,7 +484,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     await Promise.all([
       fetch_devCapData(),
       fetch_languageSkillData(),
-      fetch_managementScoreData()
+      fetch_managementScoreData(),
     ])
   }
 
@@ -419,7 +509,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       await update_SkillCategory(category)
       await fetch_SkillHeaders()
     } catch (error) {
-      console.error('Failed to save category:', error)
+      console.error("Failed to save category:", error)
       throw error
     }
   }
@@ -430,7 +520,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       await add_BulkSkillCategories(categories)
       await fetch_SkillHeaders()
     } catch (error) {
-      console.error('Failed to create categories:', error)
+      console.error("Failed to create categories:", error)
       throw error
     }
   }
@@ -460,34 +550,53 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
 
   // Column headers - Employee section (always visible)
   const employeeHeaders = [
-    { field: "team", header_name: "Team" },
-    { field: "staff_id", header_name: "Staff ID" },
-    { field: "name", header_name: "Name" },
-    { field: "dept", header_name: "Name of the commissioning department *Select from the dropdown menu" },
-    { field: "is_core_personnel", header_name: "Core personnel *FPT only" },
-    { field: "has_japan_business_trip", header_name: " Whether or not you have a business trip to Japan" },
-  ];
+    { field: "team", header_name: "Team", header_name_japan: "チーム" },
+    { field: "staff_id", header_name: "Staff ID", header_name_japan: "スタッフID" },
+    { field: "name", header_name: "Name", header_name_japan: "名前" },
+    {
+      field: "dept",
+      header_name: "Name of the commissioning department *Select from the dropdown menu",
+      header_name_japan: "委託元部署名※プルダウン入力",
+    },
+    { field: "is_core_personnel", header_name: "Core personnel *FPT only", header_name_japan: "中核人材 *FPTのみ" },
+    {
+      field: "has_japan_business_trip",
+      header_name: "Whether or not you have a business trip to Japan",
+      header_name_japan: "日本出張の有無",
+    },
+  ]
 
   const administratorHeaders = [
-    { field: "management_experience_level", header_name: "Management experience (Levels 1-5)" },
-    { field: "qcd_score", header_name: "QCD (1-4 points)" },
-    { field: "report_consult_score", header_name: "Reporting, contacting, and consulting (1-4 points)" },
-    { field: "education_score", header_name: "Education (1-4 points)" },
-    { field: "total_level", header_name: "Total (Levels 1-5)" },
-  ];
+    {
+      field: "management_experience_level",
+      header_name: "Management experience (Levels 1-5)",
+      header_name_japan: "管理経験（レベル1～5",
+    },
+    { field: "qcd_score", header_name: "QCD (1-4 points)", header_name_japan: "QCD (1-4点)" },
+    {
+      field: "report_consult_score",
+      header_name: "Reporting, contacting, and consulting (1-4 points)",
+      header_name_japan: "報告・連絡・相談 (1-4点)",
+    },
+    { field: "education_score", header_name: "Education (1-4 points)", header_name_japan: "教育 (1-4点)" },
+    { field: "total_level", header_name: "Total (Levels 1-5)", header_name_japan: "合計 (レベル1-5)" },
+  ]
 
   const languageSkillHeaders = [
-    { field: "language_level", header_name: "Level (Levels 1-5)" },
-    { field: "jlpt_nat_score", header_name: "JLPT/NAT (N1~N5)" },
-  ];
+    { field: "language_level", header_name: "Level (Levels 1-5)", header_name_japan: "レベル (レベル1-5)" },
+    { field: "jlpt_nat_score", header_name: "JLPT/NAT (N1~N5)", header_name_japan: "JLPT/NAT (N1〜N5)" },
+  ]
 
   const totalSkillColumns = dynamicSkillsList.length * 2
   const totalColumns = employeeHeaders.length + 1 + totalSkillColumns
 
   // Check if a section should be visible based on selected section
-  const showAdministrator = selectedSection === "all" || selectedSection === "administrator";
-  const showDeveloper = selectedSection === "all" || selectedSection === "developer";
-  const showTechnicalAbility = selectedSection === "all" || selectedSection === "technicalAbility";
+  const showAdministrator =
+    selectedSection === "all" || selectedSection === "administrator"
+  const showDeveloper =
+    selectedSection === "all" || selectedSection === "developer"
+  const showTechnicalAbility =
+    selectedSection === "all" || selectedSection === "technicalAbility"
 
   // Section display names for the column visibility dropdown
   const sectionDisplayNames = {
@@ -513,11 +622,11 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
           <p className="text-muted-foreground">Loading skills data...</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -540,95 +649,152 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
               />
             </div>
             <div className="flex gap-2">
-              {/* Column Visibility Dropdown with Radio-style selection */}
+              {/* Property Visibility Dropdown */}
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <HugeiconsIcon icon={ViewIcon} strokeWidth={2} className="h-4 w-4" />
-                    {selectedSection === "all" ? "All Sections" : sectionDisplayNames[selectedSection as keyof typeof sectionDisplayNames]}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
-                  <DropdownMenuLabel>Filter Skill Sections</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-1 text-xs text-muted-foreground">
-                    Employee columns are always visible
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-9 w-9">
+                        <HugeiconsIcon
+                          icon={EyeIcon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Property Visibility</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <DropdownMenuContent className="w-48">
+                  {/* Language Toggle Section */}
+                  <div className="px-2 py-1.5">
+                    <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                      <Button
+                        variant={language === "eng" ? "default" : "ghost"}
+                        size="sm"
+                        className="flex-1 h-7 text-xs"
+                        onClick={() => setLanguage("eng")}
+                      >
+                        Eng
+                      </Button>
+                      <Button
+                        variant={language === "japan" ? "default" : "ghost"}
+                        size="sm"
+                        className="flex-1 h-7 text-xs"
+                        onClick={() => setLanguage("japan")}
+                      >
+                        日本語
+                      </Button>
+                    </div>
                   </div>
+
                   <DropdownMenuSeparator />
 
-                  {/* Show All Sections - acts as a toggle/reset */}
+                  {/* All Sections option */}
                   <DropdownMenuCheckboxItem
                     checked={selectedSection === "all"}
                     onCheckedChange={() => handleSectionSelect("all")}
-                    className="font-medium"
+                    onSelect={(e) => e.preventDefault()}
                   >
-                    Show All Sections
+                    All Sections
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuSeparator />
-
-                  {/* Individual Sections - Radio button style */}
+                  {/* Individual Sections - Checkbox style (not radio) */}
                   {Object.entries(sectionDisplayNames).map(([key, label]) => (
                     <DropdownMenuCheckboxItem
                       key={key}
                       checked={selectedSection === key}
                       onCheckedChange={() => handleSectionSelect(key)}
-                      className="pl-6"
+                      onSelect={(e) => e.preventDefault()}
                     >
                       {label}
                     </DropdownMenuCheckboxItem>
                   ))}
-
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-1.5">
-                    <div className="text-xs text-muted-foreground">
-                      {selectedSection === "all"
-                        ? "Showing all sections"
-                        : `Showing only: ${sectionDisplayNames[selectedSection as keyof typeof sectionDisplayNames]}`}
-                    </div>
-                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
 
-          <div className="relative overflow-x-auto rounded-md border" style={{ zIndex: 1 }}>
+          <div
+            className="relative overflow-x-auto rounded-md border"
+            style={{ zIndex: 1 }}
+          >
             <Table>
               <TableHeader>
                 {/* ROW 1: Main Categories */}
                 <TableRow className="bg-muted/50">
                   {employeeHeaders.map((header) => (
-                    <BorderedTableHead key={header.field} rowSpan={5} className="align-middle">
-                      {header.header_name}
+                    <BorderedTableHead
+                      key={header.field}
+                      rowSpan={5}
+                      className="align-middle"
+                    >
+                      {getHeaderText(header)}
                     </BorderedTableHead>
                   ))}
                   {showAdministrator && (
-                    <BorderedTableHead colSpan={5} className="align-middle font-bold">
-                      Administrator
+                    <BorderedTableHead
+                      colSpan={5}
+                      className="align-middle font-bold"
+                    >
+                      {language === "eng" ? (
+                        "Administrator"
+                      ) : (
+                        "管理者"
+                      )}
+
                     </BorderedTableHead>
                   )}
                   {showDeveloper && (
                     <BorderedTableHead
-                      colSpan={devCap_headers?.length !== 0 ? (devCap_headers?.length && languageSkillHeaders.length + devCap_headers.length * 2) : languageSkillHeaders.length}
-                      className="align-middle whitespace-nowrap cursor-pointer hover:bg-muted/70 transition-colors"
+                      colSpan={
+                        devCap_headers?.length !== 0
+                          ? devCap_headers?.length &&
+                          languageSkillHeaders.length +
+                          devCap_headers.length * 2
+                          : languageSkillHeaders.length
+                      }
+                      className="cursor-pointer align-middle whitespace-nowrap transition-colors hover:bg-muted/70"
                       onClick={handleDevelopmentHeadersClick}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        Developer (DIR and YSX tasks only)
-                        <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} className="h-3 w-3 opacity-60" />
+                        {language === "eng" ? (
+                          "Developer (DIR and YSX tasks only)"
+                        ) : (
+                          "開発者（DIR業務、YSX業務限り"
+                        )}
+                        <HugeiconsIcon
+                          icon={Settings01Icon}
+                          strokeWidth={2}
+                          className="h-3 w-3 opacity-60"
+                        />
                       </div>
                     </BorderedTableHead>
                   )}
                   {showTechnicalAbility && (
                     <BorderedTableHead
-                      colSpan={Object.values(dynamicSkillsByCategory).reduce((total, skills) => total + skills.length * 2, 0)}
+                      colSpan={Object.values(dynamicSkillsByCategory).reduce(
+                        (total, skills) => total + skills.length * 2,
+                        0
+                      )}
                       rowSpan={skill_headers?.length === 0 ? 5 : 1}
-                      className="align-middle whitespace-nowrap cursor-pointer hover:bg-muted/70 transition-colors"
+                      className="cursor-pointer align-middle whitespace-nowrap transition-colors hover:bg-muted/70"
                       onClick={handleTechnicalHeadersClick}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        Technical Ability
-                        <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} className="h-3 w-3 opacity-60" />
+                        {language === "eng" ? (
+                          "Technical Ability"
+                        ) : (
+                          "技術力"
+                        )}
+                        <HugeiconsIcon
+                          icon={Settings01Icon}
+                          strokeWidth={2}
+                          className="h-3 w-3 opacity-60"
+                        />
                       </div>
                     </BorderedTableHead>
                   )}
@@ -638,22 +804,47 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                 <TableRow className="bg-muted/50">
                   {showAdministrator && (
                     <>
-                      <BorderedTableHead rowSpan={4} className="align-middle text-center whitespace-normal">
-                        {administratorHeaders[0].header_name}
+                      <BorderedTableHead
+                        rowSpan={4}
+                        className="text-center align-middle whitespace-normal"
+                      >
+                        {getHeaderText(administratorHeaders[0])}
                       </BorderedTableHead>
-                      <BorderedTableHead colSpan={4} className="text-center align-middle">
-                        management ability
+                      <BorderedTableHead
+                        colSpan={4}
+                        className="text-center align-middle"
+                      >
+                        {language === "eng" ? (
+                          "management ability"
+                        ) : (
+                          "管理能力"
+                        )}
                       </BorderedTableHead>
                     </>
                   )}
                   {showDeveloper && (
                     <>
-                      <BorderedTableHead colSpan={2} className="align-middle text-center">
-                        language skills
+                      <BorderedTableHead
+                        colSpan={2}
+                        className="text-center align-middle"
+                      >
+                        {language === "eng" ? (
+                          " language skills"
+                        ) : (
+                          "語学力"
+                        )}
+
                       </BorderedTableHead>
                       {devCap_headers?.length !== 0 && (
-                        <BorderedTableHead colSpan={devCap_headers?.length && devCap_headers?.length * 2} className="align-middle text-center hover:bg-muted/70 transition-colors">
-                          <div className="flex items-center justify-center gap-2">Development capabilities</div>
+                        <BorderedTableHead
+                          colSpan={
+                            devCap_headers?.length && devCap_headers?.length * 2
+                          }
+                          className="text-center align-middle transition-colors hover:bg-muted/70"
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            Development capabilities
+                          </div>
                         </BorderedTableHead>
                       )}
                     </>
@@ -661,69 +852,113 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                   {showTechnicalAbility &&
                     Object.entries(dynamicSkillsByCategory)
                       .sort((a, b) => {
-                        const aMinId = Math.min(...a[1].map(s => s.skill_id));
-                        const bMinId = Math.min(...b[1].map(s => s.skill_id));
-                        return aMinId - bMinId;
+                        const aMinId = Math.min(...a[1].map((s) => s.skill_id))
+                        const bMinId = Math.min(...b[1].map((s) => s.skill_id))
+                        return aMinId - bMinId
                       })
                       .map(([categoryName, skills]) => {
-                        const sortedSkills = [...skills].sort((a, b) => a.skill_id - b.skill_id);
+                        const sortedSkills = [...skills].sort(
+                          (a, b) => a.skill_id - b.skill_id
+                        )
 
                         // Only handle "empty" categories in ROW 2
                         if (categoryName.includes("empty")) {
-                          const subCategoryMap: Record<string, { count: number; skills: GroupedSkill[] }> = {};
+                          const subCategoryMap: Record<
+                            string,
+                            { count: number; skills: GroupedSkill[] }
+                          > = {}
                           sortedSkills.forEach((skill) => {
-                            const subName = skill.sub_category_name.includes("empty") ? "" : skill.sub_category_name;
+                            const subName = skill.sub_category_name.includes(
+                              "empty"
+                            )
+                              ? ""
+                              : skill.sub_category_name
                             if (!subCategoryMap[subName]) {
-                              subCategoryMap[subName] = { count: 0, skills: [] };
+                              subCategoryMap[subName] = { count: 0, skills: [] }
                             }
-                            subCategoryMap[subName].count += 2;
-                            subCategoryMap[subName].skills.push(skill);
-                          });
+                            subCategoryMap[subName].count += 2
+                            subCategoryMap[subName].skills.push(skill)
+                          })
 
                           return Object.entries(subCategoryMap)
                             .sort((a, b) => {
-                              const aMinId = Math.min(...a[1].skills.map(s => s.skill_id));
-                              const bMinId = Math.min(...b[1].skills.map(s => s.skill_id));
-                              return aMinId - bMinId;
+                              const aMinId = Math.min(
+                                ...a[1].skills.map((s) => s.skill_id)
+                              )
+                              const bMinId = Math.min(
+                                ...b[1].skills.map((s) => s.skill_id)
+                              )
+                              return aMinId - bMinId
                             })
-                            .map(([subCategoryName, { count, skills: subSkills }]) => {
-                              const sortedSubSkills = [...subSkills].sort((a, b) => a.skill_id - b.skill_id);
+                            .map(
+                              ([
+                                subCategoryName,
+                                { count, skills: subSkills },
+                              ]) => {
+                                const sortedSubSkills = [...subSkills].sort(
+                                  (a, b) => a.skill_id - b.skill_id
+                                )
 
-                              // Only show individual skills when BOTH category and subcategory are "empty"
-                              if (categoryName.includes("empty") && subCategoryName === "") {
-                                return sortedSubSkills.map((skill) => (
-                                  <BorderedTableHead key={`skill-${skill.skill_id}`} colSpan={2} rowSpan={3} className="text-center align-middle">
-                                    {skill.skill_name}
+                                // Only show individual skills when BOTH category and subcategory are "empty"
+                                if (
+                                  categoryName.includes("empty") &&
+                                  subCategoryName === ""
+                                ) {
+                                  return sortedSubSkills.map((skill) => (
+                                    <BorderedTableHead
+                                      key={`skill-${skill.skill_id}`}
+                                      colSpan={2}
+                                      rowSpan={3}
+                                      className="text-center align-middle"
+                                    >
+                                      {skill.skill_name}
+                                    </BorderedTableHead>
+                                  ))
+                                }
+
+                                return (
+                                  <BorderedTableHead
+                                    key={`empty-${subCategoryName}`}
+                                    colSpan={count}
+                                    rowSpan={2}
+                                    className="text-center align-middle"
+                                  >
+                                    {subCategoryName}
                                   </BorderedTableHead>
-                                ));
+                                )
                               }
-
-                              return (
-                                <BorderedTableHead key={`empty-${subCategoryName}`} colSpan={count} rowSpan={2} className="text-center align-middle">
-                                  {subCategoryName || "Uncategorized"}
-                                </BorderedTableHead>
-                              );
-                            });
+                            )
                         }
 
                         // For non-empty categories, check if all subcategories are empty
-                        const hasOnlyEmptySubCategories = sortedSkills.every((skill) => skill.sub_category_name.includes("empty"));
+                        const hasOnlyEmptySubCategories = sortedSkills.every(
+                          (skill) => skill.sub_category_name.includes("empty")
+                        )
 
                         if (hasOnlyEmptySubCategories) {
                           // When category is NOT empty but all subcategories are empty
                           return sortedSkills.map((skill) => (
-                            <BorderedTableHead key={`skill-${skill.skill_id}`} colSpan={2} rowSpan={3} className="text-center align-middle">
+                            <BorderedTableHead
+                              key={`skill-${skill.skill_id}`}
+                              colSpan={2}
+                              rowSpan={3}
+                              className="text-center align-middle"
+                            >
                               {skill.skill_name}
                             </BorderedTableHead>
-                          ));
+                          ))
                         }
 
                         // Normal case - show the category name
                         return (
-                          <BorderedTableHead key={categoryName} colSpan={sortedSkills.length * 2} className="text-center">
+                          <BorderedTableHead
+                            key={categoryName}
+                            colSpan={sortedSkills.length * 2}
+                            className="text-center"
+                          >
                             {categoryName}
                           </BorderedTableHead>
-                        );
+                        )
                       })}
                 </TableRow>
 
@@ -735,59 +970,106 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         key={header.field}
                         rowSpan={3}
                         className="text-center align-middle"
-                        style={{ width: header.field === "report_consult_score" ? "150px" : "100px" }}
+                        style={{
+                          width:
+                            header.field === "report_consult_score"
+                              ? "150px"
+                              : "100px",
+                        }}
                       >
-                        {header.header_name}
+                        {getHeaderText(header)}
                       </BorderedTableHead>
                     ))}
                   {showDeveloper && (
                     <>
                       {languageSkillHeaders.slice(0, 2).map((header) => (
-                        <BorderedTableHead key={header.field} rowSpan={3} className="align-middle text-center">
-                          {header.header_name}
+                        <BorderedTableHead
+                          key={header.field}
+                          rowSpan={3}
+                          className="text-center align-middle"
+                        >
+                          {getHeaderText(header)}
                         </BorderedTableHead>
                       ))}
-                      {(devCap_headers || []).map((header: DevelopmentCapability) => (
-                        <BorderedTableHead key={header.id} rowSpan={2} colSpan={2} className="align-middle text-center">
-                          {header.developmentTypeName}
-                        </BorderedTableHead>
-                      ))}
+                      {(devCap_headers || []).map(
+                        (header: DevelopmentCapability) => (
+                          <BorderedTableHead
+                            key={header.id}
+                            rowSpan={2}
+                            colSpan={2}
+                            className="text-center align-middle"
+                          >
+                            {header.developmentTypeName}
+                          </BorderedTableHead>
+                        )
+                      )}
                     </>
                   )}
                   {showTechnicalAbility &&
                     dynamicSkillsList.length > 0 &&
                     Object.entries(dynamicSkillsByCategory)
                       .sort((a, b) => {
-                        const aMinId = Math.min(...a[1].map(s => s.skill_id));
-                        const bMinId = Math.min(...b[1].map(s => s.skill_id));
-                        return aMinId - bMinId;
+                        const aMinId = Math.min(...a[1].map((s) => s.skill_id))
+                        const bMinId = Math.min(...b[1].map((s) => s.skill_id))
+                        return aMinId - bMinId
                       })
                       .map(([categoryName, skills]) => {
-                        if (categoryName.includes("empty") || skills.every((skill) => skill.sub_category_name.includes("empty"))) {
-                          return null;
+                        if (
+                          categoryName.includes("empty") ||
+                          skills.every((skill) =>
+                            skill.sub_category_name.includes("empty")
+                          )
+                        ) {
+                          return null
                         }
 
-                        const subCategoryMap: Record<string, { count: number; skills: GroupedSkill[] }> = {};
-                        skills.forEach((skill) => {
-                          const subName = skill.sub_category_name.includes("empty") ? "" : skill.sub_category_name;
-                          if (!subCategoryMap[subName]) {
-                            subCategoryMap[subName] = { count: 0, skills: [] };
+                        const subCategoryMap: Record<
+                          string,
+                          {
+                            count: number
+                            skills: GroupedSkill[]
+                            isSkillName: boolean
                           }
-                          subCategoryMap[subName].count += 2;
-                          subCategoryMap[subName].skills.push(skill);
-                        });
+                        > = {}
+
+                        skills.forEach((skill) => {
+                          const isSkillName =
+                            skill.sub_category_name.includes("empty")
+                          const subName = isSkillName
+                            ? skill.skill_name
+                            : skill.sub_category_name
+
+                          if (!subCategoryMap[subName]) {
+                            subCategoryMap[subName] = {
+                              count: 0,
+                              skills: [],
+                              isSkillName,
+                            }
+                          }
+                          subCategoryMap[subName].count += 2
+                          subCategoryMap[subName].skills.push(skill)
+                        })
 
                         return Object.entries(subCategoryMap)
                           .sort((a, b) => {
-                            const aMinId = Math.min(...a[1].skills.map(s => s.skill_id));
-                            const bMinId = Math.min(...b[1].skills.map(s => s.skill_id));
-                            return aMinId - bMinId;
+                            const aMinId = Math.min(
+                              ...a[1].skills.map((s) => s.skill_id)
+                            )
+                            const bMinId = Math.min(
+                              ...b[1].skills.map((s) => s.skill_id)
+                            )
+                            return aMinId - bMinId
                           })
-                          .map(([subCategoryName, { count }]) => (
-                            <BorderedTableHead key={`${categoryName}-${subCategoryName}`} colSpan={count} className="text-center">
+                          .map(([subCategoryName, { count, isSkillName }]) => (
+                            <BorderedTableHead
+                              key={`${categoryName}-${subCategoryName}`}
+                              rowSpan={isSkillName ? 2 : 1}
+                              colSpan={count}
+                              className="text-center"
+                            >
                               {subCategoryName}
                             </BorderedTableHead>
-                          ));
+                          ))
                       })}
                 </TableRow>
 
@@ -798,22 +1080,37 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     dynamicSkillsList
                       .sort((a, b) => a.id - b.id)
                       .map((skill) => {
-                        let shouldSkip = false;
-                        for (const [categoryName, skills] of Object.entries(dynamicSkillsByCategory)) {
-                          const foundSkill = skills.find(s => s.skill_id === skill.id);
-                          if (foundSkill) {
-                            if (categoryName.includes("empty") && foundSkill.sub_category_name.includes("empty")) {
-                              shouldSkip = true;
-                            }
-                            break;
+                        // Check if this skill was already used as a sub-category header in Row 3
+                        // A skill is shown as a sub-category header when its sub_category_name contains "empty"
+                        let isSkillNameHeader = false
+
+                        for (const [, skills] of Object.entries(
+                          dynamicSkillsByCategory
+                        )) {
+                          const foundSkill = skills.find(
+                            (s) => s.skill_id === skill.id
+                          )
+                          if (
+                            foundSkill &&
+                            foundSkill.sub_category_name.includes("empty")
+                          ) {
+                            isSkillNameHeader = true
+                            break
                           }
                         }
-                        if (shouldSkip) return null;
+
+                        // Skip if this skill was already rendered as a sub-category header in Row 3
+                        if (isSkillNameHeader) return null
+
                         return (
-                          <BorderedTableHead key={skill.id} colSpan={2} className="text-center">
+                          <BorderedTableHead
+                            key={skill.id}
+                            colSpan={2}
+                            className="text-center"
+                          >
                             {skill.name}
                           </BorderedTableHead>
-                        );
+                        )
                       })
                       .filter(Boolean)}
                 </TableRow>
@@ -822,17 +1119,43 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                 <TableRow className="bg-muted/10">
                   {showDeveloper &&
                     devCap_headers?.length !== 0 &&
-                    Array.from({ length: 4 }).map((_, index) => (
+                    Array.from({ length: devCap_headers?.length || 0 }).map((_, index) => (
                       <React.Fragment key={`dev-${index}`}>
-                        <BorderedTableHead className="text-center whitespace-nowrap">Years</BorderedTableHead>
-                        <BorderedTableHead className="text-center whitespace-nowrap">Experience</BorderedTableHead>
+                        <BorderedTableHead className="text-center whitespace-nowrap">
+                          {language === "eng" ? (
+                            "Years"
+                          ) : (
+                            "経験年数"
+                          )}
+                        </BorderedTableHead>
+                        <BorderedTableHead className="text-center whitespace-nowrap">
+                          {language === "eng" ? (
+                            "Experience"
+                          ) : (
+                            "経験工程"
+                          )}
+
+                        </BorderedTableHead>
                       </React.Fragment>
                     ))}
                   {showTechnicalAbility &&
                     dynamicSkillsList.map((skill) => (
                       <React.Fragment key={`${skill.id}-sub`}>
-                        <BorderedTableHead className="text-center whitespace-nowrap">Years</BorderedTableHead>
-                        <BorderedTableHead className="text-center whitespace-nowrap">Experience</BorderedTableHead>
+                        <BorderedTableHead className="text-center whitespace-nowrap">
+                          {language === "eng" ? (
+                            "Years"
+                          ) : (
+                            "経験年数"
+                          )}
+                        </BorderedTableHead>
+                        <BorderedTableHead className="text-center whitespace-nowrap">
+                          {language === "eng" ? (
+                            "Experience"
+                          ) : (
+                            "経験工程"
+                          )}
+
+                        </BorderedTableHead>
                       </React.Fragment>
                     ))}
                 </TableRow>
@@ -841,40 +1164,63 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
               <TableBody>
                 {paginatedEmployees.length === 0 ? (
                   <TableRow>
-                    <BorderedTableCell colSpan={totalColumns} className="py-8 text-center text-muted-foreground">
+                    <BorderedTableCell
+                      colSpan={totalColumns}
+                      className="py-8 text-center text-muted-foreground"
+                    >
                       No employees found
                     </BorderedTableCell>
                   </TableRow>
                 ) : (
                   paginatedEmployees.map((employee) => {
                     const employeeId = Number(employee.id)
-                    const employeeSkills = skillMap.get(employee.id) || new Map();
-                    const employeeDevCaps = devCapMap.get(employee.id) || new Map();
-                    const employeeLanguageSkill = languageSkillMap.get(employee.id);
-                    const employeeManagementScore = managementScoresMap.get(employee.id);
+                    const employeeSkills =
+                      skillMap.get(employee.id) || new Map()
+                    const employeeDevCaps =
+                      devCapMap.get(employee.id) || new Map()
+                    const employeeLanguageSkill = languageSkillMap.get(
+                      employee.id
+                    )
+                    const employeeManagementScore = managementScoresMap.get(
+                      employee.id
+                    )
 
                     return (
                       <TableRow
                         key={employee.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="cursor-pointer transition-colors hover:bg-muted/50"
                         onClick={() => handleRowClick(employee)}
                       >
                         {/* Employee Info Columns - Always visible */}
-                        <BorderedTableCell>{employee.team || "-"}</BorderedTableCell>
-                        <BorderedTableCell className="font-mono text-sm">
+                        <BorderedTableCell>
+                          {employee.team || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell className="text-sm">
                           {employee.id || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell className="font-medium">
                           {employee.name}
                         </BorderedTableCell>
-                        <BorderedTableCell>{employee.dept_dir || "-"}</BorderedTableCell>
                         <BorderedTableCell>
-                          <Badge variant={employee.is_core_personnel ? "default" : "outline"}>
+                          {employee.dept_dir || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell>
+                          <Badge
+                            variant={
+                              employee.is_core_personnel ? "default" : "outline"
+                            }
+                          >
                             {employee.is_core_personnel ? "Yes" : "No"}
                           </Badge>
                         </BorderedTableCell>
                         <BorderedTableCell>
-                          <Badge variant={employee.has_japan_business_trip ? "default" : "outline"}>
+                          <Badge
+                            variant={
+                              employee.has_japan_business_trip
+                                ? "default"
+                                : "outline"
+                            }
+                          >
                             {employee.has_japan_business_trip ? "Yes" : "No"}
                           </Badge>
                         </BorderedTableCell>
@@ -883,14 +1229,22 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         {showAdministrator && (
                           <>
                             {[
-                              { key: 'managementExperienceLevel', fallback: '-' },
-                              { key: 'qcdScore', fallback: '-' },
-                              { key: 'reportConsultScore', fallback: '-' },
-                              { key: 'educationScore', fallback: '-' },
-                              { key: 'totalLevel', fallback: '-' }
+                              {
+                                key: "managementExperienceLevel",
+                                fallback: "-",
+                              },
+                              { key: "qcdScore", fallback: "-" },
+                              { key: "reportConsultScore", fallback: "-" },
+                              { key: "educationScore", fallback: "-" },
+                              { key: "totalLevel", fallback: "-" },
                             ].map((field) => (
-                              <BorderedTableCell key={field.key} className="text-center">
-                                {employeeManagementScore?.[field.key as keyof ManagementScore] ?? field.fallback}
+                              <BorderedTableCell
+                                key={field.key}
+                                className="text-center"
+                              >
+                                {employeeManagementScore?.[
+                                  field.key as keyof ManagementScore
+                                ] ?? field.fallback}
                               </BorderedTableCell>
                             ))}
                           </>
@@ -905,53 +1259,71 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                               {employeeLanguageSkill?.language_skill_level ? (
                                 employeeLanguageSkill.language_skill_level
                               ) : (
-                                <span className="text-sm text-muted-foreground">-</span>
+                                <span className="text-sm text-muted-foreground">
+                                  -
+                                </span>
                               )}
                             </BorderedTableCell>
 
                             {/* Second field - JLPT Highest Level (from employeeJapaneseLevel_Data) */}
                             <BorderedTableCell className="text-center">
                               {(() => {
-                                const jlptLevel = japaneseLevelMap.get(employee.id);
+                                const jlptLevel = japaneseLevelMap.get(
+                                  employee.id
+                                )
                                 return jlptLevel ? (
-                                  <Badge className="text-xs bg-blue-100 text-blue-800">
+                                  <Badge className="bg-blue-100 text-xs text-blue-800">
                                     {jlptLevel}
                                   </Badge>
                                 ) : (
-                                  <span className="text-sm text-muted-foreground">-</span>
-                                );
+                                  <span className="text-sm text-muted-foreground">
+                                    -
+                                  </span>
+                                )
                               })()}
                             </BorderedTableCell>
 
                             {/* Development Capabilities */}
-                            {(devCap_headers || []).map((header: DevelopmentCapability) => {
-                              const devCapData = employeeDevCaps.get(header.developmentTypeName);
-                              const years = devCapData?.years || 0;
-                              const experience_process = devCapData?.experience_process || null;
+                            {(devCap_headers || []).map(
+                              (header: DevelopmentCapability) => {
+                                const devCapData = employeeDevCaps.get(
+                                  header.developmentTypeName
+                                )
+                                const years = devCapData?.years || 0
+                                const experience_process =
+                                  devCapData?.experience_process || null
 
-                              return (
-                                <React.Fragment key={header.id}>
-                                  <BorderedTableCell className="text-center">
-                                    {years > 0 ? (
-                                      <Badge variant="outline" className="text-xs whitespace-nowrap">
-                                        {years} year{years !== 1 ? "s" : ""}
-                                      </Badge>
-                                    ) : (
-                                      <span className="text-sm text-muted-foreground">-</span>
-                                    )}
-                                  </BorderedTableCell>
-                                  <BorderedTableCell className="text-center">
-                                    {experience_process ? (
-                                      <Badge className="text-xs bg-blue-100 text-blue-800">
-                                        {experience_process}
-                                      </Badge>
-                                    ) : (
-                                      <span className="text-sm text-muted-foreground">-</span>
-                                    )}
-                                  </BorderedTableCell>
-                                </React.Fragment>
-                              );
-                            })}
+                                return (
+                                  <React.Fragment key={header.id}>
+                                    <BorderedTableCell className="text-center">
+                                      {years > 0 ? (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs whitespace-nowrap"
+                                        >
+                                          {years} year{years !== 1 ? "s" : ""}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground">
+                                          -
+                                        </span>
+                                      )}
+                                    </BorderedTableCell>
+                                    <BorderedTableCell className="text-center">
+                                      {experience_process ? (
+                                        <Badge className="bg-blue-100 text-xs text-blue-800">
+                                          {experience_process}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground">
+                                          -
+                                        </span>
+                                      )}
+                                    </BorderedTableCell>
+                                  </React.Fragment>
+                                )
+                              }
+                            )}
                           </>
                         )}
 
@@ -960,28 +1332,37 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           <>
                             {dynamicSkillsList.map((skill) => {
                               // Now use skill.name instead of skill.id
-                              const skillData = employeeSkills.get(skill.name);
-                              const years = skillData?.years;
-                              const level = skillData?.level;
+                              const skillData = employeeSkills.get(skill.name)
+                              const years = skillData?.years
+                              const level = skillData?.level
 
                               return (
                                 <React.Fragment key={skill.id}>
                                   <BorderedTableCell className="text-center">
                                     {years && years > 0 ? (
-                                      <Badge variant="outline" className="text-xs whitespace-nowrap">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs whitespace-nowrap"
+                                      >
                                         {years} year{years !== 1 ? "s" : ""}
                                       </Badge>
                                     ) : (
-                                      <span className="text-sm text-muted-foreground">-</span>
+                                      <span className="text-sm text-muted-foreground">
+                                        -
+                                      </span>
                                     )}
                                   </BorderedTableCell>
                                   <BorderedTableCell className="text-center">
                                     {level ? (
-                                      <Badge className={`text-xs ${getExperienceLevelColor(level)}`}>
+                                      <Badge
+                                        className={`text-xs ${getExperienceLevelColor(level)}`}
+                                      >
                                         {level}
                                       </Badge>
                                     ) : (
-                                      <span className="text-sm text-muted-foreground">-</span>
+                                      <span className="text-sm text-muted-foreground">
+                                        -
+                                      </span>
                                     )}
                                   </BorderedTableCell>
                                 </React.Fragment>
@@ -989,8 +1370,6 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                             })}
                           </>
                         )}
-
-
                       </TableRow>
                     )
                   })
@@ -1001,8 +1380,13 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Field orientation="horizontal" className="w-fit">
-              <FieldLabel htmlFor="select-rows-per-page">Rows per page</FieldLabel>
-              <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+              <FieldLabel htmlFor="select-rows-per-page">
+                Rows per page
+              </FieldLabel>
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={handleItemsPerPageChange}
+              >
                 <SelectTrigger className="w-18" id="select-rows-per-page">
                   <SelectValue />
                 </SelectTrigger>
@@ -1017,15 +1401,23 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
             </Field>
             <div className="text-sm text-muted-foreground">
               Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} of {filteredEmployees.length} employees
+              {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} of{" "}
+              {filteredEmployees.length} employees
             </div>
             <Pagination className="mx-0 w-auto">
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
                     href="#"
-                    onClick={(e) => { e.preventDefault(); handlePrevious() }}
-                    className={currentPage === 1 || filteredEmployees.length === 0 ? "pointer-events-none opacity-50" : ""}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handlePrevious()
+                    }}
+                    className={
+                      currentPage === 1 || filteredEmployees.length === 0
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
                 {getPageNumbers().map((page, index) => (
@@ -1036,7 +1428,10 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                       <PaginationLink
                         href="#"
                         isActive={currentPage === page}
-                        onClick={(e) => { e.preventDefault(); setCurrentPage(page as number) }}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setCurrentPage(page as number)
+                        }}
                       >
                         {page}
                       </PaginationLink>
@@ -1046,8 +1441,16 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                 <PaginationItem>
                   <PaginationNext
                     href="#"
-                    onClick={(e) => { e.preventDefault(); handleNext() }}
-                    className={currentPage === totalPages || filteredEmployees.length === 0 ? "pointer-events-none opacity-50" : ""}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleNext()
+                    }}
+                    className={
+                      currentPage === totalPages ||
+                        filteredEmployees.length === 0
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -1068,7 +1471,11 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       <DevelopmentHeadersDrawer
         open={developmentHeadersDrawerOpen}
         onOpenChange={setDevelopmentHeadersDrawerOpen}
-        initialTypes={devCap_headers?.map((header: DevelopmentCapability) => header.developmentTypeName) || []}
+        initialTypes={
+          devCap_headers?.map(
+            (header: DevelopmentCapability) => header.developmentTypeName
+          ) || []
+        }
         onSave={handleDevTypesSave}
       />
 
@@ -1087,12 +1494,22 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {employeeToDelete?.name}? This action cannot be undone.
+              Are you sure you want to delete {employeeToDelete?.name}? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
               {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>

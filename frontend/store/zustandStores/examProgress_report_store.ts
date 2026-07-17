@@ -108,7 +108,7 @@ const transformTeamData = (response: ApiResponse): TeamWithCounts[] => {
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
-// ✅ Make sure this returns the full state object
+// Make sure this returns the full state object
 export const examProgressReport_Store = (set: StoreSet, get: StoreGet) => ({
     // Raw data from API
     apiResponse: undefined as ApiResponse | undefined,
@@ -145,15 +145,11 @@ export const examProgressReport_Store = (set: StoreSet, get: StoreGet) => ({
 
             const data: ApiResponse = await response.json()
 
-            console.log('API Response dates:', {
-                target1Date: data.target1Date,
-                target2Date: data.target2Date
-            })
 
             const deptDisplayData = transformDeptData(data)
             const teamDisplayData = transformTeamData(data)
 
-            // ✅ Set all state including dates
+            //  Set all state including dates
             set(() => ({
                 apiResponse: data,
                 deptDisplayData: deptDisplayData,
@@ -166,8 +162,6 @@ export const examProgressReport_Store = (set: StoreSet, get: StoreGet) => ({
                 error: null
             }))
 
-            // ✅ Log to verify state was set
-            console.log('State after set:', get().target1Date, get().target2Date)
 
         } catch (error) {
             console.error('Failed to fetch exam progress report data:', error)

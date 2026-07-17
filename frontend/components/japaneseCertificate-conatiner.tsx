@@ -81,6 +81,7 @@ export function JapaneseCertificateContainer() {
   const filteredCertificates = useMemo(() => {
     const search = searchTerm.toLowerCase()
     return certificateData.filter((cert) => {
+      console.log(cert)
       const matchesSearch =
         cert.certificateType.toLowerCase().includes(search) ||
         cert.japaneseLevel.toLowerCase().includes(search) ||
@@ -94,6 +95,7 @@ export function JapaneseCertificateContainer() {
       return matchesSearch && matchesStatus
     })
   }, [certificateData, searchTerm, statusFilter])
+  
 
   const handleEdit = (certificate: JapaneseCertificate) => {
     setEditingCertificate(certificate)

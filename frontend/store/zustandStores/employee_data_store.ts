@@ -1,6 +1,7 @@
 // store/employee_data_store.ts
 import { Employee_StoreType } from "../types"
 import { Employee } from "@/types/employee";
+import { logout } from "@/app/actions/auth"
 
 
 type StoreSet = (
@@ -8,9 +9,10 @@ type StoreSet = (
 ) => void
 type StoreGet = () => Employee_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
 
 export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
+  profile: [],
   roles: [],
   divisions: [],
   dat_departments: [],
@@ -18,13 +20,33 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   employee_data: [],
   isCreating: false,
   isDeleting: false,
-  isUpdating: false,
 
   // Dynamic options that will be populated from employee data
   division_options: [],
   department_options: [],
   team_options: [],
   role_options: [],
+
+  fetch_profile: async (userId?: string) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/employees/${userId}/profile`);
+
+      if (!response.ok) {
+        try {
+          await logout()
+        } catch (error) {
+          console.error("Logout failed:", error)
+        }
+        return
+      }
+
+      const data = await response.json();
+      set(() => ({ profile: data }))
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      set(() => ({ profile: [] }))
+    }
+  },
 
   fetch_roles: async () => {
     try {
@@ -350,50 +372,50 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
 
   update_team: async (id: number, departmentDatId: number, teamName: string) => {
-  if (!id) {
-    return { success: false, error: 'Team ID is required' };
-  }
-  if (!departmentDatId) {
-    return { success: false, error: 'Department ID is required' };
-  }
-  if (!teamName || teamName.trim() === '') {
-    return { success: false, error: 'Team name is required' };
-  }
-
-  try {
-    const response = await fetch(`${apiUrl}/api/teams/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        departmentDatId: departmentDatId,
-        teamName: teamName.trim()
-      }),
-    });
-
-    const responseText = await response.text();
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+    if (!id) {
+      return { success: false, error: 'Team ID is required' };
+    }
+    if (!departmentDatId) {
+      return { success: false, error: 'Department ID is required' };
+    }
+    if (!teamName || teamName.trim() === '') {
+      return { success: false, error: 'Team name is required' };
     }
 
-    const data = responseText ? JSON.parse(responseText) : null;
-    console.log('✅ Team updated successfully:', data);
+    try {
+      const response = await fetch(`${apiUrl}/api/teams/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          departmentDatId: departmentDatId,
+          teamName: teamName.trim()
+        }),
+      });
 
-    // Refresh teams list
-    await get().fetch_teams();
+      const responseText = await response.text();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+      }
 
-    return {
-      success: true,
-      data: data,
-      message: `Team updated successfully`
-    };
-  } catch (error) {
-    console.error('❌ Error updating team:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update team'
-    };
-  }
-},
+      const data = responseText ? JSON.parse(responseText) : null;
+      console.log('✅ Team updated successfully:', data);
+
+      // Refresh teams list
+      await get().fetch_teams();
+
+      return {
+        success: true,
+        data: data,
+        message: `Team updated successfully`
+      };
+    } catch (error) {
+      console.error('❌ Error updating team:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update team'
+      };
+    }
+  },
 
   fetch_EmployeeData: async () => {
     try {

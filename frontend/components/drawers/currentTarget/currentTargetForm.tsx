@@ -20,6 +20,7 @@ import { mainStore } from "@/store/mainStore"
 import { Search01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { Employee } from "@/types/employee"
+import { UserIcon } from "@hugeicons/core-free-icons" // Add this import
 
 export interface CurrentTargetFormData {
   // Employee selection
@@ -131,6 +132,11 @@ export function CurrentTargetForm({
     option.label.toLowerCase().includes(employeeSearchTerm.toLowerCase())
   )
 
+  // Get the selected employee details
+  const selectedEmployee = employee_data?.find(
+    (emp: Employee) => emp.id === data.employeeId
+  )
+
   const handleInputChange = (
     field: keyof CurrentTargetFormData,
     value: any
@@ -164,6 +170,27 @@ export function CurrentTargetForm({
 
   return (
     <div className="space-y-6">
+      {/* Employee Info Header - Show when editing */}
+      {isEdit && selectedEmployee && (
+        <div className="rounded-lg border bg-muted/50 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <HugeiconsIcon
+                icon={UserIcon}
+                strokeWidth={2}
+                className="h-5 w-5 text-primary"
+              />
+            </div>
+            <div>
+              <h3 className="font-semibold">{selectedEmployee.name}</h3>
+              <p className="text-sm text-muted-foreground">
+                Employee ID: {selectedEmployee.id}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Employee Selection Section */}
       {showEmployeeSelect && (
         <>
@@ -238,6 +265,7 @@ export function CurrentTargetForm({
         </>
       )}
 
+      {/* Rest of the form remains the same... */}
       {/* Certified Level Section */}
       <div>
         <h3 className="mb-4 text-lg font-semibold">Certified Level</h3>

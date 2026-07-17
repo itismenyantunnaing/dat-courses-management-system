@@ -63,27 +63,20 @@ export interface UserData {
 }
 
 export interface SidebarConfig {
-  user: UserData
+  user: UserData | null
   navGroups: NavGroup[]
 }
 
 // Admin navigation data
 export const adminData: SidebarConfig = {
-  user: {
-    name: "Admin",
-    email: "admin@gmail.com",
-    avatar: "/avatars/shadcn.jpg",
-    role: "Admin",
-    department: "IT Administration",
-    team: "Platform Management",
-  },
+  user: null,
   navGroups: [
     {
       groupLabel: "Dashboard",
       items: [
         {
           title: "My Dashboard",
-          tabId: "dashboard",
+          tabId: "admin-dashboard",
           type: "primary",
           icon: (
             <HugeiconsIcon
@@ -227,22 +220,22 @@ export const adminData: SidebarConfig = {
             },
           ],
         },
+        {
+          title: "Certificates Requests",
+          tabId: "certificates-requests",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon
+              icon={DocumentValidationIcon}
+              strokeWidth={STROKE_WIDTH}
+            />
+          ),
+        },
       ],
     },
     {
       groupLabel: "Announcements",
       items: [
-        {
-          title: "Seminar",
-          tabId: "seminar",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon
-              icon={ComputerVideoCallIcon}
-              strokeWidth={STROKE_WIDTH}
-            />
-          ),
-        },
         {
           title: "Exams",
           tabId: "exams",
@@ -257,13 +250,20 @@ export const adminData: SidebarConfig = {
         {
           title: "Exam progress",
           tabId: "exam_progress_report",
-          type: "primary",
+          type: "primary-action",
           icon: (
             <HugeiconsIcon
               icon={ChartHistogramIcon}
               strokeWidth={STROKE_WIDTH}
             />
           ),
+          actions: [
+            {
+              label: "Export data",
+              tabId: "exam_progress_report",
+              action: "export",
+            },
+          ],
         },
       ],
     },
@@ -271,19 +271,14 @@ export const adminData: SidebarConfig = {
       groupLabel: "Support",
       items: [
         {
-          title: "Settings",
-          tabId: "settings",
+          title: "Feedback",
+          tabId: "feedback",
           type: "primary",
           icon: (
-            <HugeiconsIcon icon={SettingsIcon} strokeWidth={STROKE_WIDTH} />
-          ),
-        },
-        {
-          title: "Help",
-          tabId: "help",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={STROKE_WIDTH} />
+            <HugeiconsIcon
+              icon={ChatFeedback01Icon}
+              strokeWidth={STROKE_WIDTH}
+            />
           ),
         },
       ],
@@ -293,21 +288,14 @@ export const adminData: SidebarConfig = {
 
 // Learner navigation data
 export const learnerData: SidebarConfig = {
-  user: {
-    name: "Nyan Tun Naing",
-    email: "itismenyantunnaing@gmail.com",
-    avatar: "/avatars/shadcn.jpg",
-    role: "Learner",
-    department: "Computer Science",
-    team: "Block Chain",
-  },
+  user: null,
   navGroups: [
     {
       groupLabel: "Dashboard",
       items: [
         {
           title: "My Dashboard",
-          tabId: "dashboard",
+          tabId: "learner-dashboard",
           type: "primary",
           icon: (
             <HugeiconsIcon
@@ -350,35 +338,10 @@ export const learnerData: SidebarConfig = {
       groupLabel: "Announcements",
       items: [
         {
-          title: "Schedule",
-          tabId: "schedule",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon icon={Calendar01Icon} strokeWidth={STROKE_WIDTH} />
-          ),
-        },
-        {
-          title: "Upcoming Seminars",
-          tabId: "seminars",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon
-              icon={ComputerVideoCallIcon}
-              strokeWidth={STROKE_WIDTH}
-            />
-          ),
-        },
-        {
           title: "Upcoming Exams",
           tabId: "upcoming-exams",
           type: "primary",
           icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
-        },
-        {
-          title: "Results",
-          tabId: "results",
-          type: "primary",
-          icon: <HugeiconsIcon icon={DiplomaIcon} strokeWidth={STROKE_WIDTH} />,
         },
       ],
     },
@@ -434,14 +397,6 @@ export const learnerData: SidebarConfig = {
             />
           ),
         },
-        {
-          title: "Help",
-          tabId: "help",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={STROKE_WIDTH} />
-          ),
-        },
       ],
     },
   ],
@@ -463,7 +418,7 @@ export const approverData: SidebarConfig = {
       items: [
         {
           title: "My Dashboard",
-          tabId: "dashboard",
+          tabId: "approver-dashboard",
           type: "primary",
           icon: (
             <HugeiconsIcon
@@ -475,59 +430,41 @@ export const approverData: SidebarConfig = {
       ],
     },
     {
-      groupLabel: "Approvals",
+      groupLabel: "Manage",
       items: [
         {
-          title: "Pending Approvals",
-          tabId: "pending-approvals",
+          title: "Employees",
+          tabId: "employees",
           type: "primary",
-          icon: <HugeiconsIcon icon={Time02Icon} strokeWidth={STROKE_WIDTH} />,
+          icon: (
+            <HugeiconsIcon icon={UserGroupIcon} strokeWidth={STROKE_WIDTH} />
+          ),
         },
         {
-          title: "Course Requests",
-          tabId: "course-requests",
+          title: "Courses",
+          tabId: "courses",
           type: "primary",
           icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
         },
         {
-          title: "Leave Requests",
-          tabId: "leave-requests",
+          title: "Skills",
+          tabId: "skills",
           type: "primary",
-          icon: (
-            <HugeiconsIcon icon={Calendar01Icon} strokeWidth={STROKE_WIDTH} />
-          ),
+          icon: <HugeiconsIcon icon={CodeIcon} strokeWidth={STROKE_WIDTH} />,
         },
         {
-          title: "Certification Requests",
-          tabId: "certification-requests",
+          title: "Current target",
+          tabId: "current_target_level",
+          type: "primary",
+          icon: <HugeiconsIcon icon={TrendingUp} strokeWidth={STROKE_WIDTH} />,
+        },
+        {
+          title: "Certificates Requests",
+          tabId: "certificates-requests",
           type: "primary",
           icon: (
             <HugeiconsIcon
               icon={DocumentValidationIcon}
-              strokeWidth={STROKE_WIDTH}
-            />
-          ),
-        },
-      ],
-    },
-    {
-      groupLabel: "Review & Feedback",
-      items: [
-        {
-          title: "Performance Reviews",
-          tabId: "performance-reviews",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon icon={Analytics01Icon} strokeWidth={STROKE_WIDTH} />
-          ),
-        },
-        {
-          title: "Learner Feedback",
-          tabId: "learner-feedback",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon
-              icon={ChatFeedback01Icon}
               strokeWidth={STROKE_WIDTH}
             />
           ),
@@ -559,44 +496,17 @@ export const approverData: SidebarConfig = {
       ],
     },
     {
-      groupLabel: "Announcements",
-      items: [
-        {
-          title: "Seminar",
-          tabId: "seminar",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon
-              icon={ComputerVideoCallIcon}
-              strokeWidth={STROKE_WIDTH}
-            />
-          ),
-        },
-        {
-          title: "Exams",
-          tabId: "exams",
-          type: "primary",
-          icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
-        },
-      ],
-    },
-    {
       groupLabel: "Support",
       items: [
         {
-          title: "Settings",
-          tabId: "settings",
+          title: "Feedback",
+          tabId: "feedback",
           type: "primary",
           icon: (
-            <HugeiconsIcon icon={SettingsIcon} strokeWidth={STROKE_WIDTH} />
-          ),
-        },
-        {
-          title: "Help",
-          tabId: "help",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={STROKE_WIDTH} />
+            <HugeiconsIcon
+              icon={ChatFeedback01Icon}
+              strokeWidth={STROKE_WIDTH}
+            />
           ),
         },
       ],
@@ -606,34 +516,16 @@ export const approverData: SidebarConfig = {
 
 // Helper function to get sidebar config based on user role
 export function getSidebarConfig(
-  role: "admin" | "learner" | "approver",
-  userData?: { name?: string; email?: string }
+  role: "admin" | "learner" | "approver"
 ): SidebarConfig {
-  let baseConfig: SidebarConfig
-
   switch (role) {
     case "admin":
-      baseConfig = adminData
-      break
+      return adminData
     case "learner":
-      baseConfig = learnerData
-      break
+      return learnerData
     case "approver":
-      baseConfig = approverData
-      break
+      return approverData
     default:
-      baseConfig = adminData
+      return adminData
   }
-
-  // Create a new object to avoid mutating the original static data
-  const config: SidebarConfig = {
-    ...baseConfig,
-    user: {
-      ...baseConfig.user,
-      ...(userData?.name && { name: userData.name }),
-      ...(userData?.email && { email: userData.email }),
-    },
-  }
-
-  return config
 }

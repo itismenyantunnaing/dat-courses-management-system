@@ -14,7 +14,6 @@ import { EmployeeContainer } from "@/components/employee-container"
 import { CoursesContainer } from "@/components/courses-container"
 import { SeminarContainer } from "@/components/seminar-container"
 import { ExamsContainer } from "@/components/exams-container"
-import DashboardContainer from "@/components/dashboard-container"
 import { SkillContainer } from "@/components/skill-container"
 import { HolidaysContainer } from "@/components/holidays-container"
 import ChangePassword from "@/components/dialogs/changePassword-dialog"
@@ -23,6 +22,15 @@ import { CurrentTargetContainer } from "@/components/current-target-container"
 import { ExamProgressReportContainer } from "@/components/examProgress-report-container"
 import { mainStore } from "@/store/mainStore"
 import { JapaneseCertificateContainer } from "@/components/japaneseCertificate-conatiner"
+import { CertificatesRequestsContainer } from "@/components/certificatesRequests-container"
+import { NotificationsDrawer } from "@/components/drawers/notifications-drawer"
+import { SendMailDialog } from "@/components/dialogs/sendMail-dialog"
+import { Button } from "@/components/ui/button"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { MailSend02Icon, NotificationIcon } from "@hugeicons/core-free-icons"
+import AdminDashboardContainer from "@/components/Dashboard/adminDashboard-container"
+import ApproverDashboardContainer from "@/components/Dashboard/approverDashboard-container"
+import LearnerDashboardContainer from "@/components/Dashboard/learnerDashboard-container"
 
 interface DashboardClientProps {
   userData: {
@@ -38,27 +46,34 @@ interface DashboardClientProps {
 }
 
 export default function DashboardPage({ userData }: DashboardClientProps) {
-  const [activeTab, setActiveTab] = useState("dashboard")
+  const [activeTab, setActiveTab] = useState("")
   const [mounted, setMounted] = useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false) // Add this state
+  const [sendMailOpen, setSendMailOpen] = useState(false)
 
   // Get session store actions
-  const { setSession } = mainStore()
+  const { setSession, fetch_profile, profile } = mainStore()
   const initialized = useRef(false)
 
   // Initialize session in Zustand store when component mounts
   useEffect(() => {
     if (!initialized.current && userData) {
-      setSession(userData)
-      initialized.current = true
+      ; (async () => {
+        setSession(userData)
+        await fetch_profile(userData.userId)
+        initialized.current = true
+        setIsProfileLoaded(true) // Mark profile as loaded
+      })()
     }
-  }, [userData, setSession])
+  }, [userData, setSession, fetch_profile])
 
   useEffect(() => {
     setMounted(true)
     // Attach store to window for global access in non-hook files
     if (typeof window !== "undefined") {
-      ;(window as any).mainStore = mainStore
+      ; (window as any).mainStore = mainStore
     }
   }, [])
 
@@ -69,8 +84,33 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     }
   }, [])
 
+  const userRole = profile?.role
+    ? (profile.role.toLowerCase() as "admin" | "learner" | "approver")
+    : "learner"
+
+  const user_role = profile?.role ? userRole : "learner"
+
+  // Only set active tab when profile is loaded and user_role is not empty
+  useEffect(() => {
+    if (!isProfileLoaded || !user_role) return // Wait for profile to load
+
+    setActiveTab(
+      user_role === "admin"
+        ? "admin-dashboard"
+        : user_role === "approver"
+          ? "approver-dashboard"
+          : "learner-dashboard"
+    )
+  }, [user_role, isProfileLoaded])
+
   const getCurrentLabel = () => {
     switch (activeTab) {
+      case "admin-dashboard":
+        return "Admin Dashboard"
+      case "approver-dashboard":
+        return "Approver Dashboard"
+      case "learner-dashboard":
+        return "Learner Dashboard"
       case "employees":
         return "Employee Management"
       case "courses":
@@ -87,10 +127,35 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         return "Holiday Management"
       case "japanese-certificates":
         return "Japanese Certificates Management"
+      case "certificates-requests":
+        return "Certificates Requests Management"
       default:
         return "Dashboard"
     }
   }
+
+  const tabConfigs = [
+    { value: "admin-dashboard", component: AdminDashboardContainer },
+    { value: "approver-dashboard", component: ApproverDashboardContainer },
+    { value: "learner-dashboard", component: LearnerDashboardContainer },
+    { value: "employees", component: EmployeeContainer },
+    {
+      value: "courses",
+      component: CoursesContainer,
+      props: { userRole: userRole }
+    },
+    { value: "seminar", component: SeminarContainer },
+    { value: "exams", component: ExamsContainer },
+    { value: "skills", component: SkillContainer },
+    { value: "current_target_level", component: CurrentTargetContainer },
+    { value: "holidays", component: HolidaysContainer },
+    { value: "exam_progress_report", component: ExamProgressReportContainer },
+    { value: "japanese-certificates", component: JapaneseCertificateContainer },
+    {
+      value: "certificates-requests",
+      component: CertificatesRequestsContainer,
+    },
+  ]
 
   if (!mounted) {
     return (
@@ -112,8 +177,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     <>
       <SidebarProvider className="w-full overflow-hidden">
         <AppSidebar
-          userRole="admin"
-          userData={{ name: userData.name, email: userData.email }}
+          userRole={user_role}
           onTabChange={setActiveTab}
           activeTab={activeTab}
         />
@@ -128,45 +192,59 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                 />
                 <p>{getCurrentLabel()}</p>
               </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setNotificationDrawerOpen(true)}
+                  className="relative"
+                >
+                  <HugeiconsIcon
+                    icon={NotificationIcon}
+                    strokeWidth={2}
+                    className="h-5 w-5"
+                  />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="relative"
+                  onClick={() => setSendMailOpen(true)}
+                >
+                  <HugeiconsIcon
+                    icon={MailSend02Icon}
+                    strokeWidth={2}
+                    className="h-5 w-5"
+                  />
+                </Button>
+              </div>
             </div>
           </header>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsContent value="dashboard" className="m-0">
-              <DashboardContainer />
-            </TabsContent>
-            <TabsContent value="employees" className="m-0">
-              <EmployeeContainer />
-            </TabsContent>
-            <TabsContent value="courses" className="m-0">
-              <CoursesContainer />
-            </TabsContent>
-            <TabsContent value="seminar" className="m-0">
-              <SeminarContainer />
-            </TabsContent>
-            <TabsContent value="exams" className="m-0">
-              <ExamsContainer />
-            </TabsContent>
-            <TabsContent value="skills" className="m-0">
-              <SkillContainer />
-            </TabsContent>
-            <TabsContent value="current_target_level" className="m-0">
-              <CurrentTargetContainer />
-            </TabsContent>
-            <TabsContent value="holidays" className="m-0">
-              <HolidaysContainer />
-            </TabsContent>
-            <TabsContent value="exam_progress_report" className="m-0">
-              <ExamProgressReportContainer />
-            </TabsContent>
-            <TabsContent value="japanese-certificates" className="m-0">
-              <JapaneseCertificateContainer />
-            </TabsContent>
+            {tabConfigs.map(({ value, component: Component, props  }) => (
+              <TabsContent key={value} value={value} className="m-0">
+                <Component {...props}/>
+              </TabsContent>
+            ))}
           </Tabs>
         </SidebarInset>
       </SidebarProvider>
 
+      {/* Notifications Drawer */}
+      <NotificationsDrawer
+        open={notificationDrawerOpen}
+        onOpenChange={setNotificationDrawerOpen}
+      />
+
+      {/* Send Mail Dialog */}
+      <SendMailDialog
+        open={sendMailOpen}
+        onOpenChange={setSendMailOpen}
+        defaultEmail={profile?.email || ""}
+      />
+
       {/* Forced Password Change Dialog for New Users */}
-      <Dialog
+      {/* <Dialog
         open={isChangePasswordOpen}
         onOpenChange={(open) => {
           if (userData.status === "default" && !open) return
@@ -189,7 +267,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             onClose={() => setIsChangePasswordOpen(false)}
           />
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </>
   )
 }

@@ -1,5 +1,116 @@
 import ExcelJS from "exceljs";
 
+// Japanese-to-English header translation map
+// Maps Japanese header parts (from 【DAT】①管理･開発能力②技術力_2025 4Q.xlsx) to their English equivalents
+const JP_TO_EN_MAP: Record<string, string> = {
+  // Name / ID
+  '名前': 'name',
+  '会社': 'company',
+  
+  // Administrator / Management
+  '管理者': 'administrator',
+  '管理経験（レベル1～5）': 'Management experience (Levels 1-5)',
+  '管理能力': 'management ability',
+  'QCD\n（1～4点）': 'QCD (1-4 points)',
+  '報連相\n（1～4点）': 'Reporting, contacting, and consulting (1-4 points)',
+  '教育\n（1～4点）': 'Education (1-4 points)',
+  '合計\n（レベル1～5）': 'Total (Levels 1-5)',
+  
+  // Developer
+  '開発者（DIR業務、YSX業務限り）': 'Developer (DIR and YSX tasks only)',
+  
+  // Language skills
+  '語学力': 'language skills',
+  'レベル\n（レベル1～5）': 'Level (Levels 1-5)',
+  'JLPT/NAT\n（N1~N5）': 'JLPT/NAT (N1~N5)',
+  
+  // Development capabilities
+  '開発能力': 'Development capabilities',
+  'ホスト/オンライン': 'Host/Online',
+  'ホスト/バッチ': 'Host/Batch',
+  '分散/オンライン': 'Decentralized/Online',
+  '分散/バッチ': 'Distributed/Batch',
+  '経験年数': 'Years of experience',
+  '経験工程': 'Experience Process',
+  
+  // Technical ability
+  '技術力': 'technical ability',
+  '技術力\n\n\n': 'technical ability',
+  
+  // Programming Language categories
+  'プログラミング言語': 'Programming Language',
+  'ホスト系': 'Host Club',
+  '分散系': 'distributed system',
+  'アセンブラ': 'assembler',
+  
+  // DB (same in both)
+  
+  // Trending words / Cloud
+  'トレンドワード': 'Trending words',
+  'クラウド': 'Cloud',
+  'Alibaba Cloud': 'Actual Cloud',
+  
+  // Subcategories
+  '先端技術': 'cutting edge technology',
+  '※DATのみ': 'DAT only',
+  'Other クラウド': 'Other Cloud',
+  
+  // Skill names with Japanese differences
+  'Amazon Web Services（AWS）': 'Amazon Web Services (AWS)',
+  'Google Cloud Platform（GCP）': 'Google Cloud Platform (GCP)',
+  'その他（WindowsPhone、Tizen、Xamarin、Qt、Fluter）': 'Other (Windows Phone, Tizen, Xamarin, Qt, Fluter)',
+  'BIツール / Microsoft Power Automate/\nMicrosoft Power App / Tabular': 'BI tools / Microsoft Power Automate / Microsoft Power App / Tabular',
+  'DataStage \n(IBM Info Sphere)': 'DataStage (IBM InfoSphere)',
+  'PowerCenter \n(Informatica)': 'PowerCenter (Informatica)',
+  '.Net Frame Work': '.Net Framework',
+  'Silver Light ': 'Silver Light',
+  'SAP ': 'SAP',
+  'Spring ': 'Spring',
+  'Mybatis ': 'Mybatis',
+  'Wicket ': 'Wicket',
+  'Ionic ': 'Ionic',
+  'Automation\n(RPA and Selenium web driver)': 'Automation (RPA and Selenium web driver)',
+  'Shell': 'shell',
+  'PostGresSQL': 'PostgreSQL',
+  'android': 'Android',
+  
+  // Bottom-level attributes
+  '年数': 'Years',
+  '経験': 'experience',
+  
+  // Other ignored headers
+  '委託元部署名\n※プルダウン入力': 'Name of the commissioning department *Select from the dropdown menu',
+  'ランク\n※プルダウン入力\n(会社を選択すると\nプルダウン表示されます）': 'Rank *Select from the dropdown menu (The dropdown menu will appear once you select a company)',
+  'コア人材\n※FPTのみ': 'Core personnel *FPT only',
+  '日本出張\nの有無\n': 'Whether or not you have a business trip to Japan',
+  '※プルダウン入力': '※プルダウン入力',
+  '自動計算': 'automatic calculation',
+  '立場': 'position',
+  '管理人数': 'management headcount',
+};
+
+/**
+ * Translates a single header part from Japanese to English.
+ * If no translation is found, returns the original string.
+ */
+function translateHeaderPart(part: string): string {
+  // Try exact match first
+  if (JP_TO_EN_MAP[part] !== undefined) {
+    return JP_TO_EN_MAP[part];
+  }
+  // Try trimmed match
+  const trimmed = part.trim();
+  if (JP_TO_EN_MAP[trimmed] !== undefined) {
+    return JP_TO_EN_MAP[trimmed];
+  }
+  // Try matching with stripped newlines
+  const stripped = part.replace(/\n+/g, '\n').trim();
+  if (JP_TO_EN_MAP[stripped] !== undefined) {
+    return JP_TO_EN_MAP[stripped];
+  }
+  return part;
+}
+
 export interface EmployeeRow {
   [key: string]: string;
 }
@@ -32,12 +143,14 @@ export interface SkillCategory {
 
 export function isYearsHeader(header: string): boolean {
   const lower = header.toLowerCase();
-  return lower.includes('year') && !lower.includes('experience') && !lower.includes('exp');
+  // Also detect Japanese 年数 (years)
+  return (lower.includes('year') && !lower.includes('experience') && !lower.includes('exp')) || header.includes('年数');
 }
 
 export function isExperienceHeader(header: string): boolean {
   const lower = header.toLowerCase();
-  return lower.includes('experience') || lower.includes('exp');
+  // Also detect Japanese 経験 (experience)
+  return lower.includes('experience') || lower.includes('exp') || header.includes('経験');
 }
 
 
@@ -55,7 +168,7 @@ export const TECHNICAL_ABILITY_CONFIG: SkillCategory[] = [
     category_name: "Trending words",
     skill_sub_categories: [
       { id: 8, sub_category_name: "Cloud", skills: [{ id: 15, skill_name: "Amazon Web Services (AWS)" }, { id: 16, skill_name: "Microsoft Azure" }, { id: 17, skill_name: "Google Cloud Platform (GCP)" }, { id: 18, skill_name: "Actual Cloud" }] },
-      { id: 9, sub_category_name: "General", skills: [{ id: 19, skill_name: "RPA" }, { id: 20, skill_name: "ChatBot" }, { id: 21, skill_name: "BI tools / Microsoft Power Automate / Microsoft Power App / Tabular" }] },
+      { id: 9, sub_category_name: "empty-2", skills: [{ id: 19, skill_name: "RPA" }, { id: 20, skill_name: "ChatBot" }, { id: 21, skill_name: "BI tools / Microsoft Power Automate / Microsoft Power App / Tabular" }] },
       { id: 10, sub_category_name: "LowCode", skills: [{ id: 22, skill_name: "Salesforce" }, { id: 23, skill_name: "Outsystems" }] },
       { id: 11, sub_category_name: "Mobile", skills: [{ id: 24, skill_name: "iOS" }, { id: 25, skill_name: "Android" }, { id: 26, skill_name: "Other (Windows Phone, Tizen, Xamarin, Qt, Fluter)" }] },
       { id: 12, sub_category_name: "cutting edge technology", skills: [{ id: 27, skill_name: "BigData" }, { id: 28, skill_name: "BlockChain" }, { id: 29, skill_name: "AI" }] }
@@ -63,7 +176,7 @@ export const TECHNICAL_ABILITY_CONFIG: SkillCategory[] = [
   },
   {
     id: null,
-    category_name: "Uncategorized",
+    category_name: "empty-1",
     skill_sub_categories: [
       { id: 3, sub_category_name: "DB", skills: [{ id: 10, skill_name: "Oracle" }, { id: 11, skill_name: "SQL Server" }, { id: 12, skill_name: "MySQL" }, { id: 13, skill_name: "PostgreSQL" }, { id: 14, skill_name: "InMemoryDB" }] },
       { id: 4, sub_category_name: "DAT only", skills: [{ id: 30, skill_name: "Ruby" }, { id: 31, skill_name: "NodeJS" }, { id: 32, skill_name: "Typescript" }, { id: 33, skill_name: "GO" }, { id: 34, skill_name: "Solidity" }, { id: 35, skill_name: "PHP" }, { id: 36, skill_name: "ReactJS" }, { id: 37, skill_name: "DataStage (IBM InfoSphere)" }, { id: 38, skill_name: "Job Network Development" }, { id: 39, skill_name: "PowerCenter (Informatica)" }, { id: 40, skill_name: "Window" }, { id: 41, skill_name: "Linux" }, { id: 42, skill_name: "Virtualization" }, { id: 43, skill_name: "HCI" }, { id: 44, skill_name: "Networking" }, { id: 45, skill_name: "Security" }, { id: 46, skill_name: "Automation (RPA and Selenium web driver)" }, { id: 47, skill_name: "VBA" }, { id: 48, skill_name: "Angular" }] },
@@ -113,7 +226,9 @@ export function parseTechnicalHeader(header: string): {
   
   // If the first part is "technical ability", remove it from category
   if (category === 'technical ability' || category === 'Technical Ability') {
-    category = parts.length > 4 ? parts[parts.length - 5] : 'Uncategorized';
+    // Generate a random ID and use "empty-{randomId}" format
+    const randomId = Math.random().toString(36).substring(2, 10); // Generates a random 8-character string
+    category = parts.length > 4 ? parts[parts.length - 5] : `empty-${randomId}`;
   }
   
   return { skill, subcategory, category, attribute };
@@ -199,9 +314,29 @@ export async function extractEmployeesFromExcel(
     let nameColumnIndex = -1;
 
     // --- PHASE 1: FIND THE BEST SHEET ---
+    // Support both English "Original data" and Japanese "元データ" sheet names
     targetWorksheet = workbook.worksheets.find(ws => 
-      ws.name.includes("Original data") || ws.name.includes("Main") || ws.name.includes("Employee")
+      ws.name.includes("Original data") || ws.name.includes("Original") || ws.name.includes("元データ")
     ) || null;
+
+    // Detect if this is a Japanese-format file
+    let isJapaneseFormat = false;
+    if (targetWorksheet) {
+      // Check if sheet name contains Japanese characters (元データ without English "Original")
+      const sheetName = targetWorksheet.name;
+      if (sheetName.includes("元データ") && !sheetName.includes("Original data")) {
+        isJapaneseFormat = true;
+      }
+      // Also check if header cells contain Japanese like 名前
+      for (let r = 1; r <= 15; r++) {
+        const row = targetWorksheet.getRow(r);
+        row.eachCell({ includeEmpty: false }, (cell) => {
+          const val = getCellValue(cell);
+          if (val === '名前') isJapaneseFormat = true;
+        });
+        if (isJapaneseFormat) break;
+      }
+    }
 
     if (!targetWorksheet) {
       for (const worksheet of workbook.worksheets) {
@@ -212,12 +347,17 @@ export async function extractEmployeesFromExcel(
           let foundID = -1;
           let foundName = -1;
           row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-            const val = getCellValue(cell).toLowerCase();
-            if (val === "id" || val === "staff id") foundID = colNumber;
-            if (val === "name") foundName = colNumber;
+            const val = getCellValue(cell);
+            const lower = val.toLowerCase();
+            if (lower === "id" || lower === "staff id") foundID = colNumber;
+            if (lower === "name" || val === "名前") foundName = colNumber;
           });
           if (foundID !== -1 && foundName !== -1) {
             targetWorksheet = worksheet;
+            // Check if Japanese format
+            row.eachCell({ includeEmpty: false }, (cell) => {
+              if (getCellValue(cell) === '名前') isJapaneseFormat = true;
+            });
             break;
           }
         }
@@ -236,9 +376,11 @@ export async function extractEmployeesFromExcel(
       let foundID = -1;
       let foundName = -1;
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-        const val = getCellValue(cell).toLowerCase();
-        if (val === "id" || val === "staff id") foundID = colNumber;
-        if (val === "name") foundName = colNumber;
+        const val = getCellValue(cell);
+        const lower = val.toLowerCase();
+        if (lower === "id" || lower === "staff id") foundID = colNumber;
+        // Support both English "name" and Japanese "名前"
+        if (lower === "name" || val === "名前") foundName = colNumber;
       });
       if (foundID !== -1 && foundName !== -1) {
         anchorRow = r;
@@ -276,14 +418,39 @@ export async function extractEmployeesFromExcel(
       "※プルダウン入力 - Name of the commissioning department *Select from the dropdown menu",
       "Rank *Select from the dropdown menu (The dropdown menu will appear once you select a company)",
       "Core personnel *FPT only",
-      "Whether or not you have a business trip to Japan"
+      "Whether or not you have a business trip to Japan",
+      // Japanese equivalents
+      "会社 - ID",
+      "DAT - 名前",
+      "※プルダウン入力 - 委託元部署名\n※プルダウン入力",
+    ];
+
+    // Additional headers to ignore (checked via .includes for partial matches)
+    const IGNORED_HEADER_PARTS = [
+      "ランク",
+      "Rank *Select",
+      "コア人材",
+      "Core personnel",
+      "日本出張",
+      "Whether or not you have a business trip",
+      "自動計算",
+      "automatic calculation",
+      "立場",
+      "管理人数",
+      "position",
+      "management headcount",
     ];
     
     for (let col = 1; col <= maxColumn; col++) {
       const parts: string[] = [];
       for (const rowNum of headerRowRange) {
-        const cell = targetWorksheet.getRow(rowNum).getCell(col);
-        const val = getCellValue(cell);
+        const cell = targetWorksheet!.getRow(rowNum).getCell(col);
+        let val = getCellValue(cell);
+        
+        // If Japanese format, translate each header part to English
+        if (isJapaneseFormat && val) {
+          val = translateHeaderPart(val);
+        }
         
         if (val && !parts.includes(val)) {
           parts.push(val);
@@ -302,8 +469,13 @@ export async function extractEmployeesFromExcel(
       } else {
         headerMap.set(headerName, 1);
       }
+
+      // Check if header should be ignored
+      const isIgnored = headerName.startsWith("Column_") ||
+        IGNORED_HEADERS.includes(headerName) ||
+        IGNORED_HEADER_PARTS.some(part => headerName.includes(part));
       
-      if (!headerName.startsWith("Column_") && !IGNORED_HEADERS.includes(headerName)) {
+      if (!isIgnored) {
         allHeaders.push({ name: headerName, col });
       }
     }

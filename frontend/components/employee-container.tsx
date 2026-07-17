@@ -274,6 +274,10 @@ export function EmployeeContainer({
     const loadData = async () => {
       setIsLoading(true)
       await fetch_EmployeeData()
+      await fetch_divisions()
+      await fetch_dat_departments()
+      await fetch_teams()
+      await fetch_roles()
       setIsLoading(false)
     }
     loadData()
@@ -409,8 +413,8 @@ export function EmployeeContainer({
       const divs = getUniqueValues("div_name")
       const filteredDivs = searchTerm.trim()
         ? divs.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : divs
       // Add "Others" category if there are employees with empty div_name
       const othersCount = getEmployeesWithEmptyCategory("div_name").length
@@ -422,8 +426,8 @@ export function EmployeeContainer({
       const depts = getUniqueValues("dept_dat")
       const filteredDepts = searchTerm.trim()
         ? depts.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : depts
       // Add "Others" category if there are employees with empty dept_dat
       const othersCount = getEmployeesWithEmptyCategory("dept_dat").length
@@ -435,8 +439,8 @@ export function EmployeeContainer({
       const teams = getUniqueValues("team")
       const filteredTeams = searchTerm.trim()
         ? teams.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : teams
       // Add "Others" category if there are employees with empty team
       const othersCount = getEmployeesWithEmptyCategory("team").length
@@ -584,8 +588,16 @@ export function EmployeeContainer({
   }
 
   // Updated handleEditItemSubmit with proper update logic
-  const handleEditItemSubmit = async (oldName: string, newName: string, parentId?: number) => {
-    console.log(`🔄 Updating ${dialogItemType}:`, { oldName, newName, parentId })
+  const handleEditItemSubmit = async (
+    oldName: string,
+    newName: string,
+    parentId?: number
+  ) => {
+    console.log(`🔄 Updating ${dialogItemType}:`, {
+      oldName,
+      newName,
+      parentId,
+    })
 
     let result = null
 
@@ -598,10 +610,11 @@ export function EmployeeContainer({
           return
         }
         result = await update_division(division.id, newName)
-
       } else if (dialogItemType === "department") {
         // Find the department ID
-        const department = dat_departments.find((d: any) => d.deptName === oldName)
+        const department = dat_departments.find(
+          (d: any) => d.deptName === oldName
+        )
         if (!department) {
           alert("❌ Department not found")
           return
@@ -612,7 +625,6 @@ export function EmployeeContainer({
           return
         }
         result = await update_department(department.id, parentId, newName)
-
       } else if (dialogItemType === "team") {
         // Find the team ID
         const team = teams.find((t: any) => t.teamName === oldName)
@@ -629,7 +641,9 @@ export function EmployeeContainer({
       }
 
       if (result?.success) {
-        alert(`✅ ${dialogItemType.charAt(0).toUpperCase() + dialogItemType.slice(1)} updated successfully!`)
+        alert(
+          `✅ ${dialogItemType.charAt(0).toUpperCase() + dialogItemType.slice(1)} updated successfully!`
+        )
 
         // Refresh ALL data
         await fetch_EmployeeData()
@@ -637,7 +651,6 @@ export function EmployeeContainer({
         await fetch_dat_departments()
         await fetch_teams()
         await fetch_roles()
-
       } else {
         alert(`❌ Failed to update: ${result?.error || "Unknown error"}`)
       }
@@ -752,6 +765,27 @@ export function EmployeeContainer({
     }
   }
 
+  // Handle individual employee delete confirm
+  const handleIndividualDeleteConfirm = async () => {
+    if (!employeeToDelete) return
+
+    setIsDeleting(true)
+    try {
+      const result = await delete_EmployeeData([employeeToDelete.id])
+      alert(result)
+      setDeleteDialogOpen(false)
+      setEmployeeToDelete(null)
+
+      // Refresh data after deletion
+      await fetch_EmployeeData()
+    } catch (error) {
+      console.error("Failed to delete employee:", error)
+      alert("Failed to delete employee. Please try again.")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   // Clear all selections
   const handleClearSelection = () => {
     setRowSelection({})
@@ -804,10 +838,18 @@ export function EmployeeContainer({
   // Render employee card
   const renderEmployeeCard = (employee: Employee, index: number) => {
     const isSelected = !!rowSelection[employee.id.toString()]
+
+    // Handle individual employee delete
+    const handleDeleteEmployee = (e: React.MouseEvent) => {
+      e.stopPropagation() // Prevent opening the edit drawer
+      setEmployeeToDelete(employee)
+      setDeleteDialogOpen(true)
+    }
+
     return (
       <Card
         key={employee.id}
-        className="cursor-pointer py-4 transition-colors hover:bg-muted/40"
+        className="group cursor-pointer py-4 transition-colors hover:bg-muted/40"
         onClick={() => handleRowClick(employee)}
       >
         <CardContent className="relative px-4">
@@ -865,6 +907,21 @@ export function EmployeeContainer({
                     ] || employee.emp_status}
                   </Badge>
                 </div>
+                {/* Delete Button - Bottom Right Corner - Hidden by default, shown on hover */}
+                <div className="absolute right-3 bottom-[-3] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDeleteEmployee}
+                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
+                  >
+                    <HugeiconsIcon
+                      icon={Delete02Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -901,10 +958,7 @@ export function EmployeeContainer({
     const displayEmployees = employees.slice(0, 4)
 
     return (
-      <div
-        key={item}
-        className="overflow-hidden rounded-lg bg-card px-4 pbs-0 pbe-4"
-      >
+      <div key={item} className="rounded-lg bg-card pbs-0 pbe-4">
         {/* Header */}
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1306,7 +1360,7 @@ export function EmployeeContainer({
                   className="bg-primary hover:bg-primary/90"
                 >
                   <HugeiconsIcon icon={UserAdd01Icon} strokeWidth={2} />
-                  New Employee
+                  New
                 </Button>
               )}
               {isListView && !isDrillDown && (
@@ -1359,7 +1413,6 @@ export function EmployeeContainer({
                       strokeWidth={2}
                       className="h-4 w-4"
                     />
-                    Back
                   </Button>
                   <h2 className="text-lg font-semibold">{selectedItem}</h2>
                   <p className="text-sm text-muted-foreground">
@@ -1485,7 +1538,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === 1 ||
-                              drillDownEmployees.length === 0
+                            drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -1520,7 +1573,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === drillDownTotalPages ||
-                              drillDownEmployees.length === 0
+                            drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -1534,16 +1587,13 @@ export function EmployeeContainer({
           ) : viewMode === "list" ? (
             // Table View for Employees
             <div
-              className={cn(
-                "relative mx-4 overflow-x-auto rounded-md border-y",
-                isSelectionActive && "pointer-events-none"
-              )}
+              className={cn("relative mx-4 overflow-x-auto rounded-md border")}
               style={{ zIndex: 1 }}
             >
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <BorderedTableHead className="align-middle whitespace-nowrap">
+                    <BorderedTableHead className="w-auto min-w-[32px] align-middle whitespace-nowrap">
                       <Checkbox
                         checked={areAllFilteredSelected}
                         onCheckedChange={handleSelectAll}
@@ -1669,13 +1719,7 @@ export function EmployeeContainer({
             </div>
           ) : (
             // Card View for Employees
-            <div
-              className={cn(
-                "relative mx-4",
-                isSelectionActive && "pointer-events-none"
-              )}
-              style={{ zIndex: 1 }}
-            >
+            <div className={cn("relative mx-4")} style={{ zIndex: 1 }}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {paginatedEmployees.length === 0 ? (
                   <div className="col-span-full py-8 text-center text-muted-foreground">
@@ -1703,15 +1747,10 @@ export function EmployeeContainer({
             </div>
           )}
 
-          {/* Overlay and Selection Bar */}
+          {/* Selection Bar */}
           {isSelectionActive && (
             <>
-              <div
-                className="pointer-events-auto absolute inset-0 z-40 cursor-pointer bg-black/4"
-                onClick={handleClearSelection}
-              />
-
-              <div className="absolute top-35 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
+              <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] max-w-[400px] -translate-x-1/2">
                 <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
@@ -1762,8 +1801,7 @@ export function EmployeeContainer({
           {!isListView && !isDrillDown && (
             <div
               className={cn(
-                "mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between",
-                isSelectionActive && "pointer-events-none"
+                "mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between"
               )}
             >
               <Field orientation="horizontal" className="w-fit">
@@ -1836,7 +1874,7 @@ export function EmployeeContainer({
                       }}
                       className={
                         currentPage === totalPages ||
-                          filteredEmployees.length === 0
+                        filteredEmployees.length === 0
                           ? "pointer-events-none opacity-50"
                           : ""
                       }
@@ -1849,6 +1887,40 @@ export function EmployeeContainer({
         </CardContent>
       </div>
 
+      {/* Individual Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold">{employeeToDelete?.name}</span>?
+              <br />
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false)
+                setEmployeeToDelete(null)
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleIndividualDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Bulk Delete Dialog */}
       <Dialog
         open={bulkDeleteDialogOpen}
@@ -1858,8 +1930,22 @@ export function EmployeeContainer({
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {selectedCount} selected employee
-              {selectedCount > 1 ? "s" : ""}? This action cannot be undone.
+              {selectedCount === 1 ? (
+                <>
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold">
+                    {getSelectedEmployees()[0]?.name}
+                  </span>
+                  ? This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to delete {selectedCount} selected
+                  employees?
+                  <br />
+                  This action cannot be undone.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

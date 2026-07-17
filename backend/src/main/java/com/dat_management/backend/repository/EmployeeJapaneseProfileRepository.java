@@ -28,6 +28,6 @@ public interface EmployeeJapaneseProfileRepository extends JpaRepository<Employe
                 WHERE e.isDeleted = false
             """)
     List<EmployeeJapaneseProfile> findAllWithEmployee();
-}
+
     Optional<EmployeeJapaneseProfile> findByEmployeeId(String employeeId);
 }

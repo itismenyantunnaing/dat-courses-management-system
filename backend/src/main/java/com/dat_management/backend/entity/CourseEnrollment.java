@@ -3,6 +3,8 @@ package com.dat_management.backend.entity;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,14 +20,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(
-    name = "course_enrollments",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            columnNames = {"employee_id", "course_id"}
-        )
-    }
-)
+@Table(name = "course_enrollments", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "employee_id", "course_id" })
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -57,4 +54,17 @@ public class CourseEnrollment {
         enrolledAt = LocalDateTime.now();
     }
 
+    // Requested group
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requested_course_group_id")
+    private CourseGroup requestedCourseGroup;
+
+    @Enumerated(EnumType.STRING)
+    private GroupChangeStatus groupChangeStatus = GroupChangeStatus.NONE;
+
+    public enum GroupChangeStatus {
+        NONE,
+        PENDING,
+        REJECTED
+    }
 }

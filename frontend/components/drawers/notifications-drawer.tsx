@@ -49,7 +49,7 @@ export function NotificationsDrawer({
   const [notifications, setNotifications] = useState(notificationsData)
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="left">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent className="right-0 left-auto h-full w-[400px] rounded-l-lg">
         <DrawerHeader className="flex flex-row items-center justify-between px-4 py-4">
           <div className="flex-1">

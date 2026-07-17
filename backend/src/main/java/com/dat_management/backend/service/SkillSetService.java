@@ -1,6 +1,7 @@
 // SkillSetService.java
 package com.dat_management.backend.service;
 
+import com.dat_management.backend.dto.EmployeeJapaneseProfileResponse;
 import com.dat_management.backend.dto.skillset.*;
 import com.dat_management.backend.entity.*;
 import com.dat_management.backend.repository.*;
@@ -897,6 +898,28 @@ public class SkillSetService {
             .totalLevel(score.getTotalLevel())
             .build();
     }
+    private EmployeeJapaneseProfileResponse getJapaneseProfileInfo(String employeeId) {
+    return languageProfileRepository.findByEmployeeId(employeeId)
+        .map(profile -> EmployeeJapaneseProfileResponse.builder()
+            .id(profile.getId())
+            .employee_id(profile.getEmployee() != null ? profile.getEmployee().getId() : null)
+            .jlptHighestLevel(profile.getJlptHighestLevel())
+            .otherJapaneseLevel(profile.getOtherJapaneseLevel())
+            .preferredLearningGroup(profile.getPreferredLearningGroup())
+            .currentCommunicationLevel(profile.getCurrentCommunicationLevel())
+            .target1JlptNatLevel(profile.getTarget1JlptNatLevel())
+            .target1CommunicationLevel(profile.getTarget1CommunicationLevel())
+            .target2JlptNatLevel(profile.getTarget2JlptNatLevel())
+            .target2CommunicationLevel(profile.getTarget2CommunicationLevel())
+            .currentLearningLevel(profile.getCurrentLearningLevel())
+            .learningMethod(profile.getLearningMethod())
+            .wantToSitExam(profile.getWantToSitExam())
+            .examTargetLevel(profile.getExamTargetLevel())
+            .jlptNatTest(profile.getJlptNatTest())
+            .confidenceLevel(profile.getConfidenceLevel())
+            .build())
+        .orElse(null);
+} 
 
     // Get development skills info without employeeId
     private List<EmployeeWithSkillsResponseDTO.DevelopmentSkillInfo> getDevelopmentSkillInfo(String employeeId) {

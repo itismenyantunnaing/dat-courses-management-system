@@ -2,6 +2,7 @@ package com.dat_management.backend.controller;
 
 import com.dat_management.backend.dto.EmployeeRequestDTO;
 import com.dat_management.backend.dto.EmployeeResponseDTO;
+import com.dat_management.backend.dto.skillset.EmployeeWithSkillsResponseDTO;
 import com.dat_management.backend.service.EmployeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,11 @@ import java.util.Map;
 public class EmployeeController {
 
     private final EmployeeService service;
+
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<EmployeeWithSkillsResponseDTO> getEmployeeProfile(@PathVariable String id) {
+        return ResponseEntity.ok(service.getEmployeeProfile(id));
+    }
 
     @GetMapping
     public ResponseEntity<List<EmployeeResponseDTO>> getAll(

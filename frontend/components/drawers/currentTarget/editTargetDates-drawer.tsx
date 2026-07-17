@@ -14,9 +14,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { TargetDates } from "@/types/current_target"
 import { mainStore } from "@/store/mainStore"
-import { 
-  TargetDatesForm, 
-  TargetDatesFormData 
+import {
+  TargetDatesForm,
+  TargetDatesFormData,
 } from "@/components/drawers/currentTarget/targetDatesForm"
 
 interface EditTargetDatesDrawerProps {
@@ -24,7 +24,7 @@ interface EditTargetDatesDrawerProps {
   onOpenChange: (open: boolean) => void
   targetDates: TargetDates | null
   onSuccess?: () => void
-  mode?: 'create' | 'edit' // Add mode prop
+  mode?: "create" | "edit" // Add mode prop
 }
 
 const defaultFormData: TargetDatesFormData = {
@@ -38,15 +38,16 @@ export function EditTargetDatesDrawer({
   onOpenChange,
   targetDates,
   onSuccess,
-  mode = 'edit', // Default to edit mode
+  mode = "edit", // Default to edit mode
 }: EditTargetDatesDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const { update_TargetDates, add_TargetDates } = mainStore()
-  
+
   const [formData, setFormData] = useState<TargetDatesFormData>(defaultFormData)
-  const [originalFormData, setOriginalFormData] = useState<TargetDatesFormData>(defaultFormData)
+  const [originalFormData, setOriginalFormData] =
+    useState<TargetDatesFormData>(defaultFormData)
 
   const formatDateForInput = (date: Date | string | undefined): string => {
     if (!date) return ""
@@ -65,10 +66,10 @@ export function EditTargetDatesDrawer({
   // Load target dates data when drawer opens
   useEffect(() => {
     if (open) {
-      if (mode === 'create') {
+      if (mode === "create") {
         // Reset form for create mode
         resetForm()
-      } else if (targetDates && mode === 'edit') {
+      } else if (targetDates && mode === "edit") {
         const newFormData = {
           target1Date: formatDateForInput(targetDates.target1Date),
           target2Date: formatDateForInput(targetDates.target2Date),
@@ -87,8 +88,9 @@ export function EditTargetDatesDrawer({
 
   // Check if required fields are filled
   const isFormValid = (): boolean => {
-    return formData.target1Date.trim() !== "" &&
-      formData.target2Date.trim() !== ""
+    return (
+      formData.target1Date.trim() !== "" && formData.target2Date.trim() !== ""
+    )
   }
 
   const handleSubmit = async () => {
@@ -100,7 +102,7 @@ export function EditTargetDatesDrawer({
       return
     }
 
-    if (mode === 'edit' && !hasChanges()) {
+    if (mode === "edit" && !hasChanges()) {
       setErrorMessage("No changes to save")
       return
     }
@@ -116,7 +118,7 @@ export function EditTargetDatesDrawer({
 
       let result: string | undefined
 
-      if (mode === 'create') {
+      if (mode === "create") {
         // Create new target dates
         result = await add_TargetDates(payload)
       } else {
@@ -137,17 +139,22 @@ export function EditTargetDatesDrawer({
       }
 
       // Show success message
-      setSuccessMessage(result || `Target dates ${mode === 'create' ? 'created' : 'updated'} successfully`)
-      
+      setSuccessMessage(
+        result ||
+          `Target dates ${mode === "create" ? "created" : "updated"} successfully`
+      )
+
       // Close after a short delay
       setTimeout(() => {
         resetForm()
         onOpenChange(false)
         onSuccess?.()
       }, 1500)
-      
     } catch (error) {
-      console.error(`Failed to ${mode === 'create' ? 'create' : 'update'} target dates:`, error)
+      console.error(
+        `Failed to ${mode === "create" ? "create" : "update"} target dates:`,
+        error
+      )
       setErrorMessage("An unexpected error occurred")
     } finally {
       setIsSubmitting(false)
@@ -167,33 +174,24 @@ export function EditTargetDatesDrawer({
       <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>
-            {mode === 'create' ? 'Add Target Dates' : 'Edit Target Dates'}
+            {mode === "create" ? "Add Target Dates" : "Edit Target Dates"}
           </DrawerTitle>
-          <p className="text-sm text-gray-500 mt-1">
-            {mode === 'create' 
-              ? 'Set the target and exam dates for all Japanese profiles.'
-              : 'Update the target and exam dates for all Japanese profiles.'
-            }
-          </p>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 py-4">
-            <TargetDatesForm 
-              data={formData} 
-              onChange={setFormData} 
-            />
+            <TargetDatesForm data={formData} onChange={setFormData} />
 
             {/* Display error message if any */}
             {errorMessage && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+              <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-red-700">
                 {errorMessage}
               </div>
             )}
 
             {/* Display success message if any */}
             {successMessage && (
-              <div className="mt-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md">
+              <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-3 text-green-700">
                 {successMessage}
               </div>
             )}
@@ -202,16 +200,6 @@ export function EditTargetDatesDrawer({
 
         <DrawerFooter className="shrink-0 border-t">
           <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !isFormValid() || (mode === 'edit' && !hasChanges())}
-            >
-              {isSubmitting 
-                ? (mode === 'create' ? "Creating..." : "Saving...") 
-                : (mode === 'create' ? "Create Target Dates" : "Save Changes")
-              }
-            </Button>
             <DrawerClose asChild>
               <Button
                 variant="outline"
@@ -221,6 +209,23 @@ export function EditTargetDatesDrawer({
                 Cancel
               </Button>
             </DrawerClose>
+            <Button
+              className="flex-1"
+              onClick={handleSubmit}
+              disabled={
+                isSubmitting ||
+                !isFormValid() ||
+                (mode === "edit" && !hasChanges())
+              }
+            >
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Saving..."
+                : mode === "create"
+                  ? "Create Target Dates"
+                  : "Save Changes"}
+            </Button>
           </div>
         </DrawerFooter>
       </DrawerContent>

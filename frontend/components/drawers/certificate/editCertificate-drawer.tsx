@@ -18,6 +18,10 @@ import {
 } from "@/types/certificate"
 import { CertificateForm } from "@/components/drawers/certificate/certificateForm"
 import { mainStore } from "@/store/mainStore"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Alert01Icon
+} from "@hugeicons/core-free-icons"
 
 interface EditCertificateDrawerProps {
   open: boolean
@@ -44,6 +48,9 @@ export function EditCertificateDrawer({
     (state) => state.fetch_CertificateData
   )
 
+  // Check if certificate is approved
+  const isApproved = certificate?.verificationStatus?.toLowerCase() === "approved"
+
   // Reset hasChanges when drawer opens or certificate changes
   useEffect(() => {
     if (open && certificate) {
@@ -59,6 +66,12 @@ export function EditCertificateDrawer({
   }) => {
     if (!certificate) {
       console.error("❌ No certificate to edit")
+      return
+    }
+
+    // Prevent submission if approved
+    if (isApproved) {
+      alert("❌ Cannot edit an approved certificate")
       return
     }
 
@@ -101,6 +114,11 @@ export function EditCertificateDrawer({
   }
 
   const handleFormSubmit = () => {
+    // Prevent form submission if approved
+    if (isApproved) {
+      alert("❌ Cannot edit an approved certificate")
+      return
+    }
     if (formRef.current) {
       formRef.current.requestSubmit()
     }
@@ -168,6 +186,18 @@ export function EditCertificateDrawer({
       >
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>Edit Certificate</DrawerTitle>
+          {isApproved && (
+            <div className="mt-2 flex items-center gap-2 rounded-md bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:bg-yellow-950/50 dark:text-yellow-300">
+                <HugeiconsIcon
+                    icon={Alert01Icon}
+                    strokeWidth={2}
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+              <span>
+                This certificate has been approved and cannot be edited.
+              </span>
+            </div>
+          )}
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
@@ -190,6 +220,7 @@ export function EditCertificateDrawer({
               isSubmitting={isSubmitting}
               onChanges={handleChanges}
               onDropdownOpenChange={handleDropdownOpenChange}
+              disabled={isApproved} // Disable form fields if approved
             />
           </div>
         </div>
@@ -208,9 +239,9 @@ export function EditCertificateDrawer({
             <Button
               className="flex-1"
               onClick={handleFormSubmit}
-              disabled={isSubmitting || !hasChanges}
+              disabled={isSubmitting || !hasChanges || isApproved}
             >
-              {isSubmitting ? "Saving..." : "Save Changes"}
+              {isApproved ? "Approved - Cannot Edit" : isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </DrawerFooter>

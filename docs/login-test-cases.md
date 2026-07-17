@@ -7,7 +7,7 @@ These manual test cases cover the core login flow for the DAT Courses Management
 ## Preconditions
 
 - Frontend is running on `http://localhost:3000`
-- Backend is running on `http://localhost:8080`
+- Backend is running on `http://localhost:8085`
 - Test data exists for:
   - one active valid user
   - one user with a known wrong password case

@@ -48,6 +48,9 @@ import {
   Loading03Icon,
   Cancel01Icon,
   FilterMailIcon,
+  CalendarSyncIcon,
+  LayoutGridIcon,
+  EyeIcon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -522,10 +525,13 @@ export function CurrentTargetContainer({
         ],
       },
       {
-        groupName: `JLPT Exam Target (${examDateStr})`,
+        groupName: `JLPT Exam Target`,
         sectionKey: "exam_target",
         children: [
-          { field: "want_to_sit_exam", header_name: `Want to sit JLPT exam` },
+          {
+            field: `want_to_sit_exam`,
+            header_name: `Want to sit JLPT exam on ${examDateStr}`,
+          },
           { field: "exam_target_level", header_name: "If Yes, Which Level?" },
           {
             field: "confidence_level",
@@ -925,7 +931,60 @@ export function CurrentTargetContainer({
               </InputGroup>
             </div>
             <div className="flex gap-2">
-              
+              {/* Property Visibility Dropdown */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-9 w-9">
+                        <HugeiconsIcon
+                          icon={EyeIcon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Property Visibility</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <DropdownMenuContent className="w-72">
+                  {sectionOptions.map((option) => (
+                    <DropdownMenuCheckboxItem
+                      key={option.value}
+                      checked={selectedSection === option.value}
+                      onCheckedChange={() => handleSectionSelect(option.value)}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {option.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Edit Target Dates Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={handleEditTargetDates}
+                  >
+                    <HugeiconsIcon
+                      icon={CalendarSyncIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit Target Dates</p>
+                </TooltipContent>
+              </Tooltip>
+
               {/* Filter Dropdown with indicator */}
               <DropdownMenu>
                 <Tooltip>
@@ -953,28 +1012,6 @@ export function CurrentTargetContainer({
                 </Tooltip>
 
                 <DropdownMenuContent className="w-80">
-                  {/* Property Visibility */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Property Visibility
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {sectionOptions.map((option) => (
-                          <DropdownMenuCheckboxItem
-                            key={option.value}
-                            checked={selectedSection === option.value}
-                            onCheckedChange={() =>
-                              handleSectionSelect(option.value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {option.label}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
 
                   {/* JLPT / NAT Test */}
                   <DropdownMenuSub>
@@ -1355,15 +1392,13 @@ export function CurrentTargetContainer({
                   <DropdownMenuSeparator />
 
                   {/* JLPT Exam Target (Exam Date) */}
-                  <DropdownMenuLabel>
-                    JLPT Exam Target{" "}
-                    {firstTargetDate?.examDate
-                      ? `(${formatGroupDate(firstTargetDate.examDate)})`
-                      : "(Exam Date)"}
-                  </DropdownMenuLabel>
+                  <DropdownMenuLabel>JLPT Exam Target</DropdownMenuLabel>
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
-                      Want to sit JLPT exam
+                      Want to sit JLPT exam{" "}
+                      {firstTargetDate?.examDate
+                        ? `(${formatGroupDate(firstTargetDate.examDate)})`
+                        : "(Exam Date)"}
                     </DropdownMenuSubTrigger>
                     <DropdownMenuPortal>
                       <DropdownMenuSubContent>
@@ -1460,10 +1495,7 @@ export function CurrentTargetContainer({
           </div>
 
           <div
-            className={cn(
-              "relative overflow-x-auto rounded-md border",
-              isSelectionActive && "pointer-events-none"
-            )}
+            className={cn("relative overflow-x-auto rounded-md border")}
             style={{ zIndex: 1 }}
           >
             <Table key={refreshKey}>
@@ -1708,15 +1740,10 @@ export function CurrentTargetContainer({
             </Table>
           </div>
 
-          {/* Overlay and Selection Bar */}
+          {/* Selection Bar */}
           {isSelectionActive && (
             <>
-              <div
-                className="pointer-events-auto absolute inset-0 z-40 cursor-pointer bg-black/4"
-                onClick={handleClearSelection}
-              />
-
-              <div className="absolute top-40 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
+              <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
                 <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
@@ -1765,8 +1792,7 @@ export function CurrentTargetContainer({
 
           <div
             className={cn(
-              "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
-              isSelectionActive && "pointer-events-none"
+              "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
             )}
           >
             <Field orientation="horizontal" className="w-fit">

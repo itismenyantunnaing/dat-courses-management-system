@@ -31,6 +31,10 @@ public class EmployeeService {
     private final SkillSetService         skillSetService;
 
     // ── Mapping ──────────────────────────────────────────────────────────────
+    public Employee getEmployeeById(String id) {
+        return employeeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
+    }
 
     private EmployeeResponseDTO toDTO(Employee e) {
         String divName = null;
@@ -109,7 +113,54 @@ public class EmployeeService {
         return employeeRepository.findByIsDeletedTrue()
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
+@Transactional(readOnly = true)
+public EmployeeWithSkillsResponseDTO getEmployeeProfile(String id) {
 
+    Employee employee = employeeRepository.findByIdAndIsDeletedFalse(id)
+            .orElseThrow(() -> new RuntimeException("Employee not found: " + id));
+
+    // basic employee info
+    EmployeeWithSkillsResponseDTO dto = EmployeeWithSkillsResponseDTO.builder()
+            .id(employee.getId())
+            .name(employee.getName())
+            .email(employee.getEmail())
+            .doorlog(employee.getDoorlog())
+            .position(employee.getPosition())
+            .empStatus(employee.getEmpStatus())
+            .status(employee.getStatus())
+            .isCorePersonnel(employee.getIsCorePersonnel())
+            .hasJapanBusinessTrip(employee.getHasJapanBusinessTrip())
+            .notiSetting(employee.getNotiSetting())
+            .dob(employee.getDob())
+            .profilePhotoPath(employee.getProfilePhotoPath())
+            .createdAt(employee.getCreatedAt())
+            .updatedAt(employee.getUpdatedAt())
+            .role(employee.getRole() != null ? employee.getRole().getRoleName() : null)
+            .deptDir(employee.getDepartmentDir() != null
+                    ? employee.getDepartmentDir().getDeptName()
+                    : null)
+            .team(employee.getTeam() != null
+                    ? employee.getTeam().getTeamName()
+                    : null)
+            .deptDat(employee.getTeam() != null
+                    ? employee.getTeam().getDepartmentDat().getDeptName()
+                    : null)
+            .divName(employee.getTeam() != null
+                    ? employee.getTeam().getDepartmentDat().getDivision().getDivisionName()
+                    : null)
+            .build();
+
+   EmployeeWithSkillsResponseDTO skillInfo =
+        skillSetService.getEmployeeWithAllSkills(employee.getId());
+
+    dto.setLanguageSkill(skillInfo.getLanguageSkill());
+    dto.setManagementSkill(skillInfo.getManagementSkill());
+    dto.setDevelopmentSkills(skillInfo.getDevelopmentSkills());
+    dto.setTechnicalSkills(skillInfo.getTechnicalSkills());
+    dto.setJapaneseProfile(skillInfo.getJapaneseProfile());
+
+    return dto;
+} 
     // ── CREATE (single) ──────────────────────────────────────────────────────
 
     public EmployeeResponseDTO create(EmployeeRequestDTO dto) {
