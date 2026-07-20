@@ -290,12 +290,11 @@ export function CourseDetail({
     isRejectingGroupChange,
   } = mainStore();
 
-  console.log(course)
 
   // Get current user ID
   const currentUserId = getUserId?.() || null
 
-  const TESTING_DATE = new Date('2026-08-7')
+  const TESTING_DATE = new Date('2026-07-21')
   // const TESTING_DATE = new Date()
 
   // Helper function to get session status

@@ -258,6 +258,10 @@ export const allTabs = [
 
         if (store && store.fetch_EmployeeData) {
           await store.fetch_EmployeeData()
+          await store.fetch_divisions()
+          await store.fetch_dat_departments()
+          await store.fetch_teams()
+          await store.fetch_roles()
         }
 
 
@@ -1167,7 +1171,7 @@ export const allTabs = [
         return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
       }
     },
-    onExport: async (format: string) => {
+    onExport: async (format: string, language?: 'eng' | 'japan') => {
       // Get data from store
       const store = (window as any).mainStore?.getState()
       if (!store) {
@@ -1183,7 +1187,8 @@ export const allTabs = [
         devCap_data,
         languageSkill_data,
         managementScores_Data,
-        employeeJapaneseLevel_Data // Make sure to include this
+        employeeJapaneseLevel_Data,
+        dictionary
       } = store;
 
       if (!employee_data || employee_data.length === 0) {
@@ -1200,24 +1205,16 @@ export const allTabs = [
           devCap_data,
           languageSkill_data,
           managementScores_Data,
-          employeeJapaneseLevel_Data // Include Japanese level data for JLPT column
+          employeeJapaneseLevel_Data,
+          dictionary // Pass dictionary for translations
         };
-
-        // Log the skill headers to debug
-        console.log('📊 Exporting with skill_headers:', skill_headers);
-        console.log('📊 Dynamic skills count:', skill_headers?.reduce((acc: number, cat: any) => {
-          const subs = cat.skillSubCategories || cat.skill_sub_categories || [];
-          return acc + subs.reduce((acc2: number, sub: any) => {
-            const skills = sub.skills || [];
-            return acc2 + skills.length;
-          }, 0);
-        }, 0) || 0);
 
         const options = {
           showAdministrator: true,
           showDeveloper: true,
           showTechnicalAbility: true,
           fileName: `Skills_Report_${new Date().toISOString().split("T")[0]}`,
+          language: language || 'eng' // Use the selected language
         }
 
         if (format === "excel" || format === "xlsx") {

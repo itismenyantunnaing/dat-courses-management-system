@@ -26,14 +26,17 @@ interface LoginResponse {
 interface SessionData {
     token: string
     userId: string
+    expiresAt: number 
 }
 
-// Session configuration
+// Session configuration - 1 HOUR
 const SESSION_CONFIG = {
+    DURATION_HOURS: 1,
+    DURATION_MS: 60 * 60 * 1000, // 1 hour in milliseconds
     COOKIE_NAME: 'auth_session',
     COOKIE_OPTIONS: {
         httpOnly: true,
-        secure: true,
+        secure: true, 
         sameSite: 'strict' as const,
         path: '/',
     }
@@ -41,34 +44,46 @@ const SESSION_CONFIG = {
 
 // Set session cookie with user data
 export async function setSessionCookie(
-    token: string, 
-    userId: string, 
+    token: string,
+    userId: string,
 ) {
     const cookieStore = await cookies()
-    
+    const expiresAt = Date.now() + SESSION_CONFIG.DURATION_MS
+
     const sessionData: SessionData = {
         token,
         userId,
+        expiresAt, 
     }
-    
+
     cookieStore.set(
         SESSION_CONFIG.COOKIE_NAME,
         JSON.stringify(sessionData),
-        SESSION_CONFIG.COOKIE_OPTIONS
+        {
+            ...SESSION_CONFIG.COOKIE_OPTIONS,
+            maxAge: SESSION_CONFIG.DURATION_MS / 1000, // 3600 seconds = 1 hour
+        }
     )
 }
 
-// Get session from cookie
+// Get session from cookie with expiration check
 export async function getSession(): Promise<SessionData | null> {
     const cookieStore = await cookies()
     const sessionCookie = cookieStore.get(SESSION_CONFIG.COOKIE_NAME)
-    
+
     if (!sessionCookie) {
         return null
     }
-    
+
     try {
         const sessionData: SessionData = JSON.parse(sessionCookie.value)
+        
+        //  Check if session has expired
+        if (Date.now() >= sessionData.expiresAt) {
+            await clearSession()
+            return null
+        }
+        
         return sessionData
     } catch {
         return null
@@ -99,6 +114,31 @@ export async function getUserId(): Promise<string | null> {
     return session?.userId || null
 }
 
+// Get remaining session time in milliseconds
+export async function getRemainingSessionTime(): Promise<number> {
+    const session = await getSession()
+    if (!session) return 0
+    
+    const remaining = session.expiresAt - Date.now()
+    return Math.max(0, remaining)
+}
+
+// Extend session (refresh timeout - resets to 1 hour)
+export async function extendSession(): Promise<boolean> {
+    const session = await getSession()
+    if (session) {
+        await setSessionCookie(session.token, session.userId)
+        return true
+    }
+    return false
+}
+
+// Check if session is about to expire (for UI warnings)
+export async function isSessionExpiringSoon(thresholdMinutes: number = 5): Promise<boolean> {
+    const remaining = await getRemainingSessionTime()
+    return remaining > 0 && remaining < thresholdMinutes * 60 * 1000
+}
+
 // Login action
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
@@ -114,14 +154,14 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
         })
 
         const rawText = await response.text()
-        
+
         let data;
         try {
             data = JSON.parse(rawText)
         } catch {
             if (!rawText || rawText.trim() === '') {
                 console.warn("Empty response received from server")
-                data = { message: data }
+                data = { message: "Server returned empty response" }
             } else {
                 console.warn("Non-JSON response:", rawText)
                 data = { message: rawText }
@@ -137,16 +177,20 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
                 }
             }
 
-            // Set session cookie
+            // Set session cookie with expiration
             await setSessionCookie(
-                data.token,   
-                data.userId,       
+                data.token,
+                data.userId,
             )
-            
+
             return {
                 success: true,
                 token: data.token,
                 userId: data.userId,
+                role: data.role,
+                name: data.name,
+                email: data.email,
+                status: data.status,
                 message: "Login successful"
             }
         } else if (response.status === 423) {
@@ -172,7 +216,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
 // Logout action
 export async function logout() {
     await clearSession()
-    redirect('/')
+    redirect('/') // ✅ Better to redirect to login page
 }
 
 // Forgot Password - Send OTP
@@ -227,7 +271,7 @@ export async function verifyOtp(email: string, otp: string): Promise<{ success: 
 export async function resetPassword(email: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
     try {
         console.log("Reset password called with:", { email, newPassword: "***" })
-        
+
         const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
             method: "POST",
             headers: {
@@ -237,10 +281,10 @@ export async function resetPassword(email: string, newPassword: string): Promise
         })
 
         console.log("Reset password response status:", response.status)
-        
+
         const rawText = await response.text()
         console.log("Raw response text:", rawText)
-        
+
         let data;
         try {
             data = JSON.parse(rawText)
@@ -262,10 +306,10 @@ export async function resetPassword(email: string, newPassword: string): Promise
 async function parseResponse(response: Response): Promise<any> {
     const contentType = response.headers.get("content-type")
     const text = await response.text()
-    
+
     console.log("Raw response:", text)
     console.log("Content-Type:", contentType)
-    
+
     if (contentType && contentType.includes("application/json")) {
         try {
             return JSON.parse(text)
@@ -307,8 +351,8 @@ export async function verifyCurrentPassword(currentPassword: string): Promise<{ 
 
 // Change Password (when logged in)
 export async function changePassword(
-    currentPassword: string, 
-    newPassword: string, 
+    currentPassword: string,
+    newPassword: string,
     confirmPassword: string
 ): Promise<{ success: boolean; message?: string }> {
     if (newPassword !== confirmPassword) {
@@ -385,6 +429,7 @@ export async function withAuth<T>(
     const token = await getAuthToken()
     if (!token) {
         redirect('/')
+        return null
     }
 
     try {

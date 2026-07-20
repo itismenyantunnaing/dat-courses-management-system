@@ -1,9 +1,11 @@
 package com.dat_management.backend.controller;
 
+import com.dat_management.backend.dto.ActiveLearnerResponseDTO;
 import com.dat_management.backend.dto.CourseStatsDTO;
 import com.dat_management.backend.dto.MonthlyAttendanceDtos.DepartmentMonthlyAttendanceDTO;
 import com.dat_management.backend.dto.RiskDtos.RiskResponseDTO;
 import com.dat_management.backend.service.CourseStatsService;
+import com.dat_management.backend.service.ActiveLearnerService;
 import com.dat_management.backend.service.CourseAttendanceService;
 import com.dat_management.backend.service.RiskService;
 import lombok.RequiredArgsConstructor;
@@ -24,16 +26,17 @@ public class CourseStatsController {
     private final CourseStatsService courseStatsService;
     private final CourseAttendanceService courseAttendanceService;
     private final RiskService riskService;
+    private final ActiveLearnerService activeLearnerService;
 
     @GetMapping
     public ResponseEntity<List<CourseStatsDTO>> getCourseStats() {
         List<CourseStatsDTO> stats = courseStatsService.getCourseStats();
         return ResponseEntity.ok(stats);
     }
-    
-    @GetMapping("/monthly-attendance")
-    public ResponseEntity<List<DepartmentMonthlyAttendanceDTO>> getMonthlyAttendanceByDepartment() {
-        List<DepartmentMonthlyAttendanceDTO> attendance = courseAttendanceService.getMonthlyAttendanceByDepartment();
+
+    @GetMapping("/daily-attendance")
+    public ResponseEntity<List<DepartmentMonthlyAttendanceDTO>> getDailyAttendanceByDepartment() {
+        List<DepartmentMonthlyAttendanceDTO> attendance = courseAttendanceService.getDailyAttendanceByDepartment();
         return ResponseEntity.ok(attendance);
     }
 
@@ -41,5 +44,11 @@ public class CourseStatsController {
     public ResponseEntity<RiskResponseDTO> getAtRiskStudents() {
         RiskResponseDTO riskStudents = riskService.getAtRiskStudents();
         return ResponseEntity.ok(riskStudents);
+    }
+
+    @GetMapping("/active-learners")
+    public ResponseEntity<ActiveLearnerResponseDTO> getActiveLearners() {
+        ActiveLearnerResponseDTO response = activeLearnerService.getTotalActiveLearners();
+        return ResponseEntity.ok(response);
     }
 }

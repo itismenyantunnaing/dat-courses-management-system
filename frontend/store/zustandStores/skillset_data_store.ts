@@ -9,12 +9,136 @@ type StoreGet = () => SkillSet_StoreType;
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
 
 export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
+  dictionary: [],
   managementScores_Data: [],
   skillData: [],
   skill_headers: [],
   devCap_headers: [],
   devCap_data: [],
   languageSkill_data: [],
+
+
+  // japanese dictionary
+  fetch_dictionary: async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/japanese_dictionary`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      set(() => ({ dictionary: data }))
+    } catch (error) {
+      console.error('Error fetching dictionary data:', error);
+      set(() => ({ dictionary: [] }));
+    }
+  },
+
+  add_dictionary: async (entry: { japaneseText: string; englishText: string }) => {
+    try {
+      // Validate required fields
+      if (!entry.japaneseText || !entry.englishText) {
+        throw new Error('Both japaneseText and englishText are required');
+      }
+
+      const response = await fetch(`${apiUrl}/api/japanese_dictionary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          japaneseText: entry.japaneseText.trim(),
+          englishText: entry.englishText.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error Response:', errorData);
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Refresh the dictionary data
+      await get().fetch_dictionary();
+
+      return result;
+    } catch (error) {
+      console.error('Error creating dictionary entry:', error);
+      throw error;
+    }
+  },
+
+  update_dictionary: async (id: number, entry: { japaneseText: string; englishText: string }) => {
+    try {
+      // Validate required fields
+      if (!entry.japaneseText || !entry.englishText) {
+        throw new Error('Both japaneseText and englishText are required');
+      }
+
+      const response = await fetch(`${apiUrl}/api/japanese_dictionary/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          japaneseText: entry.japaneseText.trim(),
+          englishText: entry.englishText.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error Response:', errorData);
+
+        if (response.status === 404) {
+          throw new Error(`Dictionary entry with id ${id} not found`);
+        }
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Refresh the dictionary data
+      await get().fetch_dictionary();
+
+      return result;
+    } catch (error) {
+      console.error('Error updating dictionary entry:', error);
+      throw error;
+    }
+  },
+
+  delete_dictionary: async (id: number) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/japanese_dictionary/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error Response:', errorData);
+
+        if (response.status === 404) {
+          throw new Error(`Dictionary entry with id ${id} not found`);
+        }
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Refresh the dictionary data
+      await get().fetch_dictionary();
+
+      return result;
+    } catch (error) {
+      console.error('Error deleting dictionary entry:', error);
+      throw error;
+    }
+  },
 
   // ========== SKILL HEADERS (TECHNICAL CATEGORIES) CRUD ==========
 
@@ -631,38 +755,38 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-add_BulkTechnicalSkills: async (data: TechnicalSkillData[]) => {
-  try {
-    // Include skillId so backend can link to existing skill
-    const formattedData = data.map(item => ({
-      employeeId: item.employeeId,
-      skillId: item.skillId,  // ✅ CRITICAL: Include skillId
-      skillName: item.skillName,
-      yearsOfExperience: item.yearsOfExperience || 0,
-      experienceLevel: item.experienceLevel || "",
-      categoryName: item.categoryName,
-      subCategoryName: item.subCategoryName,
-    }));
+  add_BulkTechnicalSkills: async (data: TechnicalSkillData[]) => {
+    try {
+      // Include skillId so backend can link to existing skill
+      const formattedData = data.map(item => ({
+        employeeId: item.employeeId,
+        skillId: item.skillId,  // ✅ CRITICAL: Include skillId
+        skillName: item.skillName,
+        yearsOfExperience: item.yearsOfExperience || 0,
+        experienceLevel: item.experienceLevel || "",
+        categoryName: item.categoryName,
+        subCategoryName: item.subCategoryName,
+      }));
 
-    console.log('📤 Sending Bulk Technical Data with skillId:', formattedData);
+      console.log('📤 Sending Bulk Technical Data with skillId:', formattedData);
 
-    const response = await fetch(`${apiUrl}/api/skills/technical/bulk`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formattedData),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Bulk Technical API Error:', response.status, errorText);
-      throw new Error(`Bulk technical creation failed: ${response.status} - ${errorText}`);
+      const response = await fetch(`${apiUrl}/api/skills/technical/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formattedData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Bulk Technical API Error:', response.status, errorText);
+        throw new Error(`Bulk technical creation failed: ${response.status} - ${errorText}`);
+      }
+
+      await get().fetch_SkillData();
+      return await response.json();
+    } catch (error) {
+      console.error('Error in bulk technical creation:', error);
+      throw error;
     }
-    
-    await get().fetch_SkillData();
-    return await response.json();
-  } catch (error) {
-    console.error('Error in bulk technical creation:', error);
-    throw error;
-  }
-},
+  },
 });

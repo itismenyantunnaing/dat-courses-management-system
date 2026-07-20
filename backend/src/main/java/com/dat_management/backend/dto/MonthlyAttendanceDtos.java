@@ -24,15 +24,13 @@ public final class MonthlyAttendanceDtos {
 
     public record GroupMonthlyAttendanceDTO(
             String groupName,
-            List<MonthlyAttendanceDetailDTO> monthlyAttendance
+            List<DailyAttendanceDetailDTO> dailyAttendance
     ) {}
 
-    public record MonthlyAttendanceDetailDTO(
-            String month,
-            Integer year,
+    public record DailyAttendanceDetailDTO(
+            String date,
             Double attendance,
             Integer presentCount,
-            Integer totalSessions,
             Integer totalStudents
     ) {}
 }

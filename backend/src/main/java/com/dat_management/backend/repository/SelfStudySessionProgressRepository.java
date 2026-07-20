@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,7 +35,11 @@ public interface SelfStudySessionProgressRepository
         List<SelfStudySessionProgress> findByEnrollmentId(Integer enrollmentId);
 
         @Query("SELECT p FROM SelfStudySessionProgress p WHERE p.enrollment.id = :enrollmentId " +
-       "AND p.selfStudySession.id = :sessionId")
-SelfStudySessionProgress findByEnrollmentIdAndSessionId(@Param("enrollmentId") Integer enrollmentId,
-                                                        @Param("sessionId") Integer sessionId);
+                        "AND p.selfStudySession.id = :sessionId")
+        SelfStudySessionProgress findByEnrollmentIdAndSessionId(@Param("enrollmentId") Integer enrollmentId,
+                        @Param("sessionId") Integer sessionId);
+
+        // ADD THIS - Find the maximum deadline for a student's enrollment
+        @Query("SELECT MAX(p.sessionDeadline) FROM SelfStudySessionProgress p WHERE p.enrollment.id = :enrollmentId")
+        Optional<LocalDateTime> findMaxDeadlineByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 }

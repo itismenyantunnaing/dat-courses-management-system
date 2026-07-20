@@ -40,7 +40,7 @@ export interface DevelopmentCapability {
 export interface EmployeeDevelopmentExperience {
   employeeId: string;
   development_type_id: number;
-  development_type_name: string;  
+  development_type_name: string;
   process_name: string | null;
   years_of_experience: number | null;
 }
@@ -60,4 +60,10 @@ export interface ManagementScore {
   report_consult_score: number | null;
   education_score: number | null;
   total_level: number | null;
+}
+
+export interface dictionary {
+  id: number,
+  japaneseText: string,
+  englishText: string
 }

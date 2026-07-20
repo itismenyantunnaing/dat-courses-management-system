@@ -8,6 +8,7 @@ import {
   EmployeeDevelopmentExperience,
   LanguageSkill,
   ManagementScore,
+  type dictionary,
 } from "@/types/skillset"
 import {
 
@@ -57,6 +58,7 @@ export interface Holiday_StoreType {
 
 export interface SkillSet_StoreType {
   // State
+  dictionary: dictionary[],
   managementScores_Data: ManagementScore[];
   skillData: EmployeeSkill[];
   skill_headers: SkillCategory[];
@@ -65,6 +67,7 @@ export interface SkillSet_StoreType {
   languageSkill_data: LanguageSkill[];
 
   // FETCH
+  fetch_dictionary: () => Promise<void>;
   fetch_SkillHeaders: () => Promise<void>;
   fetch_SkillData: () => Promise<void>;
   fetch_managementScoreData: () => Promise<void>;

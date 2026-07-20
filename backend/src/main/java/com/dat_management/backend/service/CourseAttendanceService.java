@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,8 +25,8 @@ public class CourseAttendanceService {
     private final CourseGroupRepository courseGroupRepository;
 
     @Transactional(readOnly = true)
-    public List<DepartmentMonthlyAttendanceDTO> getMonthlyAttendanceByDepartment() {
-        log.info("========== STARTING MONTHLY ATTENDANCE BY DEPARTMENT ==========");
+    public List<DepartmentMonthlyAttendanceDTO> getDailyAttendanceByDepartment() {
+        log.info("========== STARTING DAILY ATTENDANCE BY DEPARTMENT ==========");
         
         List<Course> trainerCourses = courseRepository.findByIsDeletedFalse().stream()
             .filter(course -> course.getCourseCategory().getCourseType() == CourseCategory.CourseType.TRAINER_PROVIDED)
@@ -46,7 +48,7 @@ public class CourseAttendanceService {
         
         List<DepartmentMonthlyAttendanceDTO> result = convertToDTO(departmentTeamMap);
         
-        log.info("Completed monthly attendance by department. Found {} departments", result.size());
+        log.info("Completed daily attendance by department. Found {} departments", result.size());
         return result;
     }
 
@@ -65,6 +67,7 @@ public class CourseAttendanceService {
 
     private void processGroup(Course course, CourseGroup group, 
                               Map<String, Map<String, List<CourseGroupData>>> departmentTeamMap) {
+        // Get all sessions for this group
         List<CourseSession> sessions = courseSessionRepository
             .findByCourseGroupIdOrderBySessionNoAsc(group.getId());
         
@@ -73,6 +76,7 @@ public class CourseAttendanceService {
             return;
         }
         
+        // Get all enrollments for this group
         List<CourseEnrollment> enrollments = enrollmentRepository.findByCourseGroupId(group.getId());
         
         if (enrollments.isEmpty()) {
@@ -111,18 +115,18 @@ public class CourseAttendanceService {
                 String teamName = teamEntry.getKey();
                 List<CourseEnrollment> teamEnrollments = teamEntry.getValue();
                 
-                // Calculate monthly attendance specifically for this team's students
-                List<MonthlyAttendanceDetailDTO> teamMonthlyAttendance = 
-                    calculateMonthlyAttendanceForEnrollments(group, sessions, teamEnrollments);
+                // Calculate daily attendance specifically for this team's students
+                List<DailyAttendanceDetailDTO> dailyAttendance = 
+                    calculateDailyAttendanceForEnrollments(group, sessions, teamEnrollments);
                 
-                if (!teamMonthlyAttendance.isEmpty()) {
+                if (!dailyAttendance.isEmpty()) {
                     String courseName = course.getCourseName();
                     String groupName = group.getGroupName();
                     
                     CourseGroupData groupData = new CourseGroupData(
                         courseName,
                         groupName,
-                        teamMonthlyAttendance
+                        dailyAttendance
                     );
                     
                     departmentTeamMap
@@ -135,61 +139,66 @@ public class CourseAttendanceService {
     }
 
     /**
-     * Calculate monthly attendance specifically for a set of enrollments
+     * Calculate daily attendance specifically for a set of enrollments
      */
-    private List<MonthlyAttendanceDetailDTO> calculateMonthlyAttendanceForEnrollments(
+    private List<DailyAttendanceDetailDTO> calculateDailyAttendanceForEnrollments(
             CourseGroup group,
             List<CourseSession> sessions,
             List<CourseEnrollment> enrollments) {
         
-        Set<String> monthYearSet = getDistinctMonths(sessions);
-        List<String> sortedMonths = sortMonthsChronologically(monthYearSet);
-        
-        List<MonthlyAttendanceDetailDTO> monthlyAttendanceList = new ArrayList<>();
-        
-        for (String monthYear : sortedMonths) {
-            String[] parts = monthYear.split("-");
-            String monthName = parts[0];
-            Integer year = Integer.parseInt(parts[1]);
-            Integer monthNumber = getMonthNumber(monthName);
-            
-            // Get sessions for this specific month
-            List<CourseSession> monthSessions = courseSessionRepository
-                .findByGroupIdAndMonthAndYear(group.getId(), monthNumber, year);
-            
-            int totalSessionsInMonth = monthSessions.size();
-            int totalStudents = enrollments.size();
-            int totalPresent = 0;
-            
-            // Count PRESENT attendance for each enrollment in this month
-            for (CourseEnrollment enrollment : enrollments) {
-                long presentCount = attendanceRecordRepository
-                    .countByEnrollmentIdAndAttendanceStatusAndMonthAndYear(
-                        enrollment.getId(),
-                        AttendanceRecord.AttendanceStatus.PRESENT,
-                        monthNumber,
-                        year
-                    );
-                totalPresent += presentCount;
-            }
-            
-            // Calculate attendance percentage
-            double attendancePercentage = 0.0;
-            if (totalStudents > 0 && totalSessionsInMonth > 0) {
-                attendancePercentage = (double) totalPresent / (totalStudents * totalSessionsInMonth) * 100;
-            }
-            
-            monthlyAttendanceList.add(new MonthlyAttendanceDetailDTO(
-                getMonthAbbreviation(monthName),
-                year,
-                Math.round(attendancePercentage * 100.0) / 100.0,
-                totalPresent,
-                totalSessionsInMonth,
-                totalStudents
-            ));
+        // Get all unique dates from sessions
+        Set<LocalDate> uniqueDates = new TreeSet<>();
+        for (CourseSession session : sessions) {
+            uniqueDates.add(session.getSessionDate());
         }
         
-        return monthlyAttendanceList;
+        List<DailyAttendanceDetailDTO> dailyAttendanceList = new ArrayList<>();
+        int totalStudents = enrollments.size();
+        
+        for (LocalDate date : uniqueDates) {
+            // Get sessions for this specific date
+            List<CourseSession> sessionsOnDate = courseSessionRepository
+                .findByCourseGroupIdAndSessionDate(group.getId(), date);
+            
+            int totalSessionsOnDate = sessionsOnDate.size();
+            int totalPresent = 0;
+            
+            // Count PRESENT attendance for each enrollment on this date
+            for (CourseEnrollment enrollment : enrollments) {
+                // Count PRESENT attendance for this enrollment on this date across all sessions
+                for (CourseSession session : sessionsOnDate) {
+                    long presentCount = attendanceRecordRepository
+                        .countByEnrollmentIdAndAttendanceStatusAndSessionId(
+                            enrollment.getId(),
+                            AttendanceRecord.AttendanceStatus.PRESENT,
+                            session.getId()
+                        );
+                    totalPresent += presentCount;
+                }
+            }
+            
+            // Calculate attendance percentage for this date
+            double attendancePercentage = 0.0;
+            if (totalStudents > 0 && totalSessionsOnDate > 0) {
+                attendancePercentage = (double) totalPresent / (totalStudents * totalSessionsOnDate) * 100;
+            }
+            
+            // Format date as "MMM D" (e.g., "Jul 6")
+            String formattedDate = formatDate(date);
+            
+            dailyAttendanceList.add(new DailyAttendanceDetailDTO(
+                formattedDate,
+                Math.round(attendancePercentage * 100.0) / 100.0,
+                totalPresent,
+                totalStudents
+            ));
+            
+            log.debug("Date: {}, Attendance: {}%, Present: {}, Total Students: {}, Sessions: {}", 
+                formattedDate, Math.round(attendancePercentage * 100.0) / 100.0, 
+                totalPresent, totalStudents, totalSessionsOnDate);
+        }
+        
+        return dailyAttendanceList;
     }
 
     private List<DepartmentMonthlyAttendanceDTO> convertToDTO(
@@ -216,13 +225,13 @@ public class CourseAttendanceService {
                     String courseName = courseEntry.getKey();
                     List<CourseGroupData> courseGroupData = courseEntry.getValue();
                     
-                    Map<String, List<MonthlyAttendanceDetailDTO>> groupAttendanceMap = new LinkedHashMap<>();
+                    Map<String, List<DailyAttendanceDetailDTO>> groupAttendanceMap = new LinkedHashMap<>();
                     for (CourseGroupData data : courseGroupData) {
-                        groupAttendanceMap.put(data.groupName(), data.monthlyAttendance());
+                        groupAttendanceMap.put(data.groupName(), data.dailyAttendance());
                     }
                     
                     List<GroupMonthlyAttendanceDTO> groupDTOs = new ArrayList<>();
-                    for (Map.Entry<String, List<MonthlyAttendanceDetailDTO>> groupEntry : groupAttendanceMap.entrySet()) {
+                    for (Map.Entry<String, List<DailyAttendanceDetailDTO>> groupEntry : groupAttendanceMap.entrySet()) {
                         groupDTOs.add(new GroupMonthlyAttendanceDTO(
                             groupEntry.getKey(),
                             groupEntry.getValue()
@@ -255,28 +264,12 @@ public class CourseAttendanceService {
     private record CourseGroupData(
             String courseName,
             String groupName,
-            List<MonthlyAttendanceDetailDTO> monthlyAttendance
+            List<DailyAttendanceDetailDTO> dailyAttendance
     ) {}
 
-    private Set<String> getDistinctMonths(List<CourseSession> sessions) {
-        Set<String> monthYearSet = new LinkedHashSet<>();
-        for (CourseSession session : sessions) {
-            String monthYear = session.getSessionDate().getMonth().name() + "-" + session.getSessionDate().getYear();
-            monthYearSet.add(monthYear);
-        }
-        return monthYearSet;
-    }
-
-    private List<String> sortMonthsChronologically(Set<String> monthYearSet) {
-        return monthYearSet.stream()
-            .sorted((m1, m2) -> {
-                String[] parts1 = m1.split("-");
-                String[] parts2 = m2.split("-");
-                int yearCompare = Integer.parseInt(parts1[1]) - Integer.parseInt(parts2[1]);
-                if (yearCompare != 0) return yearCompare;
-                return parts1[0].compareTo(parts2[0]);
-            })
-            .collect(Collectors.toList());
+    private String formatDate(LocalDate date) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d");
+        return date.format(formatter);
     }
 
     private Integer getMonthNumber(String monthName) {

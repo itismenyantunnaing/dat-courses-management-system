@@ -64,6 +64,7 @@ import {
   ViewIcon,
   Settings01Icon,
   EyeIcon,
+  Book02Icon
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -82,6 +83,7 @@ import { SkillsetDrawer } from "@/components/drawers/skillset/skillSet-drawer"
 import { DevelopmentHeadersDrawer } from "@/components/drawers/skillset/developmentHeaders-drawer"
 import { TechnicalAbilityHeadersDrawer } from "@/components/drawers/skillset/technicalAbilityHeaders-drawer"
 import type { EmployeeJapaneseLevel } from "@/types/current_target"
+import { DictionaryDrawer } from "./drawers/skillset/dictionary-drawer"
 
 const STROKE_WIDTH = 2
 
@@ -89,6 +91,12 @@ type GroupedSkill = {
   skill_id: number
   skill_name: string
   sub_category_name: string
+}
+
+type DictionaryEntry = {
+  id: number
+  japaneseText: string
+  englishText: string
 }
 
 const BorderedTableCell = ({
@@ -142,6 +150,7 @@ const getExperienceLevelColor = (level: string): string => {
 export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
   const [language, setLanguage] = useState<"eng" | "japan">("eng")
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [dictionaryDrawerOpen, setDictionaryDrawerOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<{
     id: string
     name: string
@@ -209,7 +218,77 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     add_devCapHeaders,
     update_SkillCategory,
     add_BulkSkillCategories,
+    fetch_dictionary,
+    dictionary,
   } = mainStore()
+
+
+  // Helper function to escape special regex characters
+  const escapeRegex = (str: string): string => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
+
+
+  // Create translation map for quick lookup - case insensitive
+  const translationMap = useMemo(() => {
+    const map = new Map<string, string>()
+    if (dictionary && Array.isArray(dictionary)) {
+      dictionary.forEach((entry: DictionaryEntry) => {
+        // Store with lowercase key for case-insensitive lookup
+        map.set(entry.englishText.toLowerCase(), entry.japaneseText)
+      })
+    }
+    return map
+  }, [dictionary])
+
+  // Helper function to translate text based on current language
+  const translate = (text: string): string => {
+    if (language === "eng") return text
+    if (!text) return text
+
+    const lowerText = text.toLowerCase()
+
+    // 1. Try exact match first
+    if (translationMap.has(lowerText)) {
+      return translationMap.get(lowerText)!
+    }
+
+    // 2. Try to find matching phrases (longest first)
+    const sortedEntries = Array.from(translationMap.entries())
+      .sort((a, b) => b[0].length - a[0].length)
+
+    let result = text
+    let hasReplacement = false
+
+    for (const [english, japanese] of sortedEntries) {
+      // Skip single-character entries to avoid false positives
+      if (english.length < 2) continue
+
+      // Use includes for case-insensitive matching
+      if (result.toLowerCase().includes(english.toLowerCase())) {
+        // Replace the matched text with Japanese translation
+        // Use a case-insensitive replacement
+        const regex = new RegExp(escapeRegex(english), 'gi')
+        result = result.replace(regex, japanese)
+        hasReplacement = true
+      }
+    }
+
+    // 3. If no phrase replacements, try word-by-word
+    if (!hasReplacement) {
+      const words = text.split(/\b/)
+      const translatedWords = words.map((word) => {
+        const trimmed = word.trim()
+        if (!trimmed || /^[^\w\s]+$/.test(trimmed)) return word
+
+        const translated = translationMap.get(trimmed.toLowerCase())
+        return translated || word
+      })
+      result = translatedWords.join('')
+    }
+
+    return result
+  }
 
   useEffect(() => {
     const loadData = async () => {
@@ -223,26 +302,13 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
         fetch_devCapData(),
         fetch_languageSkillData(),
         fetch_managementScoreData(),
+        fetch_dictionary()
       ])
       setIsLoading(false)
     }
 
     loadData()
-  }, [
-    fetch_EmployeeData,
-    fetch_SkillHeaders,
-    fetch_SkillData,
-    fetch_devCapHeaders,
-    fetch_devCapData,
-  ])
-
-  // Add this helper function to get the correct header text
-  const getHeaderText = (header: { header_name: string; header_name_japan?: string }) => {
-    if (language === "japan" && header.header_name_japan) {
-      return header.header_name_japan
-    }
-    return header.header_name
-  }
+  }, [fetch_EmployeeData, fetch_SkillHeaders, fetch_SkillData, fetch_devCapHeaders, fetch_devCapData, fetch_EmployeeJapaneseLevel, fetch_languageSkillData, fetch_managementScoreData, fetch_dictionary])
 
   // Employee data
   useEffect(() => {
@@ -250,8 +316,6 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       setEmployees(employee_data)
     }
   }, [employee_data])
-
-  console.log(skillData)
 
   // Build Japanese level map for quick lookup: employee_id -> jlptHighestLevel
   useEffect(() => {
@@ -445,11 +509,6 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
-  const handleDeleteClick = (employee: { id: string; name: string }) => {
-    setEmployeeToDelete(employee)
-    setDeleteDialogOpen(true)
-  }
-
   const handleDeleteConfirm = async () => {
     setIsDeleting(true)
     try {
@@ -487,6 +546,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       fetch_managementScoreData(),
     ])
   }
+
+
 
   // Handle development headers click
   const handleDevelopmentHeadersClick = () => {
@@ -548,21 +609,19 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     return pages
   }
 
-  // Column headers - Employee section (always visible)
+  // Column headers - Employee section (always visible) - Now using translate function
   const employeeHeaders = [
-    { field: "team", header_name: "Team", header_name_japan: "チーム" },
-    { field: "staff_id", header_name: "Staff ID", header_name_japan: "スタッフID" },
-    { field: "name", header_name: "Name", header_name_japan: "名前" },
+    { field: "team", header_name: "Team" },
+    { field: "staff_id", header_name: "ID" },
+    { field: "name", header_name: "Name" },
     {
       field: "dept",
       header_name: "Name of the commissioning department *Select from the dropdown menu",
-      header_name_japan: "委託元部署名※プルダウン入力",
     },
-    { field: "is_core_personnel", header_name: "Core personnel *FPT only", header_name_japan: "中核人材 *FPTのみ" },
+    { field: "is_core_personnel", header_name: "Core personnel (FPT only)" },
     {
       field: "has_japan_business_trip",
       header_name: "Whether or not you have a business trip to Japan",
-      header_name_japan: "日本出張の有無",
     },
   ]
 
@@ -570,21 +629,19 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     {
       field: "management_experience_level",
       header_name: "Management experience (Levels 1-5)",
-      header_name_japan: "管理経験（レベル1～5",
     },
-    { field: "qcd_score", header_name: "QCD (1-4 points)", header_name_japan: "QCD (1-4点)" },
+    { field: "qcd_score", header_name: "QCD (1-4 points)" },
     {
       field: "report_consult_score",
       header_name: "Reporting, contacting, and consulting (1-4 points)",
-      header_name_japan: "報告・連絡・相談 (1-4点)",
     },
-    { field: "education_score", header_name: "Education (1-4 points)", header_name_japan: "教育 (1-4点)" },
-    { field: "total_level", header_name: "Total (Levels 1-5)", header_name_japan: "合計 (レベル1-5)" },
+    { field: "education_score", header_name: "Education (1-4 points)" },
+    { field: "total_level", header_name: "Total (Levels 1-5)" },
   ]
 
   const languageSkillHeaders = [
-    { field: "language_level", header_name: "Level (Levels 1-5)", header_name_japan: "レベル (レベル1-5)" },
-    { field: "jlpt_nat_score", header_name: "JLPT/NAT (N1~N5)", header_name_japan: "JLPT/NAT (N1〜N5)" },
+    { field: "language_level", header_name: "Level (Levels 1-5)" },
+    { field: "jlpt_nat_score", header_name: "JLPT/NAT (N1~N5)" },
   ]
 
   const totalSkillColumns = dynamicSkillsList.length * 2
@@ -649,6 +706,13 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
               />
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="default"
+                onClick={() => setDictionaryDrawerOpen(true)}
+                className="bg-primary hover:bg-primary/90"
+              >
+                <HugeiconsIcon icon={Book02Icon} strokeWidth={2} />
+              </Button>
               {/* Property Visibility Dropdown */}
               <DropdownMenu>
                 <Tooltip>
@@ -732,7 +796,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                       rowSpan={5}
                       className="align-middle"
                     >
-                      {getHeaderText(header)}
+                      {translate(header.header_name)}
                     </BorderedTableHead>
                   ))}
                   {showAdministrator && (
@@ -740,12 +804,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                       colSpan={5}
                       className="align-middle font-bold"
                     >
-                      {language === "eng" ? (
-                        "Administrator"
-                      ) : (
-                        "管理者"
-                      )}
-
+                      {translate("Administrator")}
                     </BorderedTableHead>
                   )}
                   {showDeveloper && (
@@ -761,11 +820,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                       onClick={handleDevelopmentHeadersClick}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        {language === "eng" ? (
-                          "Developer (DIR and YSX tasks only)"
-                        ) : (
-                          "開発者（DIR業務、YSX業務限り"
-                        )}
+                        {translate("Developer (DIR and YSX tasks only)")}
                         <HugeiconsIcon
                           icon={Settings01Icon}
                           strokeWidth={2}
@@ -785,11 +840,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                       onClick={handleTechnicalHeadersClick}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        {language === "eng" ? (
-                          "Technical Ability"
-                        ) : (
-                          "技術力"
-                        )}
+                        {translate("Technical Ability")}
                         <HugeiconsIcon
                           icon={Settings01Icon}
                           strokeWidth={2}
@@ -808,17 +859,13 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         rowSpan={4}
                         className="text-center align-middle whitespace-normal"
                       >
-                        {getHeaderText(administratorHeaders[0])}
+                        {translate(administratorHeaders[0].header_name)}
                       </BorderedTableHead>
                       <BorderedTableHead
                         colSpan={4}
                         className="text-center align-middle"
                       >
-                        {language === "eng" ? (
-                          "management ability"
-                        ) : (
-                          "管理能力"
-                        )}
+                        {translate("management ability")}
                       </BorderedTableHead>
                     </>
                   )}
@@ -828,12 +875,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         colSpan={2}
                         className="text-center align-middle"
                       >
-                        {language === "eng" ? (
-                          " language skills"
-                        ) : (
-                          "語学力"
-                        )}
-
+                        {translate("language skills")}
                       </BorderedTableHead>
                       {devCap_headers?.length !== 0 && (
                         <BorderedTableHead
@@ -843,7 +885,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           className="text-center align-middle transition-colors hover:bg-muted/70"
                         >
                           <div className="flex items-center justify-center gap-2">
-                            Development capabilities
+                            {translate("Development capabilities")}
                           </div>
                         </BorderedTableHead>
                       )}
@@ -911,7 +953,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                                       rowSpan={3}
                                       className="text-center align-middle"
                                     >
-                                      {skill.skill_name}
+                                      {translate(skill.skill_name)}
                                     </BorderedTableHead>
                                   ))
                                 }
@@ -923,7 +965,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                                     rowSpan={2}
                                     className="text-center align-middle"
                                   >
-                                    {subCategoryName}
+                                    {translate(subCategoryName)}
                                   </BorderedTableHead>
                                 )
                               }
@@ -944,7 +986,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                               rowSpan={3}
                               className="text-center align-middle"
                             >
-                              {skill.skill_name}
+                              {translate(skill.skill_name)}
                             </BorderedTableHead>
                           ))
                         }
@@ -956,7 +998,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                             colSpan={sortedSkills.length * 2}
                             className="text-center"
                           >
-                            {categoryName}
+                            {translate(categoryName)}
                           </BorderedTableHead>
                         )
                       })}
@@ -977,7 +1019,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                               : "100px",
                         }}
                       >
-                        {getHeaderText(header)}
+                        {translate(header.header_name)}
                       </BorderedTableHead>
                     ))}
                   {showDeveloper && (
@@ -988,7 +1030,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           rowSpan={3}
                           className="text-center align-middle"
                         >
-                          {getHeaderText(header)}
+                          {translate(header.header_name)}
                         </BorderedTableHead>
                       ))}
                       {(devCap_headers || []).map(
@@ -999,7 +1041,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                             colSpan={2}
                             className="text-center align-middle"
                           >
-                            {header.developmentTypeName}
+                            {translate(header.developmentTypeName)}
                           </BorderedTableHead>
                         )
                       )}
@@ -1067,7 +1109,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                               colSpan={count}
                               className="text-center"
                             >
-                              {subCategoryName}
+                              {translate(subCategoryName)}
                             </BorderedTableHead>
                           ))
                       })}
@@ -1108,7 +1150,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                             colSpan={2}
                             className="text-center"
                           >
-                            {skill.name}
+                            {translate(skill.name)}
                           </BorderedTableHead>
                         )
                       })
@@ -1122,19 +1164,10 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     Array.from({ length: devCap_headers?.length || 0 }).map((_, index) => (
                       <React.Fragment key={`dev-${index}`}>
                         <BorderedTableHead className="text-center whitespace-nowrap">
-                          {language === "eng" ? (
-                            "Years"
-                          ) : (
-                            "経験年数"
-                          )}
+                          {translate("Years of experience")}
                         </BorderedTableHead>
                         <BorderedTableHead className="text-center whitespace-nowrap">
-                          {language === "eng" ? (
-                            "Experience"
-                          ) : (
-                            "経験工程"
-                          )}
-
+                          {translate("Experience Process")}
                         </BorderedTableHead>
                       </React.Fragment>
                     ))}
@@ -1142,19 +1175,10 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     dynamicSkillsList.map((skill) => (
                       <React.Fragment key={`${skill.id}-sub`}>
                         <BorderedTableHead className="text-center whitespace-nowrap">
-                          {language === "eng" ? (
-                            "Years"
-                          ) : (
-                            "経験年数"
-                          )}
+                          {translate("Years")}
                         </BorderedTableHead>
                         <BorderedTableHead className="text-center whitespace-nowrap">
-                          {language === "eng" ? (
-                            "Experience"
-                          ) : (
-                            "経験工程"
-                          )}
-
+                          {translate("Experience")}
                         </BorderedTableHead>
                       </React.Fragment>
                     ))}
@@ -1193,7 +1217,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                       >
                         {/* Employee Info Columns - Always visible */}
                         <BorderedTableCell>
-                          {employee.team || "-"}
+                          {translate(employee.team || "-")}
                         </BorderedTableCell>
                         <BorderedTableCell className="text-sm">
                           {employee.id || "-"}
@@ -1202,7 +1226,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           {employee.name}
                         </BorderedTableCell>
                         <BorderedTableCell>
-                          {employee.dept_dir || "-"}
+                          {translate(employee.dept_dir || "-")}
                         </BorderedTableCell>
                         <BorderedTableCell>
                           <Badge
@@ -1210,7 +1234,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                               employee.is_core_personnel ? "default" : "outline"
                             }
                           >
-                            {employee.is_core_personnel ? "Yes" : "No"}
+                            {employee.is_core_personnel ? translate("Yes") : translate("No")}
                           </Badge>
                         </BorderedTableCell>
                         <BorderedTableCell>
@@ -1221,7 +1245,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                                 : "outline"
                             }
                           >
-                            {employee.has_japan_business_trip ? "Yes" : "No"}
+                            {employee.has_japan_business_trip ? translate("Yes") : translate("No")}
                           </Badge>
                         </BorderedTableCell>
 
@@ -1273,7 +1297,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                                 )
                                 return jlptLevel ? (
                                   <Badge className="bg-blue-100 text-xs text-blue-800">
-                                    {jlptLevel}
+                                    {translate(jlptLevel)}
                                   </Badge>
                                 ) : (
                                   <span className="text-sm text-muted-foreground">
@@ -1301,7 +1325,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                                           variant="outline"
                                           className="text-xs whitespace-nowrap"
                                         >
-                                          {years} year{years !== 1 ? "s" : ""}
+                                          {years} {years !== 1 ? translate("years") : translate("year")}
                                         </Badge>
                                       ) : (
                                         <span className="text-sm text-muted-foreground">
@@ -1312,7 +1336,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                                     <BorderedTableCell className="text-center">
                                       {experience_process ? (
                                         <Badge className="bg-blue-100 text-xs text-blue-800">
-                                          {experience_process}
+                                          {translate(experience_process)}
                                         </Badge>
                                       ) : (
                                         <span className="text-sm text-muted-foreground">
@@ -1344,7 +1368,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                                         variant="outline"
                                         className="text-xs whitespace-nowrap"
                                       >
-                                        {years} year{years !== 1 ? "s" : ""}
+                                        {years} {years !== 1 ? translate("years") : translate("year")}
                                       </Badge>
                                     ) : (
                                       <span className="text-sm text-muted-foreground">
@@ -1357,7 +1381,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                                       <Badge
                                         className={`text-xs ${getExperienceLevelColor(level)}`}
                                       >
-                                        {level}
+                                        {translate(level)}
                                       </Badge>
                                     ) : (
                                       <span className="text-sm text-muted-foreground">
@@ -1381,7 +1405,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Field orientation="horizontal" className="w-fit">
               <FieldLabel htmlFor="select-rows-per-page">
-                Rows per page
+                {translate("Rows per page")}
               </FieldLabel>
               <Select
                 value={itemsPerPage.toString()}
@@ -1400,9 +1424,9 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
               </Select>
             </Field>
             <div className="text-sm text-muted-foreground">
-              Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} of{" "}
-              {filteredEmployees.length} employees
+              {translate("Showing")} {filteredEmployees.length === 0 ? 0 : startIndex + 1} {translate("to")}{" "}
+              {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} {translate("of")}{" "}
+              {filteredEmployees.length} {translate("employees")}
             </div>
             <Pagination className="mx-0 w-auto">
               <PaginationContent>
@@ -1459,6 +1483,16 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
         </CardContent>
       </div>
 
+      {/* disctionary Drawer - Combined Create/Edit/delete */}
+      <DictionaryDrawer
+        open={dictionaryDrawerOpen}
+        onOpenChange={setDictionaryDrawerOpen}
+        onSuccess={async () => {
+          await fetch_dictionary()
+        }}
+      />
+
+
       {/* Skillset Drawer - Combined Create/Edit */}
       <SkillsetDrawer
         open={drawerOpen}
@@ -1466,6 +1500,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
         employee={selectedEmployee}
         onSuccess={handleDrawerSuccess}
       />
+
+
 
       {/* Development Headers Drawer */}
       <DevelopmentHeadersDrawer
@@ -1492,10 +1528,9 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogTitle>{translate("Confirm Delete")}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {employeeToDelete?.name}? This
-              action cannot be undone.
+              {translate("Are you sure you want to delete")} {employeeToDelete?.name}? {translate("This action cannot be undone.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1503,14 +1538,14 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
             >
-              Cancel
+              {translate("Cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteConfirm}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? translate("Deleting...") : translate("Delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

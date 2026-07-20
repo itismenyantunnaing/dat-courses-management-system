@@ -208,6 +208,7 @@ export function EmployeeContainer({
   const [isLoading, setIsLoading] = useState(true)
   const [activeView, setActiveView] = useState<ViewTab>("employees")
   const [viewMode, setViewMode] = useState<ViewMode>("list")
+  const hasLoadedRef = useRef(false)
 
   // Filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -272,16 +273,51 @@ export function EmployeeContainer({
 
   useEffect(() => {
     const loadData = async () => {
+      // Skip if already loaded
+      if (hasLoadedRef.current) {
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
-      await fetch_EmployeeData()
-      await fetch_divisions()
-      await fetch_dat_departments()
-      await fetch_teams()
-      await fetch_roles()
-      setIsLoading(false)
+
+      try {
+        const promises = []
+
+        if (!employee_data || employee_data.length === 0) {
+          promises.push(fetch_EmployeeData())
+        }
+
+        if (!divisions || divisions.length === 0) {
+          promises.push(fetch_divisions())
+        }
+
+        if (!dat_departments || dat_departments.length === 0) {
+          promises.push(fetch_dat_departments())
+        }
+
+        if (!teams || teams.length === 0) {
+          promises.push(fetch_teams())
+        }
+
+        // Check roles from store
+        const store = mainStore.getState?.()
+        const rolesData = store?.roles || []
+        if (!rolesData || rolesData.length === 0) {
+          promises.push(fetch_roles())
+        }
+
+
+        hasLoadedRef.current = true
+      } catch (error) {
+        console.error('❌ Error loading data:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
+
     loadData()
-  }, [fetch_EmployeeData])
+  }, [])
 
   // Check if any filters are active
   const hasActiveFilters =
@@ -413,8 +449,8 @@ export function EmployeeContainer({
       const divs = getUniqueValues("div_name")
       const filteredDivs = searchTerm.trim()
         ? divs.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : divs
       // Add "Others" category if there are employees with empty div_name
       const othersCount = getEmployeesWithEmptyCategory("div_name").length
@@ -426,8 +462,8 @@ export function EmployeeContainer({
       const depts = getUniqueValues("dept_dat")
       const filteredDepts = searchTerm.trim()
         ? depts.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : depts
       // Add "Others" category if there are employees with empty dept_dat
       const othersCount = getEmployeesWithEmptyCategory("dept_dat").length
@@ -439,8 +475,8 @@ export function EmployeeContainer({
       const teams = getUniqueValues("team")
       const filteredTeams = searchTerm.trim()
         ? teams.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : teams
       // Add "Others" category if there are employees with empty team
       const othersCount = getEmployeesWithEmptyCategory("team").length
@@ -1538,7 +1574,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === 1 ||
-                            drillDownEmployees.length === 0
+                              drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -1573,7 +1609,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === drillDownTotalPages ||
-                            drillDownEmployees.length === 0
+                              drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -1874,7 +1910,7 @@ export function EmployeeContainer({
                       }}
                       className={
                         currentPage === totalPages ||
-                        filteredEmployees.length === 0
+                          filteredEmployees.length === 0
                           ? "pointer-events-none opacity-50"
                           : ""
                       }

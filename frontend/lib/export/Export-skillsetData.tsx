@@ -12,6 +12,7 @@ export interface ExportSkillData {
   languageSkill_data: any[];
   managementScores_Data: any[];
   employeeJapaneseLevel_Data?: any[];
+  dictionary?: any[]; // Add dictionary for translations
 }
 
 export interface ExportSkillOptions {
@@ -19,6 +20,7 @@ export interface ExportSkillOptions {
   showDeveloper?: boolean;
   showTechnicalAbility?: boolean;
   fileName?: string;
+  language?: 'eng' | 'japan'; // Add language option
 }
 
 type GroupedSkill = {
@@ -26,6 +28,36 @@ type GroupedSkill = {
   skill_name: string;
   sub_category_name: string;
 };
+
+// Helper function to translate text
+function translateText(text: string, language: 'eng' | 'japan', dictionary: any[]): string {
+  if (language === 'eng' || !text) return text;
+  
+  // Create translation map
+  const translationMap = new Map<string, string>();
+  if (dictionary && Array.isArray(dictionary)) {
+    dictionary.forEach((entry: any) => {
+      translationMap.set(entry.englishText.toLowerCase(), entry.japaneseText);
+    });
+  }
+  
+  // Try exact match first
+  const lowerText = text.toLowerCase();
+  if (translationMap.has(lowerText)) {
+    return translationMap.get(lowerText)!;
+  }
+  
+  // Try word by word
+  const words = text.split(/\b/);
+  const translatedWords = words.map((word) => {
+    const trimmed = word.trim();
+    if (!trimmed || /^[^\w\s]+$/.test(trimmed)) return word;
+    const translated = translationMap.get(trimmed.toLowerCase());
+    return translated || word;
+  });
+  
+  return translatedWords.join('');
+}
 
 /**
  * Build the data structure for export - mirrors the UI table exactly
@@ -35,6 +67,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     showAdministrator = true,
     showDeveloper = true,
     showTechnicalAbility = true,
+    language = 'eng',
   } = options;
 
   const {
@@ -45,8 +78,12 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     devCap_data,
     languageSkill_data,
     managementScores_Data,
-    employeeJapaneseLevel_Data = []
+    employeeJapaneseLevel_Data = [],
+    dictionary = []
   } = data;
+
+  // Helper to translate text based on language
+  const t = (text: string) => translateText(text, language, dictionary);
 
   // Build Japanese level map
   const japaneseLevelMap = new Map<string, string | null>();
@@ -126,11 +163,12 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
           const skills = subCategory.skills || [];
           if (Array.isArray(skills)) {
             skills.forEach((skill: any) => {
+              const skillName = skill.skillName || skill.skill_name || 'Unnamed Skill';
               dynamicSkillsList.push({
                 id: skill.id,
-                name: skill.skillName || skill.skill_name || 'Unnamed Skill',
-                category: category.categoryName || category.category_name || 'Uncategorized',
-                sub_category: subCategory.subCategoryName || subCategory.sub_category_name || '',
+                name: t(skillName),
+                category: t(category.categoryName || category.category_name || 'Uncategorized'),
+                sub_category: t(subCategory.subCategoryName || subCategory.sub_category_name || ''),
               });
             });
           }
@@ -143,7 +181,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
   const dynamicSkillsByCategory: Record<string, GroupedSkill[]> = {};
   if (skill_headers && skill_headers.length > 0) {
     skill_headers.forEach((category: any) => {
-      const categoryName = category.categoryName || category.category_name || 'Uncategorized';
+      const categoryName = t(category.categoryName || category.category_name || 'Uncategorized');
       dynamicSkillsByCategory[categoryName] = [];
       const subCategories = category.skillSubCategories || category.skill_sub_categories || [];
       if (Array.isArray(subCategories)) {
@@ -153,8 +191,8 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
             skills.forEach((skill: any) => {
               dynamicSkillsByCategory[categoryName].push({
                 skill_id: skill.id,
-                skill_name: skill.skillName || skill.skill_name || 'Unnamed Skill',
-                sub_category_name: subCategory.subCategoryName || subCategory.sub_category_name || '',
+                skill_name: t(skill.skillName || skill.skill_name || 'Unnamed Skill'),
+                sub_category_name: t(subCategory.subCategoryName || subCategory.sub_category_name || ''),
               });
             });
           }
@@ -163,27 +201,27 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     });
   }
 
-  // Define headers - matching UI exactly
+  // Define headers with translation
   const employeeHeaders = [
-    { field: "team", header_name: "Team" },
-    { field: "staff_id", header_name: "Staff ID" },
-    { field: "name", header_name: "Name" },
-    { field: "dept", header_name: "Name of the commissioning department *Select from the dropdown menu" },
-    { field: "is_core_personnel", header_name: "Core personnel *FPT only" },
-    { field: "has_japan_business_trip", header_name: "Whether or not you have a business trip to Japan" },
+    { field: "team", header_name: t("Team") },
+    { field: "staff_id", header_name: t("ID") },
+    { field: "name", header_name: t("Name") },
+    { field: "dept", header_name: t("Name of the commissioning department *Select from the dropdown menu") },
+    { field: "is_core_personnel", header_name: t("Core personnel *FPT only") },
+    { field: "has_japan_business_trip", header_name: t("Whether or not you have a business trip to Japan") },
   ];
 
   const administratorHeaders = [
-    { field: "managementExperienceLevel", header_name: "Management experience (Levels 1-5)" },
-    { field: "qcdScore", header_name: "QCD (1-4 points)" },
-    { field: "reportConsultScore", header_name: "Reporting, contacting, and consulting (1-4 points)" },
-    { field: "educationScore", header_name: "Education (1-4 points)" },
-    { field: "totalLevel", header_name: "Total (Levels 1-5)" },
+    { field: "managementExperienceLevel", header_name: t("Management experience (Levels 1-5)") },
+    { field: "qcdScore", header_name: t("QCD (1-4 points)") },
+    { field: "reportConsultScore", header_name: t("Reporting, contacting, and consulting (1-4 points)") },
+    { field: "educationScore", header_name: t("Education (1-4 points)") },
+    { field: "totalLevel", header_name: t("Total (Levels 1-5)") },
   ];
 
   const languageSkillHeaders = [
-    { field: "language_level", header_name: "Level (Levels 1-5)" },
-    { field: "jlpt_nat_score", header_name: "JLPT/NAT (N1~N5)" },
+    { field: "language_level", header_name: t("Level (Levels 1-5)") },
+    { field: "jlpt_nat_score", header_name: t("JLPT/NAT (N1~N5)") },
   ];
 
   // ============================================================
@@ -227,7 +265,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
   if (showAdministrator) {
     const adminStart = col;
     // ROW 1: "Administrator" spans 5 columns
-    row1[adminStart] = 'Administrator';
+    row1[adminStart] = t("Administrator");
     merges.push({ s: { r: 0, c: adminStart }, e: { r: 0, c: adminStart + 4 } });
 
     // ROW 2: "Management experience (Levels 1-5)" with rowSpan=4 (rows 1-4)
@@ -235,7 +273,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     merges.push({ s: { r: 1, c: adminStart }, e: { r: 4, c: adminStart } });
 
     // ROW 2: "management ability" spans 4 columns (adminStart+1 to adminStart+4)
-    row2[adminStart + 1] = 'management ability';
+    row2[adminStart + 1] = t("management ability");
     merges.push({ s: { r: 1, c: adminStart + 1 }, e: { r: 1, c: adminStart + 4 } });
 
     // ROW 3: Individual management ability headers with rowSpan=3 (rows 2-4)
@@ -253,11 +291,11 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     const devTotalCols = langColCount + devCapColCount;
 
     // ROW 1: "Developer (DIR and YSX tasks only)" spans all developer columns
-    row1[devStart] = 'Developer (DIR and YSX tasks only)';
+    row1[devStart] = t("Developer (DIR and YSX tasks only)");
     merges.push({ s: { r: 0, c: devStart }, e: { r: 0, c: devStart + devTotalCols - 1 } });
 
     // ROW 2: "language skills" spans 2 columns
-    row2[devStart] = 'language skills';
+    row2[devStart] = t("language skills");
     merges.push({ s: { r: 1, c: devStart }, e: { r: 1, c: devStart + 1 } });
 
     // ROW 3: language skill sub-headers with rowSpan=3 (rows 2-4)
@@ -269,21 +307,22 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     // ROW 2: "Development capabilities" if devCap headers exist
     if (devCapHeadersList.length > 0) {
       const devCapStart = devStart + langColCount;
-      row2[devCapStart] = 'Development capabilities';
+      row2[devCapStart] = t("Development capabilities");
       merges.push({ s: { r: 1, c: devCapStart }, e: { r: 1, c: devCapStart + devCapColCount - 1 } });
 
       // ROW 3: Individual devCap type names with rowSpan=2, colSpan=2 (rows 2-3)
       devCapHeadersList.forEach((header: any, index: number) => {
         const headerCol = devCapStart + index * 2;
-        row3[headerCol] = header.developmentTypeName || header.development_type_name || '';
+        const typeName = header.developmentTypeName || header.development_type_name || '';
+        row3[headerCol] = t(typeName);
         merges.push({ s: { r: 2, c: headerCol }, e: { r: 3, c: headerCol + 1 } });
       });
 
       // ROW 5: Years/Experience sub-headers for each devCap
       devCapHeadersList.forEach((_: any, index: number) => {
         const headerCol = devCapStart + index * 2;
-        row5[headerCol] = 'Years';
-        row5[headerCol + 1] = 'Experience';
+        row5[headerCol] = t("Years");
+        row5[headerCol + 1] = t("Experience");
       });
     }
 
@@ -296,29 +335,24 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
 
     // ROW 1: "Technical Ability" spans all technical columns
     if (techColCount > 0) {
-      row1[techStart] = 'Technical Ability';
+      row1[techStart] = t("Technical Ability");
       if (skill_headers?.length === 0) {
-        // If no skill headers, rowSpan=5 like UI
         merges.push({ s: { r: 0, c: techStart }, e: { r: 4, c: techStart } });
       } else {
         merges.push({ s: { r: 0, c: techStart }, e: { r: 0, c: techStart + techColCount - 1 } });
       }
     } else {
-      // No skills at all
-      row1[techStart] = 'Technical Ability';
+      row1[techStart] = t("Technical Ability");
     }
 
     // Now build ROW 2, ROW 3, ROW 4 for technical skills
-    // This must exactly mirror the UI's ROW 2, ROW 3, ROW 4 logic
     let techCol = techStart;
 
-    // === ROW 2 (row index 1) - Categories / Sub-categories / Skills depending on empty status ===
     sortedCategories.forEach(([categoryName, skills]) => {
       const sortedSkills = [...skills].sort((a, b) => a.skill_id - b.skill_id);
       const isCategoryEmpty = categoryName.includes('empty');
 
       if (isCategoryEmpty) {
-        // Build sub-category map
         const subCategoryMap: Record<string, { count: number; skills: GroupedSkill[] }> = {};
         sortedSkills.forEach((skill) => {
           const subName = skill.sub_category_name.includes('empty') ? '' : skill.sub_category_name;
@@ -340,53 +374,42 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
           const sortedSubSkills = [...subSkills].sort((a, b) => a.skill_id - b.skill_id);
 
           if (isCategoryEmpty && subCategoryName === '') {
-            // Both category and subcategory are empty: show individual skills with rowSpan=3 (rows 1-3)
             sortedSubSkills.forEach((skill) => {
               row2[techCol] = skill.skill_name;
               merges.push({ s: { r: 1, c: techCol }, e: { r: 3, c: techCol + 1 } });
-              // ROW 5: Years/Experience
-              row5[techCol] = 'Years';
-              row5[techCol + 1] = 'Experience';
+              row5[techCol] = t("Years");
+              row5[techCol + 1] = t("Experience");
               techCol += 2;
             });
           } else {
-            // Category empty but subcategory exists: show subcategory with rowSpan=2 (rows 1-2)
-            row2[techCol] = subCategoryName || 'Uncategorized';
+            row2[techCol] = subCategoryName || t("Uncategorized");
             merges.push({ s: { r: 1, c: techCol }, e: { r: 2, c: techCol + count - 1 } });
-            // ROW 4: Individual skill names
             sortedSubSkills.forEach((skill) => {
               row4[techCol] = skill.skill_name;
               merges.push({ s: { r: 3, c: techCol }, e: { r: 3, c: techCol + 1 } });
-              // ROW 5: Years/Experience
-              row5[techCol] = 'Years';
-              row5[techCol + 1] = 'Experience';
+              row5[techCol] = t("Years");
+              row5[techCol + 1] = t("Experience");
               techCol += 2;
             });
           }
         });
       } else {
-        // Non-empty category
         const hasOnlyEmptySubCategories = sortedSkills.every(
           (skill) => skill.sub_category_name.includes('empty')
         );
 
         if (hasOnlyEmptySubCategories) {
-          // Category name shown, but all subcategories empty -> show individual skills with rowSpan=3 (rows 1-3)
           sortedSkills.forEach((skill) => {
             row2[techCol] = skill.skill_name;
             merges.push({ s: { r: 1, c: techCol }, e: { r: 3, c: techCol + 1 } });
-            // ROW 5: Years/Experience
-            row5[techCol] = 'Years';
-            row5[techCol + 1] = 'Experience';
+            row5[techCol] = t("Years");
+            row5[techCol + 1] = t("Experience");
             techCol += 2;
           });
         } else {
-          // Normal category with sub-categories
-          // ROW 2: Category name spanning all its skills
           row2[techCol] = categoryName;
           merges.push({ s: { r: 1, c: techCol }, e: { r: 1, c: techCol + sortedSkills.length * 2 - 1 } });
 
-          // ROW 3: Sub-category names
           const subCategoryMap: Record<string, { count: number; skills: GroupedSkill[] }> = {};
           sortedSkills.forEach((skill) => {
             const subName = skill.sub_category_name.includes('empty') ? '' : skill.sub_category_name;
@@ -410,13 +433,11 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
               subCol += count;
             });
 
-          // ROW 4: Individual skill names
           sortedSkills.forEach((skill) => {
             row4[techCol] = skill.skill_name;
             merges.push({ s: { r: 3, c: techCol }, e: { r: 3, c: techCol + 1 } });
-            // ROW 5: Years/Experience
-            row5[techCol] = 'Years';
-            row5[techCol + 1] = 'Experience';
+            row5[techCol] = t("Years");
+            row5[techCol + 1] = t("Experience");
             techCol += 2;
           });
         }
@@ -427,19 +448,19 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
   const headerRows = [row1, row2, row3, row4, row5];
 
   // ============================================================
-  // DATA ROWS
+  // DATA ROWS - Translate data values
   // ============================================================
   const dataRows: any[][] = [];
   employee_data.forEach((employee: any) => {
     const row: any[] = [];
     
-    // Employee data (6 columns)
-    row.push(employee.team || '-');
+    // Employee data (6 columns) - translate values
+    row.push(t(employee.team || '-'));
     row.push(employee.id || '-');
     row.push(employee.name || '-');
-    row.push(employee.dept_dir || '-');
-    row.push(employee.is_core_personnel ? 'Yes' : 'No');
-    row.push(employee.has_japan_business_trip ? 'Yes' : 'No');
+    row.push(t(employee.dept_dir || '-'));
+    row.push(t(employee.is_core_personnel ? 'Yes' : 'No'));
+    row.push(t(employee.has_japan_business_trip ? 'Yes' : 'No'));
     
     // Administrator data (5 columns)
     if (showAdministrator) {
@@ -456,24 +477,24 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
       const langLevel = langSkill?.language_skill_level;
       row.push(langLevel ? `${langLevel}` : '-');
       const jlptLevel = japaneseLevelMap.get(employee.id) || langSkill?.jlpt_highest_level;
-      row.push(jlptLevel || '-');
+      row.push(t(jlptLevel || '-'));
       
       (devCapHeadersList).forEach((header: any) => {
         const typeName = header.developmentTypeName || header.development_type_name;
         const devCapData = devCapMap.get(employee.id)?.get(typeName);
         row.push(devCapData?.years || '-');
-        row.push(devCapData?.experience_process || '-');
+        row.push(t(devCapData?.experience_process || '-'));
       });
     }
     
-    // Technical Skills data - sorted by skill id like UI
+    // Technical Skills data - translate levels
     if (showTechnicalAbility) {
       const employeeSkills = skillMap.get(employee.id) || new Map();
       const sortedSkills = [...dynamicSkillsList].sort((a, b) => a.id - b.id);
       sortedSkills.forEach((skill) => {
         const sd = employeeSkills.get(skill.name);
         row.push(sd?.years || '-');
-        row.push(sd?.level || '-');
+        row.push(t(sd?.level || '-'));
       });
     }
     
@@ -505,10 +526,11 @@ export async function exportSkillsToExcel(
   options?: ExportSkillOptions
 ) {
   const {
-    fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`
+    fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`,
+    language = 'eng'
   } = options || {};
 
-  const { headerRows, dataRows, merges, totalCols } = buildExportData(data, options || {});
+  const { headerRows, dataRows, merges, totalCols } = buildExportData(data, { ...options, language });
   const allRows = [...headerRows, ...dataRows];
   
   const wb = XLSX.utils.book_new();
@@ -531,37 +553,35 @@ export async function exportSkillsToExcel(
   }
   ws['!cols'] = colWidths;
   
-  // Apply merges computed in buildExportData
   ws['!merges'] = merges;
-  
-  // Apply some styling
   ws['!rows'] = allRows.map(() => ({ hpx: 25 }));
   
   XLSX.utils.book_append_sheet(wb, ws, 'Skills Report');
   
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([wbout], { type: 'application/octet-stream' });
-  saveAs(blob, `${fileName}.xlsx`);
+  saveAs(blob, `${fileName}${language === 'japan' ? '_JP' : '_EN'}.xlsx`);
 }
 
 /**
- * Export skills data to CSV format (simplified - single header row)
+ * Export skills data to CSV format
  */
 export async function exportSkillsToCSV(
   data: ExportSkillData,
   options?: ExportSkillOptions
 ) {
   const {
-    fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`
+    fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`,
+    language = 'eng'
   } = options || {};
 
-  const { headerRows, dataRows } = buildExportData(data, options || {});
+  const { headerRows, dataRows } = buildExportData(data, { ...options, language });
   const allRows = [...headerRows, ...dataRows];
   
   const worksheet = XLSX.utils.aoa_to_sheet(allRows);
   const csvContent = XLSX.utils.sheet_to_csv(worksheet);
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-  saveAs(blob, `${fileName}.csv`);
+  saveAs(blob, `${fileName}${language === 'japan' ? '_JP' : '_EN'}.csv`);
 }
 
 /**
@@ -572,10 +592,11 @@ export async function exportSkillsToPDF(
   options?: ExportSkillOptions
 ) {
   const {
-    fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`
+    fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`,
+    language = 'eng'
   } = options || {};
 
-  const { headerRows, dataRows, dynamicSkillsList, totalCols } = buildExportData(data, options || {});
+  const { headerRows, dataRows, dynamicSkillsList, totalCols } = buildExportData(data, { ...options, language });
   
   // Build flat headers for PDF
   const flatHeaders: string[] = [];
@@ -623,7 +644,8 @@ export async function exportSkillsToPDF(
   const doc = new jsPDF('landscape', 'pt', 'a4');
 
   doc.setFontSize(16);
-  doc.text("Skills Report", 14, 20);
+  const title = language === 'japan' ? 'スキルレポート' : 'Skills Report';
+  doc.text(title, 14, 20);
   doc.setFontSize(10);
   doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
   doc.text(`Total Employees: ${dataRows.length}`, 14, 40);
@@ -658,5 +680,5 @@ export async function exportSkillsToPDF(
     }
   });
 
-  doc.save(`${fileName}.pdf`);
+  doc.save(`${fileName}${language === 'japan' ? '_JP' : '_EN'}.pdf`);
 }

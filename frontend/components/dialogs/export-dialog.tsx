@@ -61,6 +61,8 @@ export function ExportDialog({
 }: ExportDialogProps) {
   const [activeExportTab, setActiveExportTab] = useState("")
   const [isExporting, setIsExporting] = useState(false)
+  const [exportLanguage, setExportLanguage] = useState<"eng" | "japan">("eng")
+
   const {
     fetch_EmployeeData,
     fetch_HolidayData,
@@ -107,6 +109,11 @@ export function ExportDialog({
     }
   }, [showTabs, activeExportTab, filteredTabs])
 
+  // Check if current tab is Skills
+  const isSkillsTab = useMemo(() => {
+    return currentTabData?.id === "skills"
+  }, [currentTabData])
+
   // Reset when dialog opens - set initial tab
   useEffect(() => {
     if (open) {
@@ -117,6 +124,8 @@ export function ExportDialog({
         setActiveExportTab(initialTab)
       }
       setIsExporting(false)
+      // Reset language to English when dialog opens
+      setExportLanguage("eng")
     }
   }, [open, showTabs, filteredTabs])
 
@@ -190,8 +199,9 @@ export function ExportDialog({
             break
 
           case "skills":
-            console.log(`💻 Exporting Skills data as ${format}`)
-            await currentTabData.onExport(format)
+            console.log(`💻 Exporting Skills data as ${format} (Language: ${exportLanguage})`)
+            // Pass language preference to the export function
+            await currentTabData.onExport(format, exportLanguage)
             break
 
           case "current_target_data":
@@ -227,7 +237,7 @@ export function ExportDialog({
         setIsExporting(false)
       }
     },
-    [currentTabData, onOpenChange]
+    [currentTabData, onOpenChange, exportLanguage]
   )
 
   const handleCancel = useCallback(() => {
@@ -243,6 +253,33 @@ export function ExportDialog({
   // Export buttons component
   const ExportButtons = () => (
     <div className="space-y-3">
+      {/* Language Toggle - Only show for Skills tab */}
+      {isSkillsTab && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg  p-2">
+          <span className="text-sm font-medium text-muted-foreground">
+            Export Language:
+          </span>
+          <div className="flex items-center gap-4 rounded-md bg-muted p-1">
+            <Button
+              variant={exportLanguage === "eng" ? "default" : "ghost"}
+              size="sm"
+              className="h-7 flex-1 text-xs"
+              onClick={() => setExportLanguage("eng")}
+            >
+              English
+            </Button>
+            <Button
+              variant={exportLanguage === "japan" ? "default" : "ghost"}
+              size="sm"
+              className="h-7 flex-1 text-xs"
+              onClick={() => setExportLanguage("japan")}
+            >
+              日本語
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Button
         variant="outline"
         className="h-12 w-full justify-start gap-3 transition-colors hover:border-green-200 hover:bg-green-50"
@@ -384,7 +421,10 @@ export function ExportDialog({
                     value={tab.id}
                     className="w-full"
                     onClick={() => {
-                      // Reset any state when tab changes
+                      // Reset language when switching away from skills tab
+                      if (tab.id !== "skills") {
+                        setExportLanguage("eng")
+                      }
                     }}
                   >
                     {tab.label}
@@ -415,6 +455,10 @@ export function ExportDialog({
                       key={tab.id}
                       onSelect={() => {
                         setActiveExportTab(tab.id)
+                        // Reset language when switching away from skills tab
+                        if (tab.id !== "skills") {
+                          setExportLanguage("eng")
+                        }
                       }}
                       className="flex items-center justify-between"
                     >
