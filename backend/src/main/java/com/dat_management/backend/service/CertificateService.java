@@ -81,8 +81,8 @@ public class CertificateService {
 
         return switch (certificateType) {
             case JLPT -> EmployeeJapaneseProfile.JapaneseExamType.JLPT;
-            case NAT_TEST -> EmployeeJapaneseProfile.JapaneseExamType.NAT_TEST;
-            case TOP_J -> EmployeeJapaneseProfile.JapaneseExamType.TOP_J;
+            case NAT_TEST -> EmployeeJapaneseProfile.JapaneseExamType.NAT;
+            case TOP_J -> EmployeeJapaneseProfile.JapaneseExamType.TopJ;
             case BJT -> EmployeeJapaneseProfile.JapaneseExamType.BJT;
             case OTHER -> null;
         };
