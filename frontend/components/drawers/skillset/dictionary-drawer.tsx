@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import {
     Drawer,
     DrawerClose,
@@ -42,6 +42,8 @@ interface DictionaryEntry {
     japaneseText: string
 }
 
+const ITEMS_PER_PAGE = 20
+
 export function DictionaryDrawer({
     open,
     onOpenChange,
@@ -59,8 +61,20 @@ export function DictionaryDrawer({
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [entryToDelete, setEntryToDelete] = useState<DictionaryEntry | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    
+    // Pagination state
+    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
+    const [isLoadingMore, setIsLoadingMore] = useState(false)
+    const listContainerRef = useRef<HTMLDivElement>(null)
+    const isLoadingMoreRef = useRef(false)
+    const searchTermRef = useRef(searchTerm)
 
     const { dictionary, fetch_dictionary, add_dictionary, update_dictionary, delete_dictionary } = mainStore()
+
+    // Update searchTermRef when searchTerm changes
+    useEffect(() => {
+        searchTermRef.current = searchTerm
+    }, [searchTerm])
 
     // Filter dictionary entries based on search term
     const filteredDictionary = useMemo(() => {
@@ -76,12 +90,20 @@ export function DictionaryDrawer({
         })
     }, [dictionary, searchTerm])
 
+    // Get visible entries based on pagination
+    const visibleEntries = useMemo(() => {
+        return filteredDictionary.slice(0, visibleCount)
+    }, [filteredDictionary, visibleCount])
+
+    const hasMoreEntries = visibleCount < filteredDictionary.length
+
     // Load dictionary data when drawer opens
     useEffect(() => {
         if (open) {
             loadDictionary()
-            // Reset search term when drawer opens
+            // Reset search term and pagination when drawer opens
             setSearchTerm("")
+            setVisibleCount(ITEMS_PER_PAGE)
         }
     }, [open])
 
@@ -109,6 +131,7 @@ export function DictionaryDrawer({
             setEntryToDelete(null)
             setDeleteDialogOpen(false)
             setSearchTerm("")
+            setVisibleCount(ITEMS_PER_PAGE)
         }
         onOpenChange(newOpen)
     }
@@ -120,6 +143,10 @@ export function DictionaryDrawer({
             japaneseText: "",
         })
         setShowForm(true)
+        // Scroll to top to see the form
+        if (listContainerRef.current) {
+            listContainerRef.current.scrollTop = 0
+        }
     }
 
     const handleEdit = (entry: DictionaryEntry) => {
@@ -129,6 +156,10 @@ export function DictionaryDrawer({
             japaneseText: entry.japaneseText,
         })
         setShowForm(true)
+        // Scroll to top to see the form
+        if (listContainerRef.current) {
+            listContainerRef.current.scrollTop = 0
+        }
     }
 
     const handleCancelForm = () => {
@@ -212,6 +243,46 @@ export function DictionaryDrawer({
 
     const isFormValid = formData.englishText.trim() && formData.japaneseText.trim()
 
+    // Handle scroll to load more
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.currentTarget
+        const bottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 50 // 50px threshold for smoother loading
+        
+        if (bottom && hasMoreEntries && !isLoadingMoreRef.current && !isLoading) {
+            isLoadingMoreRef.current = true
+            setIsLoadingMore(true)
+            
+            // Simulate loading delay for better UX
+            setTimeout(() => {
+                setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, filteredDictionary.length))
+                setIsLoadingMore(false)
+                setTimeout(() => {
+                    isLoadingMoreRef.current = false
+                }, 100)
+            }, 300)
+        }
+    }, [hasMoreEntries, isLoading, filteredDictionary.length])
+
+    // Reset pagination when search changes
+    useEffect(() => {
+        setVisibleCount(ITEMS_PER_PAGE)
+        isLoadingMoreRef.current = false
+        // Reset scroll position
+        if (listContainerRef.current) {
+            listContainerRef.current.scrollTop = 0
+        }
+    }, [searchTerm])
+
+    // Reset pagination when dictionary data changes (e.g., after add/delete/update)
+    useEffect(() => {
+        if (!isLoading) {
+            setVisibleCount(ITEMS_PER_PAGE)
+            if (listContainerRef.current) {
+                listContainerRef.current.scrollTop = 0
+            }
+        }
+    }, [dictionary, isLoading])
+
     return (
         <>
             <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
@@ -236,7 +307,7 @@ export function DictionaryDrawer({
                     </DrawerHeader>
 
                     {/* Search Bar */}
-                    <div className="px-6 py-3 border-b">
+                    <div className="px-6 py-3 border-b shrink-0">
                         <div className="relative">
                             <HugeiconsIcon
                                 icon={Search01Icon}
@@ -257,7 +328,11 @@ export function DictionaryDrawer({
                         )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto">
+                    <div 
+                        ref={listContainerRef}
+                        className="flex-1 overflow-y-auto"
+                        onScroll={handleScroll}
+                    >
                         <div className="px-6 py-4">
                             {/* Edit/Create Form - Always at the top when visible */}
                             {showForm && (
@@ -309,21 +384,6 @@ export function DictionaryDrawer({
                                                 className="w-full"
                                             />
                                         </div>
-
-                                        {/* Preview Section */}
-                                        {formData.englishText && formData.japaneseText && (
-                                            <div className="mt-4 rounded-lg border bg-muted/30 p-4">
-                                                <p className="mb-2 text-sm font-medium text-muted-foreground">
-                                                    Preview:
-                                                </p>
-                                                <div className="flex items-center justify-between rounded-md bg-background px-4 py-2">
-                                                    <span className="font-medium">{formData.englishText}</span>
-                                                    <span className="text-muted-foreground">→</span>
-                                                    <span className="font-medium">{formData.japaneseText}</span>
-                                                </div>
-                                            </div>
-                                        )}
-
                                         <Button
                                             className="w-full"
                                             onClick={handleSubmit}
@@ -363,50 +423,76 @@ export function DictionaryDrawer({
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
-                                        {filteredDictionary.map((entry: DictionaryEntry) => (
-                                            <div
-                                                key={entry.id}
-                                                className={`flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50 ${editingEntry?.id === entry.id ? "bg-muted/30 border-primary" : ""
-                                                    }`}
-                                            >
-                                                <div className="flex flex-1 items-center gap-4">
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-medium">{entry.englishText}</span>
-                                                            <span className="text-muted-foreground">→</span>
-                                                            <span>{entry.japaneseText}</span>
+                                    <>
+                                        <div className="space-y-2">
+                                            {visibleEntries.map((entry: DictionaryEntry) => (
+                                                <div
+                                                    key={entry.id}
+                                                    className={`flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50 ${editingEntry?.id === entry.id ? "bg-muted/30 border-primary" : ""
+                                                        }`}
+                                                >
+                                                    <div className="flex flex-1 items-center gap-4">
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-medium">{entry.englishText}</span>
+                                                                <span className="text-muted-foreground">→</span>
+                                                                <span>{entry.japaneseText}</span>
+                                                            </div>
                                                         </div>
+                                                        {editingEntry?.id === entry.id && (
+                                                            <Badge variant="outline" className="shrink-0">
+                                                                Editing
+                                                            </Badge>
+                                                        )}
                                                     </div>
-                                                    {editingEntry?.id === entry.id && (
-                                                        <Badge variant="outline" className="shrink-0">
-                                                            Editing
-                                                        </Badge>
-                                                    )}
+                                                    <div className="flex shrink-0 gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleEdit(entry)}
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            <HugeiconsIcon icon={EditIcon} strokeWidth={2} className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                                            onClick={() => handleDeleteClick(entry)}
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
-                                                <div className="flex shrink-0 gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handleEdit(entry)}
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        <HugeiconsIcon icon={EditIcon} strokeWidth={2} className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-destructive hover:text-destructive"
-                                                        onClick={() => handleDeleteClick(entry)}
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
-                                                    </Button>
+                                            ))}
+                                        </div>
+
+                                        {/* Loading more indicator */}
+                                        {hasMoreEntries && (
+                                            <div className="mt-4 border-t pt-4">
+                                                <div className="flex flex-col items-center gap-3">
+                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                        <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></span>
+                                                        <span>Loading more entries...</span>
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Showing {visibleEntries.length} of {filteredDictionary.length} entries
+                                                    </span>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                        )}
+
+                                        {/* All loaded indicator */}
+                                        {!hasMoreEntries && filteredDictionary.length > 0 && (
+                                            <div className="mt-4 border-t pt-4 text-center">
+                                                <p className="text-xs text-muted-foreground">
+                                                    Showing all {filteredDictionary.length} entries
+                                                </p>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>

@@ -911,10 +911,10 @@ export function CurrentTargetContainer({
         <CardContent className="px-4">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 gap-2">
-              <InputGroup className="max-w-sm flex-1">
+              <InputGroup className="max-w-[600px] flex-1">
                 <InputGroupInput
                   ref={searchInputRef}
-                  placeholder="Search by Staff ID, Name, Team, or Department"
+                  placeholder="Search by Staff ID, Name, Team, or Department..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />

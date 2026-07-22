@@ -59,9 +59,21 @@ import { mainStore } from "@/store/mainStore"
 
 // Chart config for Team Attendance
 const attendanceChartConfig = {
-  attendance: {
-    label: "Attendance",
-    color: "#5a9cff",
+  presentCount: {
+    label: "Present",
+    color: "#22c55e",
+  },
+  lateCount: {
+    label: "Late",
+    color: "#eab308",
+  },
+  excusedCount: {
+    label: "Excused",
+    color: "#0505be",
+  },
+  absentCount: {
+    label: "Absent",
+    color: "#ef4444",
   },
 }
 
@@ -369,13 +381,24 @@ export default function ApproverDashboardContainer() {
 
   // Get attendance data for selected course group from dailyAttendance
   const getAttendanceData = () => {
-    let data: { date: string; attendance: number }[] = []
+    let data: {
+      date: string;
+      presentCount: number;
+      absentCount: number;
+      excusedCount: number;
+      lateCount: number;
+      totalStudents: number;
+    }[] = []
 
     const selectedData = courseGroupAttendanceData[selectedAttendanceCourseGroup]
     if (selectedData) {
       data = selectedData.dailyAttendance.map((item: any) => ({
         date: item.date,
-        attendance: item.attendance
+        presentCount: item.presentCount || 0,
+        absentCount: item.absentCount || 0,
+        excusedCount: item.excusedCount || 0,
+        lateCount: item.lateCount || 0,
+        totalStudents: item.totalStudents || 1,
       }))
     } else {
       data = []
@@ -387,8 +410,6 @@ export default function ApproverDashboardContainer() {
     // Get today's date
     const today = new Date()
     const currentYear = today.getFullYear()
-    const currentMonth = today.getMonth()
-    const currentDay = today.getDate()
 
     // Calculate the cutoff date
     let daysToSubtract = 90
@@ -434,7 +455,7 @@ export default function ApproverDashboardContainer() {
     if (firstValue === 0) return { value: 0, direction: 'up' as const }
 
     // Calculate percentage change
-    const change = ((lastValue - firstValue) / firstValue) 
+    const change = ((lastValue - firstValue) / firstValue)
     const direction = change >= 0 ? 'up' as const : 'down' as const
 
     return {
@@ -471,28 +492,30 @@ export default function ApproverDashboardContainer() {
 
   // Memoize stats calculations
   const stats = useMemo(() => {
-    // Use raw data instead of filtered data
     const rawData = courseGroupAttendanceData[selectedAttendanceCourseGroup]
     let allAttendanceData: { date: string; attendance: number }[] = []
 
-    if (rawData) {
-      allAttendanceData = rawData.dailyAttendance.map((item: any) => ({
-        date: item.date,
-        attendance: item.attendance
-      }))
+    if (rawData && rawData.dailyAttendance) {
+      allAttendanceData = rawData.dailyAttendance
+        .filter((item: any) => item && typeof item.attendance === 'number' && !isNaN(item.attendance))
+        .map((item: any) => ({
+          date: item.date || '',
+          attendance: item.attendance || 0
+        }))
     }
 
     let avgAttendance = 0
     if (allAttendanceData.length > 0) {
-      avgAttendance = Math.round(
-        allAttendanceData.reduce((acc, curr) => acc + curr.attendance, 0) / allAttendanceData.length
-      )
+      const sum = allAttendanceData.reduce((acc, curr) => acc + (curr.attendance || 0), 0)
+      avgAttendance = Math.round(sum / allAttendanceData.length)
     }
 
-    const avgProgress = mockTeamStudyProgress.reduce((acc, curr) => acc + curr.progress, 0) / mockTeamStudyProgress.length
+    const avgProgress = mockTeamStudyProgress.length > 0
+      ? Math.round(mockTeamStudyProgress.reduce((acc, curr) => acc + (curr.progress || 0), 0) / mockTeamStudyProgress.length)
+      : 0
+
     return { avgAttendance, avgProgress }
   }, [courseGroupAttendanceData, selectedAttendanceCourseGroup])
-
 
   // Filter at-risk employees by team
   const filteredAtRiskEmployees = useMemo(() => {
@@ -653,13 +676,13 @@ export default function ApproverDashboardContainer() {
         </CardFooter>
       </Card>
 
-      {/* Attendance Analysis - Full Width (Filtered by Team) */}
+      {/* Attendance Analysis - Full Width (Filtered by Team) - Stacked Bar Chart */}
       <Card className="pt-0">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 py-5 sm:flex-row">
           <div className="grid flex-1 gap-1">
             <CardTitle>Attendance Analysis</CardTitle>
             <CardDescription>
-              Daily attendance trends by course group for {profile?.team || "your team"}
+              Daily attendance breakdown for {profile?.team || "your team"}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -710,37 +733,24 @@ export default function ApproverDashboardContainer() {
         </CardHeader>
         <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
           {filteredAttendanceData.length === 0 ? (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+            <div className="flex h-[350px] items-center justify-center text-muted-foreground">
               No attendance data available for {profile?.team}
             </div>
           ) : (
             <ChartContainer
               config={attendanceChartConfig}
-              className="aspect-auto h-[300px] w-full"
+              className="aspect-auto h-[350px] w-full"
             >
-              <AreaChart
+              <BarChart
                 accessibilityLayer
                 data={filteredAttendanceData}
                 margin={{
                   top: 20,
                   left: 20,
                   right: 20,
+                  bottom: 20,
                 }}
               >
-                <defs>
-                  <linearGradient id="fillAttendance" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor="var(--color-attendance)"
-                      stopOpacity={0.8}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="var(--color-attendance)"
-                      stopOpacity={0.1}
-                    />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -764,6 +774,12 @@ export default function ApproverDashboardContainer() {
                     }
                   }}
                 />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => `${value}`}
+                />
                 <ChartTooltip
                   cursor={false}
                   content={
@@ -785,29 +801,69 @@ export default function ApproverDashboardContainer() {
                     />
                   }
                 />
-                <Area
-                  dataKey="attendance"
-                  type="natural"
-                  fill="url(#fillAttendance)"
-                  stroke="var(--color-attendance)"
-                  strokeWidth={2}
-                  dot={{ r: 4, fill: "var(--color-attendance)" }}
-                  activeDot={{ r: 6 }}
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar
+                  dataKey="presentCount"
+                  stackId="a"
+                  fill="var(--color-presentCount)"
+                  radius={[4, 4, 0, 0]}
+                  name="Present"
                 />
-              </AreaChart>
+                <Bar
+                  dataKey="lateCount"
+                  stackId="a"
+                  fill="var(--color-lateCount)"
+                  radius={[0, 0, 0, 0]}
+                  name="Late"
+                />
+                <Bar
+                  dataKey="excusedCount"
+                  stackId="a"
+                  fill="var(--color-excusedCount)"
+                  radius={[0, 0, 0, 0]}
+                  name="Excused"
+                />
+                <Bar
+                  dataKey="absentCount"
+                  stackId="a"
+                  fill="var(--color-absentCount)"
+                  radius={[0, 0, 4, 4]}
+                  name="Absent"
+                />
+              </BarChart>
             </ChartContainer>
           )}
         </CardContent>
         <CardFooter>
           <div className="flex w-full flex-col items-center gap-2">
-            <div className="flex items-center gap-2 leading-none font-medium">
-              <HugeiconsIcon
-                icon={AnalyticsUpIcon}
-                strokeWidth={2}
-                className="h-4 w-4 text-green-600"
-              />
-              {profile?.team} attendance overview
+            <div className="flex flex-wrap items-center gap-4 leading-none font-medium">
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full bg-[#22c55e]" />
+                <span>Present</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full bg-[#eab308]" />
+                <span>Late</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full bg-[#0505be]" />
+                <span>Excused</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full bg-[#ef4444]" />
+                <span>Absent</span>
+              </div>
             </div>
+            {filteredAttendanceData.length > 0 && (
+              <div className="flex items-center gap-2 leading-none text-sm text-muted-foreground">
+                <HugeiconsIcon
+                  icon={AnalyticsUpIcon}
+                  strokeWidth={2}
+                  className="h-4 w-4 text-green-600"
+                />
+                {profile?.team} attendance breakdown
+              </div>
+            )}
           </div>
         </CardFooter>
       </Card>

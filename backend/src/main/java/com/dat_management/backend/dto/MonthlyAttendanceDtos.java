@@ -29,8 +29,14 @@ public final class MonthlyAttendanceDtos {
 
     public record DailyAttendanceDetailDTO(
             String date,
-            Double attendance,
+            Double presentPercentage,
+            Double absentPercentage,
+            Double latePercentage,
+            Double excusedPercentage,
             Integer presentCount,
+            Integer absentCount,
+            Integer lateCount,
+            Integer excusedCount,
             Integer totalStudents
     ) {}
 }

@@ -162,11 +162,14 @@ public class CourseAttendanceService {
             
             int totalSessionsOnDate = sessionsOnDate.size();
             int totalPresent = 0;
+            int totalAbsent = 0;
+            int totalLate = 0;
+            int totalExcused = 0;
             
-            // Count PRESENT attendance for each enrollment on this date
+            // Count attendance for each enrollment on this date
             for (CourseEnrollment enrollment : enrollments) {
-                // Count PRESENT attendance for this enrollment on this date across all sessions
                 for (CourseSession session : sessionsOnDate) {
+                    // Count PRESENT
                     long presentCount = attendanceRecordRepository
                         .countByEnrollmentIdAndAttendanceStatusAndSessionId(
                             enrollment.getId(),
@@ -174,13 +177,48 @@ public class CourseAttendanceService {
                             session.getId()
                         );
                     totalPresent += presentCount;
+                    
+                    // Count ABSENT
+                    long absentCount = attendanceRecordRepository
+                        .countByEnrollmentIdAndAttendanceStatusAndSessionId(
+                            enrollment.getId(),
+                            AttendanceRecord.AttendanceStatus.ABSENT,
+                            session.getId()
+                        );
+                    totalAbsent += absentCount;
+                    
+                    // Count LATE
+                    long lateCount = attendanceRecordRepository
+                        .countByEnrollmentIdAndAttendanceStatusAndSessionId(
+                            enrollment.getId(),
+                            AttendanceRecord.AttendanceStatus.LATE,
+                            session.getId()
+                        );
+                    totalLate += lateCount;
+                    
+                    // Count EXCUSED
+                    long excusedCount = attendanceRecordRepository
+                        .countByEnrollmentIdAndAttendanceStatusAndSessionId(
+                            enrollment.getId(),
+                            AttendanceRecord.AttendanceStatus.EXCUSED,
+                            session.getId()
+                        );
+                    totalExcused += excusedCount;
                 }
             }
             
-            // Calculate attendance percentage for this date
-            double attendancePercentage = 0.0;
-            if (totalStudents > 0 && totalSessionsOnDate > 0) {
-                attendancePercentage = (double) totalPresent / (totalStudents * totalSessionsOnDate) * 100;
+            // Calculate percentages
+            int totalPossible = totalStudents * totalSessionsOnDate;
+            double presentPercentage = 0.0;
+            double absentPercentage = 0.0;
+            double latePercentage = 0.0;
+            double excusedPercentage = 0.0;
+            
+            if (totalPossible > 0) {
+                presentPercentage = (double) totalPresent / totalPossible * 100;
+                absentPercentage = (double) totalAbsent / totalPossible * 100;
+                latePercentage = (double) totalLate / totalPossible * 100;
+                excusedPercentage = (double) totalExcused / totalPossible * 100;
             }
             
             // Format date as "MMM D" (e.g., "Jul 6")
@@ -188,14 +226,23 @@ public class CourseAttendanceService {
             
             dailyAttendanceList.add(new DailyAttendanceDetailDTO(
                 formattedDate,
-                Math.round(attendancePercentage * 100.0) / 100.0,
+                Math.round(presentPercentage * 100.0) / 100.0,
+                Math.round(absentPercentage * 100.0) / 100.0,
+                Math.round(latePercentage * 100.0) / 100.0,
+                Math.round(excusedPercentage * 100.0) / 100.0,
                 totalPresent,
+                totalAbsent,
+                totalLate,
+                totalExcused,
                 totalStudents
             ));
             
-            log.debug("Date: {}, Attendance: {}%, Present: {}, Total Students: {}, Sessions: {}", 
-                formattedDate, Math.round(attendancePercentage * 100.0) / 100.0, 
-                totalPresent, totalStudents, totalSessionsOnDate);
+            log.debug("Date: {}, Present: {}%, Absent: {}%, Late: {}%, Excused: {}%", 
+                formattedDate, 
+                Math.round(presentPercentage * 100.0) / 100.0,
+                Math.round(absentPercentage * 100.0) / 100.0,
+                Math.round(latePercentage * 100.0) / 100.0,
+                Math.round(excusedPercentage * 100.0) / 100.0);
         }
         
         return dailyAttendanceList;

@@ -108,9 +108,21 @@ const courseChartConfig = {
 }
 
 const attendanceChartConfig = {
-  attendance: {
-    label: "Attendance",
-    color: "#5a9cff",
+  presentCount: {
+    label: "Present",
+    color: "#22c55e",
+  },
+  lateCount: {
+    label: "Late",
+    color: "#eab308",
+  },
+  excusedCount: {
+    label: "Excused",
+    color: "#0505be",
+  },
+  absentCount: {
+    label: "Absent",
+    color: "#ef4444",
   },
 }
 
@@ -308,6 +320,8 @@ export default function AdminDashboardContainer() {
     return Math.round(average)
   }, [courseStats])
 
+  console.log(dailyAttendance)
+
   const combinedCourseCategories = useMemo(() => {
     if (!courseCategory_data) return []
 
@@ -319,12 +333,20 @@ export default function AdminDashboardContainer() {
     return [...trainerCategories, ...selfStudyCategories]
   }, [courseCategory_data])
 
-  // Extract course group attendance data from dailyAttendance
+  // Extract course group attendance data from dailyAttendance - AGGREGATED BY DATE
   const courseGroupAttendanceData = useMemo(() => {
     const result: Record<string, {
       courseName: string,
       groupName: string,
-      dailyAttendance: Array<{ date: string; attendance: number; presentCount: number; totalStudents: number }>
+      dailyAttendance: Array<{
+        date: string;
+        attendance: number;
+        presentCount: number;
+        absentCount: number;
+        excusedCount: number;
+        lateCount: number;
+        totalStudents: number;
+      }>
     }> = {}
 
     if (dailyAttendance && Array.isArray(dailyAttendance) && dailyAttendance.length > 0) {
@@ -336,10 +358,43 @@ export default function AdminDashboardContainer() {
                 if (course.groups && Array.isArray(course.groups) && course.groups.length > 0) {
                   course.groups.forEach((group: any) => {
                     const key = `${course.courseName}_${group.groupName}`
-                    result[key] = {
-                      courseName: course.courseName,
-                      groupName: group.groupName,
-                      dailyAttendance: group.dailyAttendance || []
+
+                    // Initialize if not exists
+                    if (!result[key]) {
+                      result[key] = {
+                        courseName: course.courseName,
+                        groupName: group.groupName,
+                        dailyAttendance: []
+                      }
+                    }
+
+                    // Aggregate attendance by date
+                    if (group.dailyAttendance && Array.isArray(group.dailyAttendance)) {
+                      group.dailyAttendance.forEach((day: any) => {
+                        const existingDay = result[key].dailyAttendance.find(
+                          (item) => item.date === day.date
+                        )
+
+                        if (existingDay) {
+                          // Add to existing date
+                          existingDay.presentCount += day.presentCount || 0
+                          existingDay.absentCount += day.absentCount || 0
+                          existingDay.excusedCount += day.excusedCount || 0
+                          existingDay.lateCount += day.lateCount || 0
+                          existingDay.totalStudents += day.totalStudents || 0
+                        } else {
+                          // Create new date entry
+                          result[key].dailyAttendance.push({
+                            date: day.date,
+                            attendance: day.attendance || 0,
+                            presentCount: day.presentCount || 0,
+                            absentCount: day.absentCount || 0,
+                            excusedCount: day.excusedCount || 0,
+                            lateCount: day.lateCount || 0,
+                            totalStudents: day.totalStudents || 0
+                          })
+                        }
+                      })
                     }
                   })
                 }
@@ -555,18 +610,27 @@ export default function AdminDashboardContainer() {
 
   const filteredCourseData = getFilteredCourseData()
 
-  // Get attendance data for selected course group from dailyAttendance
+  // Get attendance data for selected course group from dailyAttendance - AGGREGATED
   const getAttendanceData = () => {
-    let data: { date: string; attendance: number }[] = []
+    let data: {
+      date: string;
+      presentCount: number;
+      absentCount: number;
+      excusedCount: number;
+      lateCount: number;
+      totalStudents: number;
+    }[] = []
 
     const selectedData = courseGroupAttendanceData[selectedAttendanceCourseGroup]
     if (selectedData) {
       data = selectedData.dailyAttendance.map((item: any) => ({
         date: item.date,
-        attendance: item.attendance
+        presentCount: item.presentCount || 0,
+        absentCount: item.absentCount || 0,
+        excusedCount: item.excusedCount || 0,
+        lateCount: item.lateCount || 0,
+        totalStudents: item.totalStudents || 1,
       }))
-    } else {
-      data = []
     }
 
     // If no data, return empty
@@ -998,13 +1062,13 @@ export default function AdminDashboardContainer() {
         </Card>
       </div>
 
-      {/* Third Row - Attendance Analysis Full Width - Interactive Area Chart */}
+      {/* Third Row - Attendance Analysis Full Width - Interactive Stacked Bar Chart */}
       <Card className="pt-0">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 py-5 sm:flex-row">
           <div className="grid flex-1 gap-1">
             <CardTitle>Attendance Analysis</CardTitle>
             <CardDescription>
-              Daily attendance trends by course group
+              Daily attendance breakdown by course group
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -1048,107 +1112,151 @@ export default function AdminDashboardContainer() {
           </div>
         </CardHeader>
         <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-          <ChartContainer
-            config={attendanceChartConfig}
-            className="aspect-auto h-[300px] w-full"
-          >
-            <AreaChart
-              accessibilityLayer
-              data={filteredAttendanceData}
-              margin={{
-                top: 20,
-                left: 20,
-                right: 20,
-              }}
+          {filteredAttendanceData.length === 0 ? (
+            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+              No attendance data available
+            </div>
+          ) : (
+            <ChartContainer
+              config={attendanceChartConfig}
+              className="aspect-auto h-[350px] w-full"
             >
-              <defs>
-                <linearGradient id="fillAttendance" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--color-attendance)"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--color-attendance)"
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                minTickGap={32}
-                interval={0}
-                tickFormatter={(value) => {
-                  if (value && value.includes(' ')) {
-                    return value
-                  }
-                  try {
-                    const date = new Date(value)
-                    return date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  } catch {
-                    return value
-                  }
+              <BarChart
+                accessibilityLayer
+                data={filteredAttendanceData}
+                margin={{
+                  top: 20,
+                  left: 20,
+                  right: 20,
+                  bottom: 20,
                 }}
-              />
-              <ChartTooltip
-                cursor={false}
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={(value) => {
-                      // If value is already in "Jul 23" format, return as is
-                      if (value && value.includes(' ')) {
-                        return value
-                      }
-                      try {
-                        return new Date(value).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      } catch {
-                        return value
-                      }
-                    }}
-                    indicator="dot"
-                  />
-                }
-              />
-              <Area
-                dataKey="attendance"
-                type="natural"
-                fill="url(#fillAttendance)"
-                stroke="var(--color-attendance)"
-                strokeWidth={2}
-
-              />
-            </AreaChart>
-          </ChartContainer>
-        </CardContent>
-        {/* <CardFooter>
-          <div className="flex w-full flex-col items-center gap-2">
-            {filteredAttendanceData.length < 2 ? (
-              <div className="flex items-center gap-2 leading-none font-medium text-muted-foreground">
-                Insufficient data to calculate trend
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 leading-none font-medium">
-                <HugeiconsIcon
-                  icon={AnalyticsUpIcon}
-                  strokeWidth={2}
-                  className={`h-4 w-4 ${attendanceTrend.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}
+              >
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  minTickGap={10}
+                  interval={0}
+                  tickFormatter={(value) => {
+                    if (value && value.includes(' ')) {
+                      return value
+                    }
+                    try {
+                      const date = new Date(value)
+                      return date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    } catch {
+                      return value
+                    }
+                  }}
                 />
-                Attendance {attendanceTrend.direction === 'up' ? 'up' : 'down'} by {attendanceTrend.value}% this month
-              </div>
-            )}
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  allowDecimals={false}
+                  tickFormatter={(value) => `${value}`}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={(value) => {
+                        if (value && value.includes(' ')) {
+                          return value
+                        }
+                        try {
+                          return new Date(value).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        } catch {
+                          return value
+                        }
+                      }}
+                      indicator="dot"
+                    />
+                  }
+                />
+                <Bar
+                  dataKey="presentCount"
+                  stackId="a"
+                  fill="#22c55e"
+                  radius={[4, 4, 0, 0]}
+                  name="Present"
+                />
+                <Bar
+                  dataKey="lateCount"
+                  stackId="a"
+                  fill="#eab308"
+                  radius={[0, 0, 0, 0]}
+                  name="Late"
+                />
+                <Bar
+                  dataKey="excusedCount"
+                  stackId="a"
+                  fill="#0505be"
+                  radius={[0, 0, 0, 0]}
+                  name="Excused"
+                />
+                <Bar
+                  dataKey="absentCount"
+                  stackId="a"
+                  fill="#ef4444"
+                  radius={[0, 0, 4, 4]}
+                  name="Absent"
+                />
+              </BarChart>
+            </ChartContainer>
+          )}
+        </CardContent>
+        <CardFooter className="flex flex-col items-start gap-2">
+          <div className="flex flex-wrap items-center gap-4 leading-none text-sm">
+            <div className="flex items-center gap-1">
+              <span className="h-3 w-3 rounded-full bg-[#22c55e]" />
+              <span>Present</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="h-3 w-3 rounded-full bg-[#eab308]" />
+              <span>Late</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="h-3 w-3 rounded-full bg-[#0505be]" />
+              <span>Excused</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="h-3 w-3 rounded-full bg-[#ef4444]" />
+              <span>Absent</span>
+            </div>
           </div>
-        </CardFooter> */}
+          {filteredAttendanceData.length > 0 && (
+            <div className="flex items-center gap-2 leading-none font-medium text-muted-foreground">
+              Showing attendance breakdown for selected course group
+            </div>
+          )}
+        </CardFooter>
+        {/* <CardFooter>
+    <div className="flex w-full flex-col items-center gap-2">
+      {filteredAttendanceData.length < 2 ? (
+        <div className="flex items-center gap-2 leading-none font-medium text-muted-foreground">
+          Insufficient data to calculate trend
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 leading-none font-medium">
+          <HugeiconsIcon
+            icon={AnalyticsUpIcon}
+            strokeWidth={2}
+            className={`h-4 w-4 ${attendanceTrend.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}
+          />
+          Attendance {attendanceTrend.direction === 'up' ? 'up' : 'down'} by {attendanceTrend.value}% this month
+        </div>
+      )}
+    </div>
+  </CardFooter> */}
       </Card>
 
       {/* Certification Progress - Pie Chart with Type Select */}

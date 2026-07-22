@@ -32,13 +32,13 @@ import {
   LogoutIcon,
   UserAccountIcon,
   Key02Icon,
-  Settings02Icon,
-  Setting06Icon,
-  NotificationIcon,
+  Settings01Icon,
+  ShieldUserIcon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import ChangePassword from "./dialogs/changePassword-dialog"
 import { PersonalInformationDialog } from "./dialogs/personalInformation-dialog"
+import { RolePermissionsDialog } from "./dialogs/rolePermissions-dialog"
 import { LogoutDialog } from "./dialogs/logout-dialog"
 import { SettingDialog } from "./dialogs/setting-dialog"
 import { logout } from "@/app/actions/auth"
@@ -53,6 +53,8 @@ export function NavUser() {
     useState(false)
   const [personalInfoDialogOpen, setPersonalInfoDialogOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+  const [rolePermissionsDialogOpen, setRolePermissionsDialogOpen] =
+    useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
 
@@ -273,8 +275,17 @@ export function NavUser() {
                     setSettingsDialogOpen(true)
                   }}
                 >
-                  <HugeiconsIcon icon={Setting06Icon} strokeWidth={2} />
+                  <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
                   Setting
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    setRolePermissionsDialogOpen(true)
+                  }}
+                >
+                  <HugeiconsIcon icon={ShieldUserIcon} strokeWidth={2} />
+                  Manage role permissions
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -338,6 +349,16 @@ export function NavUser() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Role Permissions Dialog */}
+      <RolePermissionsDialog
+        open={rolePermissionsDialogOpen}
+        onOpenChange={setRolePermissionsDialogOpen}
+        onSave={(roles) => {
+          console.log("Roles saved:", roles)
+          // Handle save logic here
+        }}
+      />
     </>
   )
 }

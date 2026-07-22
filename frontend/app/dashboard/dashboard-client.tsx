@@ -31,6 +31,8 @@ import { MailSend02Icon, NotificationIcon } from "@hugeicons/core-free-icons"
 import AdminDashboardContainer from "@/components/Dashboard/adminDashboard-container"
 import ApproverDashboardContainer from "@/components/Dashboard/approverDashboard-container"
 import LearnerDashboardContainer from "@/components/Dashboard/learnerDashboard-container"
+import { FeedbackContainer } from "@/components/feedback-container"
+import SelfStudyProgessReportContainer from "@/components/selfStudyProgess-report-container"
 
 interface DashboardClientProps {
   userData: {
@@ -129,6 +131,12 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         return "Japanese Certificates Management"
       case "certificates-requests":
         return "Certificates Requests Management"
+      case "feedback":
+        return "Learners' feedback"
+      case "exam_progress_report":
+        return "Exam Progress Report"
+      case "self_study_progress":
+        return "Self Study Progress Report"
       default:
         return "Dashboard"
     }
@@ -142,14 +150,16 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     {
       value: "courses",
       component: CoursesContainer,
-      props: { userRole: userRole }
+      props: { userRole: userRole },
     },
     { value: "seminar", component: SeminarContainer },
     { value: "exams", component: ExamsContainer },
+    { value: "feedback", component: FeedbackContainer },
     { value: "skills", component: SkillContainer },
     { value: "current_target_level", component: CurrentTargetContainer },
     { value: "holidays", component: HolidaysContainer },
     { value: "exam_progress_report", component: ExamProgressReportContainer },
+    { value: "self_study_progress", component: SelfStudyProgessReportContainer },
     { value: "japanese-certificates", component: JapaneseCertificateContainer },
     {
       value: "certificates-requests",
@@ -221,9 +231,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             </div>
           </header>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            {tabConfigs.map(({ value, component: Component, props  }) => (
+            {tabConfigs.map(({ value, component: Component, props }) => (
               <TabsContent key={value} value={value} className="m-0">
-                <Component {...props}/>
+                <Component {...props} />
               </TabsContent>
             ))}
           </Tabs>

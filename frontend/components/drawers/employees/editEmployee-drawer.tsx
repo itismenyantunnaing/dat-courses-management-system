@@ -15,9 +15,12 @@ import {
   EmployeeForm,
   EmployeeFormData,
 } from "@/components/drawers/employees/employeeForm"
+import { EmployeeView } from "@/components/drawers/employees/employeeView"
 import { AddDivDeptTeamDialog } from "@/components/dialogs/createDivDeptTeam-dialog"
 import type { Employee } from "@/types/employee"
 import { mainStore } from "@/store/mainStore"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Edit03Icon } from "@hugeicons/core-free-icons"
 
 interface EditEmployeeDrawerProps {
   open: boolean
@@ -35,6 +38,7 @@ export function EditEmployeeDrawer({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
     useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
   const { update_EmployeeData, add_division } = mainStore()
 
@@ -66,6 +70,13 @@ export function EditEmployeeDrawer({
     role: "",
     email: "",
   })
+
+  // Reset edit mode when drawer opens/closes
+  useEffect(() => {
+    if (!open) {
+      setIsEditMode(false)
+    }
+  }, [open])
 
   // Check if form has changes
   const hasChanges = () => {
@@ -177,6 +188,7 @@ export function EditEmployeeDrawer({
         alert(result)
       }
 
+      setIsEditMode(false)
       onOpenChange(false)
       onSuccess?.()
     } catch (error) {
@@ -231,6 +243,16 @@ export function EditEmployeeDrawer({
     }
   }
 
+  const handleEditClick = () => {
+    setIsEditMode(true)
+  }
+
+  const handleCancelEdit = () => {
+    // Reset form data to original
+    setFormData(originalFormData)
+    setIsEditMode(false)
+  }
+
   return (
     <>
       <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
@@ -245,42 +267,74 @@ export function EditEmployeeDrawer({
           }}
         >
           <DrawerHeader className="shrink-0 border-b">
-            <DrawerTitle>Edit Employee</DrawerTitle>
+            <div className="flex items-center justify-between">
+              <DrawerTitle>
+                {isEditMode ? "Edit Employee" : "Employee Details"}
+              </DrawerTitle>
+              {!isEditMode && employee && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEditClick}
+                  className="gap-1"
+                >
+                  <HugeiconsIcon
+                    icon={Edit03Icon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                  Edit
+                </Button>
+              )}
+            </div>
           </DrawerHeader>
 
           <div className="flex-1 overflow-y-auto">
             <div className="px-6 py-4">
-              <EmployeeForm
-                data={formData}
-                onChange={setFormData}
-                isEdit
-                onAddDivision={() => handleAddItem("division")}
-                onAddDepartment={() => handleAddItem("department")}
-                onAddTeam={() => handleAddItem("team")}
-                onDropdownOpenChange={handleDropdownOpenChange}
-              />
+              {isEditMode ? (
+                <EmployeeForm
+                  data={formData}
+                  onChange={setFormData}
+                  isEdit
+                  onAddDivision={() => handleAddItem("division")}
+                  onAddDepartment={() => handleAddItem("department")}
+                  onAddTeam={() => handleAddItem("team")}
+                  onDropdownOpenChange={handleDropdownOpenChange}
+                />
+              ) : (
+                <EmployeeView employee={employee} />
+              )}
             </div>
           </div>
 
           <DrawerFooter className="shrink-0 border-t">
-            <div className="flex gap-2">
-              <DrawerClose asChild>
+            {isEditMode ? (
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
+                  onClick={handleCancelEdit}
                   disabled={isSubmitting}
                   className="flex-1"
                 >
                   Cancel
                 </Button>
-              </DrawerClose>
-              <Button
-                className="flex-1"
-                onClick={handleSubmit}
-                disabled={isSubmitting || !hasChanges()}
-              >
-                {isSubmitting ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
+                <Button
+                  className="flex-1"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || !hasChanges()}
+                >
+                  {isSubmitting ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <DrawerClose asChild>
+                  <Button variant="outline" className="flex-1">
+                    Close
+                  </Button>
+                </DrawerClose>
+              </div>
+            )}
           </DrawerFooter>
         </DrawerContent>
       </Drawer>

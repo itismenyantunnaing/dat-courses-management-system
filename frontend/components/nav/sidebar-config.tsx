@@ -17,6 +17,7 @@ import {
   DocumentValidationIcon,
   Time02Icon,
   ChartHistogramIcon,
+  Chart01Icon,
   UserGroupIcon,
   CodeIcon,
   TrendingUp,
@@ -264,6 +265,17 @@ export const adminData: SidebarConfig = {
               action: "export",
             },
           ],
+        },
+        {
+          title: "Self Study Progress",
+          tabId: "self_study_progress",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon
+              icon={Chart01Icon}
+              strokeWidth={STROKE_WIDTH}
+            />
+          ),
         },
       ],
     },

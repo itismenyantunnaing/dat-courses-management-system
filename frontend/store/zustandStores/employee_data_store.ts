@@ -425,7 +425,33 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const employeeData = await response.json();
+      let employeeData = await response.json();
+
+      // Get current profile from store
+      const currentProfile = get().profile;
+
+      // Apply filters based on user role
+      if (currentProfile && currentProfile.role) {
+        const userRole = currentProfile.role.toLowerCase();
+
+        // If user is approver, filter by their team
+        if (userRole === "approver") {
+          const userTeam = currentProfile.team;
+          if (userTeam) {
+            employeeData = employeeData.filter(
+              (employee: Employee) => employee.team === userTeam
+            );
+          } else {
+            // If approver has no team, return empty array
+            employeeData = [];
+          }
+        }
+        // Add other role-based filters here if needed
+        // else if (userRole === "manager") {
+        //   // Filter by department or division
+        // }
+      }
+
       set(() => ({ employee_data: employeeData }));
 
     } catch (error) {

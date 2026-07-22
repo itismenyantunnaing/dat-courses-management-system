@@ -20,13 +20,14 @@ import {
 import type { JapaneseCertificate } from "@/types/certificate"
 import type { SessionData } from "@/types/session";
 import type { DevelopmentData, ManagementSkillData, TechnicalSkillData } from "@/components/drawers/skillset/skillsetForm"
-import type { 
-  CategoryItem, 
-  Course, 
-  CourseCategoryData, 
+import type {
+  CategoryItem,
+  Course,
+  CourseCategoryData,
   BackendCourseDto,
-  BackendCategoryDto 
+  BackendCategoryDto
 } from "@/types/course"
+import type { FeedbackSuggestionDto } from "@/types/feedback"
 
 export interface Employee_StoreType {
   employee_data: Employee[]
@@ -54,6 +55,19 @@ export interface Holiday_StoreType {
   delete_HolidayData: (holidayIds: number | number[]) => Promise<string>
   update_HolidayData: (id: number, updatedHoliday: Holiday) => Promise<string>
   bulkCreate_HolidayData: (holidays: { holidayName: string; holidayDate: string }[]) => Promise<void>
+}
+
+export interface Feedback_StoreType {
+  feedback: FeedbackSuggestionDto[];
+  isCreating: boolean;
+  isUpdating: boolean;
+  isLoading: boolean;
+  fetch_FeedbackData: () => Promise<void>;
+  fetch_FeedbackByEmployeeId: (employeeId: string) => Promise<string | undefined>;
+  add_FeedbackData: (newFeedback: FeedbackSuggestionDto) => Promise<string>;
+  delete_FeedbackData: (feedbackIds: number | number[]) => Promise<string>;
+  update_FeedbackData: (id: number, updatedFeedback: FeedbackSuggestionDto) => Promise<string>;
+  clear_FeedbackData: () => void;
 }
 
 export interface SkillSet_StoreType {

@@ -594,7 +594,7 @@ export function CertificatesRequestsContainer() {
 
             {/* Actions - Search, View Toggle */}
             <div className="flex items-center gap-1.5">
-              <InputGroup className="max-w-sm">
+              <InputGroup className="w-[300px]">
                 <InputGroupInput
                   ref={searchInputRef}
                   placeholder="Search certificate requests..."

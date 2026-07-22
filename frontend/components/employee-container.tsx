@@ -69,6 +69,9 @@ import {
   Edit03Icon,
   Loading03Icon,
   FilterMailIcon,
+  ChevronDownIcon,
+  DotIcon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -95,6 +98,14 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from "./ui/dropdown-menu"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 
 const STROKE_WIDTH = 2
 
@@ -193,6 +204,33 @@ const getInitials = (name: string) => {
     .slice(0, 2)
 }
 
+// Helper function to truncate text with tooltip
+const TruncatedText = ({
+  text,
+  maxLength = 25,
+}: {
+  text: string
+  maxLength?: number
+}) => {
+  const needsTruncation = text.length > maxLength
+  const displayText = needsTruncation ? text.slice(0, maxLength) + "..." : text
+
+  if (!needsTruncation) {
+    return <span>{text}</span>
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-help">{displayText}</span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{text}</p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 export function EmployeeContainer({
   searchPlaceholder = "Search employees...",
 }) {
@@ -224,6 +262,10 @@ export function EmployeeContainer({
   const [isDrillDown, setIsDrillDown] = useState(false)
   const [drillDownPage, setDrillDownPage] = useState(1)
   const [drilldownSearchTerm, setDrilldownSearchTerm] = useState("")
+
+  // State for breadcrumb dropdown
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("All")
+  const [selectedTeam, setSelectedTeam] = useState<string>("All")
 
   // Search input refs for keyboard shortcut
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -749,6 +791,9 @@ export function EmployeeContainer({
     setDrillDownPage(1)
     setRowSelection({})
     setDrilldownSearchTerm("") // Reset drilldown search when opening
+    // Reset dropdown selections
+    setSelectedDepartment("All")
+    setSelectedTeam("All")
   }
 
   // Handle back button click
@@ -759,6 +804,8 @@ export function EmployeeContainer({
     setCurrentPage(1)
     setRowSelection({})
     setDrilldownSearchTerm("") // Reset drilldown search when going back
+    setSelectedDepartment("All")
+    setSelectedTeam("All")
   }
 
   // Get selected employees count
@@ -966,6 +1013,9 @@ export function EmployeeContainer({
     )
   }
 
+  // Constants
+  const maxBreadcrumbLength = 30
+
   // Render category card (division/department/team) with full employee cards
   const renderCategoryCard = (item: string) => {
     const isOthers = item === "Others"
@@ -993,17 +1043,144 @@ export function EmployeeContainer({
 
     const displayEmployees = employees.slice(0, 4)
 
+    // Get the entity type label for the current view
+    const getEntityLabel = () => {
+      if (activeView === "divisions") return "Division"
+      if (activeView === "departments") return "Department"
+      if (activeView === "teams") return "Team"
+      return ""
+    }
+    const entityLabel = getEntityLabel()
+
+    // Build breadcrumb for category card header
+    const getCategoryBreadcrumb = () => {
+      const items = []
+
+      if (activeView === "divisions") {
+        items.push({ label: item, isClickable: false })
+      } else if (activeView === "departments") {
+        // Find which division this department belongs to
+        const empWithDept = employee_data.find((emp) => emp.dept_dat === item)
+        if (empWithDept && empWithDept.div_name) {
+          items.push({
+            label: empWithDept.div_name,
+            isClickable: true,
+            onClick: () => {
+              setSelectedItem(empWithDept.div_name)
+              setActiveView("divisions")
+              setIsDrillDown(true)
+              setDrillDownPage(1)
+              setDrilldownSearchTerm("")
+              setSelectedDepartment("All")
+              setSelectedTeam("All")
+            },
+          })
+        }
+        items.push({ label: item, isClickable: false })
+      } else if (activeView === "teams") {
+        // Find which department and division this team belongs to
+        const empWithTeam = employee_data.find((emp) => emp.team === item)
+        if (empWithTeam) {
+          if (empWithTeam.div_name) {
+            items.push({
+              label: empWithTeam.div_name,
+              isClickable: true,
+              onClick: () => {
+                setSelectedItem(empWithTeam.div_name)
+                setActiveView("divisions")
+                setIsDrillDown(true)
+                setDrillDownPage(1)
+                setDrilldownSearchTerm("")
+                setSelectedDepartment("All")
+                setSelectedTeam("All")
+              },
+            })
+          }
+          if (empWithTeam.dept_dat) {
+            items.push({
+              label: empWithTeam.dept_dat,
+              isClickable: true,
+              onClick: () => {
+                setSelectedItem(empWithTeam.dept_dat)
+                setActiveView("departments")
+                setIsDrillDown(true)
+                setDrillDownPage(1)
+                setDrilldownSearchTerm("")
+                setSelectedDepartment("All")
+                setSelectedTeam("All")
+              },
+            })
+          }
+        }
+        items.push({ label: item, isClickable: false })
+      }
+
+      return items
+    }
+
+    const breadcrumbItems = getCategoryBreadcrumb()
+
     return (
       <div key={item} className="rounded-lg bg-card pbs-0 pbe-4">
-        {/* Header */}
+        {/* Breadcrumb Header */}
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold">{item}</h3>
-            <span className="text-sm text-muted-foreground">
-              {employees.length} employee{employees.length > 1 ? "s" : ""}
-            </span>
+          <div>
+            {breadcrumbItems.length > 1 ? (
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {breadcrumbItems.map((crumb, index) => (
+                    <React.Fragment key={index}>
+                      <BreadcrumbItem>
+                        {crumb.isClickable ? (
+                          <BreadcrumbLink
+                            onClick={crumb.onClick}
+                            className="cursor-pointer hover:text-primary"
+                          >
+                            <TruncatedText
+                              text={crumb.label}
+                              maxLength={maxBreadcrumbLength}
+                            />
+                          </BreadcrumbLink>
+                        ) : (
+                          <BreadcrumbPage>
+                            <TruncatedText
+                              text={crumb.label}
+                              maxLength={maxBreadcrumbLength}
+                            />
+                          </BreadcrumbPage>
+                        )}
+                      </BreadcrumbItem>
+                      {index < breadcrumbItems.length - 1 && (
+                        <BreadcrumbSeparator>
+                          <HugeiconsIcon
+                            icon={DotIcon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                        </BreadcrumbSeparator>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {employees.length} employee
+                    {employees.length > 1 ? "s" : ""}
+                  </span>
+                </BreadcrumbList>
+              </Breadcrumb>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold">
+                  <TruncatedText text={item} maxLength={maxBreadcrumbLength} />
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  {employees.length} employee{employees.length > 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1">
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-1">
             {!isOthers && (
               <Button
                 variant="ghost"
@@ -1019,25 +1196,28 @@ export function EmployeeContainer({
                   strokeWidth={2}
                   className="h-4 w-4"
                 />
-                Edit
+                Edit {entityLabel}
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleCardClick(item)
-              }}
-              className="gap-1"
-            >
-              All Employees
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                strokeWidth={2}
-                className="h-4 w-4"
-              />
-            </Button>
+            {/* Only show "All Employees" button if there are 5 or more employees */}
+            {employees.length >= 5 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleCardClick(item)
+                }}
+                className="gap-1"
+              >
+                All Employees
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  strokeWidth={2}
+                  className="h-4 w-4"
+                />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1095,6 +1275,16 @@ export function EmployeeContainer({
       })
     }
 
+    // For division drill-down, filter by selected department
+    if (activeView === "divisions" && selectedDepartment !== "All") {
+      employees = employees.filter((emp) => emp.dept_dat === selectedDepartment)
+    }
+
+    // For department drill-down, filter by selected team
+    if (activeView === "departments" && selectedTeam !== "All") {
+      employees = employees.filter((emp) => emp.team === selectedTeam)
+    }
+
     return employees
   }
 
@@ -1129,6 +1319,473 @@ export function EmployeeContainer({
     return filteredEmployees.length
   }
 
+  // Render breadcrumb based on active view and selected item
+  const renderBreadcrumb = () => {
+    if (!isDrillDown) return null
+
+    // Find the division, department, team based on selected item
+    let divisionName = ""
+    let departmentName = ""
+    let teamName = ""
+
+    // Width constants
+    const DROPDOWN_MAX_WIDTH = "400px"
+    const DROPDOWN_ITEM_MAX_WIDTH = "400px"
+
+    if (activeView === "divisions") {
+      divisionName = selectedItem
+
+      // Get all divisions for the division dropdown
+      const allDivisions = [
+        ...new Set(
+          employee_data
+            .map((emp) => emp.div_name)
+            .filter((div) => div && div.trim() !== "")
+        ),
+      ].sort()
+
+      // Get departments in this division for dropdown
+      const deptsInDivision = employee_data
+        .filter((emp) => emp.div_name === selectedItem)
+        .map((emp) => emp.dept_dat)
+        .filter((dept) => dept && dept.trim() !== "")
+      const uniqueDepts = [...new Set(deptsInDivision)].sort()
+
+      return (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 text-sm font-medium hover:text-primary">
+                    <TruncatedText
+                      text={divisionName}
+                      maxLength={maxBreadcrumbLength}
+                    />
+                    <HugeiconsIcon
+                      icon={ChevronDownIcon}
+                      strokeWidth={2}
+                      className="h-3.5 w-3.5"
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className={`w-auto max-w-[${DROPDOWN_MAX_WIDTH}]`}
+                >
+                  <DropdownMenuGroup>
+                    {allDivisions.map((div) => (
+                      <DropdownMenuItem
+                        key={div}
+                        onClick={() => {
+                          setSelectedItem(div)
+                          setDrillDownPage(1)
+                          setDrilldownSearchTerm("")
+                          setSelectedDepartment("All")
+                          setSelectedTeam("All")
+                        }}
+                        className={`max-w-[${DROPDOWN_ITEM_MAX_WIDTH}]`}
+                      >
+                        {div.length > maxBreadcrumbLength ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="block truncate">{div}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{div}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="block truncate">{div}</span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>
+              <HugeiconsIcon
+                icon={DotIcon}
+                strokeWidth={2}
+                className="h-4 w-4"
+              />
+            </BreadcrumbSeparator>
+            <BreadcrumbItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 text-sm font-medium hover:text-primary">
+                    {selectedDepartment === "All" ? (
+                      "All Departments"
+                    ) : (
+                      <TruncatedText
+                        text={selectedDepartment}
+                        maxLength={maxBreadcrumbLength}
+                      />
+                    )}
+                    <HugeiconsIcon
+                      icon={ChevronDownIcon}
+                      strokeWidth={2}
+                      className="h-3.5 w-3.5"
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className={`w-auto max-w-[${DROPDOWN_MAX_WIDTH}]`}
+                >
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedDepartment("All")
+                        setDrillDownPage(1)
+                      }}
+                      className={`max-w-[${DROPDOWN_ITEM_MAX_WIDTH}]`}
+                    >
+                      <span className="block truncate">All Departments</span>
+                    </DropdownMenuItem>
+                    {uniqueDepts.map((dept) => (
+                      <DropdownMenuItem
+                        key={dept}
+                        onClick={() => {
+                          setSelectedDepartment(dept)
+                          setDrillDownPage(1)
+                        }}
+                        className={`max-w-[${DROPDOWN_ITEM_MAX_WIDTH}]`}
+                      >
+                        {dept.length > maxBreadcrumbLength ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="block truncate">{dept}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{dept}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="block truncate">{dept}</span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </BreadcrumbItem>
+            <span className="ml-2 text-xs text-muted-foreground">
+              {drillDownEmployees.length} employee
+              {drillDownEmployees.length > 1 ? "s" : ""}
+            </span>
+          </BreadcrumbList>
+        </Breadcrumb>
+      )
+    } else if (activeView === "departments") {
+      departmentName = selectedItem
+      // Find which division this department belongs to
+      const empWithDept = employee_data.find(
+        (emp) => emp.dept_dat === selectedItem
+      )
+      if (empWithDept) {
+        divisionName = empWithDept.div_name || ""
+      }
+
+      // Get all departments for the department dropdown
+      const allDepartments = [
+        ...new Set(
+          employee_data
+            .map((emp) => emp.dept_dat)
+            .filter((dept) => dept && dept.trim() !== "")
+        ),
+      ].sort()
+
+      // Get teams in this department for dropdown
+      const teamsInDept = employee_data
+        .filter((emp) => emp.dept_dat === selectedItem)
+        .map((emp) => emp.team)
+        .filter((team) => team && team.trim() !== "")
+      const uniqueTeams = [...new Set(teamsInDept)].sort()
+
+      return (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage>
+                <TruncatedText
+                  text={divisionName}
+                  maxLength={maxBreadcrumbLength}
+                />
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>
+              <HugeiconsIcon
+                icon={DotIcon}
+                strokeWidth={2}
+                className="h-4 w-4"
+              />
+            </BreadcrumbSeparator>
+            <BreadcrumbItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 text-sm font-medium hover:text-primary">
+                    <TruncatedText
+                      text={departmentName}
+                      maxLength={maxBreadcrumbLength}
+                    />
+                    <HugeiconsIcon
+                      icon={ChevronDownIcon}
+                      strokeWidth={2}
+                      className="h-3.5 w-3.5"
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className={`w-auto max-w-[${DROPDOWN_MAX_WIDTH}]`}
+                >
+                  <DropdownMenuGroup>
+                    {allDepartments.map((dept) => (
+                      <DropdownMenuItem
+                        key={dept}
+                        onClick={() => {
+                          setSelectedItem(dept)
+                          setActiveView("departments")
+                          setIsDrillDown(true)
+                          setDrillDownPage(1)
+                          setDrilldownSearchTerm("")
+                          setSelectedDepartment("All")
+                          setSelectedTeam("All")
+                        }}
+                        className={`max-w-[${DROPDOWN_ITEM_MAX_WIDTH}]`}
+                      >
+                        {dept.length > maxBreadcrumbLength ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="block truncate">{dept}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{dept}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="block truncate">{dept}</span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>
+              <HugeiconsIcon
+                icon={DotIcon}
+                strokeWidth={2}
+                className="h-4 w-4"
+              />
+            </BreadcrumbSeparator>
+            <BreadcrumbItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 text-sm font-medium hover:text-primary">
+                    {selectedTeam === "All" ? (
+                      "All Teams"
+                    ) : (
+                      <TruncatedText
+                        text={selectedTeam}
+                        maxLength={maxBreadcrumbLength}
+                      />
+                    )}
+                    <HugeiconsIcon
+                      icon={ChevronDownIcon}
+                      strokeWidth={2}
+                      className="h-3.5 w-3.5"
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className={`w-auto max-w-[${DROPDOWN_MAX_WIDTH}]`}
+                >
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedTeam("All")
+                        setDrillDownPage(1)
+                      }}
+                      className={`max-w-[${DROPDOWN_ITEM_MAX_WIDTH}]`}
+                    >
+                      <span className="block truncate">All Teams</span>
+                    </DropdownMenuItem>
+                    {uniqueTeams.map((team) => (
+                      <DropdownMenuItem
+                        key={team}
+                        onClick={() => {
+                          setSelectedTeam(team)
+                          setDrillDownPage(1)
+                        }}
+                        className={`max-w-[${DROPDOWN_ITEM_MAX_WIDTH}]`}
+                      >
+                        {team.length > maxBreadcrumbLength ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="block truncate">{team}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{team}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="block truncate">{team}</span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </BreadcrumbItem>
+            <span className="ml-2 text-xs text-muted-foreground">
+              {drillDownEmployees.length} employee
+              {drillDownEmployees.length > 1 ? "s" : ""}
+            </span>
+          </BreadcrumbList>
+        </Breadcrumb>
+      )
+    } else if (activeView === "teams") {
+      teamName = selectedItem
+      const empWithTeam = employee_data.find((emp) => emp.team === selectedItem)
+      if (empWithTeam) {
+        departmentName = empWithTeam.dept_dat || ""
+        divisionName = empWithTeam.div_name || ""
+      }
+
+      // Get all departments for grouping
+      const allDepartments = [
+        ...new Set(
+          employee_data
+            .map((emp) => emp.dept_dat)
+            .filter((dept) => dept && dept.trim() !== "")
+        ),
+      ].sort()
+
+      return (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage>
+                <TruncatedText
+                  text={divisionName}
+                  maxLength={maxBreadcrumbLength}
+                />
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>
+              <HugeiconsIcon
+                icon={DotIcon}
+                strokeWidth={2}
+                className="h-4 w-4"
+              />
+            </BreadcrumbSeparator>
+            <BreadcrumbItem>
+              <BreadcrumbPage>
+                <TruncatedText
+                  text={departmentName}
+                  maxLength={maxBreadcrumbLength}
+                />
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>
+              <HugeiconsIcon
+                icon={DotIcon}
+                strokeWidth={2}
+                className="h-4 w-4"
+              />
+            </BreadcrumbSeparator>
+            <BreadcrumbItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 text-sm font-medium hover:text-primary">
+                    <TruncatedText
+                      text={teamName}
+                      maxLength={maxBreadcrumbLength}
+                    />
+                    <HugeiconsIcon
+                      icon={ChevronDownIcon}
+                      strokeWidth={2}
+                      className="h-3.5 w-3.5"
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className={`scrollbar-none w-auto max-w-[${DROPDOWN_MAX_WIDTH}] max-h-[350px] overflow-y-auto`}
+                >
+                  {allDepartments.map((dept) => {
+                    // Get teams for this department
+                    const teamsInDept = employee_data
+                      .filter((emp) => emp.dept_dat === dept)
+                      .map((emp) => emp.team)
+                      .filter((team) => team && team.trim() !== "")
+                      .filter(
+                        (value, index, self) => self.indexOf(value) === index
+                      )
+                      .sort()
+
+                    if (teamsInDept.length === 0) return null
+
+                    return (
+                      <React.Fragment key={dept}>
+                        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                          {dept}
+                        </DropdownMenuLabel>
+                        {teamsInDept.map((team) => {
+                          const isActive = team === teamName
+                          return (
+                            <DropdownMenuItem
+                              key={team}
+                              onClick={() => {
+                                setSelectedItem(team)
+                                setDrillDownPage(1)
+                                setDrilldownSearchTerm("")
+                              }}
+                              className={`flex justify-between max-w-[${DROPDOWN_ITEM_MAX_WIDTH}] pl-6 ${isActive ? "bg-accent text-accent-foreground" : ""}`}
+                            >
+                              {team.length > maxBreadcrumbLength ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="block truncate">
+                                      {team}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{team}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <span className="block truncate">{team}</span>
+                              )}
+                              {isActive && (
+                                  <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} />
+                              )}
+                            </DropdownMenuItem>
+                          )
+                        })}
+                        <DropdownMenuSeparator />
+                      </React.Fragment>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </BreadcrumbItem>
+            <span className="ml-2 text-xs text-muted-foreground">
+              {drillDownEmployees.length} employee
+              {drillDownEmployees.length > 1 ? "s" : ""}
+            </span>
+          </BreadcrumbList>
+        </Breadcrumb>
+      )
+    }
+
+    return null
+  }
+
   return (
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
@@ -1147,6 +1804,8 @@ export function EmployeeContainer({
                   setSelectedItem("")
                   setSearchTerm("")
                   setDrilldownSearchTerm("")
+                  setSelectedDepartment("All")
+                  setSelectedTeam("All")
                 }}
               >
                 <TabsList className="h-auto">
@@ -1437,24 +2096,17 @@ export function EmployeeContainer({
             // Drill Down View - Employees in selected category (Card View)
             <div className="mx-4">
               <div className="mbs-8 mbe-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   {/* Back Button for Drill Down */}
-                  <Button
-                    variant="ghost"
-                    onClick={handleBack}
-                    className="gap-2"
-                  >
+                  <Button variant="ghost" onClick={handleBack}>
                     <HugeiconsIcon
                       icon={ArrowLeft01Icon}
                       strokeWidth={2}
                       className="h-4 w-4"
                     />
                   </Button>
-                  <h2 className="text-lg font-semibold">{selectedItem}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {drillDownEmployees.length} employee
-                    {drillDownEmployees.length > 1 ? "s" : ""}
-                  </p>
+                  {/* Breadcrumb Navigation with Dropdown */}
+                  {isDrillDown && renderBreadcrumb()}
                 </div>
 
                 {/* Search bar for drilldown with Cmd+K */}

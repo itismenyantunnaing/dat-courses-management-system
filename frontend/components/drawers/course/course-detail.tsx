@@ -49,6 +49,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 interface CourseDetailProps {
   course: Course
@@ -232,6 +240,8 @@ const getGroupChangeStatusLabel = (status: string) => {
   }
 }
 
+
+
 export function CourseDetail({
   course,
   onEdit,
@@ -242,6 +252,7 @@ export function CourseDetail({
 }: CourseDetailProps) {
   const isAdmin = userRole === "admin"
   const isLearner = userRole === "learner"
+  const isApprover = userRole === "approver"
   const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false)
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [isUnenrolling, setIsUnenrolling] = useState(false)
@@ -262,6 +273,11 @@ export function CourseDetail({
   const [selectedRequestGroupId, setSelectedRequestGroupId] = useState<string>("")
   const [isRequestingGroupChange, setIsRequestingGroupChange] = useState(false)
   const [processingGroupChangeId, setProcessingGroupChangeId] = useState<number | null>(null)
+
+  const [savedAttendance, setSavedAttendance] = useState<{ [key: string]: boolean }>({})
+
+  // for search bar
+  const [enrollmentSearchTerm, setEnrollmentSearchTerm] = useState("")
 
   // Check if user is enrolled
   const isUserEnrolled = !!currentUserEnrollment && currentUserEnrollment.enrollmentStatus === 'APPROVED'
@@ -288,13 +304,14 @@ export function CourseDetail({
     isRequestingGroupChange: isStoreRequesting,
     isApprovingGroupChange,
     isRejectingGroupChange,
+    profile
   } = mainStore();
 
 
   // Get current user ID
   const currentUserId = getUserId?.() || null
 
-  const TESTING_DATE = new Date('2026-07-21')
+  const TESTING_DATE = new Date('2026-08-4')
   // const TESTING_DATE = new Date()
 
   // Helper function to get session status
@@ -778,24 +795,26 @@ export function CourseDetail({
   }
 
   // Attendance handlers
-  const handleAttendanceStatusChange = (sessionId: string, employeeId: string, value: string) => {
+  const handleAttendanceStatusChange = async (sessionId: string, employeeId: string, value: string, enrollmentId: number, groupId: number) => {
     const key = `${sessionId}-${employeeId}`
+
+    // Store the previous status in case we need to revert
+    const previousStatus = attendanceStatuses[key]
+
+    // Optimistically update the UI immediately
     setAttendanceStatuses(prev => ({
       ...prev,
       [key]: value
     }))
-  }
 
-  const handleSaveAttendance = async (sessionId: number, enrollmentId: number, groupId: number) => {
-    const key = `${sessionId}-${enrollmentId}`
-    const status = attendanceStatuses[key]
+    // Clear previous saved state
+    setSavedAttendance(prev => ({
+      ...prev,
+      [key]: false
+    }))
 
-    if (!status) {
-      alert('Please select an attendance status')
-      return
-    }
-
-    const existingAttendance = getAttendanceForSession(sessionId, enrollmentId)
+    // Find existing attendance record
+    const existingAttendance = getAttendanceForSession(parseInt(sessionId), enrollmentId)
 
     setSavingAttendance(prev => ({
       ...prev,
@@ -811,8 +830,8 @@ export function CourseDetail({
           existingAttendance.id,
           {
             enrollmentId,
-            courseSessionId: sessionId,
-            attendanceStatus: status as any
+            courseSessionId: parseInt(sessionId),
+            attendanceStatus: value as any
           }
         )
       } else {
@@ -821,20 +840,76 @@ export function CourseDetail({
           groupId,
           {
             enrollmentId,
-            courseSessionId: sessionId,
-            attendanceStatus: status as any
+            courseSessionId: parseInt(sessionId),
+            attendanceStatus: value as any
           }
         )
       }
 
       if (result.success) {
-        alert(`Attendance ${existingAttendance ? 'updated' : 'recorded'} successfully!`)
-        await loadAttendance()
+        // Find the employee name from enrollments
+        const employee = enrollments.find((e: any) => e.id === enrollmentId)
+
+        // Update the attendance record in local state instead of refetching
+        setAttendanceRecords(prev => {
+          const existingIndex = prev.findIndex(
+            r => r.courseSessionId === parseInt(sessionId) && r.enrollmentId === enrollmentId
+          )
+
+          if (existingIndex !== -1) {
+            // Update existing record
+            const updated = [...prev]
+            updated[existingIndex] = {
+              ...updated[existingIndex],
+              attendanceStatus: value as any
+            }
+            return updated
+          } else {
+            // Add new record
+            const newRecord: AttendanceRecord = {
+              id: result.data?.id || Date.now(),
+              enrollmentId: enrollmentId,
+              employeeId: employeeId,
+              employeeName: employee?.employeeName || '',
+              courseSessionId: parseInt(sessionId),
+              sessionNo: parseInt(sessionId),
+              sessionDate: new Date().toISOString(),
+              attendanceStatus: value as any,
+              registeredAt: new Date().toISOString()
+            }
+            return [...prev, newRecord]
+          }
+        })
+
+        // Show saved indicator briefly
+        setSavedAttendance(prev => ({
+          ...prev,
+          [key]: true
+        }))
+
+        // Auto-hide the saved indicator after 1.5 seconds
+        setTimeout(() => {
+          setSavedAttendance(prev => ({
+            ...prev,
+            [key]: false
+          }))
+        }, 1500)
+
       } else {
+        // Revert on error
+        setAttendanceStatuses(prev => ({
+          ...prev,
+          [key]: previousStatus || ''
+        }))
         alert(result.message || 'Failed to save attendance')
       }
     } catch (error) {
       console.error('Error saving attendance:', error)
+      // Revert on error
+      setAttendanceStatuses(prev => ({
+        ...prev,
+        [key]: previousStatus || ''
+      }))
       alert('An error occurred while saving attendance')
     } finally {
       setSavingAttendance(prev => ({
@@ -1100,7 +1175,7 @@ export function CourseDetail({
               </Button>
             )}
 
-            {isLearner && (
+            {!isAdmin && (
               <div className="space-y-3">
                 {/* Group Selection - Only show if there are multiple groups */}
                 {course.groups && course.groups.length > 1 && !isUserEnrolled && (
@@ -1266,6 +1341,20 @@ export function CourseDetail({
                 })()}
               </TabsTrigger>
             )}
+            <TabsTrigger value="enrollments">
+              <HugeiconsIcon
+                icon={UserGroupIcon}
+                strokeWidth={1.5}
+                className="h-4 w-4"
+              />
+              Enrollments ({(() => {
+                let count = enrollments.filter(e => e.enrollmentStatus !== 'CANCELLED')
+                if (isApprover && profile?.team) {
+                  count = count.filter(e => e.teamName === profile.team)
+                }
+                return count.length
+              })()})
+            </TabsTrigger>
           </TabsList>
 
           {/* === LEARNER GROUP CHANGE TAB === */}
@@ -1827,10 +1916,9 @@ export function CourseDetail({
               <TabsContent value="groups">
                 <div className="space-y-6">
                   {course.groups
-                    // Filter groups based on user role
                     .filter((group) => {
-                      // Admin: show all groups
-                      if (isAdmin) return true;
+                      // Admin or Approver: show all groups
+                      if (isAdmin || isApprover) return true;
                       // Learner: only show their enrolled group
                       if (isLearner && currentUserEnrollment) {
                         return parseInt(group.id) === currentUserEnrollment.courseGroupId;
@@ -1892,7 +1980,7 @@ export function CourseDetail({
                               </h5>
 
                               {/* Show attendance only for enrolled users or admins */}
-                              {(userRole === "learner" || isAdmin) && (
+                              {(userRole === "learner" || isAdmin || isApprover) && (
                                 <div className="space-y-4">
                                   {group.sessions.map((session, idx) => {
                                     const sessionId = session.id
@@ -1977,7 +2065,9 @@ export function CourseDetail({
                                                     <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Employee</th>
                                                     <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Department</th>
                                                     <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Status</th>
-                                                    <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Action</th>
+                                                    {!isApprover &&
+                                                      <th className="text-left py-2 px-2 font-medium text-xs text-muted-foreground">Action</th>
+                                                    }
                                                   </tr>
                                                 </thead>
                                                 <tbody>
@@ -1987,6 +2077,10 @@ export function CourseDetail({
                                                       // For learners: show ONLY the current user
                                                       if (userRole === "learner") {
                                                         return employee.employeeId === currentUserId;
+                                                      }
+                                                      // For approvers: show ONLY employees from the same team
+                                                      if (userRole === "approver" && profile?.team) {
+                                                        return employee.teamName === profile.team;
                                                       }
                                                       // For admins: show ALL employees (excluding CANCELLED)
                                                       return true;
@@ -2041,50 +2135,53 @@ export function CourseDetail({
                                                               </span>
                                                             )}
                                                           </td>
-                                                          <td className="py-2 px-2">
-                                                            {canEdit ? (
-                                                              <div className="flex items-center gap-2">
-                                                                <Select
-                                                                  value={currentStatus}
-                                                                  onValueChange={(value) =>
-                                                                    handleAttendanceStatusChange(sessionId, employee.id.toString(), value)
-                                                                  }
-                                                                  disabled={isSaving || isSessionLocked}
-                                                                >
-                                                                  <SelectTrigger className="h-7 w-[130px] text-xs">
-                                                                    <SelectValue placeholder="Select status" />
-                                                                  </SelectTrigger>
-                                                                  <SelectContent>
-                                                                    <SelectItem value="PRESENT">✅ Present</SelectItem>
-                                                                    <SelectItem value="ABSENT">❌ Absent</SelectItem>
-                                                                    <SelectItem value="LATE">⏰ Late</SelectItem>
-                                                                    <SelectItem value="EXCUSED">📝 Excused</SelectItem>
-                                                                  </SelectContent>
-                                                                </Select>
-                                                                <Button
-                                                                  size="sm"
-                                                                  variant="outline"
-                                                                  className="h-7 px-2 text-xs"
-                                                                  onClick={() => handleSaveAttendance(
-                                                                    parseInt(sessionId),
-                                                                    employee.id,
-                                                                    parseInt(group.id)
-                                                                  )}
-                                                                  disabled={!currentStatus || isSaving || isSessionLocked}
-                                                                >
+                                                          {!isApprover &&
+                                                            <td className="py-2 px-2">
+                                                              {canEdit ? (
+                                                                <div className="flex items-center gap-2">
+                                                                  <Select
+                                                                    value={currentStatus}
+                                                                    onValueChange={(value) => {
+                                                                      handleAttendanceStatusChange(
+                                                                        sessionId,
+                                                                        employee.id.toString(),
+                                                                        value,
+                                                                        employee.id,
+                                                                        parseInt(group.id)
+                                                                      )
+                                                                    }}
+                                                                    disabled={isSaving || isSessionLocked}
+                                                                  >
+                                                                    <SelectTrigger className="h-7 w-[130px] text-xs">
+                                                                      <SelectValue placeholder="Select status" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                      <SelectItem value="PRESENT">✅ Present</SelectItem>
+                                                                      <SelectItem value="ABSENT">❌ Absent</SelectItem>
+                                                                      <SelectItem value="LATE">⏰ Late</SelectItem>
+                                                                      <SelectItem value="EXCUSED">📝 Excused</SelectItem>
+                                                                    </SelectContent>
+                                                                  </Select>
                                                                   {isSaving ? (
-                                                                    <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></span>
-                                                                  ) : (
-                                                                    <HugeiconsIcon icon={SaveIcon} strokeWidth={2} className="h-3 w-3" />
+                                                                    <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></span>
+                                                                  ) : savedAttendance[key] ? (
+                                                                    <HugeiconsIcon
+                                                                      icon={CheckmarkCircle01Icon}
+                                                                      strokeWidth={2}
+                                                                      className="h-3 w-3 text-green-500"
+                                                                    />
+                                                                  ) : currentStatus && (
+                                                                    <span className="h-3 w-3"></span> // Empty space for alignment
                                                                   )}
-                                                                </Button>
-                                                              </div>
-                                                            ) : (
-                                                              <span className="text-xs text-muted-foreground">
-                                                                {isFutureSession ? "Coming Soon" : isOverdue ? "Locked" : "No access"}
-                                                              </span>
-                                                            )}
-                                                          </td>
+                                                                </div>
+                                                              ) : (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                  {isFutureSession ? "Coming Soon" : isOverdue ? "Locked" : "No access"}
+                                                                </span>
+                                                              )}
+                                                            </td>
+                                                          }
+
                                                         </tr>
                                                       )
                                                     })}
@@ -2151,7 +2248,7 @@ export function CourseDetail({
                               )}
                             </div>
 
-                            {/* Enrolled Employees for this Group - with Status Tabs */}
+                            {/* ✅ UPDATED: Enrolled Employees for this Group - with Status Tabs and Team Filtering */}
                             {groupEmployees.length > 0 && (
                               <div>
                                 <div className="flex items-center justify-between mb-3">
@@ -2161,46 +2258,72 @@ export function CourseDetail({
                                       strokeWidth={1.5}
                                       className="h-4 w-4"
                                     />
-                                    Enrolled Employees ({groupEmployees.length})
+                                    Enrolled Employees (
+                                    {isApprover && profile?.team
+                                      ? groupEmployees.filter(e => e.teamName === profile.team).length
+                                      : groupEmployees.length
+                                    }
+                                    )
                                   </h5>
+                                  {isApprover && profile?.team && (
+                                    <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-200 bg-blue-50">
+                                      Team: {profile.team}
+                                    </Badge>
+                                  )}
                                 </div>
 
-                                {/* Status Tabs */}
+                                {/* Status Tabs - Filtered for Approvers */}
                                 <Tabs defaultValue={uniqueStatuses[0]?.toLowerCase() || "all"} className="mb-4">
                                   <TabsList className="mb-3">
-                                    {uniqueStatuses.map((status) => (
-                                      <TabsTrigger key={status} value={status.toLowerCase()} className="text-xs">
-                                        {capitalizeFirstLetter(status)} ({getEmployeesByStatus(groupEmployees, status).length})
-                                      </TabsTrigger>
-                                    ))}
+                                    {uniqueStatuses.map((status) => {
+                                      // ✅ Filter employees by team for approvers
+                                      const statusEmployees = getEmployeesByStatus(groupEmployees, status);
+                                      const filteredEmployees = isApprover && profile?.team
+                                        ? statusEmployees.filter(e => e.teamName === profile.team)
+                                        : statusEmployees;
+
+                                      return filteredEmployees.length > 0 && (
+                                        <TabsTrigger key={status} value={status.toLowerCase()} className="text-xs">
+                                          {capitalizeFirstLetter(status)} ({filteredEmployees.length})
+                                        </TabsTrigger>
+                                      );
+                                    })}
                                   </TabsList>
 
                                   {/* Status filtered employees */}
-                                  {uniqueStatuses.map((status) => (
-                                    <TabsContent key={status} value={status.toLowerCase()}>
-                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        {getEmployeesByStatus(groupEmployees, status).map((employee) => (
-                                          <div key={employee.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
-                                            <Avatar className="h-10 w-10 shrink-0">
-                                              <AvatarImage src={employee.pfImage || ""} />
-                                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                                                {getInitials(employee.employeeName)}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            <div className="min-w-0 flex-1">
-                                              <p className="text-sm font-medium truncate" title={employee.employeeName}>
-                                                {employee.employeeName}
-                                              </p>
-                                              <p className="text-xs text-muted-foreground truncate" title={`${employee.departmentName} • ${employee.teamName}`}>
-                                                {truncateText(employee.departmentName, 25)}
-                                                {employee.teamName && ` • ${truncateText(employee.teamName, 20)}`}
-                                              </p>
+                                  {uniqueStatuses.map((status) => {
+                                    // ✅ Filter employees by team for approvers
+                                    const statusEmployees = getEmployeesByStatus(groupEmployees, status);
+                                    const filteredEmployees = isApprover && profile?.team
+                                      ? statusEmployees.filter(e => e.teamName === profile.team)
+                                      : statusEmployees;
+
+                                    return filteredEmployees.length > 0 && (
+                                      <TabsContent key={status} value={status.toLowerCase()}>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                          {filteredEmployees.map((employee) => (
+                                            <div key={employee.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
+                                              <Avatar className="h-10 w-10 shrink-0">
+                                                <AvatarImage src={employee.pfImage || ""} />
+                                                <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                                  {getInitials(employee.employeeName)}
+                                                </AvatarFallback>
+                                              </Avatar>
+                                              <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium truncate" title={employee.employeeName}>
+                                                  {employee.employeeName}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground truncate" title={`${employee.departmentName} • ${employee.teamName}`}>
+                                                  {truncateText(employee.departmentName, 25)}
+                                                  {employee.teamName && ` • ${truncateText(employee.teamName, 20)}`}
+                                                </p>
+                                              </div>
                                             </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </TabsContent>
-                                  ))}
+                                          ))}
+                                        </div>
+                                      </TabsContent>
+                                    );
+                                  })}
                                 </Tabs>
                               </div>
                             )}
@@ -2220,6 +2343,158 @@ export function CourseDetail({
                 </div>
               </TabsContent>
             )}
+
+
+          {/* Enrollments Tab - Shows all enrolled employees in a table */}
+          <TabsContent value="enrollments">
+            <Card>
+              <CardHeader className="bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-lg font-semibold flex items-center gap-2">
+                      <HugeiconsIcon icon={UserGroupIcon} strokeWidth={1.5} className="h-5 w-5" />
+                      Enrolled Employees
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {isApprover && profile?.team
+                        ? `Employees from your team enrolled in this course (${enrollments.filter(e => e.teamName === profile.team && e.enrollmentStatus !== 'CANCELLED').length} active)`
+                        : `All employees enrolled in this course (${enrollments.filter(e => e.enrollmentStatus !== 'CANCELLED').length} active)`
+                      }
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Filter by name, dept, team, or group..."
+                      value={enrollmentSearchTerm}
+                      onChange={(e) => setEnrollmentSearchTerm(e.target.value)}
+                      className="w-[250px] h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {(() => {
+                  // Filter out cancelled enrollments
+                  let activeEnrollments = enrollments.filter(e => e.enrollmentStatus !== 'CANCELLED')
+
+                  // ✅ FILTER FOR APPROVERS: Only show employees from the same team
+                  if (isApprover && profile?.team) {
+                    activeEnrollments = activeEnrollments.filter(
+                      employee => employee.teamName === profile.team
+                    )
+                  }
+
+                  // Apply search filter
+                  let filteredEnrollments = activeEnrollments.filter((employee) => {
+                    if (!enrollmentSearchTerm.trim()) return true
+                    const searchLower = enrollmentSearchTerm.toLowerCase()
+                    return (
+                      (employee.employeeName || "").toLowerCase().includes(searchLower) ||
+                      (employee.departmentName || "").toLowerCase().includes(searchLower) ||
+                      (employee.teamName || "").toLowerCase().includes(searchLower) ||
+                      (employee.courseGroupName || "").toLowerCase().includes(searchLower) ||
+                      (employee.employeeId || "").toLowerCase().includes(searchLower) ||
+                      (employee.email || "").toLowerCase().includes(searchLower)
+                    )
+                  })
+
+                  // ✅ Sort by group name first, then by employee name
+                  filteredEnrollments = filteredEnrollments.sort((a, b) => {
+                    const groupA = a.courseGroupName || ''
+                    const groupB = b.courseGroupName || ''
+                    if (groupA !== groupB) {
+                      return groupA.localeCompare(groupB)
+                    }
+                    return (a.employeeName || '').localeCompare(b.employeeName || '')
+                  })
+
+                  if (filteredEnrollments.length === 0) {
+                    return (
+                      <div className="text-center py-8">
+                        <HugeiconsIcon icon={UserGroupIcon} strokeWidth={1.5} className="h-12 w-12 text-muted-foreground/50 mx-auto" />
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {enrollmentSearchTerm ? "No matching employees found" : "No employees enrolled in this course yet"}
+                        </p>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className="overflow-x-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="text-xs font-medium">Sr.</TableHead>
+                            <TableHead className="text-xs font-medium">Employee ID</TableHead>
+                            <TableHead className="text-xs font-medium">Name</TableHead>
+                            <TableHead className="text-xs font-medium">Email</TableHead>
+                            <TableHead className="text-xs font-medium">Department</TableHead>
+                            <TableHead className="text-xs font-medium">Team</TableHead>
+                            <TableHead className="text-xs font-medium">Group</TableHead>
+                            <TableHead className="text-xs font-medium">Enrolled At</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredEnrollments.map((employee, index) => {
+                            // Get group color based on group name
+                            const groupColors = [
+                              'bg-blue-100 text-blue-700 border-blue-200',
+                              'bg-purple-100 text-purple-700 border-purple-200',
+                              'bg-pink-100 text-pink-700 border-pink-200',
+                              'bg-indigo-100 text-indigo-700 border-indigo-200',
+                              'bg-teal-100 text-teal-700 border-teal-200',
+                              'bg-orange-100 text-orange-700 border-orange-200',
+                              'bg-cyan-100 text-cyan-700 border-cyan-200',
+                              'bg-amber-100 text-amber-700 border-amber-200',
+                              'bg-lime-100 text-lime-700 border-lime-200',
+                              'bg-emerald-100 text-emerald-700 border-emerald-200',
+                            ]
+                            const groupIndex = filteredEnrollments
+                              .filter(e => e.courseGroupName === employee.courseGroupName)
+                              .length > 0
+                              ? filteredEnrollments.findIndex(e => e.courseGroupName === employee.courseGroupName) % groupColors.length
+                              : index % groupColors.length
+
+                            return (
+                              <TableRow key={employee.id} className="hover:bg-muted/50 transition-colors">
+                                <TableCell className="text-xs text-center">{index + 1}</TableCell>
+                                <TableCell className="text-xs font-mono">{employee.employeeId || '-'}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarImage src={employee.pfImage || ""} />
+                                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                        {getInitials(employee.employeeName)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm font-medium">{employee.employeeName}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-xs">{employee.email || '-'}</TableCell>
+                                <TableCell className="text-xs">{employee.departmentName || '-'}</TableCell>
+                                <TableCell className="text-xs">{employee.teamName || '-'}</TableCell>
+                                <TableCell>
+                                  <Badge className={cn(
+                                    "text-xs font-normal",
+                                    groupColors[groupIndex % groupColors.length]
+                                  )}>
+                                    {employee.courseGroupName || '-'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {employee.enrolledAt ? format(new Date(employee.enrolledAt), "MMM d, yyyy") : '-'}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )
+                })()}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Sessions Tab - ONLY for self-study courses */}
           {course.courseType === "self-study" && (
@@ -2649,7 +2924,14 @@ export function CourseDetail({
                 </div>
 
                 {(() => {
-                  const activeEmployees = enrollments.filter(e => e.enrollmentStatus !== 'CANCELLED')
+                  // ✅ FILTER FOR APPROVERS: Only show employees from the same team
+                  let activeEmployees = enrollments.filter(e => e.enrollmentStatus !== 'CANCELLED')
+
+                  if (isApprover && profile?.team) {
+                    activeEmployees = activeEmployees.filter(
+                      employee => employee.teamName === profile.team
+                    )
+                  }
 
                   return activeEmployees.length > 0 && (
                     <div className="mt-8">
@@ -2660,9 +2942,16 @@ export function CourseDetail({
                               <HugeiconsIcon icon={UserGroupIcon} strokeWidth={1.5} className="h-5 w-5" />
                               Enrolled Employees ({activeEmployees.length})
                             </h4>
-                            <Badge variant="outline" className="text-xs">
-                              {activeEmployees.filter(e => e.enrollmentStatus === 'APPROVED').length} Approved
-                            </Badge>
+                            <div className="flex items-center gap-3">
+                              <Badge variant="outline" className="text-xs">
+                                {activeEmployees.filter(e => e.enrollmentStatus === 'APPROVED').length} Approved
+                              </Badge>
+                              {isApprover && profile?.team && (
+                                <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-200 bg-blue-50">
+                                  Team: {profile.team}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent className="pt-4">

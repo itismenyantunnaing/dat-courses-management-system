@@ -125,6 +125,11 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
     const prevGroupsRef = useRef<any[]>([])
     // Track the previous number of groups
     const prevGroupCountRef = useRef<number>(0);
+    
+    // Ref for the command list container to detect scroll
+    const commandListRef = useRef<HTMLDivElement>(null);
+    // Ref to track if we're currently loading more
+    const isLoadingMoreRef = useRef(false);
 
     const currentUserId = session?.userId;
 
@@ -465,6 +470,33 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
 
     const hasMoreLearners = visibleLearnersCount < displayedLearners.length
 
+    // Handle scroll to load more
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.currentTarget;
+        const bottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 10; // 10px threshold
+        
+        if (bottom && hasMoreLearners && !isLoadingMoreRef.current) {
+            isLoadingMoreRef.current = true;
+            setVisibleLearnersCount(prev => {
+                const newCount = prev + AVAILABLE_LEARNERS_PER_PAGE;
+                return Math.min(newCount, displayedLearners.length);
+            });
+            // Reset loading state after a small delay
+            setTimeout(() => {
+                isLoadingMoreRef.current = false;
+            }, 200);
+        }
+    }, [hasMoreLearners, displayedLearners.length]);
+
+    // Reset scroll detection when search query changes
+    useEffect(() => {
+        isLoadingMoreRef.current = false;
+        // Reset scroll position when search changes
+        if (commandListRef.current) {
+            commandListRef.current.scrollTop = 0;
+        }
+    }, [searchQuery]);
+
     const handleSeeMore = useCallback(() => {
         setVisibleLearnersCount(prev => prev + AVAILABLE_LEARNERS_PER_PAGE)
     }, [])
@@ -735,7 +767,8 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
                         )}
                     </span>
                 </Label>
-                {isTrainer && !isActiveGroupTemporary && (
+                {/* ✅ REMOVED isTrainer check - Now available to all users */}
+                {!isActiveGroupTemporary && (
                     <Button
                         type="button"
                         variant="ghost"
@@ -818,22 +851,21 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
                                             )}
                                         </div>
                                     </div>
-                                    {!isInTemporaryGroup && (
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                            onClick={() => handleUnenrollEmployee(employee.id, employee.employeeName)}
-                                            disabled={isUnenrolling || isTransitioning || isChanging}
-                                        >
-                                            {isUnenrolling || isTransitioning ? (
-                                                <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-                                            ) : (
-                                                <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
-                                            )}
-                                        </Button>
-                                    )}
+                                    {/* ✅ REMOVED isInTemporaryGroup check for unenroll button - always show */}
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => handleUnenrollEmployee(employee.id, employee.employeeName)}
+                                        disabled={isUnenrolling || isTransitioning || isChanging}
+                                    >
+                                        {isUnenrolling || isTransitioning ? (
+                                            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                                        ) : (
+                                            <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
+                                        )}
+                                    </Button>
                                 </div>
 
                                 {isTrainer && onAdminChangeGroup && !isInTemporaryGroup && availableGroups.length > 0 && (
@@ -974,18 +1006,23 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
                 </div>
             )}
 
-            {isTrainer && !isActiveGroupTemporary && (
+            {/* ✅ REMOVED isTrainer check - CommandDialog available to all users */}
+            {!isActiveGroupTemporary && (
                 <CommandDialog open={learnersCommandOpen} onOpenChange={setLearnersCommandOpen}>
                     <Command className="gap-3" shouldFilter={false}>
                         <CommandInput
-                            placeholder="Search employees by name, email, department..."
+                            placeholder="Search employees by name, department or team..."
                             value={searchQuery}
                             onValueChange={(value) => {
                                 setSearchQuery(value)
                                 setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
                             }}
                         />
-                        <CommandList>
+                        <CommandList 
+                            ref={commandListRef}
+                            onScroll={handleScroll}
+                            className="max-h-[400px] overflow-y-auto"
+                        >
                             <CommandEmpty>
                                 {searchQuery && displayedLearners.length === 0 ? (
                                     <div className="py-6 text-center text-sm text-muted-foreground">
@@ -1002,16 +1039,23 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
                             </CommandGroup>
 
                             {hasMoreLearners && (
-                                <div className="border-t p-3">
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Button type="button" variant="outline" size="default" onClick={handleSeeMore} className="w-full gap-2">
-                                            <span>See More</span>
-                                            <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} className="h-4 w-4" />
-                                        </Button>
+                                <div className="border-t p-4">
+                                    <div className="flex flex-col items-center gap-3">
+                                        {/* Loading indicator at the bottom */}
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></span>
+                                            <span>Loading more employees...</span>
+                                        </div>
                                         <span className="text-xs text-muted-foreground">
                                             Showing {visibleLearners.length} of {displayedLearners.length} employees
                                         </span>
                                     </div>
+                                </div>
+                            )}
+                            
+                            {!hasMoreLearners && displayedLearners.length > 0 && (
+                                <div className="border-t p-3 text-center text-xs text-muted-foreground">
+                                    Showing all {displayedLearners.length} employees
                                 </div>
                             )}
                         </CommandList>
