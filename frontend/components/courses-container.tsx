@@ -10,6 +10,7 @@ import {
   Search01Icon,
   DiplomaIcon,
   ArrowLeft01Icon,
+  CourseIcon,
 } from "@hugeicons/core-free-icons"
 import { Course, type CourseCategory } from "@/types/course"
 import { CourseCard } from "../components/cards/course-card"
@@ -523,7 +524,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
                   onClick={handleNewCourse}
                   className="bg-primary hover:bg-primary/90"
                 >
-                  <HugeiconsIcon icon={DiplomaIcon} strokeWidth={2} />
+                  <HugeiconsIcon icon={CourseIcon} strokeWidth={2} />
                   New Course
                 </Button>
               </div>

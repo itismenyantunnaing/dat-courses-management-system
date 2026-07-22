@@ -33,6 +33,7 @@ import ApproverDashboardContainer from "@/components/Dashboard/approverDashboard
 import LearnerDashboardContainer from "@/components/Dashboard/learnerDashboard-container"
 import { FeedbackContainer } from "@/components/feedback-container"
 import SelfStudyProgessReportContainer from "@/components/selfStudyProgess-report-container"
+import { AuditLogsContainer } from "@/components/auditLogs-container"
 
 interface DashboardClientProps {
   userData: {
@@ -62,7 +63,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Initialize session in Zustand store when component mounts
   useEffect(() => {
     if (!initialized.current && userData) {
-      ; (async () => {
+      ;(async () => {
         setSession(userData)
         await fetch_profile(userData.userId)
         initialized.current = true
@@ -75,7 +76,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     setMounted(true)
     // Attach store to window for global access in non-hook files
     if (typeof window !== "undefined") {
-      ; (window as any).mainStore = mainStore
+      ;(window as any).mainStore = mainStore
     }
   }, [])
 
@@ -114,21 +115,21 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       case "learner-dashboard":
         return "Learner Dashboard"
       case "employees":
-        return "Employee Management"
+        return "Employees"
       case "courses":
-        return "Course Management"
+        return "Courses"
       case "current_target_level":
-        return "Current Target Level Management"
+        return "Current Target Level"
       case "seminar":
         return "Seminar Management"
       case "exams":
         return "Exam Management"
       case "skills":
-        return "Skill Management"
+        return "Skills"
       case "holidays":
-        return "Holiday Management"
+        return "Holidays"
       case "japanese-certificates":
-        return "Japanese Certificates Management"
+        return "Japanese Certificates"
       case "certificates-requests":
         return "Certificates Requests Management"
       case "feedback":
@@ -137,6 +138,11 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         return "Exam Progress Report"
       case "self_study_progress":
         return "Self Study Progress Report"
+        return "Certificates Requests"
+      case "feedback":
+        return "Learners' feedback"
+      case "audit_logs":
+        return "Audit logs"
       default:
         return "Dashboard"
     }
@@ -158,6 +164,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     { value: "skills", component: SkillContainer },
     { value: "current_target_level", component: CurrentTargetContainer },
     { value: "holidays", component: HolidaysContainer },
+    { value: "audit_logs", component: AuditLogsContainer },
     { value: "exam_progress_report", component: ExamProgressReportContainer },
     { value: "self_study_progress", component: SelfStudyProgessReportContainer },
     { value: "japanese-certificates", component: JapaneseCertificateContainer },
@@ -200,7 +207,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                   orientation="vertical"
                   className="mr-2 data-vertical:h-4 data-vertical:self-auto"
                 />
-                <p>{getCurrentLabel()}</p>
+                <h2 className="text-xl font-semibold tracking-tight">
+                  {getCurrentLabel()}
+                </h2>
               </div>
               <div className="flex items-center gap-2">
                 <Button

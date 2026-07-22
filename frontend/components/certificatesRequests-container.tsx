@@ -53,7 +53,9 @@ import {
 import { cn } from "@/lib/utils"
 // Import the drawer components
 import { ApproveCertificateDrawer } from "@/components/drawers/certificate/approveCertificate-drawer"
+import { CertificateCard } from "@/components/cards/certificate-card"
 import { mainStore } from "@/store/mainStore"
+import { JapaneseCertificate } from "@/types/certificate"
 
 // Types
 interface CertificateRequest {
@@ -104,13 +106,13 @@ const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
 const getStatusBadge = (status: string) => {
   switch (status.toLowerCase()) {
     case "approved":
-      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950"
+      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
     case "pending":
-      return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-950"
+      return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
     case "rejected":
-      return "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950"
+      return "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
     default:
-      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
+      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
   }
 }
 
@@ -154,93 +156,30 @@ const getInitials = (name: string) => {
     .slice(0, 2)
 }
 
-// Certificate Card Component
-const CertificateCard = ({
-  certificate,
-  onClick,
-}: {
-  certificate: CertificateRequest
-  onClick: () => void
-}) => {
-  const [imageError, setImageError] = useState(false)
-  const imageUrl = certificate.filePath || "/placeholder-certificate.png"
-  const status = certificate.status || "pending"
-
-  return (
-    <Card
-      className="group cursor-pointer overflow-hidden pbs-0 transition-all hover:border-primary/50"
-      onClick={onClick}
-    >
-      <div className="relative">
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-          {!imageError ? (
-            <img
-              src={imageUrl}
-              alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted/50">
-              <div className="text-center">
-                <div className="mb-2 text-4xl">📄</div>
-                <p className="text-sm text-muted-foreground">
-                  No Image Available
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Status Badge - Top Right */}
-          <div className="absolute top-3 right-3">
-            <Badge
-              className={`${getStatusBadge(status)} px-3 py-1 text-xs font-medium tracking-wider uppercase`}
-            >
-              {status}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Certificate Type with Level */}
-        <div className="px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between">
-            <h3 className="line-clamp-1 text-lg leading-tight font-semibold">
-              {certificate.certificateType}
-            </h3>
-            <span className="shrink-0 text-sm text-muted-foreground">
-              {certificate.japaneseLevel}
-            </span>
-          </div>
-        </div>
-
-        {/* Employee Information */}
-        <div className="border-t px-4 pt-2 pb-4">
-          <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-            <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage
-                src={certificate.employee.avatar}
-                alt={certificate.employee.name}
-              />
-              <AvatarFallback className="rounded-lg">
-                {getInitials(certificate.employee.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">
-                {certificate.employee.name}
-              </span>
-              <span className="truncate text-xs text-muted-foreground">
-                {certificate.employee.email}
-              </span>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {new Date(certificate.submittedDate).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Card>
-  )
+// Transform CertificateRequest to JapaneseCertificate for the shared card
+const transformToCertificate = (
+  cert: CertificateRequest
+): JapaneseCertificate => {
+  return {
+    id: cert.id,
+    certificateType: cert.certificateType,
+    japaneseLevel: cert.japaneseLevel,
+    filePath: cert.filePath,
+    verificationStatus: cert.status,
+    remark: "",
+    verifiedAt: cert.status !== "pending" ? new Date() : undefined,
+    verifiedByEmployeeName: "",
+    employee: {
+      name: cert.employee.name,
+      email: cert.employee.email,
+      avatar: cert.employee.avatar,
+    },
+    createdAt: new Date(cert.submittedDate),
+    employeeName: cert.employee.name,
+    email: cert.employee.email,
+    employeeId: cert.employee.id,
+    teamName: cert.teamName,
+  } as JapaneseCertificate
 }
 
 export function CertificatesRequestsContainer() {
@@ -284,7 +223,7 @@ export function CertificatesRequestsContainer() {
     })
   )
 
-  // ✅ Get total count (unfiltered by status) - MOVED HERE
+  // ✅ Get total count (unfiltered by status)
   const getTotalCount = () => {
     let filtered = transformedCertificates
 
@@ -301,9 +240,8 @@ export function CertificatesRequestsContainer() {
     return filtered.length
   }
 
-  // ✅ Get counts for each status - MOVED HERE
+  // ✅ Get counts for each status
   const getStatusCount = (status: string) => {
-    // Apply same team filtering for counts
     let filtered = transformedCertificates
 
     if (isApprover && profile?.team) {
@@ -354,11 +292,7 @@ export function CertificatesRequestsContainer() {
   const getFilteredCertificates = () => {
     let filtered = transformedCertificates
 
-    // 🔒 SECURITY: Only show certificates if user is approver and team matches
-    // Check if user role is "approver"
-
     if (isApprover && profile?.team) {
-      // Filter certificates where employee's team matches approver's team
       filtered = filtered.filter((cert) => {
         const certTeam = cert.employee.teamName || cert.teamName || ""
         const approverTeam = profile.team || ""
@@ -367,17 +301,13 @@ export function CertificatesRequestsContainer() {
     } else if (isAdmin) {
       filtered = transformedCertificates
     } else if (!isApprover) {
-      // If not approver, show empty results or you could show all
-      // For security, we'll return empty array for non-approvers
       filtered = []
     }
 
-    // Filter by status tab
     if (statusTab !== "all") {
       filtered = filtered.filter((cert) => cert.status === statusTab)
     }
 
-    // Filter by search term
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase()
       filtered = filtered.filter((cert) => {
@@ -416,12 +346,9 @@ export function CertificatesRequestsContainer() {
   const handleCertificateClick = (certificate: CertificateRequest) => {
     setSelectedCertificate(certificate)
 
-    // If pending, open approve drawer (which has both approve and deny buttons)
     if (certificate.status === "pending") {
       setApproveDrawerOpen(true)
     } else {
-      // For approved/rejected, you might want to show a view-only drawer
-      // For now, we'll just show approve drawer but you can customize
       setApproveDrawerOpen(true)
     }
   }
@@ -429,7 +356,6 @@ export function CertificatesRequestsContainer() {
   // Handle approve success
   const handleApproveSuccess = async (id: string, remark: string) => {
     console.log("✅ Approved certificate:", id, remark)
-    // Refetch all certificates
     await fetch_AllCertificates()
     setApproveDrawerOpen(false)
     setSelectedCertificate(null)
@@ -438,7 +364,6 @@ export function CertificatesRequestsContainer() {
   // Handle deny success
   const handleDenySuccess = async (id: string, remark: string) => {
     console.log("❌ Denied certificate:", id, remark)
-    // Refetch all certificates
     await fetch_AllCertificates()
     setDenyDrawerOpen(false)
     setSelectedCertificate(null)
@@ -476,7 +401,6 @@ export function CertificatesRequestsContainer() {
     return pages
   }
 
-  // Column headers
   const certificateHeaders = [
     { field: "sr", header_name: "Sr." },
     { field: "employee", header_name: "Employee" },
@@ -498,7 +422,6 @@ export function CertificatesRequestsContainer() {
     )
   }
 
-  // If not approver, show access denied message
   if (!isApprover && !isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -750,7 +673,7 @@ export function CertificatesRequestsContainer() {
               </Table>
             </div>
           ) : (
-            // Card View
+            // Card View - Using shared CertificateCard component
             <div className="mx-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {paginatedCertificates.length === 0 ? (
@@ -767,8 +690,9 @@ export function CertificatesRequestsContainer() {
                   paginatedCertificates.map((certificate) => (
                     <CertificateCard
                       key={certificate.id}
-                      certificate={certificate}
-                      onClick={() => handleCertificateClick(certificate)}
+                      certificate={transformToCertificate(certificate)}
+                      onEdit={() => handleCertificateClick(certificate)}
+                      showEmployeeInfo={true}
                     />
                   ))
                 )}
@@ -873,7 +797,6 @@ export function CertificatesRequestsContainer() {
         certificate={selectedCertificate as any}
         onApprove={handleApproveSuccess}
         onDeny={() => {
-          // Close approve drawer and open deny drawer
           setApproveDrawerOpen(false)
           setDenyDrawerOpen(true)
         }}

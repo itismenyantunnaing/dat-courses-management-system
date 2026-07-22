@@ -421,9 +421,7 @@ export function HolidaysContainer({
 
           {/* Table */}
           <div
-            className={cn(
-              "relative overflow-x-auto rounded-md border-y",
-            )}
+            className={cn("relative overflow-x-auto rounded-md border-y")}
             style={{ zIndex: 1 }}
           >
             <Table key={refreshKey}>

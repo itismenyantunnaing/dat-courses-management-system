@@ -22,6 +22,8 @@ import {
   CodeIcon,
   TrendingUp,
   CalendarIcon,
+  MonitorDotIcon,
+  Certificate01Icon,
 } from "@hugeicons/core-free-icons"
 
 const STROKE_WIDTH = 2
@@ -227,24 +229,24 @@ export const adminData: SidebarConfig = {
           type: "primary",
           icon: (
             <HugeiconsIcon
-              icon={DocumentValidationIcon}
+              icon={Certificate01Icon}
               strokeWidth={STROKE_WIDTH}
             />
           ),
         },
       ],
     },
-    {
-      groupLabel: "Announcements",
-      items: [
-        {
-          title: "Exams",
-          tabId: "exams",
-          type: "primary",
-          icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
-        },
-      ],
-    },
+    // {
+    //   groupLabel: "Announcements",
+    //   items: [
+    //     {
+    //       title: "Exams",
+    //       tabId: "exams",
+    //       type: "primary",
+    //       icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
+    //     },
+    //   ],
+    // },
     {
       groupLabel: "Reports",
       items: [
@@ -289,6 +291,22 @@ export const adminData: SidebarConfig = {
           icon: (
             <HugeiconsIcon
               icon={ChatFeedback01Icon}
+              strokeWidth={STROKE_WIDTH}
+            />
+          ),
+        },
+      ],
+    },
+    {
+      groupLabel: "System",
+      items: [
+        {
+          title: "Audit logs",
+          tabId: "audit_logs",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon
+              icon={MonitorDotIcon}
               strokeWidth={STROKE_WIDTH}
             />
           ),
@@ -346,17 +364,17 @@ export const learnerData: SidebarConfig = {
         },
       ],
     },
-    {
-      groupLabel: "Announcements",
-      items: [
-        {
-          title: "Upcoming Exams",
-          tabId: "upcoming-exams",
-          type: "primary",
-          icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
-        },
-      ],
-    },
+    // {
+    //   groupLabel: "Announcements",
+    //   items: [
+    //     {
+    //       title: "Upcoming Exams",
+    //       tabId: "upcoming-exams",
+    //       type: "primary",
+    //       icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
+    //     },
+    //   ],
+    // },
     {
       groupLabel: "Achievements",
       items: [
@@ -364,13 +382,13 @@ export const learnerData: SidebarConfig = {
           title: "Offstore Certificates",
           tabId: "offstore-certificates",
           type: "primary",
-          icon: <HugeiconsIcon icon={DiplomaIcon} strokeWidth={STROKE_WIDTH} />,
+          icon: <HugeiconsIcon icon={Certificate01Icon} strokeWidth={STROKE_WIDTH} />,
         },
         {
           title: "Japanese Certificates",
           tabId: "japanese-certificates",
           type: "primary",
-          icon: <HugeiconsIcon icon={DiplomaIcon} strokeWidth={STROKE_WIDTH} />,
+          icon: <HugeiconsIcon icon={Certificate01Icon} strokeWidth={STROKE_WIDTH} />,
         },
       ],
     },

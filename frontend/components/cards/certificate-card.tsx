@@ -92,24 +92,24 @@ export function CertificateCard({
             </div>
           )}
 
-          {/* Status Badge - Top Right */}
+          {/* Status Badge - Top Right - New design */}
           <div className="absolute top-3 right-3">
             <Badge
-              className={`${getStatusStyles(status)} px-3 py-1 text-xs font-medium tracking-wider uppercase`}
+              className={`${getStatusStyles(status)}`}
             >
-              {status}
+              {`${status[0].toUpperCase()}${status.slice(1).toLowerCase()}`}
             </Badge>
           </div>
         </div>
 
         {/* Certificate Type with Level */}
         <div className="flex items-center justify-between px-4 pt-4">
-          <div className="flex min-w-0 items-center justify-between">
+          <div className="flex w-full items-center justify-between">
             <h3 className="line-clamp-1 text-lg leading-tight font-semibold">
               {certificate.certificateType}
             </h3>
             <span className="shrink-0 text-sm text-muted-foreground">
-              {certificate.japaneseLevel}aa
+              {certificate.japaneseLevel}
             </span>
           </div>
         </div>
@@ -128,8 +128,8 @@ export function CertificateCard({
 
         {/* Verified By Information - Show if certificate is verified */}
         {isVerified && verifiedByName && (
-          <div className="px-4">
-            <div className="rounded-md border border-muted bg-muted/30 px-3 py-2">
+          <div className="px-4 mt-2">
+            <div className="rounded-md border border-muted bg-muted/30 px-2 py-2">
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">
                   Verified By:

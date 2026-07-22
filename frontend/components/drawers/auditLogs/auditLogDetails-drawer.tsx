@@ -1,0 +1,289 @@
+"use client"
+
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  UserIcon,
+  ClockIcon,
+  MonitorDotIcon,
+  DatabaseIcon,
+  FileSearchIcon,
+  ArrowLeft01Icon,
+} from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
+
+// Types
+interface AuditLog {
+  id: number
+  employee_id: string
+  employee_name: string
+  action: string
+  module: string
+  old_value: string | null
+  new_value: string | null
+  ip_address: string
+  created_at: string
+}
+
+interface AuditLogDetailsDrawerProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  log: AuditLog | null
+}
+
+// Helper to get initials
+const getInitials = (name: string) => {
+  return (
+    name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "U"
+  )
+}
+
+// Helper to parse JSON or return as is
+const parseJSON = (value: string | null) => {
+  if (!value) return null
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
+// Helper to format JSON for display
+const formatJSON = (value: string | null) => {
+  if (!value) return "-"
+  try {
+    const parsed = JSON.parse(value)
+    return JSON.stringify(parsed, null, 2)
+  } catch {
+    return value
+  }
+}
+
+// Helper to get changed fields (for diff view)
+const getChangedFields = (oldValue: string | null, newValue: string | null) => {
+  const old = parseJSON(oldValue)
+  const newVal = parseJSON(newValue)
+
+  if (
+    !old ||
+    !newVal ||
+    typeof old !== "object" ||
+    typeof newVal !== "object"
+  ) {
+    return null
+  }
+
+  const changes: { field: string; old: any; new: any }[] = []
+  const allKeys = new Set([...Object.keys(old), ...Object.keys(newVal)])
+
+  allKeys.forEach((key) => {
+    if (old[key] !== newVal[key]) {
+      changes.push({
+        field: key,
+        old: old[key] ?? "null",
+        new: newVal[key] ?? "null",
+      })
+    }
+  })
+
+  return changes
+}
+
+// Get action badge color
+const getActionBadge = (action: string) => {
+  switch (action) {
+    case "CREATE":
+      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+    case "UPDATE":
+      return "bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300"
+    case "DELETE":
+      return "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
+    default:
+      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
+  }
+}
+
+// Format date
+const formatDate = (dateStr: string) => {
+  const date = new Date(dateStr)
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+export function AuditLogDetailsDrawer({
+  open,
+  onOpenChange,
+  log,
+}: AuditLogDetailsDrawerProps) {
+  if (!log) return null
+
+  const changes = getChangedFields(log.old_value, log.new_value)
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent className="right-0 left-auto h-full w-[90%] sm:w-[80%] md:w-[65%] lg:w-[55%] xl:w-[45%]">
+        <DrawerHeader className="shrink-0 border-b">
+          <div className="flex items-center gap-2">
+            <div className="flex w-full items-center justify-between gap-2">
+              <DrawerTitle className="text-lg font-semibold">
+                Audit Log Details
+              </DrawerTitle>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <HugeiconsIcon
+                  icon={ClockIcon}
+                  strokeWidth={2}
+                  className="h-4 w-4"
+                />
+                <p className="text-sm">
+                  {formatDate(log.created_at)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </DrawerHeader>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          {/* Employee Info with Avatar */}
+          <div className="mb-6 flex w-full items-center justify-between">
+            <div className="flex items-center gap-2 rounded-lg py-2">
+              <Avatar className="h-12 w-12 rounded-full">
+                <AvatarImage
+                  src="/avatars/default.jpg"
+                  alt={log.employee_name}
+                />
+                <AvatarFallback className="rounded-full text-sm font-medium">
+                  {getInitials(log.employee_name)}
+                </AvatarFallback>
+              </Avatar>
+
+              <div>
+                <p className="text-base font-semibold">{log.employee_name}</p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{log.employee_id}</span>
+                  <span>•</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-medium">IP Address</h4>
+              <p className="text-sm text-muted-foreground">{log.ip_address}</p>
+            </div>
+          </div>
+
+          {/* Changes Section - Old and New Value in one row */}
+          <div>
+            <div className="flex gap-2">
+              <h4 className="mb-3 text-sm font-semibold">Changes</h4>
+              <span>•</span>
+              <Badge className={getActionBadge(log.action)}>{log.action}</Badge>
+              <span>in</span>
+              <Badge variant="outline" className="text-xs">
+                {log.module}
+              </Badge>
+            </div>
+
+            {/* If there are changes, show diff view */}
+            {changes && changes.length > 0 ? (
+              <div className="space-y-2">
+                {changes.map((change, idx) => (
+                  <div key={idx} className="rounded-lg border p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {change.field}
+                      </span>
+                      <Badge variant="outline" className="text-[10px]">
+                        changed
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-md bg-red-50 p-2 dark:bg-red-950/20">
+                        <p className="text-[10px] font-medium text-red-600 dark:text-red-400">
+                          Old Value
+                        </p>
+                        <p className="font-mono text-sm text-red-700 line-through dark:text-red-300">
+                          {String(change.old)}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-green-50 p-2 dark:bg-green-950/20">
+                        <p className="text-[10px] font-medium text-green-600 dark:text-green-400">
+                          New Value
+                        </p>
+                        <p className="font-mono text-sm font-medium text-green-700 dark:text-green-300">
+                          {String(change.new)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Show full JSON if no specific changes detected
+              <div className="grid grid-cols-2 gap-2">
+                {/* Old Value */}
+                <div className="rounded-lg border p-3">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
+                    Old Value
+                  </p>
+                  {log.old_value ? (
+                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap">
+                      {formatJSON(log.old_value)}
+                    </pre>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No previous value
+                    </p>
+                  )}
+                </div>
+
+                {/* New Value */}
+                <div className="rounded-lg border p-3">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
+                    New Value
+                  </p>
+                  {log.new_value ? (
+                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap">
+                      {formatJSON(log.new_value)}
+                    </pre>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No new value
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DrawerFooter className="shrink-0 border-t">
+          <DrawerClose asChild>
+            <Button variant="outline" className="w-full">
+              Close
+            </Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
+  )
+}
