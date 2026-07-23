@@ -113,6 +113,13 @@ public class EmployeeService {
         return employeeRepository.findByIsDeletedTrue()
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public EmployeeResponseDTO getDeletedById(String id) {
+        Employee e = employeeRepository.findByIdAndIsDeletedTrue(id)
+                .orElseThrow(() -> new RuntimeException("Deleted employee not found: " + id));
+        return toDTO(e);
+    }
 @Transactional(readOnly = true)
 public EmployeeWithSkillsResponseDTO getEmployeeProfile(String id) {
 

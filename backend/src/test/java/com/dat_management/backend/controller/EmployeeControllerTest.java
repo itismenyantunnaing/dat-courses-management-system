@@ -2,7 +2,9 @@ package com.dat_management.backend.controller;
 
 import com.dat_management.backend.dto.EmployeeRequestDTO;
 import com.dat_management.backend.dto.EmployeeResponseDTO;
+import com.dat_management.backend.service.AuditLogService;
 import com.dat_management.backend.service.EmployeeService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,9 +25,15 @@ class EmployeeControllerTest {
     @Mock
     private EmployeeService service;
 
+    @Mock
+    private AuditLogService auditLogService;
+
+    @Mock
+    private HttpServletRequest httpServletRequest;
+
     @Test
     void getAllWithoutFiltersReturnsAllEmployees() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         List<EmployeeResponseDTO> employees = List.of(response("EMP001", "Alice Admin"));
 
         when(service.getAll()).thenReturn(employees);
@@ -39,7 +47,7 @@ class EmployeeControllerTest {
 
     @Test
     void getAllWithNameFilterSearchesByName() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         List<EmployeeResponseDTO> employees = List.of(response("EMP001", "Alice Admin"));
 
         when(service.searchByName("Alice")).thenReturn(employees);
@@ -53,7 +61,7 @@ class EmployeeControllerTest {
 
     @Test
     void getAllWithStatusFilterReturnsEmployeesByStatus() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         List<EmployeeResponseDTO> employees = List.of(response("EMP002", "Bob Staff"));
 
         when(service.getByStatus("inactive")).thenReturn(employees);
@@ -67,7 +75,7 @@ class EmployeeControllerTest {
 
     @Test
     void getByIdReturnsEmployee() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         EmployeeResponseDTO employee = response("EMP001", "Alice Admin");
 
         when(service.getById("EMP001")).thenReturn(employee);
@@ -80,7 +88,7 @@ class EmployeeControllerTest {
 
     @Test
     void getDeletedReturnsDeletedEmployees() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         List<EmployeeResponseDTO> employees = List.of(response("EMP003", "Deleted User"));
 
         when(service.getDeleted()).thenReturn(employees);
@@ -93,7 +101,7 @@ class EmployeeControllerTest {
 
     @Test
     void createReturnsCreatedEmployee() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         EmployeeRequestDTO request = request("EMP001", "Alice Admin");
         EmployeeResponseDTO employee = response("EMP001", "Alice Admin");
 
@@ -107,7 +115,7 @@ class EmployeeControllerTest {
 
     @Test
     void createBulkReturnsCreatedEmployeesOnly() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         List<EmployeeRequestDTO> requests = List.of(request("EMP001", "Alice Admin"));
         List<EmployeeResponseDTO> created = List.of(response("EMP001", "Alice Admin"));
 
@@ -121,7 +129,7 @@ class EmployeeControllerTest {
 
     @Test
     void updateReturnsUpdatedEmployee() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         EmployeeRequestDTO request = request("EMP001", "Alice Updated");
         EmployeeResponseDTO employee = response("EMP001", "Alice Updated");
 
@@ -135,7 +143,7 @@ class EmployeeControllerTest {
 
     @Test
     void resignReturnsInactiveEmployee() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         EmployeeResponseDTO employee = response("EMP001", "Alice Admin");
         employee.setEmpStatus("inactive");
 
@@ -149,7 +157,7 @@ class EmployeeControllerTest {
 
     @Test
     void deleteSoftDeletesEmployeeAndReturnsSuccessResponse() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
 
         ResponseEntity<Map<String, Object>> response = controller.delete(List.of("EMP001"));
 
@@ -162,7 +170,7 @@ class EmployeeControllerTest {
 
     @Test
     void restoreReturnsRestoredEmployee() {
-        EmployeeController controller = new EmployeeController(service);
+        EmployeeController controller = new EmployeeController(service, auditLogService, httpServletRequest);
         EmployeeResponseDTO employee = response("EMP001", "Alice Admin");
 
         when(service.restore("EMP001")).thenReturn(employee);

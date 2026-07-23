@@ -2,7 +2,9 @@ package com.dat_management.backend.controller;
 
 import com.dat_management.backend.dto.CategoryDto;
 import com.dat_management.backend.dto.CourseDto;
+import com.dat_management.backend.service.AuditLogService;
 import com.dat_management.backend.service.CourseService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,9 +24,15 @@ class CourseControllerTest {
     @Mock
     private CourseService courseService;
 
+    @Mock
+    private AuditLogService auditLogService;
+
+    @Mock
+    private HttpServletRequest httpServletRequest;
+
     @Test
     void getAllCourses_returnsCoursesPayload() {
-        CourseController controller = new CourseController(courseService);
+        CourseController controller = new CourseController(courseService, auditLogService, httpServletRequest);
         CourseDto course = CourseDto.builder()
                 .id(100)
                 .courseName("JLPT N2 Trainer")
@@ -41,7 +49,7 @@ class CourseControllerTest {
 
     @Test
     void getCourseById_missingCourse_returnsNotFoundResponse() {
-        CourseController controller = new CourseController(courseService);
+        CourseController controller = new CourseController(courseService, auditLogService, httpServletRequest);
 
         when(courseService.getCourseById(99)).thenThrow(new RuntimeException("Course not found with id: 99"));
 
@@ -54,7 +62,7 @@ class CourseControllerTest {
 
     @Test
     void createCategory_validRequest_returnsCreatedCategory() {
-        CourseController controller = new CourseController(courseService);
+        CourseController controller = new CourseController(courseService, auditLogService, httpServletRequest);
         CategoryDto category = CategoryDto.builder()
                 .id(1)
                 .courseCategoryName("JLPT Exam Target Course")
