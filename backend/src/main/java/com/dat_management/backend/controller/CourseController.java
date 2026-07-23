@@ -1,7 +1,9 @@
 package com.dat_management.backend.controller;
 
 import com.dat_management.backend.dto.*;
+import com.dat_management.backend.service.AuditLogService;
 import com.dat_management.backend.service.CourseService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -18,7 +20,11 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class CourseController {
 
+    private static final String MODULE = "COURSES";
+
     private final CourseService courseService;
+    private final AuditLogService auditLogService;
+    private final HttpServletRequest httpServletRequest;
 
     // =========================================================
     // API 1 — GET /api/courses
@@ -56,6 +62,11 @@ public class CourseController {
             @RequestPart(value = "image", required = false) MultipartFile image) {
         try {
             CourseDto created = courseService.createCourse(req, image);
+
+            auditLogService.log("Create", MODULE,
+                    "Created new course - " + created.getCourseName(),
+                    null, created, httpServletRequest);
+
             Map<String, Object> slim = new HashMap<>();
             slim.put("id",          created.getId());
             slim.put("course_name", created.getCourseName());
@@ -83,7 +94,14 @@ public class CourseController {
             @PathVariable Integer id,
             @RequestBody CourseUpdateDto req) {
         try {
+            CourseDto oldValue = courseService.getCourseById(id);
             CourseDto updated = courseService.updateCourse(id, req);
+
+            auditLogService.log("Update", MODULE,
+                    "Course status updated from " + oldValue.getStatus() + " to " + updated.getStatus()
+                            + " - " + updated.getCourseName(),
+                    oldValue, updated, httpServletRequest);
+
             Map<String, Object> slim = new HashMap<>();
             slim.put("id",           updated.getId());
             slim.put("course_name",  updated.getCourseName());
@@ -108,7 +126,13 @@ public class CourseController {
     @DeleteMapping("/api/courses/{id}")
     public ResponseEntity<Map<String, Object>> deleteCourse(@PathVariable Integer id) throws IOException {
         try {
+            CourseDto oldValue = courseService.getCourseById(id);
             courseService.deleteCourse(id);
+
+            auditLogService.log("Delete", MODULE,
+                    "Removed outdated course from system - " + oldValue.getCourseName(),
+                    oldValue, null, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success", true);
             res.put("message", "Course deleted successfully");
@@ -127,9 +151,15 @@ public class CourseController {
     @PutMapping("/api/courses/{id}/restore")
     public ResponseEntity<Map<String, Object>> restoreCourse(@PathVariable Integer id) {
         try {
+            CourseDto restored = courseService.restoreCourse(id);
+
+            auditLogService.log("Update", MODULE,
+                    "Course restored - " + restored.getCourseName(),
+                    null, restored, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success", true);
-            res.put("course", courseService.restoreCourse(id));
+            res.put("course", restored);
             return ResponseEntity.ok(res);
         } catch (RuntimeException e) {
             Map<String, Object> err = new HashMap<>();
@@ -153,10 +183,16 @@ public class CourseController {
                 err.put("message", "Please select an image file");
                 return ResponseEntity.badRequest().body(err);
             }
+            Object updatedCourse = courseService.uploadCourseImage(id, file);
+
+            auditLogService.log("Update", MODULE,
+                    "Course image uploaded - course ID " + id,
+                    null, updatedCourse, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success", true);
             res.put("message", "Image uploaded successfully");
-            res.put("course", courseService.uploadCourseImage(id, file));
+            res.put("course", updatedCourse);
             return ResponseEntity.ok(res);
         } catch (RuntimeException e) {
             Map<String, Object> err = new HashMap<>();
@@ -172,10 +208,16 @@ public class CourseController {
     @DeleteMapping("/api/courses/{id}/image")
     public ResponseEntity<Map<String, Object>> deleteCourseImage(@PathVariable Integer id) {
         try {
+            Object updatedCourse = courseService.deleteCourseImage(id);
+
+            auditLogService.log("Update", MODULE,
+                    "Course image removed - course ID " + id,
+                    updatedCourse, null, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success", true);
             res.put("message", "Image deleted successfully");
-            res.put("course", courseService.deleteCourseImage(id));
+            res.put("course", updatedCourse);
             return ResponseEntity.ok(res);
         } catch (RuntimeException e) {
             Map<String, Object> err = new HashMap<>();
@@ -223,6 +265,11 @@ public class CourseController {
                     body.get("course_category_name"),
                     body.get("course_type")
             );
+
+            auditLogService.log("Create", MODULE,
+                    "New course category created - " + body.get("course_category_name"),
+                    null, cat, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success",  true);
             res.put("category", cat);
@@ -243,11 +290,17 @@ public class CourseController {
             @PathVariable Integer id,
             @RequestBody Map<String, String> body) {
         try {
+            CategoryDto oldValue = courseService.getCategoryById(id);
             CategoryDto cat = courseService.updateCategory(
                     id,
                     body.get("course_category_name"),
                     body.get("course_type")
             );
+
+            auditLogService.log("Update", MODULE,
+                    "Course category updated - ID " + id,
+                    oldValue, cat, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success",  true);
             res.put("category", cat);
@@ -266,7 +319,13 @@ public class CourseController {
     @DeleteMapping("/api/course-categories/{id}")
     public ResponseEntity<Map<String, Object>> deleteCategory(@PathVariable Integer id) {
         try {
+            CategoryDto oldValue = courseService.getCategoryById(id);
             courseService.deleteCategory(id);
+
+            auditLogService.log("Delete", MODULE,
+                    "Course category removed - ID " + id,
+                    oldValue, null, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success", true);
             res.put("message", "Category deleted successfully");
@@ -285,9 +344,15 @@ public class CourseController {
     @PutMapping("/api/course-categories/{id}/restore")
     public ResponseEntity<Map<String, Object>> restoreCategory(@PathVariable Integer id) {
         try {
+            CategoryDto restored = courseService.restoreCategory(id);
+
+            auditLogService.log("Update", MODULE,
+                    "Course category restored - ID " + id,
+                    null, restored, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success", true);
-            res.put("category", courseService.restoreCategory(id));
+            res.put("category", restored);
             return ResponseEntity.ok(res);
         } catch (RuntimeException e) {
             Map<String, Object> err = new HashMap<>();
@@ -296,24 +361,6 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err);
         }
     }
-
-    // =========================================================
-    // API 10 — GET /api/courses/:id/enrollments
-    // =========================================================
-    // @GetMapping("/api/courses/{id}/enrollments")
-    // public ResponseEntity<Map<String, Object>> getCourseEnrollments(@PathVariable Integer id) {
-    //     try {
-    //         List<CourseEnrollmentDto> enrollments = courseService.getCourseEnrollments(id);
-    //         Map<String, Object> res = new HashMap<>();
-    //         res.put("enrollments", enrollments);
-    //         return ResponseEntity.ok(res);
-    //     } catch (RuntimeException e) {
-    //         Map<String, Object> err = new HashMap<>();
-    //         err.put("success", false);
-    //         err.put("message", e.getMessage());
-    //         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err);
-    //     }
-    // }
 
     // =========================================================
     // API 21 — GET /api/courses/:id/groups/:groupId/sessions
@@ -347,7 +394,12 @@ public class CourseController {
         try {
             String sessionStatus = request.get("session_status");
             Map<String, Object> updated = courseService.updateSessionStatus(courseId, groupId, sessionId, sessionStatus);
-            
+
+            auditLogService.log("Update", MODULE,
+                    "Session status updated to " + sessionStatus
+                            + " - course " + courseId + ", group " + groupId + ", session " + sessionId,
+                    null, updated, httpServletRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("success", true);
             res.put("session", updated);

@@ -2,16 +2,19 @@ package com.dat_management.backend.repository;
 
 import com.dat_management.backend.entity.Course;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface CourseRepository extends JpaRepository<Course, Integer> {
 
-    // API 1: all non-deleted courses, newest first
-    List<Course> findByIsDeletedFalseOrderByCreatedAtDesc();
-
-    // API 2, 4, 5: single non-deleted course
+    List<Course> findAllByIsDeletedFalse();
     Optional<Course> findByIdAndIsDeletedFalse(Integer id);
+    List<Course> findAllByIsDeletedTrue();
+    Optional<Course> findByIdAndIsDeletedTrue(Integer id);
 
+    List<Course> findByIsDeletedFalseOrderByCreatedAtDesc();
     List<Course> findByIsDeletedFalse();
 }

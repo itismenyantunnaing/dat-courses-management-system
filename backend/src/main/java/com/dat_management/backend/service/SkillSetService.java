@@ -64,6 +64,13 @@ public class SkillSetService {
         return dto;
     }
 
+    @Transactional
+    public void deleteLanguageSkill(Integer id) {
+        EmployeeJapaneseProfile profile = languageProfileRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Language profile not found with id: " + id));
+        languageProfileRepository.delete(profile);
+    }
+
    @Transactional
     public List<LanguageSkillDto> saveBulkLanguageSkills(List<LanguageSkillDto> dtos) {
         List<LanguageSkillDto> savedSkills = new ArrayList<>();
@@ -167,6 +174,13 @@ public class SkillSetService {
         dto.setId(saved.getId());
         dto.setTotalLevel(totalLevel);
         return dto;
+    }
+
+    @Transactional
+    public void deleteManagementSkill(Integer id) {
+        ManagementScore score = managementScoreRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Management score not found with id: " + id));
+        managementScoreRepository.delete(score);
     }
 
     @Transactional
@@ -311,6 +325,13 @@ public class SkillSetService {
         EmployeeDevelopmentExperience saved = devExperienceRepository.save(experience);
         dto.setId(saved.getId());
         return dto;
+    }
+
+    @Transactional
+    public void deleteDevelopmentSkill(Integer id) {
+        EmployeeDevelopmentExperience exp = devExperienceRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Development experience not found with id: " + id));
+        devExperienceRepository.delete(exp);
     }
 
     @Transactional
@@ -489,6 +510,13 @@ public class SkillSetService {
         EmployeeSkill saved = employeeSkillRepository.save(employeeSkill);
         dto.setId(saved.getId());
         return dto;
+    }
+
+    @Transactional
+    public void deleteTechnicalSkill(Integer id) {
+        EmployeeSkill es = employeeSkillRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Technical skill not found with id: " + id));
+        employeeSkillRepository.delete(es);
     }
 
     @Transactional

@@ -2,7 +2,9 @@ package com.dat_management.backend.controller;
 
 import com.dat_management.backend.dto.skillset.*;
 import com.dat_management.backend.entity.DevelopmentType;
+import com.dat_management.backend.service.AuditLogService;
 import com.dat_management.backend.service.SkillSetService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,12 +25,15 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class SkillSetController {
 
+    private static final String MODULE = "SKILLS";
+
     private final SkillSetService skillSetService;
+    private final AuditLogService auditLogService;
+    private final HttpServletRequest httpServletRequest;
 
     // =============================================== LANGUAGE SKILLS
     // ===============================================
 
-    // Create a new language skill for an employee
     @PostMapping("/language")
     public ResponseEntity<?> saveLanguageSkill(@Valid @RequestBody LanguageSkillDto dto, BindingResult result) {
         if (result.hasErrors()) {
@@ -36,6 +41,9 @@ public class SkillSetController {
         }
         try {
             LanguageSkillDto savedSkill = skillSetService.saveLanguageSkill(dto);
+            auditLogService.log("Create", MODULE,
+                    "New language skill added for employee " + savedSkill.getEmployeeId(),
+                    null, savedSkill, httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -51,7 +59,6 @@ public class SkillSetController {
         }
     }
 
-    // Create multiple language skills for multiple employees
     @PostMapping("/language/bulk")
     public ResponseEntity<?> saveBulkLanguageSkills(@Valid @RequestBody List<LanguageSkillDto> dtos,
             BindingResult result) {
@@ -60,13 +67,15 @@ public class SkillSetController {
         }
         try {
             List<LanguageSkillDto> savedSkills = skillSetService.saveBulkLanguageSkills(dtos);
+            auditLogService.log("Create", MODULE,
+                    "Bulk language skill import - " + savedSkills.size() + " added",
+                    null, Map.of("count", savedSkills.size()), httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
                             "message", "Bulk language skills created successfully",
                             "data", savedSkills));
         } catch (RuntimeException e) {
-            // Check if it's an employee not found error
             if (e.getMessage() != null && e.getMessage().contains("Employee not found with id:")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("success", false, "message", e.getMessage()));
@@ -79,7 +88,6 @@ public class SkillSetController {
         }
     }
 
-    // Update an existing language skill by its ID
     @PutMapping("/language/{id}")
     public ResponseEntity<?> updateLanguageSkill(
             @PathVariable Integer id,
@@ -89,8 +97,12 @@ public class SkillSetController {
             return getErrorResponse(result);
         }
         try {
+            LanguageSkillDto oldValue = skillSetService.getLanguageSkillById(id);
             dto.setId(id);
             LanguageSkillDto updatedSkill = skillSetService.updateLanguageSkill(dto);
+            auditLogService.log("Update", MODULE,
+                    "Language skill updated at ID " + id,
+                    oldValue, updatedSkill, httpServletRequest);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Language skill updated successfully",
@@ -109,7 +121,21 @@ public class SkillSetController {
         }
     }
 
-    // Get a specific language skill by its ID
+    @DeleteMapping("/language/{id}")
+    public ResponseEntity<?> deleteLanguageSkill(@PathVariable Integer id) {
+        try {
+            LanguageSkillDto oldValue = skillSetService.getLanguageSkillById(id);
+            skillSetService.deleteLanguageSkill(id);
+            auditLogService.log("Delete", MODULE,
+                    "Language skill removed at ID " + id,
+                    oldValue, null, httpServletRequest);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/language/{id}")
     public ResponseEntity<?> getLanguageSkillById(@PathVariable Integer id) {
         try {
@@ -121,7 +147,6 @@ public class SkillSetController {
         }
     }
 
-    // Get a language skill by employee ID
     @GetMapping("/language/employee/{employeeId}")
     public ResponseEntity<?> getLanguageSkill(@PathVariable String employeeId) {
         try {
@@ -137,7 +162,6 @@ public class SkillSetController {
         }
     }
 
-    // Get all language skills
     @GetMapping("/language")
     public ResponseEntity<List<LanguageSkillDto>> getAllLanguageSkills() {
         return ResponseEntity.ok(skillSetService.getAllLanguageSkills());
@@ -146,7 +170,6 @@ public class SkillSetController {
     // ======================================== MANAGEMENT SKILLS
     // ================================================
 
-    // Create a new management skill for an employee
     @PostMapping("/management")
     public ResponseEntity<?> saveManagementSkill(@Valid @RequestBody ManagementSkillDto dto, BindingResult result) {
         if (result.hasErrors()) {
@@ -154,6 +177,9 @@ public class SkillSetController {
         }
         try {
             ManagementSkillDto savedSkill = skillSetService.saveManagementSkill(dto);
+            auditLogService.log("Create", MODULE,
+                    "New management skill added for employee " + savedSkill.getEmployeeId(),
+                    null, savedSkill, httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -169,7 +195,6 @@ public class SkillSetController {
         }
     }
 
-    // Create multiple management skills for multiple employees
     @PostMapping("/management/bulk")
     public ResponseEntity<?> saveBulkManagementSkills(@Valid @RequestBody List<ManagementSkillDto> dtos,
             BindingResult result) {
@@ -178,6 +203,9 @@ public class SkillSetController {
         }
         try {
             List<ManagementSkillDto> savedSkills = skillSetService.saveBulkManagementSkills(dtos);
+            auditLogService.log("Create", MODULE,
+                    "Bulk management skill import - " + savedSkills.size() + " added",
+                    null, Map.of("count", savedSkills.size()), httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -196,7 +224,6 @@ public class SkillSetController {
         }
     }
 
-    // Update an existing management skill by its ID
     @PutMapping("/management/{id}")
     public ResponseEntity<?> updateManagementSkill(
             @PathVariable Integer id,
@@ -206,8 +233,12 @@ public class SkillSetController {
             return getErrorResponse(result);
         }
         try {
+            ManagementSkillDto oldValue = skillSetService.getManagementSkillById(id);
             dto.setId(id);
             ManagementSkillDto updatedSkill = skillSetService.updateManagementSkill(dto);
+            auditLogService.log("Update", MODULE,
+                    "Management skill updated at ID " + id,
+                    oldValue, updatedSkill, httpServletRequest);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Management skill updated successfully",
@@ -226,7 +257,21 @@ public class SkillSetController {
         }
     }
 
-    // Get a specific management skill by its ID
+    @DeleteMapping("/management/{id}")
+    public ResponseEntity<?> deleteManagementSkill(@PathVariable Integer id) {
+        try {
+            ManagementSkillDto oldValue = skillSetService.getManagementSkillById(id);
+            skillSetService.deleteManagementSkill(id);
+            auditLogService.log("Delete", MODULE,
+                    "Management skill removed at ID " + id,
+                    oldValue, null, httpServletRequest);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/management/{id}")
     public ResponseEntity<?> getManagementSkillById(@PathVariable Integer id) {
         try {
@@ -238,7 +283,6 @@ public class SkillSetController {
         }
     }
 
-    // Get a management skill by employee ID
     @GetMapping("/management/employee/{employeeId}")
     public ResponseEntity<?> getManagementSkill(@PathVariable String employeeId) {
         try {
@@ -254,7 +298,6 @@ public class SkillSetController {
         }
     }
 
-    // Get all management skills
     @GetMapping("/management")
     public ResponseEntity<List<ManagementSkillDto>> getAllManagementSkills() {
         return ResponseEntity.ok(skillSetService.getAllManagementSkills());
@@ -263,7 +306,6 @@ public class SkillSetController {
     // =========================================== DEVELOPMENT SKILLS
     // ======================================
 
-    // Create a new development skill for an employee
     @PostMapping("/development")
     public ResponseEntity<?> saveDevelopmentSkill(@Valid @RequestBody DevelopmentSkillDto dto, BindingResult result) {
         if (result.hasErrors()) {
@@ -271,6 +313,9 @@ public class SkillSetController {
         }
         try {
             DevelopmentSkillDto savedSkill = skillSetService.saveDevelopmentSkill(dto);
+            auditLogService.log("Create", MODULE,
+                    "New development skill added for employee " + savedSkill.getEmployeeId(),
+                    null, savedSkill, httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -286,7 +331,6 @@ public class SkillSetController {
         }
     }
 
-    // Create multiple development skills for multiple employees
     @PostMapping("/development/bulk")
     public ResponseEntity<?> saveBulkDevelopmentSkills(@Valid @RequestBody List<DevelopmentSkillDto> dtos,
             BindingResult result) {
@@ -295,6 +339,9 @@ public class SkillSetController {
         }
         try {
             List<DevelopmentSkillDto> savedSkills = skillSetService.saveBulkDevelopmentSkills(dtos);
+            auditLogService.log("Create", MODULE,
+                    "Bulk development skill import - " + savedSkills.size() + " added",
+                    null, Map.of("count", savedSkills.size()), httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -331,15 +378,15 @@ public class SkillSetController {
         }
 
         if (!errors.isEmpty()) {
-            // If all failed, throw exception
             if (createdTypes.isEmpty()) {
                 throw new RuntimeException("All bulk operations failed: " + String.join("; ", errors));
             }
-            // If some succeeded, return partial success with warning (you might want to
-            // handle this differently)
-            // For now, we'll just return the successful ones and log errors
             System.err.println("Partial success - errors: " + String.join("; ", errors));
         }
+
+        auditLogService.log("Create", MODULE,
+                "Bulk development types created - " + createdTypes.size() + " added",
+                null, Map.of("count", createdTypes.size()), httpServletRequest);
 
         return new ResponseEntity<>(createdTypes, HttpStatus.CREATED);
     }
@@ -350,7 +397,6 @@ public class SkillSetController {
         return ResponseEntity.ok(activeTypes);
     }
 
-    // Update an existing development skill by its ID
     @PutMapping("/development/{id}")
     public ResponseEntity<?> updateDevelopmentSkill(
             @PathVariable Integer id,
@@ -360,8 +406,12 @@ public class SkillSetController {
             return getErrorResponse(result);
         }
         try {
+            DevelopmentSkillDto oldValue = skillSetService.getDevelopmentSkillById(id);
             dto.setId(id);
             DevelopmentSkillDto updatedSkill = skillSetService.updateDevelopmentSkill(dto);
+            auditLogService.log("Update", MODULE,
+                    "Development skill updated at ID " + id,
+                    oldValue, updatedSkill, httpServletRequest);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Development skill updated successfully",
@@ -380,7 +430,21 @@ public class SkillSetController {
         }
     }
 
-    // Get a specific development skill by its ID
+    @DeleteMapping("/development/{id}")
+    public ResponseEntity<?> deleteDevelopmentSkill(@PathVariable Integer id) {
+        try {
+            DevelopmentSkillDto oldValue = skillSetService.getDevelopmentSkillById(id);
+            skillSetService.deleteDevelopmentSkill(id);
+            auditLogService.log("Delete", MODULE,
+                    "Development skill removed at ID " + id,
+                    oldValue, null, httpServletRequest);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/development/{id}")
     public ResponseEntity<?> getDevelopmentSkillById(@PathVariable Integer id) {
         try {
@@ -392,7 +456,6 @@ public class SkillSetController {
         }
     }
 
-    // Get all development skills for a specific employee
     @GetMapping("/development/employee/{employeeId}")
     public ResponseEntity<?> getDevelopmentSkillsByEmployee(@PathVariable String employeeId) {
         try {
@@ -408,7 +471,6 @@ public class SkillSetController {
         }
     }
 
-    // Get all development skills
     @GetMapping("/development")
     public ResponseEntity<List<DevelopmentSkillDto>> getAllDevelopmentSkills() {
         return ResponseEntity.ok(skillSetService.getAllDevelopmentSkills());
@@ -417,7 +479,6 @@ public class SkillSetController {
     // ============================================ TECHNICAL SKILLS
     // =================================================
 
-    // Create a new technical skill for an employee
     @PostMapping("/technical")
     public ResponseEntity<?> saveTechnicalSkill(@Valid @RequestBody TechnicalSkillDto dto, BindingResult result) {
         if (result.hasErrors()) {
@@ -425,6 +486,9 @@ public class SkillSetController {
         }
         try {
             TechnicalSkillDto savedSkill = skillSetService.saveTechnicalSkill(dto);
+            auditLogService.log("Create", MODULE,
+                    "New technical skill added for employee " + savedSkill.getEmployeeId(),
+                    null, savedSkill, httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -440,7 +504,6 @@ public class SkillSetController {
         }
     }
 
-    // Create multiple technical skills for multiple employees
     @PostMapping("/technical/bulk")
     public ResponseEntity<?> saveBulkTechnicalSkills(@Valid @RequestBody List<TechnicalSkillDto> dtos,
             BindingResult result) {
@@ -449,6 +512,9 @@ public class SkillSetController {
         }
         try {
             List<TechnicalSkillDto> savedSkills = skillSetService.saveBulkTechnicalSkills(dtos);
+            auditLogService.log("Create", MODULE,
+                    "Bulk technical skill import - " + savedSkills.size() + " added",
+                    null, Map.of("count", savedSkills.size()), httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -467,7 +533,6 @@ public class SkillSetController {
         }
     }
 
-    // Update an existing technical skill by its ID
     @PutMapping("/technical/{id}")
     public ResponseEntity<?> updateTechnicalSkill(
             @PathVariable Integer id,
@@ -477,8 +542,12 @@ public class SkillSetController {
             return getErrorResponse(result);
         }
         try {
+            TechnicalSkillDto oldValue = skillSetService.getTechnicalSkillById(id);
             dto.setId(id);
             TechnicalSkillDto updatedSkill = skillSetService.updateTechnicalSkill(dto);
+            auditLogService.log("Update", MODULE,
+                    "Technical skill updated at ID " + id,
+                    oldValue, updatedSkill, httpServletRequest);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Technical skill updated successfully",
@@ -497,7 +566,21 @@ public class SkillSetController {
         }
     }
 
-    // Get a specific technical skill by its ID
+    @DeleteMapping("/technical/{id}")
+    public ResponseEntity<?> deleteTechnicalSkill(@PathVariable Integer id) {
+        try {
+            TechnicalSkillDto oldValue = skillSetService.getTechnicalSkillById(id);
+            skillSetService.deleteTechnicalSkill(id);
+            auditLogService.log("Delete", MODULE,
+                    "Technical skill removed at ID " + id,
+                    oldValue, null, httpServletRequest);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/technical/{id}")
     public ResponseEntity<?> getTechnicalSkillById(@PathVariable Integer id) {
         try {
@@ -513,6 +596,9 @@ public class SkillSetController {
     public ResponseEntity<?> saveCategoryWithSkills(@RequestBody TechnicalSkillCategoryResponseDto dto) {
         try {
             TechnicalSkillCategoryResponseDto saved = skillSetService.saveCategoryWithSkills(dto);
+            auditLogService.log("Create", MODULE,
+                    "Technical skill category saved",
+                    null, saved, httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -529,6 +615,9 @@ public class SkillSetController {
         try {
             List<TechnicalSkillCategoryResponseDto> savedCategories = skillSetService
                     .saveBulkCategoriesWithSkills(dtos);
+            auditLogService.log("Create", MODULE,
+                    "Bulk technical skill categories saved - " + savedCategories.size() + " added",
+                    null, Map.of("count", savedCategories.size()), httpServletRequest);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "success", true,
@@ -543,7 +632,6 @@ public class SkillSetController {
         }
     }
 
-    // Get all technical skills for a specific employee
     @GetMapping("/technical/employee/{employeeId}")
     public ResponseEntity<?> getTechnicalSkillsByEmployee(@PathVariable String employeeId) {
         try {
@@ -559,13 +647,11 @@ public class SkillSetController {
         }
     }
 
-    // Get all technical skills
     @GetMapping("/technical")
     public ResponseEntity<List<TechnicalSkillDto>> getAllTechnicalSkills() {
         return ResponseEntity.ok(skillSetService.getAllTechnicalSkills());
     }
 
-    // Get all technical skills grouped by category and sub-category structure
     @GetMapping("/technical/categories")
     public ResponseEntity<List<TechnicalSkillCategoryResponseDto>> getAllTechnicalSkillsWithCategoryStructure() {
         return ResponseEntity.ok(skillSetService.getAllTechnicalSkillsWithCategoryStructure());
@@ -573,7 +659,6 @@ public class SkillSetController {
 
     // ==================== HELPER METHODS ====================
 
-    // Generate error response for validation failures
     private ResponseEntity<Map<String, Object>> getErrorResponse(BindingResult result) {
         Map<String, String> errors = result.getFieldErrors().stream()
                 .collect(Collectors.toMap(

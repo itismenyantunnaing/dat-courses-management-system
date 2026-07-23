@@ -3,7 +3,9 @@ package com.dat_management.backend.controller;
 import com.dat_management.backend.dto.EmployeeRequestDTO;
 import com.dat_management.backend.dto.EmployeeResponseDTO;
 import com.dat_management.backend.dto.skillset.EmployeeWithSkillsResponseDTO;
+import com.dat_management.backend.service.AuditLogService;
 import com.dat_management.backend.service.EmployeeService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -20,7 +22,11 @@ import java.util.Map;
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class EmployeeController {
 
+    private static final String MODULE = "EMPLOYEES";
+
     private final EmployeeService service;
+    private final AuditLogService auditLogService;
+    private final HttpServletRequest httpServletRequest;
 
     @GetMapping("/{id}/profile")
     public ResponseEntity<EmployeeWithSkillsResponseDTO> getEmployeeProfile(@PathVariable String id) {
@@ -52,7 +58,11 @@ public class EmployeeController {
 
     @PostMapping
     public ResponseEntity<EmployeeResponseDTO> create(@Valid @RequestBody EmployeeRequestDTO dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(dto));
+        EmployeeResponseDTO created = service.create(dto);
+        auditLogService.log("Create", MODULE,
+                "Created new employee profile - " + created.getId(),
+                null, created, httpServletRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PostMapping("/bulk")
@@ -61,6 +71,9 @@ public class EmployeeController {
         Map<String, Object> result = service.createBulk(dtos);
         @SuppressWarnings("unchecked")
         List<EmployeeResponseDTO> created = (List<EmployeeResponseDTO>) result.get("created");
+        auditLogService.log("Create", MODULE,
+                "Bulk employee import - " + created.size() + " employees added",
+                null, Map.of("count", created.size()), httpServletRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -68,12 +81,22 @@ public class EmployeeController {
     public ResponseEntity<EmployeeResponseDTO> update(
             @PathVariable String id,
             @Valid @RequestBody EmployeeRequestDTO dto) {
-        return ResponseEntity.ok(service.update(id, dto));
+        EmployeeResponseDTO oldValue = service.getById(id);
+        EmployeeResponseDTO updated = service.update(id, dto);
+        auditLogService.log("Update", MODULE,
+                "Employee profile updated - " + id,
+                oldValue, updated, httpServletRequest);
+        return ResponseEntity.ok(updated);
     }
 
     @PatchMapping("/{id}/resign")
     public ResponseEntity<EmployeeResponseDTO> resign(@PathVariable String id) {
-        return ResponseEntity.ok(service.resign(id));
+        EmployeeResponseDTO oldValue = service.getById(id);
+        EmployeeResponseDTO updated = service.resign(id);
+        auditLogService.log("Update", MODULE,
+                "Employee marked as resigned - " + id,
+                oldValue, updated, httpServletRequest);
+        return ResponseEntity.ok(updated);
     }
 
     // @DeleteMapping("/{id}")
@@ -84,7 +107,12 @@ public class EmployeeController {
 
     @PatchMapping("/{id}/restore")
     public ResponseEntity<EmployeeResponseDTO> restore(@PathVariable String id) {
-        return ResponseEntity.ok(service.restore(id));
+        EmployeeResponseDTO oldValue = service.getById(id);
+        EmployeeResponseDTO restored = service.restore(id);
+        auditLogService.log("Update", MODULE,
+                "Employee restored - " + id,
+                oldValue, restored, httpServletRequest);
+        return ResponseEntity.ok(restored);
     }
 
     @DeleteMapping("/{ids}")
@@ -95,8 +123,12 @@ public class EmployeeController {
 
         for (String id : ids) {
             try {
+                EmployeeResponseDTO oldValue = service.getById(id);
                 service.softDelete(id);
                 successfullyDeleted.add(id);
+                auditLogService.log("Delete", MODULE,
+                        "Removed employee from system - " + id,
+                        oldValue, null, httpServletRequest);
             } catch (RuntimeException e) {
                 failedDeletions.add(id);
                 errors.put(id, e.getMessage());
