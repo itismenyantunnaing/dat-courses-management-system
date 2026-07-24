@@ -1,4 +1,3 @@
-// components/course/tabs/GroupRequestsTab.tsx
 "use client"
 
 import React from "react"
@@ -21,6 +20,7 @@ interface GroupRequestsTabProps {
   onRefresh: () => void
   onApprove: (enrollmentId: number) => void
   onReject: (enrollmentId: number) => void
+  isProcessing?: boolean
 }
 
 const getInitials = (name: string) => {
@@ -35,6 +35,7 @@ export function GroupRequestsTab({
   onRefresh,
   onApprove,
   onReject,
+  isProcessing = false,
 }: GroupRequestsTabProps) {
   const pendingRequests = enrollments.filter(
     (e: any) => e.groupChangeStatus === "PENDING"
@@ -69,13 +70,23 @@ export function GroupRequestsTab({
               size="sm"
               onClick={onRefresh}
               className="gap-2"
+              disabled={isProcessing}
             >
-              <HugeiconsIcon
-                icon={RefreshIcon}
-                strokeWidth={2}
-                className="h-4 w-4"
-              />
-              Refresh
+              {isProcessing ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <HugeiconsIcon
+                    icon={RefreshIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                  Refresh
+                </>
+              )}
             </Button>
           </div>
         </CardHeader>
@@ -152,27 +163,37 @@ export function GroupRequestsTab({
                           <div className="flex shrink-0 items-center gap-2">
                             <Button
                               size="sm"
-                              className="h-8 gap-1 bg-green-600 text-white hover:bg-green-700"
+                              className="h-8 gap-1 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                               onClick={() => onApprove(request.id)}
+                              disabled={isProcessing}
                             >
-                              <HugeiconsIcon
-                                icon={CheckCircle}
-                                strokeWidth={2}
-                                className="h-3 w-3"
-                              />
+                              {isProcessing ? (
+                                <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+                              ) : (
+                                <HugeiconsIcon
+                                  icon={CheckCircle}
+                                  strokeWidth={2}
+                                  className="h-3 w-3"
+                                />
+                              )}
                               Approve
                             </Button>
                             <Button
                               size="sm"
                               variant="destructive"
-                              className="h-8 gap-1"
+                              className="h-8 gap-1 disabled:opacity-50"
                               onClick={() => onReject(request.id)}
+                              disabled={isProcessing}
                             >
-                              <HugeiconsIcon
-                                icon={Cancel01Icon}
-                                strokeWidth={2}
-                                className="h-3 w-3"
-                              />
+                              {isProcessing ? (
+                                <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+                              ) : (
+                                <HugeiconsIcon
+                                  icon={Cancel01Icon}
+                                  strokeWidth={2}
+                                  className="h-3 w-3"
+                                />
+                              )}
                               Reject
                             </Button>
                           </div>

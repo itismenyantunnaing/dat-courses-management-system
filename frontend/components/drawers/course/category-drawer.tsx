@@ -268,13 +268,9 @@ export function CategoryDrawer({
       // Remove any JLPT-related words if it's "other"
       categoryName = categoryName.replace(/^JLPT-\s*/i, '').trim()
       categoryName = categoryName.replace(/\bJLPT\b\s*/gi, '').trim()
-      categoryName = categoryName.replace(/\bN[1-5]\b\s*/gi, '').trim()
-      categoryName = categoryName.replace(/N[1-5][-\s]*/gi, '').trim()
       categoryName = categoryName.replace(/\s{2,}/g, ' ').trim()
 
-      if (!categoryName) {
-        categoryName = 'Other'
-      }
+
     }
 
     if (!categoryName) {

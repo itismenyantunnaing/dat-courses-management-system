@@ -67,8 +67,8 @@ export function FeedbackCard({
               <CardTitle className="text-base font-medium truncate">
                 {feedback.employee.name}
               </CardTitle>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-                <span className="truncate">{feedback.employee.department}</span>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
+                <span className="truncate min-w-0">{feedback.employee.department}</span>
                 <span className="flex-shrink-0">•</span>
                 <span className="truncate">{feedback.employee.team}</span>
               </div>

@@ -207,28 +207,55 @@ export const allTabs = [
         }
 
         // Import in smaller batches for better reliability
-        const BATCH_SIZE = 50
+        // const BATCH_SIZE = 50
+        // let importedCount = 0
+        // const failedRecords: { id: string; name: string }[] = []
+
+        // for (let i = 0; i < employeeDtos.length; i += BATCH_SIZE) {
+        //   const batch = employeeDtos.slice(i, i + BATCH_SIZE)
+
+        //   try {
+        //     await store.bulkCreate_EmployeeData(batch)
+        //     importedCount += batch.length
+        //   } catch (error) {
+        //     // Try to import failed batch one by one
+        //     for (let j = 0; j < batch.length; j++) {
+        //       try {
+        //         await store.bulkCreate_EmployeeData([batch[j]])
+        //         importedCount++
+        //       } catch (retryError) {
+        //         failedRecords.push({
+        //           id: batch[j].id || "MISSING",
+        //           name: batch[j].name || "MISSING",
+        //         })
+        //       }
+        //     }
+        //   }
+        // }
+
+        // Import ALL at once (no batching)
         let importedCount = 0
         const failedRecords: { id: string; name: string }[] = []
 
-        for (let i = 0; i < employeeDtos.length; i += BATCH_SIZE) {
-          const batch = employeeDtos.slice(i, i + BATCH_SIZE)
+        try {
+          // Send ALL employees in one API call
+          await store.bulkCreate_EmployeeData(employeeDtos)
+          importedCount = employeeDtos.length
+          console.log(`✅ Successfully imported all ${importedCount} employees`)
+        } catch (error) {
+          console.error('❌ Bulk import failed:', error)
+          alert(`Bulk import failed. Trying individual imports...`)
 
-          try {
-            await store.bulkCreate_EmployeeData(batch)
-            importedCount += batch.length
-          } catch (error) {
-            // Try to import failed batch one by one
-            for (let j = 0; j < batch.length; j++) {
-              try {
-                await store.bulkCreate_EmployeeData([batch[j]])
-                importedCount++
-              } catch (retryError) {
-                failedRecords.push({
-                  id: batch[j].id || "MISSING",
-                  name: batch[j].name || "MISSING",
-                })
-              }
+          // Fallback: try one by one if bulk fails
+          for (let j = 0; j < employeeDtos.length; j++) {
+            try {
+              await store.bulkCreate_EmployeeData([employeeDtos[j]])
+              importedCount++
+            } catch (retryError) {
+              failedRecords.push({
+                id: employeeDtos[j].id || "MISSING",
+                name: employeeDtos[j].name || "MISSING",
+              })
             }
           }
         }
@@ -302,7 +329,6 @@ export const allTabs = [
         } else if (format === "pdf") {
           await exportEmployeesToPDF(employee_data)
         } else {
-          console.log(`Exporting employees data as ${format}`)
           alert(`Export format "${format}" is not supported for employees.`)
         }
       } catch (error) {
@@ -348,9 +374,6 @@ export const allTabs = [
         const extractionResult = await extractEmployeesFromExcel(file, currentStore.skill_headers || []);
 
         // ===== SEE FULL HEADERS =====
-        console.log('📊 Full Headers:', extractionResult.headers);
-        console.log('📊 Total Headers Count:', extractionResult.headers.length);
-
         if (!extractionResult.success) {
           alert(`❌ Extraction failed: ${extractionResult.error}`);
           return { success: false, message: extractionResult.error };
@@ -366,11 +389,9 @@ export const allTabs = [
         const normalizeString = (str: any) => str?.toString().trim().toLowerCase() || '';
 
         // ===== FETCH EXISTING DEVELOPMENT HEADERS (NO CREATION) =====
-        console.log('🔄 Fetching existing development types from database...');
 
         try {
           await store.fetch_devCapHeaders();
-          console.log('✅ Development types fetched successfully');
         } catch (fetchError) {
           console.error('❌ Failed to fetch development types:', fetchError);
         }
@@ -383,10 +404,8 @@ export const allTabs = [
           devCap_headers: refreshedStore.devCap_headers || []
         });
 
-        console.log('📊 Existing development types:', currentStore.devCap_headers);
 
         // ===== SYNC TECHNICAL SKILL HEADERS - ONLY NEW ONES =====
-        console.log('🔄 Syncing technical skill headers from local config...');
 
         // First, get the full config
         const formattedConfig = TECHNICAL_ABILITY_CONFIG.map(cat => ({
@@ -406,8 +425,6 @@ export const allTabs = [
         const existingHeaders = currentStore.skill_headers || [];
         const newSkillsOnly = filterExistingSkills(deduplicatedConfig, existingHeaders);
 
-        console.log(`📊 Config has ${deduplicatedConfig.length} categories, ${newSkillsOnly.length} categories are new`);
-
         // Only sync if there are actually new skills
         if (newSkillsOnly.length > 0) {
           const totalNewSkills = newSkillsOnly.reduce((acc, cat) => {
@@ -416,18 +433,14 @@ export const allTabs = [
             }, 0);
           }, 0);
 
-          console.log(`✅ Found ${totalNewSkills} new skills to sync from config`);
 
           try {
             await store.add_BulkSkillCategories(newSkillsOnly);
-            console.log('✅ New technical skill headers synced successfully');
             // Add a delay to allow the backend to commit the transaction
             await new Promise(resolve => setTimeout(resolve, 2000));
           } catch (syncError) {
             console.error('❌ Failed to sync technical skill headers:', syncError);
           }
-        } else {
-          console.log('ℹ️ No new skills in config to sync');
         }
 
         // Retry fetching to ensure we get the newly created skills
@@ -461,10 +474,8 @@ export const allTabs = [
             }
           }
         }
-        console.log(`📋 Built skillIdLookup with ${skillIdLookup.size} entries`);
 
         // ===== DETECT AND CREATE NEW TECHNICAL SKILLS FROM EXCEL =====
-        console.log('🔍 Detecting new technical skills from Excel...');
 
         // Build a set of existing skill names from the DATABASE (not just config)
         const existingDbSkillKeys = new Set<string>();
@@ -570,8 +581,6 @@ export const allTabs = [
 
         // Create new skills if any found
         if (newSkillsMap.size > 0) {
-          console.log(`✅ Found ${newSkillsMap.size} new skills:`, Array.from(newSkillsMap.keys()));
-
           // Group new skills by category and subcategory
           const categoryMap = new Map<string, Map<string, string[]>>();
 
@@ -624,7 +633,6 @@ export const allTabs = [
 
           try {
             await store.add_BulkSkillCategories(newSkillCategories);
-            console.log(`✅ Created ${newSkillsMap.size} new skills in their respective categories`);
 
             // Refresh skill headers to get new skill IDs
             await store.fetch_SkillHeaders();
@@ -646,13 +654,10 @@ export const allTabs = [
                 }
               }
             }
-            console.log(`📋 Updated skillIdLookup with ${skillIdLookup.size} entries (including new skills)`);
 
           } catch (error) {
             console.error('❌ Failed to create new skills:', error);
           }
-        } else {
-          console.log('ℹ️ No new skills detected');
         }
 
         // ===== EXISTING DATA =====
@@ -1071,7 +1076,6 @@ export const allTabs = [
           try {
             await store.add_BulkManagementSkills(mgmtCreateArr);
             successCount += mgmtCreateArr.length;
-            console.log(`✅ Created ${mgmtCreateArr.length} management skills`);
           } catch (error) {
             console.error('❌ Failed to create management skills:', error);
           }
@@ -1081,7 +1085,6 @@ export const allTabs = [
           try {
             await store.add_BulkLanguageSkills(langCreateArr);
             successCount += langCreateArr.length;
-            console.log(`✅ Created ${langCreateArr.length} language skills`);
           } catch (error) {
             console.error('❌ Failed to create language skills:', error);
           }
@@ -1091,7 +1094,6 @@ export const allTabs = [
           try {
             await store.add_BulkDevelopmentSkills(devCreateArr);
             successCount += devCreateArr.length;
-            console.log(`✅ Created ${devCreateArr.length} development skills`);
           } catch (error) {
             console.error('❌ Failed to create development skills:', error);
             for (const item of devCreateArr) {
@@ -1109,7 +1111,6 @@ export const allTabs = [
           try {
             await store.add_BulkTechnicalSkills(techCreateArr);
             successCount += techCreateArr.length;
-            console.log(`✅ Created ${techCreateArr.length} technical skills`);
           } catch (error) {
             console.error('❌ Failed to create technical skills:', error);
             for (const item of techCreateArr) {
@@ -1227,7 +1228,6 @@ export const allTabs = [
           alert(`Export format "${format}" is not supported for skills data.`)
         }
 
-        console.log("✅ Skills exported successfully")
       } catch (error) {
         console.error("❌ Export failed:", error)
         alert(
@@ -1253,8 +1253,7 @@ export const allTabs = [
 
         // Extract current target data from Excel
         const extractedData = await extractCurrentTargetDataFromExcel(file)
-        console.log("AAAA")
-        console.log(extractedData)
+
 
         if (!extractedData.success || extractedData.data.length === 0) {
           alert(
@@ -1277,10 +1276,8 @@ export const allTabs = [
         // ===== FETCH EMPLOYEE DATA FIRST =====
         let existingEmployeeIds = new Set<string>()
         try {
-          console.log("📋 Checking employee data in store...")
 
           if (!store.employee_data || store.employee_data.length === 0) {
-            console.log("📋 Employee data is empty. Fetching from API...")
             await store.fetch_EmployeeData()
 
             const freshStore = (window as any).mainStore?.getState()
@@ -1292,15 +1289,7 @@ export const allTabs = [
               console.warn(
                 "⚠️ Still no employee data after fetch. Proceeding without employee validation."
               )
-            } else {
-              console.log(
-                `✅ Fetched ${freshStore.employee_data.length} employees from system`
-              )
             }
-          } else {
-            console.log(
-              `✅ Found ${store.employee_data.length} employees in store`
-            )
           }
 
           const currentStore = (window as any).mainStore?.getState()
@@ -1312,13 +1301,9 @@ export const allTabs = [
             )
           )
 
-          console.log(
-            `📋 Extracted ${existingEmployeeIds.size} unique employee IDs`
-          )
 
           if (existingEmployeeIds.size > 0) {
             const sampleIds = Array.from(existingEmployeeIds).slice(0, 5)
-            console.log("📋 Sample employee IDs:", sampleIds)
           }
         } catch (error) {
           console.warn("⚠️ Error fetching employee data:", error)
@@ -1348,11 +1333,6 @@ export const allTabs = [
           valid = result.valid
           invalid = result.invalid
         }
-
-        console.log(
-          `✅ Validation completed in ${(performance.now() - validationStart).toFixed(0)}ms`
-        )
-        console.log(`📊 Valid: ${valid.length}, Invalid: ${invalid.length}`)
 
         if (invalid.length > 0) {
           console.warn(`⚠️ ${invalid.length} invalid rows found:`)
@@ -1403,16 +1383,13 @@ export const allTabs = [
         }
 
         // ===== FETCH EXISTING TARGET DATES FROM DATABASE =====
-        console.log("📋 Fetching existing target dates from database...")
         let existingTargetDates: any[] = []
         try {
           await store.fetch_TargetDates()
           const freshStore = (window as any).mainStore?.getState()
           existingTargetDates = freshStore?.japaneseTargetDates_Data || []
-          console.log(`✅ Found ${existingTargetDates.length} existing target dates in database`)
         } catch (error) {
           console.warn("⚠️ Error fetching target dates:", error)
-          console.log("📋 Proceeding without existing target dates check")
         }
 
         // ===== TRANSFORM DATA =====
@@ -1436,9 +1413,6 @@ export const allTabs = [
 
           const skippedCount = apiData.length - filteredApiData.length
           if (skippedCount > 0) {
-            console.log(
-              `📊 Skipped ${skippedCount} records with invalid employee IDs`
-            )
             alert(
               `ℹ️ ${skippedCount} records were skipped because the employee IDs don't exist in the system.\n\nContinuing with ${filteredApiData.length} records.`
             )
@@ -1500,7 +1474,6 @@ export const allTabs = [
 
         // ===== EXTRACT DATES FROM DYNAMIC HEADERS (GLOBAL) =====
         const dynamicHeaders = extractedData.dynamicHeaders || {}
-        console.log("📋 Dynamic headers from Excel:", dynamicHeaders)
 
         // Extract the raw header strings - these already contain the dates
         const examHeader = dynamicHeaders['ExamDate'] || null
@@ -1509,25 +1482,14 @@ export const allTabs = [
         const target1JlptHeader = dynamicHeaders['Target 1 JLPT / NAT Test Level'] || null
         const target2JlptHeader = dynamicHeaders['Target 2 JLPT / NAT Test Level'] || null
 
-        console.log("📅 Raw headers from Excel:")
-        console.log(`  Exam Date header: ${examHeader}`)
-        console.log(`  Target 1 Communication: ${target1CommHeader}`)
-        console.log(`  Target 2 Communication: ${target2CommHeader}`)
-        console.log(`  Target 1 JLPT: ${target1JlptHeader}`)
-        console.log(`  Target 2 JLPT: ${target2JlptHeader}`)
 
         // Convert to actual dates (YYYY-MM-DD) - GLOBAL dates
         const examDate = extractDateFromHeader(examHeader)
         const target1Date = extractDateFromHeader(target1CommHeader) || extractDateFromHeader(target1JlptHeader)
         const target2Date = extractDateFromHeader(target2CommHeader) || extractDateFromHeader(target2JlptHeader)
 
-        console.log("📅 Converted dates (GLOBAL):")
-        console.log(`  Exam Date: ${examDate || 'Not found'}`)
-        console.log(`  Target 1 Date: ${target1Date || 'Not found'}`)
-        console.log(`  Target 2 Date: ${target2Date || 'Not found'}`)
 
         // ===== PROCESS GLOBAL TARGET DATES (ONLY 1 RECORD) =====
-        console.log("\n🔄 Processing global target dates...")
         let targetDatesCreated = false
         let targetDatesUpdated = false
         let targetDatesSkipped = false
@@ -1540,10 +1502,8 @@ export const allTabs = [
 
         // Check if we have any dates to save
         if (Object.keys(targetDatesData).length === 0) {
-          console.log("⏭️ No valid target dates to save - skipping")
           targetDatesSkipped = true
         } else {
-          console.log("📤 Global target dates data (filtered):", targetDatesData)
 
           // Check if target dates already exist in the database
           const existingTargetDate = existingTargetDates.length > 0 ? existingTargetDates[0] : null
@@ -1567,17 +1527,11 @@ export const allTabs = [
             if (existingTargetDate) {
               // UPDATE existing target dates (global)
               const id = existingTargetDate.id || existingTargetDate._id
-              console.log(`  🔄 Updating global target dates (ID: ${id})`)
-              console.log(`  📤 Data:`, targetDatesData)
               const result = await store.update_TargetDates(id, targetDatesData)
-              console.log(`  ✅ Updated global target dates: ${result}`)
               targetDatesUpdated = true
             } else {
               // CREATE new target dates (global)
-              console.log(`  ➕ Creating global target dates`)
-              console.log(`  📤 Data:`, targetDatesData)
               const result = await store.add_TargetDates(targetDatesData)
-              console.log(`  ✅ Created global target dates: ${result}`)
               targetDatesCreated = true
             }
           } catch (error) {
@@ -1596,53 +1550,61 @@ export const allTabs = [
           }
         }
 
-        // ===== IMPORT CURRENT TARGET DATA (the main data) =====
-        console.log("\n📦 Importing current target data...")
-        const BATCH_SIZE = 25
+        // // ===== IMPORT CURRENT TARGET DATA (the main data) =====
+        // const BATCH_SIZE = 25
+        // let importedCount = 0
+        // const totalBatches = Math.ceil(filteredApiData.length / BATCH_SIZE)
+
+        // for (let i = 0; i < filteredApiData.length; i += BATCH_SIZE) {
+        //   const batch = filteredApiData.slice(i, i + BATCH_SIZE)
+        //   const batchNumber = Math.floor(i / BATCH_SIZE) + 1
+        //   const startIndex = i
+
+        //   try {
+        //     await store.bulkCreate_CurrentTargetData(batch)
+        //     importedCount += batch.length
+        //   } catch (error) {
+        //     console.warn(
+        //       `⚠️ Batch ${batchNumber} failed as batch, retrying individually...`
+        //     )
+
+        //     let successCount = 0
+        //     for (let j = 0; j < batch.length; j++) {
+        //       const recordIndex = startIndex + j
+        //       try {
+        //         await store.bulkCreate_CurrentTargetData([batch[j]])
+        //         importedCount++
+        //         successCount++
+        //       } catch (retryError) {
+        //         console.debug(
+        //           `   ⚠️ Record ${recordIndex + 1} (${batch[j].employeeId || "NO_ID"}) failed`
+        //         )
+        //       }
+        //     }
+        //   }
+        // }
+
+        // ===== IMPORT CURRENT TARGET DATA (all at once - NO BATCHING) =====
         let importedCount = 0
-        const totalBatches = Math.ceil(filteredApiData.length / BATCH_SIZE)
 
-        for (let i = 0; i < filteredApiData.length; i += BATCH_SIZE) {
-          const batch = filteredApiData.slice(i, i + BATCH_SIZE)
-          const batchNumber = Math.floor(i / BATCH_SIZE) + 1
-          const startIndex = i
+        try {
+          // Send ALL current target data in one API call
+          console.log(`📤 Sending ${filteredApiData.length} current target records in one request...`)
+          await store.bulkCreate_CurrentTargetData(filteredApiData)
+          importedCount = filteredApiData.length
+          console.log(`✅ Successfully imported all ${importedCount} current target records`)
+        } catch (error) {
+          console.error('❌ Bulk import failed:', error)
+          alert(`Bulk import of ${filteredApiData.length} records failed. Trying one by one...`)
 
-          try {
-            console.log(`\n📦 Processing Batch ${batchNumber}/${totalBatches}`)
-            await store.bulkCreate_CurrentTargetData(batch)
-            importedCount += batch.length
-            console.log(`✅ Batch ${batchNumber} completed successfully`)
-          } catch (error) {
-            console.warn(
-              `⚠️ Batch ${batchNumber} failed as batch, retrying individually...`
-            )
-
-            let successCount = 0
-            for (let j = 0; j < batch.length; j++) {
-              const recordIndex = startIndex + j
-              try {
-                await store.bulkCreate_CurrentTargetData([batch[j]])
-                importedCount++
-                successCount++
-                if (successCount % 10 === 0 || successCount === batch.length) {
-                  console.log(
-                    `   📊 Imported ${successCount}/${batch.length} records from batch ${batchNumber}`
-                  )
-                }
-              } catch (retryError) {
-                console.debug(
-                  `   ⚠️ Record ${recordIndex + 1} (${batch[j].employeeId || "NO_ID"}) failed`
-                )
-              }
-            }
-
-            if (successCount === batch.length) {
-              console.log(
-                `✅ Batch ${batchNumber} completed successfully (individual imports)`
-              )
-            } else {
-              console.log(
-                `⚠️ Batch ${batchNumber} partially completed: ${successCount}/${batch.length} records`
+          // Fallback: try one by one if bulk fails
+          for (let j = 0; j < filteredApiData.length; j++) {
+            try {
+              await store.bulkCreate_CurrentTargetData([filteredApiData[j]])
+              importedCount++
+            } catch (retryError) {
+              console.debug(
+                `   ⚠️ Record ${j + 1} (${filteredApiData[j].employeeId || "NO_ID"}) failed`
               )
             }
           }
@@ -1665,7 +1627,6 @@ export const allTabs = [
           `  • Target 1: ${target1Date || 'Not set'}\n` +
           `  • Target 2: ${target2Date || 'Not set'}`
 
-        console.log(`\n📊 Import completed: ${finalMessage}`)
         alert(finalMessage)
 
         return { success: true, message: finalMessage }
@@ -1681,7 +1642,6 @@ export const allTabs = [
       }
     },
     onExport: async (format: string) => {
-      console.log(`📤 Exporting current target data as ${format}`)
 
       // Get data from store
       const store = (window as any).mainStore?.getState()
@@ -1723,7 +1683,6 @@ export const allTabs = [
             japaneseTargetDates_Data
           )
         } else {
-          console.log(`Exporting current target data as ${format}`)
           alert(
             `Export format "${format}" is not supported for current target data.`
           )
@@ -1791,8 +1750,6 @@ export const allTabs = [
       }
     },
     onExport: async (format: string) => {
-      console.log(`📤 Exporting holidays data as ${format}`)
-
       // Get data from store
       const store = (window as any).mainStore?.getState()
       const { holiday_data } = store || { holiday_data: [] }
@@ -1810,7 +1767,6 @@ export const allTabs = [
         } else if (format === "pdf") {
           await exportHolidaysToPDF(holiday_data)
         } else {
-          console.log(`Exporting holidays data as ${format}`)
           alert(`Export format "${format}" is not supported for holidays.`)
         }
       } catch (error) {

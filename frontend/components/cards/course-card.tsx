@@ -94,12 +94,22 @@ const getDaysUntilClose = (
   registrationDeadline: Date | string | undefined
 ): number | null => {
   if (!registrationDeadline) return null
+
   const deadline =
     typeof registrationDeadline === "string"
       ? new Date(registrationDeadline)
       : registrationDeadline
+
   const today = new Date()
-  const days = differenceInDays(deadline, today)
+
+  // Reset time to midnight for accurate day comparison
+  const deadlineDate = new Date(deadline)
+  deadlineDate.setHours(0, 0, 0, 0)
+
+  const todayDate = new Date(today)
+  todayDate.setHours(0, 0, 0, 0)
+
+  const days = differenceInDays(deadlineDate, todayDate)
   return days
 }
 
@@ -124,7 +134,8 @@ export function CourseCard({
   const daysUntilClose = getDaysUntilClose(course.registrationDeadline)
   const isRegistrationClosingSoon =
     daysUntilClose !== null && daysUntilClose <= 7 && daysUntilClose > 0
-  const isRegistrationClosed = daysUntilClose !== null && daysUntilClose <= 0
+  const isRegistrationClosed = daysUntilClose !== null && daysUntilClose < 0
+  const isDeadlineToday = daysUntilClose !== null && daysUntilClose === 0
 
   // Format date range
   const dateRange = startDate
@@ -144,10 +155,18 @@ export function CourseCard({
   // Format registration deadline display
   const getRegistrationDisplay = () => {
     if (!course.registrationDeadline) return null
+
     if (isRegistrationClosed) {
       return {
         text: "Registration Closed",
         className: "text-red-500",
+        icon: AlertCircleIcon,
+      }
+    }
+    if (isDeadlineToday) {
+      return {
+        text: "Last day to register",
+        className: "text-orange-500",
         icon: AlertCircleIcon,
       }
     }

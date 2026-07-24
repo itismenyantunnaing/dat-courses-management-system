@@ -94,7 +94,17 @@ export function EmployeeForm({
     dat_departments,
     teams,
     roles,
+    fetchAll_CourseData,
+    courses,
+    enrollments,
   } = mainStore()
+
+  useEffect(() => {
+    const loadData = async () => {
+      await fetchAll_CourseData()
+    }
+    loadData()
+  },[fetchAll_CourseData])
 
  
 
@@ -157,6 +167,7 @@ export function EmployeeForm({
       [field]: value,
     })
   }
+
 
   if (isLoading) {
     return (

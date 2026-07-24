@@ -24,20 +24,21 @@ public class AuditLog {
     private String employeeId;
 
     @Column(nullable = false)
-    private String action; // Create, Update, Delete, Import, Export, Login, Logout...
+    private String action;
 
     @Column(nullable = false)
-    private String module; // EMPLOYEES, SKILLS, DIVISIONS, DEPARTMENTS, TEAMS, EMPLOYEE_JAPANESE_PROFILES...
+    private String module;
 
     @Lob
-    @Column(name = "old_value")
+    @Column(name = "old_value", columnDefinition = "TEXT")
     private String oldValue;
 
     @Lob
-    @Column(name = "new_value")
+    @Column(name = "new_value", columnDefinition = "TEXT")
     private String newValue;
 
     @Lob
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "ip_address")

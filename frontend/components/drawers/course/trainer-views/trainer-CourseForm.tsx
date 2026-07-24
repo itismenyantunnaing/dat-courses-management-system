@@ -917,7 +917,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           )}
 
           {/* ===================== ENROLLMENT SECTION (for ALL course types) ===================== */}
-          {formData.courseType && mode === "edit" && (
+          {/* {formData.courseType && mode === "edit" && (
             <div className="border-t pt-6 mt-6">
               <EnrollEmployeesSection
                 allEmployees={employeeLearners}
@@ -937,7 +937,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                 isTrainer={formData.courseType === "trainer"}
               />
             </div>
-          )}
+          )} */}
 
           {/* ===================== COURSE IMAGE ===================== */}
           <div className="space-y-2">

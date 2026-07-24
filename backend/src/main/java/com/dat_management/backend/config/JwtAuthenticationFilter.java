@@ -33,10 +33,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/auth/test-mail",
             "/api/auth/verify-otp",
             "/api/auth/reset-password",
-            "/api/employee-japanese-profiles",
-            "/api/target-terms/**",
+            // "/api/employee-japanese-profiles",
+            // "/api/target-terms/**",
             "/",
-            "/api/**",
+            // "/api/**",
             "/error"
     );
 
@@ -126,8 +126,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean shouldSkipAuthentication(String path) {
         return PUBLIC_PATHS.contains(path) ||
-                path.startsWith("/api/employee-japanese-profiles/") ||
-                path.startsWith("/api/")||
+                //path.startsWith("/api/employee-japanese-profiles/") ||
+                //path.startsWith("/api/")||
                 path.startsWith("/css/") ||
                 path.startsWith("/js/") ||
                 path.startsWith("/images/");

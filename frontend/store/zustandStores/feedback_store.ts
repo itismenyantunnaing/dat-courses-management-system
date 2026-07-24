@@ -6,14 +6,14 @@ type StoreSet = (
 ) => void
 type StoreGet = () => Feedback_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export const FeedbackDataStore = (set: StoreSet, get: StoreGet) => ({
   feedback: [],
   isCreating: false,
   isUpdating: false,
   isLoading: false,
-  profile: [], // Add profile to store
+  profile: [], 
 
   // Helper method to refresh feedback based on user role
   refreshFeedbackData: async () => {

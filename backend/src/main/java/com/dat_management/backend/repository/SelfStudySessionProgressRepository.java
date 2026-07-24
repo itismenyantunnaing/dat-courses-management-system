@@ -35,11 +35,25 @@ public interface SelfStudySessionProgressRepository
         List<SelfStudySessionProgress> findByEnrollmentId(Integer enrollmentId);
 
         @Query("SELECT p FROM SelfStudySessionProgress p WHERE p.enrollment.id = :enrollmentId " +
-                        "AND p.selfStudySession.id = :sessionId")
-        SelfStudySessionProgress findByEnrollmentIdAndSessionId(@Param("enrollmentId") Integer enrollmentId,
-                        @Param("sessionId") Integer sessionId);
+       "AND p.selfStudySession.id = :sessionId")
+SelfStudySessionProgress findByEnrollmentIdAndSessionId(@Param("enrollmentId") Integer enrollmentId,
+                                                        @Param("sessionId") Integer sessionId);
+        
+    @Query("SELECT MAX(p.sessionDeadline) FROM SelfStudySessionProgress p WHERE p.enrollment.id = :enrollmentId")
+    Optional<LocalDateTime> findMaxDeadlineByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
-        // ADD THIS - Find the maximum deadline for a student's enrollment
-        @Query("SELECT MAX(p.sessionDeadline) FROM SelfStudySessionProgress p WHERE p.enrollment.id = :enrollmentId")
-        Optional<LocalDateTime> findMaxDeadlineByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+    // ADD THIS - Count total progress records (sessions) for an enrollment
+    @Query("SELECT COUNT(p) FROM SelfStudySessionProgress p WHERE p.enrollment.id = :enrollmentId")
+    long countProgressByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+    
+    // ADD THIS - Count completed sessions (completionStatus = 'COMPLETED' OR progress >= 80%)
+    @Query("SELECT COUNT(p) FROM SelfStudySessionProgress p WHERE p.enrollment.id = :enrollmentId " +
+           "AND p.completionStatus = 'COMPLETED'")
+    long countCompletedSessionsByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+    
+    // ADD THIS - Count active sessions (deadline >= today) for an enrollment
+    @Query("SELECT COUNT(p) FROM SelfStudySessionProgress p WHERE p.enrollment.id = :enrollmentId " +
+           "AND p.sessionDeadline >= :dateTime")
+    long countActiveSessionsByEnrollmentId(@Param("enrollmentId") Integer enrollmentId,
+                                            @Param("dateTime") LocalDateTime dateTime);
 }

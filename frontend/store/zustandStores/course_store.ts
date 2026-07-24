@@ -495,9 +495,10 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
 
     try {
       let body: BodyInit;
-      let headers: HeadersInit = {};
+      let headers: HeadersInit;
 
       if (data instanceof FormData) {
+        headers = get().getMultipartAuthHeaders();
         body = data;
       } else {
         headers = get().getAuthHeaders();
@@ -649,6 +650,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     try {
       const response = await fetch(`${apiUrl}/api/courses/${id}/image`, {
         method: 'POST',
+        headers: get().getMultipartAuthHeaders(),
         body: formData,
       })
 

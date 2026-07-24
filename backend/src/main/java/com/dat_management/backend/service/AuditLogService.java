@@ -12,9 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -56,13 +58,18 @@ public class AuditLogService {
     }
 
     private String currentEmployeeId() {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            return (auth != null && auth.getName() != null) ? auth.getName() : "SYSTEM";
-        } catch (Exception e) {
+    try {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken
+                || "anonymousUser".equals(auth.getName())) {
             return "SYSTEM";
         }
+        return auth.getName();
+    } catch (Exception e) {
+        return "SYSTEM";
     }
+}
 
     // ==================== CRUD API ====================
 

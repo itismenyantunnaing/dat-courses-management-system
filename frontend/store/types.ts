@@ -27,7 +27,47 @@ import type {
   BackendCourseDto,
   BackendCategoryDto
 } from "@/types/course"
+import {
+  CourseStatsDTO,
+  DepartmentMonthlyAttendanceDTO,
+  RiskResponseDTO,
+  OverallCertificateStatisticsDTO,
+  TeamCertificateStatisticsDTO,
+  ActiveLearnerResponseDTO,
+  EmployeeCourseStatsResponseDTO,
+  EmployeeProgressResponseDTO,
+  EmployeeCourseSummaryResponseDTO,
+  type UpcomingSessionResponse,
+  type EmployeeTargetLevelDTO
+} from '@/types/dashboard';
 import type { FeedbackSuggestionDto } from "@/types/feedback"
+import type { AuditLog } from "@/types/audit-log"
+
+export interface SystemConfig {
+  id: number;
+  fileUploadSizeMb: number;
+  sessionTimeoutMinutes: number;
+  jwtExpiryHours: number;
+  maxLoginAttempts: number;
+  activeSmtpProvider?: "GMAIL" | "OUTLOOK";
+  gmailHost?: string;
+  gmailPort?: number;
+  gmailUsername?: string;
+  gmailPassword?: string;
+  outlookHost?: string;
+  outlookPort?: number;
+  outlookUsername?: string;
+  outlookPassword?: string;
+}
+
+export interface SystemConfig_StoreType {
+  systemConfig: SystemConfig | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
+  fetch_SystemConfig: () => Promise<void>;
+  update_SystemConfig: (config: Partial<SystemConfig>) => Promise<SystemConfig>;
+}
 
 export interface Employee_StoreType {
   employee_data: Employee[]
@@ -171,6 +211,10 @@ export interface SkillSet_StoreType {
   add_BulkDevelopmentSkills: (data: DevelopmentCapability[]) => Promise<DevelopmentCapability[]>;
   add_BulkTechnicalSkills: (data: TechnicalSkillData[]) => Promise<EmployeeSkill[]>;
 }
+
+
+
+
 
 export interface CurrentTarget_StoreType {
   japaneseTargetDates_Data: TargetDates[];
@@ -550,4 +594,92 @@ export interface GroupChangeRequest {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NONE';
   requestedAt: string;
   processedAt?: string;
+}
+
+export interface DashboardData_StoreType {
+  // State
+  courseStats: CourseStatsDTO[];
+  monthlyAttendance: DepartmentMonthlyAttendanceDTO[];
+  riskData: RiskResponseDTO | null;
+  overallCertificateStats: OverallCertificateStatisticsDTO | null;
+  teamCertificateStats: TeamCertificateStatisticsDTO | null;
+  activeLearnerCount: ActiveLearnerResponseDTO | null;
+  employeeCourseStats: EmployeeCourseStatsResponseDTO | null;
+  employeeProgress: EmployeeProgressResponseDTO | null;
+  employeeCourseSummary: EmployeeCourseSummaryResponseDTO[];
+  upcomingSessions: UpcomingSessionResponse[];
+  employeeTargetLevel: EmployeeTargetLevelDTO | null;  
+  isLoading: boolean;
+  error: string | null;
+
+  // Actions
+  fetchCourseStats: () => Promise<void>;
+  fetchDailyAttendance: () => Promise<void>;
+  fetchRiskData: () => Promise<void>;
+  fetchOverallCertificateStats: () => Promise<void>;
+  fetchTeamCertificateStats: () => Promise<void>;
+  fetchActiveLearnerCount: () => Promise<void>;
+  fetchEmployeeCourseStats: (employeeId: string) => Promise<void>;
+  fetchEmployeeAttendance: (employeeId: string) => Promise<void>;
+  fetchAllEmployeesCourseSummary: () => Promise<void>;
+  fetchUpcomingSessions: (employeeId: string) => Promise<void>; 
+  fetchEmployeeTargetLevel: (employeeId: string) => Promise<void>;
+  reset: () => void;
+}
+
+// types/index.ts or types/store.ts
+export interface AuditLog_StoreType {
+  auditLogs: AuditLog[];
+  allAuditLogs: AuditLog[];
+  isCreating: boolean;
+  isLoading: boolean;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    pageSize: number;
+  };
+  _filters: {
+    employeeId?: string;
+    module?: string;
+    action?: string;
+    from?: string;
+    to?: string;
+  };
+  fetch_AuditLogs: (
+    employeeId?: string,
+    module?: string,
+    action?: string,
+    from?: string,
+    to?: string,
+    page?: number,
+    size?: number
+  ) => Promise<void>;
+  fetch_AuditLogsWithFilters: (
+    employeeId?: string,
+    module?: string,
+    action?: string,
+    from?: string,
+    to?: string,
+    page?: number,
+    size?: number
+  ) => Promise<void>;
+  fetch_AuditLogById: (id: number) => Promise<AuditLog>;
+  fetch_AllAuditLogs: (
+    employeeId?: string,
+    module?: string,
+    action?: string,
+    from?: string,
+    to?: string
+  ) => Promise<AuditLog[]>;
+  add_AuditLog: (newAuditLog: any) => Promise<any>;
+  update_AuditLog: (id: number, updatedAuditLog: any) => Promise<any>;
+  delete_AuditLog: (id: number) => Promise<string>;
+  delete_BulkAuditLogs: (ids: number[]) => Promise<string>;
+  nextPage: () => Promise<void>;
+  prevPage: () => Promise<void>;
+  goToPage: (page: number) => Promise<void>;
+  setPageSize: (size: number) => Promise<void>;
+  clearFilters: () => Promise<void>;
+  resetPagination: () => Promise<void>;
 }

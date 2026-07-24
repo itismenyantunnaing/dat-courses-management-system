@@ -2,14 +2,14 @@
 import { Employee_StoreType } from "../types"
 import { Employee } from "@/types/employee";
 import { logout } from "@/app/actions/auth"
-
+import { getAuthToken } from "../mainStore";
 
 type StoreSet = (
   fn: (state: Employee_StoreType) => Partial<Employee_StoreType>
 ) => void
 type StoreGet = () => Employee_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   profile: [],
@@ -27,9 +27,20 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   team_options: [],
   role_options: [],
 
+  // Helper function to get token
+  _getToken: () => {
+    return getAuthToken();
+  },
+
   fetch_profile: async (userId?: string) => {
     try {
-      const response = await fetch(`${apiUrl}/api/employees/${userId}/profile`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/employees/${userId}/profile`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
 
       if (!response.ok) {
         try {
@@ -50,7 +61,13 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
   fetch_roles: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/roles`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/roles`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -66,7 +83,13 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
   fetch_divisions: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/divisions`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/divisions`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -82,7 +105,13 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
   fetch_dat_departments: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/departments-dat`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/departments-dat`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -96,10 +125,15 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-
   fetch_teams: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/teams`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/teams`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -113,18 +147,17 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-
   add_division: async (divisionName: string) => {
-
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/divisions`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ divisionName: divisionName.trim() }),
       });
-
 
       const responseText = await response.text();
 
@@ -132,10 +165,8 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
       }
 
-      // Parse response if it's JSON
       const data = responseText ? JSON.parse(responseText) : null;
 
-      // Refresh divisions list
       await get().fetch_divisions();
       return {
         success: true,
@@ -151,11 +182,9 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-
   add_dat_department: async (divisionId: number, deptName: string) => {
     console.log('📝 add_dat_department called with:', { divisionId, deptName });
 
-    // Validate input
     if (!divisionId) {
       console.error('❌ Division ID is required');
       return {
@@ -173,9 +202,11 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
 
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/departments-dat`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -190,11 +221,9 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
       }
 
-      // Parse response if it's JSON
       const data = responseText ? JSON.parse(responseText) : null;
       console.log('✅ Department created successfully:', data);
 
-      // Refresh departments list
       await get().fetch_dat_departments();
 
       return {
@@ -215,7 +244,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   add_team: async (departmentDatId: number, teamName: string) => {
     console.log('📝 add_team called with:', { departmentDatId, teamName });
 
-    // Validate input
     if (!departmentDatId) {
       console.error('❌ Department ID is required');
       return {
@@ -233,9 +261,11 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
 
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/teams`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -250,11 +280,9 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
       }
 
-      // Parse response if it's JSON
       const data = responseText ? JSON.parse(responseText) : null;
       console.log('✅ Team created successfully:', data);
 
-      // Refresh teams list
       await get().fetch_teams();
 
       return {
@@ -275,7 +303,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   update_division: async (id: number, divisionName: string) => {
     console.log('📝 update_division called with:', { id, divisionName });
 
-    // Validate input
     if (!id) {
       return {
         success: false,
@@ -291,9 +318,11 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
 
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/divisions/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ divisionName: divisionName.trim() }),
@@ -305,11 +334,9 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
       }
 
-      // Parse response if it's JSON
       const data = responseText ? JSON.parse(responseText) : null;
       console.log('✅ Division updated successfully:', data);
 
-      // Refresh divisions list
       await get().fetch_divisions();
 
       return {
@@ -339,9 +366,13 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
 
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/departments-dat/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           divisionId: divisionId,
           deptName: deptName.trim()
@@ -370,7 +401,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-
   update_team: async (id: number, departmentDatId: number, teamName: string) => {
     if (!id) {
       return { success: false, error: 'Team ID is required' };
@@ -383,9 +413,13 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
 
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/teams/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           departmentDatId: departmentDatId,
           teamName: teamName.trim()
@@ -398,9 +432,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const data = responseText ? JSON.parse(responseText) : null;
-      console.log('✅ Team updated successfully:', data);
 
-      // Refresh teams list
       await get().fetch_teams();
 
       return {
@@ -417,9 +449,19 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  fetch_EmployeeData: async () => {
+  fetch_EmployeeData: async (force = false) => {
+    // Skip fetch if employee_data already exists and not forced
+    if (!force && get().employee_data.length > 0) {
+      return;
+    }
     try {
-      const response = await fetch(`${apiUrl}/api/employees`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/employees`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -427,14 +469,11 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       let employeeData = await response.json();
 
-      // Get current profile from store
       const currentProfile = get().profile;
 
-      // Apply filters based on user role
       if (currentProfile && currentProfile.role) {
         const userRole = currentProfile.role.toLowerCase();
 
-        // If user is approver, filter by their team
         if (userRole === "approver") {
           const userTeam = currentProfile.team;
           if (userTeam) {
@@ -442,14 +481,9 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
               (employee: Employee) => employee.team === userTeam
             );
           } else {
-            // If approver has no team, return empty array
             employeeData = [];
           }
         }
-        // Add other role-based filters here if needed
-        // else if (userRole === "manager") {
-        //   // Filter by department or division
-        // }
       }
 
       set(() => ({ employee_data: employeeData }));
@@ -464,12 +498,10 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   add_EmployeeData: async (newEmployee: Employee) => {
     const previousData = get().employee_data;
 
-    // Check for duplicates
     const duplicateId = previousData.find(emp => emp.id === newEmployee.id);
     const duplicateEmail = previousData.find(emp => emp.email === newEmployee.email);
     const duplicateDoorlog = previousData.find(emp => emp.doorlog === newEmployee.doorlog);
 
-    // Return appropriate error messages
     if (duplicateId) {
       return `Employee with ID "${newEmployee.id}" already exists.`;
     }
@@ -482,42 +514,50 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       return `Employee with doorlog "${newEmployee.doorlog}" already exists.`;
     }
 
-    // Create a copy with a generated temporary ID
     const optimisticEmployee = {
       ...newEmployee,
       id: `temp-${Date.now()}`
     };
 
-    // Immediately push the employee with temporary ID to the UI
     set(() => ({
       employee_data: [...previousData, optimisticEmployee],
       isCreating: true
     }));
 
     try {
+      const token = getAuthToken();
+      
       const response = await fetch(`${apiUrl}/api/employees`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(newEmployee),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        
+        if (response.status === 401) {
+          await logout();
+          return 'Session expired. Please login again.';
+        }
+        
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
       await response.json();
 
-      // Optionally refresh to get the real ID from the server
       await get().fetch_EmployeeData();
       set(() => ({ isCreating: false }));
 
       return `Employee created successfully`;
 
     } catch (error) {
+      console.error('❌ Error creating employee:', error);
 
-      // Rollback to original state if the API fails
       set(() => ({
         employee_data: previousData,
         isCreating: false
@@ -531,33 +571,35 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   delete_EmployeeData: async (employeeIds: string | string[]) => {
     const previousData = get().employee_data;
 
-    // Normalize input to always be an array
     const idsToDelete = Array.isArray(employeeIds) ? employeeIds : [employeeIds];
     const count = idsToDelete.length;
 
-    // Optimistically filter out the deleted employees immediately from the UI
     set(() => ({
       employee_data: previousData.filter(emp => !idsToDelete.includes(emp.id)),
       isDeleting: true
     }));
 
     try {
+      const token = getAuthToken();
       const idsPath = idsToDelete.join(',');
 
       const response = await fetch(`${apiUrl}/api/employees/${idsPath}`, {
         method: 'DELETE',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         }
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          await logout();
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       await response.json();
 
-      // Update options after successful delete
       const updatedData = get().employee_data;
       const divisions = [...new Set(updatedData.map((emp: Employee) => emp.div_name).filter(Boolean))]
         .map((div) => ({ value: div, label: div }));
@@ -576,7 +618,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         isDeleting: false
       }));
 
-      // Return success message based on count
       const customMessage = count === 1
         ? `1 Employee deleted successfully`
         : `${count} Employees deleted successfully`;
@@ -586,7 +627,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     } catch (error) {
       console.error('Error deleting employee data:', error);
 
-      // Rollback to original state if the API fails
       set(() => ({
         employee_data: previousData,
         isDeleting: false
@@ -603,7 +643,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     const previousData = get().employee_data;
     console.log('📊 Previous data count:', previousData.length);
 
-    // Check if employee exists
     const existingEmployee = previousData.find(emp => emp.id === id);
     console.log('👤 Existing employee:', existingEmployee);
 
@@ -611,7 +650,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       return `Employee with ID "${id}" not found.`;
     }
 
-    // Check for duplicate email (if email is being changed)
     if (updatedEmployee.email && updatedEmployee.email !== existingEmployee.email) {
       const duplicateEmail = previousData.find(
         emp => emp.email === updatedEmployee.email && emp.id !== id
@@ -621,7 +659,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       }
     }
 
-    // Check for duplicate doorlog (if doorlog is being changed)
     if (updatedEmployee.doorlog && updatedEmployee.doorlog !== existingEmployee.doorlog) {
       const duplicateDoorlog = previousData.find(
         emp => emp.doorlog === updatedEmployee.doorlog && emp.id !== id
@@ -631,7 +668,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       }
     }
 
-    // Optimistically update the employee item in the UI state instantly
     const updatedData = previousData.map((emp) =>
       emp.id === id ? { ...emp, ...updatedEmployee } : emp
     );
@@ -642,9 +678,12 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }));
 
     try {
+      const token = getAuthToken();
+      
       const response = await fetch(`${apiUrl}/api/employees/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(updatedEmployee),
@@ -653,12 +692,17 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ API Error:', errorText);
+        
+        if (response.status === 401) {
+          await logout();
+          return 'Session expired. Please login again.';
+        }
+        
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
       const responseData = await response.json();
 
-      // Update options after successful update
       const finalData = get().employee_data;
       const divisions = [...new Set(finalData.map((emp: Employee) => emp.div_name).filter(Boolean))]
         .map((div) => ({ value: div, label: div }));
@@ -682,7 +726,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     } catch (error) {
       console.error('❌ Error updating employee data:', error);
 
-      // Rollback to original state if the API fails
       set(() => ({
         employee_data: previousData,
         isUpdating: false
@@ -692,32 +735,34 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-
   // Bulk delete employees
   bulkDelete_EmployeeData: async (employeeIds: string[]) => {
     const previousData = get().employee_data;
 
-    // Optimistically filter out the deleted employees
     set(() => ({
       employee_data: previousData.filter(emp => !employeeIds.includes(emp.id)),
       isDeleting: true
     }));
 
     try {
+      const token = getAuthToken();
       const idsPath = employeeIds.join(',');
 
       const response = await fetch(`${apiUrl}/api/employees/${idsPath}`, {
         method: 'DELETE',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         }
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          await logout();
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Update options after successful delete
       const updatedData = get().employee_data;
       const divisions = [...new Set(updatedData.map((emp: Employee) => emp.div_name).filter(Boolean))]
         .map((div) => ({ value: div, label: div }));
@@ -739,7 +784,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     } catch (error) {
       console.error('Error bulk deleting employee data:', error);
 
-      // Rollback to original state if the API fails
       set(() => ({
         employee_data: previousData,
         isDeleting: false
@@ -751,8 +795,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   bulkCreate_EmployeeData: async (employees: Employee[]) => {
     const previousData = get().employee_data;
 
-
-    // Create optimistic items with temporary IDs
     const optimisticEmployees = employees.map((emp, index) => ({
       id: `temp-${Date.now()}-${index}`,
       name: emp.name || '',
@@ -773,16 +815,12 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       profile_photo_path: emp.profile_photo_path || '',
     }));
 
-
-    // Optimistically add all employees to the UI
     set(() => ({
       employee_data: [...previousData, ...optimisticEmployees]
     }));
 
     try {
-      // Map to the exact Employee interface fields
       const apiEmployees = employees.map(emp => {
-        // Generate a valid email if not provided
         let email = emp.email?.trim() || '';
         if (!email && emp.name) {
           email = emp.name.toLowerCase().replace(/\s/g, '.') + '@diracetechnology.com';
@@ -811,9 +849,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         };
       });
 
-      // Filter out invalid records before sending
       const validEmployees = apiEmployees.filter(emp => {
-        // Check required fields
         if (!emp.id || !emp.name || !emp.email) {
           console.warn('⚠️ Skipping employee with missing required fields:', emp);
           return false;
@@ -825,15 +861,13 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error('No valid employees to insert');
       }
 
-
-      // Get the auth token from localStorage or wherever it's stored
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+      const token = getAuthToken();
 
       const response = await fetch(`${apiUrl}/api/employees/bulk`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(validEmployees),
       });
@@ -849,8 +883,10 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
         console.error('❌ API Error:', errorMessage);
 
-        // Handle specific status codes
-        if (response.status === 403) {
+        if (response.status === 401) {
+          await logout();
+          throw new Error('Session expired. Please login again.');
+        } else if (response.status === 403) {
           throw new Error('Authentication failed. Please log in again.');
         } else if (response.status === 400) {
           throw new Error(`Invalid data: ${errorMessage}`);
@@ -861,10 +897,8 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const result = await response.json();
 
-      // Refresh the employee data
       await get().fetch_EmployeeData();
 
-      // Update options
       const updatedData = get().employee_data;
       const divisions = [...new Set(updatedData.map((emp: Employee) => emp.div_name).filter(Boolean))]
         .map((div) => ({ value: div, label: div }));

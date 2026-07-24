@@ -3,44 +3,42 @@ import {
   DepartmentMonthlyAttendanceDTO,
   RiskResponseDTO,
   OverallCertificateStatisticsDTO,
-  TeamCertificateStatisticsDTO
+  TeamCertificateStatisticsDTO,
+  EmployeeCourseStatsResponseDTO,
+  EmployeeProgressResponseDTO,
+  EmployeeCourseSummaryResponseDTO,
+  UpcomingSessionResponse,
+  EmployeeTargetLevelDTO
 } from "@/types/dashboard";
+import type { DashboardData_StoreType } from "../types";
 
 type StoreSet = (
-  fn: (state: CourseStatsStoreType) => Partial<CourseStatsStoreType>
+  fn: (state: DashboardData_StoreType) => Partial<DashboardData_StoreType>
 ) => void;
-type StoreGet = () => CourseStatsStoreType;
+type StoreGet = () => DashboardData_StoreType;
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-export interface CourseStatsStoreType {
-  courseStats: CourseStatsDTO[];
-  monthlyAttendance: DepartmentMonthlyAttendanceDTO[];
-  riskData: RiskResponseDTO | null;
-  overallCertificateStats: OverallCertificateStatisticsDTO | null;
-  teamCertificateStats: TeamCertificateStatisticsDTO | null;
-  activeLearnerCount: [];
-  isLoading: boolean;
-  error: string | null;
 
-  fetchCourseStats: () => Promise<void>;
-  fetchDailyAttendance: () => Promise<void>;
-  fetchRiskData: () => Promise<void>;
-  fetchOverallCertificateStats: () => Promise<void>;
-  fetchTeamCertificateStats: () => Promise<void>;
-  fetchActiverLearnerCount: () => Promise<void>;
-  reset: () => void;
-}
-
-export const dashboardDataStore = (set: StoreSet, get: StoreGet): CourseStatsStoreType => ({
-  activeLearnerCount: [],
+export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
+  // Initial state
   courseStats: [],
   monthlyAttendance: [],
   riskData: null,
   overallCertificateStats: null,
   teamCertificateStats: null,
+  employeeCourseStats: null,
+  employeeProgress: null,
+  employeeCourseSummary: [],
+  employeeTargetLevel: null,
+  upcomingAllSessionsData: [],
+  upcomingSessionsData: [],
   isLoading: false,
   error: null,
+
+
+
+  // for Admin and Approver dashboard
 
   fetchActiverLearnerCount: async () => {
     const currentState = get();
@@ -218,6 +216,201 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet): CourseStatsSto
     }
   },
 
+  // for learner dashboard
+
+  // for top four parts in UI and  Overall Attendance section
+  fetchEmployeeCourseStats: async (employeeId: string) => {
+    const currentState = get();
+
+    if (currentState.isLoading) return;
+
+    set(() => ({ isLoading: true, error: null }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/course-stats/employee/${employeeId}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: EmployeeCourseStatsResponseDTO = await response.json();
+      set(() => ({
+        employeeCourseStats: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching employee course stats:', error);
+      set(() => ({
+        employeeCourseStats: null,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch employee course stats'
+      }));
+    }
+  },
+
+  // for Daily/Current Attendance
+  fetchEmployeeAttendance: async (employeeId: string) => {
+    const currentState = get();
+
+    if (currentState.isLoading) return;
+
+    set(() => ({ isLoading: true, error: null }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/course-stats/employee/progress/${employeeId}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: EmployeeProgressResponseDTO = await response.json();
+      set(() => ({
+        employeeAttendance: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching employee progress:', error);
+      set(() => ({
+        employeeAttendance: null,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch employee progress'
+      }));
+    }
+  },
+
+
+  fetchAllEmployeesCourseSummary: async () => {
+    const currentState = get();
+
+    if (currentState.isLoading) return;
+
+    set(() => ({ isLoading: true, error: null }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/course-stats/employee-summary`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: EmployeeCourseSummaryResponseDTO[] = await response.json();
+      set(() => ({
+        employeeCourseSummary: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching employee course summary:', error);
+      set(() => ({
+        employeeCourseSummary: [],
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch employee course summary'
+      }));
+    }
+  },
+
+
+  // all today and upcoming sessions
+  fetchAllUpcomingSessions: async (employeeId: string) => {
+    const currentState = get();
+    if (currentState.isLoading) return;
+
+    set(() => ({ isLoading: true, error: null }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/course-stats/upcoming-sessions/${employeeId}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: UpcomingSessionResponse[] = await response.json();
+      set(() => ({
+        upcomingAllSessionsData: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching upcoming sessions:', error);
+      set(() => ({
+        upcomingAllSessionsData: [],
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch upcoming sessions'
+      }));
+    }
+  },
+
+
+  // today and only one upcoming session
+  fetchUpcomingSessions: async (employeeId: string) => {
+    const currentState = get();
+    if (currentState.isLoading) return;
+
+    set(() => ({ isLoading: true, error: null }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/course-stats/highlight-sessions/${employeeId}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: UpcomingSessionResponse[] = await response.json();
+      set(() => ({
+        upcomingSessionsData: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching upcoming sessions:', error);
+      set(() => ({
+        upcomingSessionsData: [],
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch upcoming sessions'
+      }));
+    }
+  },
+
+  fetchEmployeeTargetLevel: async (employeeId: string) => {
+    const currentState = get();
+    if (currentState.isLoading) return;
+
+    set(() => ({ isLoading: true, error: null }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/course-stats/targetTerm/${employeeId}`);
+
+      // Check if response is ok before trying to parse JSON
+      if (!response.ok) {
+        // If response is 404 or other error, throw with status
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Check if response has content before parsing JSON
+      const contentLength = response.headers.get('content-length');
+      if (contentLength === '0' || !contentLength) {
+        // Empty response - set to null
+        set(() => ({
+          employeeTargetLevel: null,
+          isLoading: false
+        }));
+        return;
+      }
+
+      // Try to parse JSON
+      const data: EmployeeTargetLevelDTO = await response.json();
+      set(() => ({
+        employeeTargetLevel: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching employee target level:', error);
+      set(() => ({
+        employeeTargetLevel: null,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch employee target level'
+      }));
+    }
+  },
+
+
   reset: () => {
     set(() => ({
       courseStats: [],
@@ -225,6 +418,11 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet): CourseStatsSto
       riskData: null,
       overallCertificateStats: null,
       teamCertificateStats: null,
+      employeeCourseStats: null,
+      employeeAttendance: null,
+      employeeCourseSummary: [],
+      employeeTargetLevel: null,
+      upcomingSessionsData: [],
       isLoading: false,
       error: null
     }));

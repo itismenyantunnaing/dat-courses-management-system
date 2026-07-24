@@ -320,7 +320,6 @@ export default function AdminDashboardContainer() {
     return Math.round(average)
   }, [courseStats])
 
-  console.log(dailyAttendance)
 
   const combinedCourseCategories = useMemo(() => {
     if (!courseCategory_data) return []

@@ -1,4 +1,3 @@
-// components/course/ChangeGroupDialogs.tsx
 "use client"
 
 import React, { useEffect, useState } from "react"
@@ -43,9 +42,11 @@ import {
   PlusSignIcon,
   CancelIcon,
   UserGroupIcon,
+  Loading01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { Course } from "@/types/course"
+import { mainStore } from "@/store/mainStore"
 
 interface EnrolledEmployee {
   id: number
@@ -72,6 +73,7 @@ interface ChangeGroupDialogsProps {
   enrollments: EnrolledEmployee[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  onGroupChangeComplete?: () => void
 }
 
 const getInitials = (name: string) => {
@@ -95,6 +97,7 @@ export function ChangeGroupDialogs({
   enrollments,
   open,
   onOpenChange,
+  onGroupChangeComplete,
 }: ChangeGroupDialogsProps) {
   const [selectedEmployeesForChange, setSelectedEmployeesForChange] = useState<
     EnrolledEmployee[]
@@ -105,7 +108,11 @@ export function ChangeGroupDialogs({
   const [searchQuery, setSearchQuery] = useState("")
   const [searchTab, setSearchTab] = useState<string>("")
   const [viewAllOpen, setViewAllOpen] = useState(false)
-  const [selectAllChecked, setSelectAllChecked] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
+
+  // Get the store functions
+  const { adminChangeGroup, fetch_courseEnrollments } = mainStore()
 
   const getUniqueGroups = () => {
     const enrolledEmployees = getEnrolledEmployees(enrollments)
@@ -163,7 +170,6 @@ export function ChangeGroupDialogs({
 
   const clearSelection = () => {
     setSelectedEmployeesForChange([])
-    setSelectAllChecked(false)
     setSelectedGroupForChange("")
   }
 
@@ -171,9 +177,90 @@ export function ChangeGroupDialogs({
     onOpenChange(false)
     setSelectedEmployeesForChange([])
     setSelectedGroupForChange("")
-    setSelectAllChecked(false)
     setSearchQuery("")
     setSearchTab("")
+    setIsSubmitting(false)
+    setProgress({ current: 0, total: 0 })
+  }
+
+  // Handle the actual group change - Individual API calls
+  const handleGroupChange = async () => {
+    if (selectedEmployeesForChange.length === 0 || !selectedGroupForChange) {
+      return
+    }
+
+    setIsSubmitting(true)
+    setProgress({ current: 0, total: selectedEmployeesForChange.length })
+
+    const failedEmployees: string[] = []
+    const successEmployees: string[] = []
+
+    try {
+      const newGroupId = parseInt(selectedGroupForChange)
+
+      // Loop through each employee and change their group individually
+      for (let i = 0; i < selectedEmployeesForChange.length; i++) {
+        const employee = selectedEmployeesForChange[i]
+        
+        try {
+          console.log(`🔄 Changing group for ${employee.employeeName} (${i + 1}/${selectedEmployeesForChange.length})`)
+          
+          // Call the individual adminChangeGroup API
+          const result = await adminChangeGroup(employee.id, newGroupId)
+          
+          if (result.success) {
+            successEmployees.push(employee.employeeName)
+          } else {
+            failedEmployees.push(employee.employeeName)
+          }
+        } catch (error) {
+          console.error(`❌ Failed to change group for ${employee.employeeName}:`, error)
+          failedEmployees.push(employee.employeeName)
+        }
+
+        // Update progress
+        setProgress({ current: i + 1, total: selectedEmployeesForChange.length })
+      }
+
+      // Show results
+      let message = ""
+      if (successEmployees.length > 0) {
+        message += `✅ Successfully moved ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
+      }
+      if (failedEmployees.length > 0) {
+        message += `❌ Failed to move ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
+      }
+
+      if (failedEmployees.length === 0) {
+        alert(`✅ All ${successEmployees.length} employee(s) moved successfully!`)
+      } else if (successEmployees.length === 0) {
+        alert(`❌ Failed to move all employees. Please try again.`)
+      } else {
+        alert(message)
+      }
+
+      // Refresh enrollments data
+      if (course.id) {
+        await fetch_courseEnrollments(course.id)
+      }
+
+      // Call the callback if provided
+      if (onGroupChangeComplete) {
+        onGroupChangeComplete()
+      }
+
+      // Reset and close if all succeeded
+      if (failedEmployees.length === 0) {
+        resetChangeGroupDialog()
+      }
+
+    } catch (error: any) {
+      console.error('❌ Error in group change process:', error)
+      alert(`❌ Failed to change groups: ${error.message || 'Unknown error'}`)
+    } finally {
+      setIsSubmitting(false)
+      setProgress({ current: 0, total: 0 })
+    }
   }
 
   return (
@@ -206,6 +293,11 @@ export function ChangeGroupDialogs({
                   {selectedEmployeesForChange.length > 1 ? "s" : ""} selected)
                 </span>
               )}
+              {isSubmitting && (
+                <span className="ml-2 text-blue-600">
+                  (Processing: {progress.current}/{progress.total})
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -223,6 +315,7 @@ export function ChangeGroupDialogs({
                       size="sm"
                       onClick={() => setSearchOpen(true)}
                       className="h-7 gap-1 text-xs"
+                      disabled={isSubmitting}
                     >
                       <HugeiconsIcon
                         icon={PlusSignIcon}
@@ -231,7 +324,7 @@ export function ChangeGroupDialogs({
                       />
                       Add
                     </Button>
-                    {selectedEmployeesForChange.length > 0 && (
+                    {selectedEmployeesForChange.length > 0 && !isSubmitting && (
                       <Button
                         variant="destructive"
                         size="sm"
@@ -258,36 +351,38 @@ export function ChangeGroupDialogs({
                             key={employee.id}
                             variant="secondary"
                             className="flex cursor-pointer items-center px-2 py-1.5 text-sm font-normal hover:bg-muted/80"
-                            onClick={() => setViewAllOpen(true)}
+                            onClick={() => !isSubmitting && setViewAllOpen(true)}
                           >
                             <span className="text-xs">
                               {employee.employeeName}
                             </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedEmployeesForChange((prev) =>
-                                  prev.filter((emp) => emp.id !== employee.id)
-                                )
-                                if (selectedEmployeesForChange.length === 1) {
-                                  setSelectedGroupForChange("")
-                                }
-                              }}
-                              className="rounded-full p-0.5 transition-colors hover:bg-muted"
-                            >
-                              <HugeiconsIcon
-                                icon={CancelIcon}
-                                strokeWidth={2}
-                                className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground"
-                              />
-                            </button>
+                            {!isSubmitting && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedEmployeesForChange((prev) =>
+                                    prev.filter((emp) => emp.id !== employee.id)
+                                  )
+                                  if (selectedEmployeesForChange.length === 1) {
+                                    setSelectedGroupForChange("")
+                                  }
+                                }}
+                                className="rounded-full p-0.5 transition-colors hover:bg-muted"
+                              >
+                                <HugeiconsIcon
+                                  icon={CancelIcon}
+                                  strokeWidth={2}
+                                  className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground"
+                                />
+                              </button>
+                            )}
                           </Badge>
                         ))}
                       {selectedEmployeesForChange.length > 6 && (
                         <Badge
                           variant="secondary"
                           className="cursor-pointer px-3 py-1.5 text-sm font-medium hover:bg-muted/80"
-                          onClick={() => setViewAllOpen(true)}
+                          onClick={() => !isSubmitting && setViewAllOpen(true)}
                         >
                           +{selectedEmployeesForChange.length - 6} more
                         </Badge>
@@ -311,19 +406,21 @@ export function ChangeGroupDialogs({
                 <Select
                   value={selectedGroupForChange}
                   onValueChange={setSelectedGroupForChange}
-                  disabled={selectedEmployeesForChange.length === 0}
+                  disabled={selectedEmployeesForChange.length === 0 || isSubmitting}
                 >
                   <SelectTrigger
                     className={cn(
                       "w-full",
-                      selectedEmployeesForChange.length === 0 &&
+                      (selectedEmployeesForChange.length === 0 || isSubmitting) &&
                         "cursor-not-allowed opacity-50"
                     )}
                   >
                     <SelectValue
                       placeholder={
                         selectedEmployeesForChange.length > 0
-                          ? "Choose a group..."
+                          ? isSubmitting
+                            ? "Processing..."
+                            : "Choose a group..."
                           : "Select employees first"
                       }
                     />
@@ -479,23 +576,24 @@ export function ChangeGroupDialogs({
                           )?.name || selectedGroupForChange}
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedEmployeesForChange([])
-                          setSelectAllChecked(false)
-                          setSelectedGroupForChange("")
-                        }}
-                        className="h-7 px-2 text-xs"
-                      >
-                        <HugeiconsIcon
-                          icon={CancelIcon}
-                          strokeWidth={2}
-                          className="mr-1 h-3 w-3"
-                        />
-                        Change Selection
-                      </Button>
+                      {!isSubmitting && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedEmployeesForChange([])
+                            setSelectedGroupForChange("")
+                          }}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <HugeiconsIcon
+                            icon={CancelIcon}
+                            strokeWidth={2}
+                            className="mr-1 h-3 w-3"
+                          />
+                          Change Selection
+                        </Button>
+                      )}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {selectedEmployeesForChange.slice(0, 5).map((emp) => (
@@ -523,6 +621,7 @@ export function ChangeGroupDialogs({
               variant="outline"
               className="flex-1"
               onClick={resetChangeGroupDialog}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
@@ -530,24 +629,26 @@ export function ChangeGroupDialogs({
               className="flex-1 gap-2"
               disabled={
                 selectedEmployeesForChange.length === 0 ||
-                !selectedGroupForChange
+                !selectedGroupForChange ||
+                isSubmitting
               }
-              onClick={() => {
-                console.log(
-                  "Changing group for:",
-                  selectedEmployeesForChange.length,
-                  "employees to:",
-                  selectedGroupForChange
-                )
-                resetChangeGroupDialog()
-              }}
+              onClick={handleGroupChange}
             >
-              <HugeiconsIcon
-                icon={RefreshIcon}
-                strokeWidth={2}
-                className="h-4 w-4"
-              />
-              Change Group ({selectedEmployeesForChange.length})
+              {isSubmitting ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current"></span>
+                  Processing ({progress.current}/{progress.total})...
+                </>
+              ) : (
+                <>
+                  <HugeiconsIcon
+                    icon={RefreshIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                  Change Group ({selectedEmployeesForChange.length})
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -688,24 +789,26 @@ export function ChangeGroupDialogs({
               <span className="text-sm font-medium">
                 Selected Employees ({selectedEmployeesForChange.length})
               </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedEmployeesForChange([])
-                    setSelectedGroupForChange("")
-                  }}
-                  className="h-7 gap-1 text-xs"
-                >
-                  <HugeiconsIcon
-                    icon={CancelIcon}
-                    strokeWidth={2}
-                    className="h-3.5 w-3.5"
-                  />
-                  Remove All
-                </Button>
-              </div>
+              {!isSubmitting && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedEmployeesForChange([])
+                      setSelectedGroupForChange("")
+                    }}
+                    className="h-7 gap-1 text-xs"
+                  >
+                    <HugeiconsIcon
+                      icon={CancelIcon}
+                      strokeWidth={2}
+                      className="h-3.5 w-3.5"
+                    />
+                    Remove All
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
           <CommandList>
@@ -714,11 +817,13 @@ export function ChangeGroupDialogs({
                 <CommandItem
                   key={employee.id}
                   onSelect={() => {
-                    setSelectedEmployeesForChange((prev) =>
-                      prev.filter((emp) => emp.id !== employee.id)
-                    )
-                    if (selectedEmployeesForChange.length === 1) {
-                      setSelectedGroupForChange("")
+                    if (!isSubmitting) {
+                      setSelectedEmployeesForChange((prev) =>
+                        prev.filter((emp) => emp.id !== employee.id)
+                      )
+                      if (selectedEmployeesForChange.length === 1) {
+                        setSelectedGroupForChange("")
+                      }
                     }
                   }}
                   className="flex cursor-pointer items-center gap-3"
@@ -745,26 +850,28 @@ export function ChangeGroupDialogs({
                       </span>
                     </div>
                   </div>
-                  <CommandShortcut>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedEmployeesForChange((prev) =>
-                          prev.filter((emp) => emp.id !== employee.id)
-                        )
-                        if (selectedEmployeesForChange.length === 1) {
-                          setSelectedGroupForChange("")
-                        }
-                      }}
-                      className="rounded-full p-1 transition-colors hover:bg-muted"
-                    >
-                      <HugeiconsIcon
-                        icon={CancelIcon}
-                        strokeWidth={2}
-                        className="h-4 w-4"
-                      />
-                    </button>
-                  </CommandShortcut>
+                  {!isSubmitting && (
+                    <CommandShortcut>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedEmployeesForChange((prev) =>
+                            prev.filter((emp) => emp.id !== employee.id)
+                          )
+                          if (selectedEmployeesForChange.length === 1) {
+                            setSelectedGroupForChange("")
+                          }
+                        }}
+                        className="rounded-full p-1 transition-colors hover:bg-muted"
+                      >
+                        <HugeiconsIcon
+                          icon={CancelIcon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                      </button>
+                    </CommandShortcut>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

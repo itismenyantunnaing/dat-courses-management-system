@@ -24,4 +24,15 @@ public class TargetTerm {
     @Column(nullable =false)
     private LocalDate examDate;
     private Boolean isActive = true;
+
+      public boolean isTarget1DatePassed() {
+        LocalDate today = LocalDate.now();
+        return today.isAfter(target1Date) || today.isEqual(target1Date);
+    }
+
+    // Method to check if target2 date has passed
+    public boolean isTarget2DatePassed() {
+        LocalDate today = LocalDate.now();
+        return today.isAfter(target2Date) || today.isEqual(target2Date);
+    }
 }

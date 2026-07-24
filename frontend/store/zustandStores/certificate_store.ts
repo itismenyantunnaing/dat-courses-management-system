@@ -4,7 +4,7 @@ import type { Certificates_StoreType } from "../types"
 type StoreSet = (fn: (state: Certificates_StoreType) => Partial<Certificates_StoreType>) => void
 type StoreGet = () => Certificates_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 // Helper function to transform file path to URL
 const getImageUrl = (filePath: string): string => {
@@ -73,6 +73,26 @@ const getUserIdFromStore = (get: StoreGet) => {
   }
 };
 
+// Helper to get auth headers
+const getAuthHeaders = (token: string | null): HeadersInit => {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
+// Helper to get multipart auth headers
+const getMultipartAuthHeaders = (token: string | null): HeadersInit => {
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   certificateData: [] as JapaneseCertificate[],
   pendingCertificates: [] as JapaneseCertificate[],
@@ -81,6 +101,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   fetch_CertificateData: async (userId?: string) => {
     // Use provided userId or get from session
     const userIdParam = userId || getUserIdFromStore(get);
+    const token = get().getToken?.() || null;
 
     if (!userIdParam) {
       set(() => ({ certificateData: [] }))
@@ -89,7 +110,9 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
 
 
     try {
-      const response = await fetch(`${apiUrl}/api/certificates/my?employeeId=${userIdParam}`);
+      const response = await fetch(`${apiUrl}/api/certificates/my?employeeId=${userIdParam}`, {
+        headers: getAuthHeaders(token)
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -118,6 +141,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   // Fetch pending certificates (for approver)
   fetch_PendingCertificates: async (approverId?: string) => {
     const userIdParam = approverId || getUserIdFromStore(get);
+    const token = get().getToken?.() || null;
 
     if (!userIdParam) {
       set(() => ({ pendingCertificates: [] }))
@@ -125,7 +149,9 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
     }
 
     try {
-      const response = await fetch(`${apiUrl}/api/certificates/pending?employeeId=${userIdParam}`);
+      const response = await fetch(`${apiUrl}/api/certificates/pending?employeeId=${userIdParam}`, {
+        headers: getAuthHeaders(token)
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -151,6 +177,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   // Fetch all certificates (for approver)
   fetch_AllCertificates: async (approverId?: string) => {
     const userIdParam = approverId || getUserIdFromStore(get);
+    const token = get().getToken?.() || null;
 
     if (!userIdParam) {
       set(() => ({ allCertificates: [] }))
@@ -158,7 +185,9 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
     }
 
     try {
-      const response = await fetch(`${apiUrl}/api/certificates/all?employeeId=${userIdParam}`);
+      const response = await fetch(`${apiUrl}/api/certificates/all?employeeId=${userIdParam}`, {
+        headers: getAuthHeaders(token)
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -184,6 +213,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   // Add certificate
   add_CertificateData: async (newCertificate: Partial<JapaneseCertificate> & { file?: File }) => {
     const userId = getUserIdFromStore(get);
+    const token = get().getToken?.() || null;
 
     if (!userId) {
       return 'User not authenticated'
@@ -228,6 +258,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const response = await fetch(`${apiUrl}/api/certificates/upload`, {
         method: 'POST',
+        headers: getMultipartAuthHeaders(token),
         body: formData,
       });
 
@@ -249,6 +280,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   // Update certificate
   update_CertificateData: async (id: string, updatedCertificate: Partial<JapaneseCertificate> & { file?: File }) => {
     const userId = getUserIdFromStore(get);
+    const token = get().getToken?.() || null;
 
     if (!userId) {
       return 'User not authenticated'
@@ -284,6 +316,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const response = await fetch(`${apiUrl}/api/certificates/${id}`, {
         method: 'PUT',
+        headers: getMultipartAuthHeaders(token),
         body: formData,
       });
 
@@ -305,6 +338,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   // Delete certificate
   delete_CertificateData: async (id: string) => {
     const userId = getUserIdFromStore(get);
+    const token = get().getToken?.() || null;
 
     if (!userId) {
       return 'User not authenticated'
@@ -319,6 +353,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
     try {
       const response = await fetch(`${apiUrl}/api/certificates/${id}?employeeId=${userId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(token)
       });
 
       if (!response.ok) {
@@ -339,6 +374,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   // Verify certificate
   verify_CertificateData: async (id: string, remark?: string) => {
     const userId = getUserIdFromStore(get);
+    const token = get().getToken?.() || null;
 
     if (!userId) {
       return 'User not authenticated'
@@ -353,6 +389,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const response = await fetch(url.toString(), {
         method: 'PUT',
+        headers: getAuthHeaders(token)
       });
 
       if (!response.ok) {
@@ -376,6 +413,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
   // Reject certificate
   reject_CertificateData: async (id: string, remark?: string) => {
     const userId = getUserIdFromStore(get);
+    const token = get().getToken?.() || null;
 
     if (!userId) {
       return 'User not authenticated'
@@ -390,6 +428,7 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const response = await fetch(url.toString(), {
         method: 'PUT',
+        headers: getAuthHeaders(token)
       });
 
       if (!response.ok) {

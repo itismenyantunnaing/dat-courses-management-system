@@ -1,12 +1,13 @@
-import type { DevelopmentCapability, LanguageSkill, ManagementScore } from "@/types/skillset";
+import type { DevelopmentCapability, EmployeeSkill, LanguageSkill, ManagementScore, SkillCategory } from "@/types/skillset";
 import { SkillSet_StoreType } from "../types"
 import type { TechnicalSkillData } from "@/components/drawers/skillset/skillsetForm";
+import { getAuthToken } from "../mainStore";
 
 
 type StoreSet = (fn: (state: SkillSet_StoreType) => Partial<SkillSet_StoreType>) => void;
 type StoreGet = () => SkillSet_StoreType;
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
   dictionary: [],
@@ -21,7 +22,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
   // japanese dictionary
   fetch_dictionary: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/japanese_dictionary`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/japanese_dictionary`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -35,14 +42,15 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   add_dictionary: async (entry: { japaneseText: string; englishText: string }) => {
     try {
-      // Validate required fields
       if (!entry.japaneseText || !entry.englishText) {
         throw new Error('Both japaneseText and englishText are required');
       }
 
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/japanese_dictionary`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -58,10 +66,7 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
-      // Refresh the dictionary data
       await get().fetch_dictionary();
-
       return result;
     } catch (error) {
       console.error('Error creating dictionary entry:', error);
@@ -71,14 +76,15 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   update_dictionary: async (id: number, entry: { japaneseText: string; englishText: string }) => {
     try {
-      // Validate required fields
       if (!entry.japaneseText || !entry.englishText) {
         throw new Error('Both japaneseText and englishText are required');
       }
 
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/japanese_dictionary/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -90,7 +96,6 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('API Error Response:', errorData);
-
         if (response.status === 404) {
           throw new Error(`Dictionary entry with id ${id} not found`);
         }
@@ -98,10 +103,7 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
-      // Refresh the dictionary data
       await get().fetch_dictionary();
-
       return result;
     } catch (error) {
       console.error('Error updating dictionary entry:', error);
@@ -111,9 +113,11 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   delete_dictionary: async (id: number) => {
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/japanese_dictionary/${id}`, {
         method: 'DELETE',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
       });
@@ -121,7 +125,6 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('API Error Response:', errorData);
-
         if (response.status === 404) {
           throw new Error(`Dictionary entry with id ${id} not found`);
         }
@@ -129,10 +132,7 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
-      // Refresh the dictionary data
       await get().fetch_dictionary();
-
       return result;
     } catch (error) {
       console.error('Error deleting dictionary entry:', error);
@@ -142,10 +142,15 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // ========== SKILL HEADERS (TECHNICAL CATEGORIES) CRUD ==========
 
-  // GET - Fetch all skill categories with structure
   fetch_SkillHeaders: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/skills/technical/categories`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/skills/technical/categories`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -157,9 +162,8 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // UPDATE - Update a single category with skills (requires id)
   update_SkillCategory: async (data: {
-    id: number;  // Required for update
+    id: number;
     categoryName: string;
     skillSubCategories?: Array<{
       id?: number;
@@ -169,11 +173,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
         skillName: string;
       }>;
     }>;
-  }) => {
+  }): Promise<SkillCategory> => {
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/technical/categories`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
@@ -186,14 +192,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const result = await response.json();
       await get().fetch_SkillHeaders();
-      return result;
+      return result as SkillCategory;
     } catch (error) {
       console.error('Error updating skill category:', error);
       throw error;
     }
   },
 
-  // CREATE - Create multiple categories with skills (bulk create, no ids)
   add_BulkSkillCategories: async (data: Array<{
     categoryName: string;
     skillSubCategories?: Array<{
@@ -202,11 +207,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
         skillName: string;
       }>;
     }>;
-  }>) => {
+  }>): Promise<SkillCategory[]> => {
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/technical/categories/bulk`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
@@ -219,7 +226,7 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const result = await response.json();
       await get().fetch_SkillHeaders();
-      return result;
+      return result as SkillCategory[];
     } catch (error) {
       console.error('Error creating bulk skill categories:', error);
       throw error;
@@ -228,10 +235,15 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // ========== SKILL DATA (EMPLOYEE SKILLS) CRUD ==========
 
-  // GET - Fetch all employee skills
   fetch_SkillData: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/skills/technical`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/skills/technical`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -243,7 +255,6 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // POST - Create a new employee skill
   add_SkillData: async (data: {
     employeeId: string;
     skillName: string;
@@ -251,12 +262,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     subCategoryName?: string;
     yearsOfExperience: number;
     experienceLevel: string;
-  }) => {
+  }): Promise<EmployeeSkill> => {
     try {
-
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/technical`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
@@ -269,18 +281,14 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
-      // Refresh data
       await get().fetch_SkillData();
-
-      return result;
+      return result as EmployeeSkill;
     } catch (error) {
       console.error('Error creating employee skill:', error);
       throw error;
     }
   },
 
-  // PUT - Update an employee skill
   update_SkillData: async (id: number, data: {
     employeeId: string;
     skillName: string;
@@ -288,12 +296,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     subCategoryName?: string;
     yearsOfExperience: number;
     experienceLevel: string;
-  }) => {
+  }): Promise<EmployeeSkill> => {
     try {
-
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/technical/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
@@ -306,11 +315,8 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
-      // Refresh data
       await get().fetch_SkillData();
-
-      return result;
+      return result as EmployeeSkill;
     } catch (error) {
       console.error('Error updating employee skill:', error);
       throw error;
@@ -319,10 +325,15 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // ========== MANAGEMENT SCORES CRUD ==========
 
-  // GET - Fetch all management scores
   fetch_managementScoreData: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/skills/management`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/skills/management`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -334,14 +345,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // POST - Create a new management score
   add_managementScoreData: async (data: {
     employeeId: string;
     managementExperienceLevel: number;
     qcdScore: number;
     reportConsultScore: number;
     educationScore: number;
-  }) => {
+  }): Promise<ManagementScore> => {
     try {
       const managementExperienceLevel = Math.max(1, Math.min(5, Number(data.managementExperienceLevel) || 1));
 
@@ -357,10 +367,11 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       const reportConsultScore = validateScore(data.reportConsultScore, 'Report/Consult Score');
       const educationScore = validateScore(data.educationScore, 'Education Score');
 
-
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/management`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -379,24 +390,21 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
       await get().fetch_managementScoreData();
-
-      return result;
+      return result as ManagementScore;
     } catch (error) {
       console.error('Error creating management score:', error);
       throw error;
     }
   },
 
-  // PUT - Update a management score
   update_managementScoreData: async (id: number, data: {
     employeeId: string;
     managementExperienceLevel: number;
     qcdScore: number;
     reportConsultScore: number;
     educationScore: number;
-  }) => {
+  }): Promise<ManagementScore> => {
     try {
       const managementExperienceLevel = Math.max(1, Math.min(5, Number(data.managementExperienceLevel) || 1));
 
@@ -412,10 +420,11 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       const reportConsultScore = validateScore(data.reportConsultScore, 'Report/Consult Score');
       const educationScore = validateScore(data.educationScore, 'Education Score');
 
-
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/management/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -434,10 +443,8 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
       await get().fetch_managementScoreData();
-
-      return result;
+      return result as ManagementScore;
     } catch (error) {
       console.error('Error updating management score:', error);
       throw error;
@@ -446,10 +453,15 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // ========== LANGUAGE SKILLS CRUD ==========
 
-  // GET - Fetch all language skills
   fetch_languageSkillData: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/skills/language`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/skills/language`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -461,17 +473,18 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // POST - Create a new language skill
   add_japaneseLevel: async (data: {
     employeeId: string;
     languageSkillLevel: number;
-  }) => {
+  }): Promise<LanguageSkill> => {
     try {
       const languageSkillLevel = Math.max(1, Math.min(5, Number(data.languageSkillLevel) || 1));
 
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/language`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -487,28 +500,26 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
       await get().fetch_languageSkillData();
-
-      return result;
+      return result as LanguageSkill;
     } catch (error) {
       console.error('Error creating language skill:', error);
       throw error;
     }
   },
 
-  // PUT - Update a language skill
   update_japaneseLevel: async (id: number, data: {
     employeeId: string;
     languageSkillLevel: number;
-  }) => {
+  }): Promise<LanguageSkill> => {
     try {
       const languageSkillLevel = Math.max(1, Math.min(5, Number(data.languageSkillLevel) || 1));
 
-
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/language/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -524,10 +535,8 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
       await get().fetch_languageSkillData();
-
-      return result;
+      return result as LanguageSkill;
     } catch (error) {
       console.error('Error updating language skill:', error);
       throw error;
@@ -536,10 +545,15 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // ========== DEVELOPMENT CRUD ==========
 
-  // GET - Fetch all development skills
   fetch_devCapData: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/skills/development`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/skills/development`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -551,10 +565,15 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // GET - Fetch development headers (types)
   fetch_devCapHeaders: async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/skills/development/types/active`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}/api/skills/development/types/active`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -566,8 +585,7 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // POST - Create multiple development types (bulk)
-  add_devCapHeaders: async (typeNames: string[]) => {
+  add_devCapHeaders: async (typeNames: string[]): Promise<DevelopmentCapability[]> => {
     try {
       const uniqueTypes = [...new Set(typeNames.filter(name => name.trim() !== ''))];
 
@@ -579,10 +597,11 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
         developmentTypeName: name.trim()
       }));
 
-
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/development/types/bulk`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requests),
@@ -595,31 +614,29 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
       await get().fetch_devCapHeaders();
       await get().fetch_devCapData();
-
-      return result;
+      return result as DevelopmentCapability[];
     } catch (error) {
       console.error('Error creating development types:', error);
       throw error;
     }
   },
 
-  // POST - Create a new development skill
   add_devCapData: async (data: {
     employeeId: string;
     developmentTypeName: string;
     processName: string;
     yearsOfExperience: number;
-  }) => {
+  }): Promise<DevelopmentCapability> => {
     try {
       const yearsOfExperience = Math.max(0, Math.min(99.9, Number(data.yearsOfExperience) || 0));
 
-
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/development`, {
         method: 'POST',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -637,30 +654,28 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
       await get().fetch_devCapData();
-
-      return result;
+      return result as DevelopmentCapability;
     } catch (error) {
       console.error('Error creating development skill:', error);
       throw error;
     }
   },
 
-  // PUT - Update a development skill
   update_devCapData: async (id: number, data: {
     employeeId: string;
     developmentTypeName: string;
     processName: string;
     yearsOfExperience: number;
-  }) => {
+  }): Promise<DevelopmentCapability> => {
     try {
       const yearsOfExperience = Math.max(0, Math.min(99.9, Number(data.yearsOfExperience) || 0));
 
-
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/development/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -678,10 +693,8 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-
       await get().fetch_devCapData();
-
-      return result;
+      return result as DevelopmentCapability;
     } catch (error) {
       console.error('Error updating development skill:', error);
       throw error;
@@ -690,42 +703,48 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // ========== BULK DATA OPERATIONS ==========
 
-  add_BulkLanguageSkills: async (data: LanguageSkill[]) => {
+  add_BulkLanguageSkills: async (data: LanguageSkill[]): Promise<LanguageSkill[]> => {
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/language/bulk`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error(`Bulk language creation failed: ${response.status}`);
       await get().fetch_languageSkillData();
-      return await response.json();
+      return await response.json() as LanguageSkill[];
     } catch (error) {
       console.error('Error in bulk language creation:', error);
       throw error;
     }
   },
 
-  add_BulkManagementSkills: async (data: ManagementScore[]) => {
+  add_BulkManagementSkills: async (data: ManagementScore[]): Promise<ManagementScore[]> => {
     try {
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/management/bulk`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error(`Bulk management creation failed: ${response.status}`);
       await get().fetch_managementScoreData();
-      return await response.json();
+      return await response.json() as ManagementScore[];
     } catch (error) {
       console.error('Error in bulk management creation:', error);
       throw error;
     }
   },
 
-  add_BulkDevelopmentSkills: async (data: DevelopmentCapability[]) => {
+  add_BulkDevelopmentSkills: async (data: DevelopmentCapability[]): Promise<DevelopmentCapability[]> => {
     try {
-      // The backend expects the data in the correct format for DevelopmentSkillDto
-      // Make sure each item has the required fields
       const formattedData = data.map(item => ({
         employeeId: item.employeeId,
         developmentTypeName: item.developmentTypeName,
@@ -735,9 +754,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
       console.log('📤 Sending Bulk Development Data:', JSON.stringify(formattedData, null, 2));
 
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/development/bulk`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(formattedData),
       });
 
@@ -748,19 +771,18 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       await get().fetch_devCapData();
-      return await response.json();
+      return await response.json() as DevelopmentCapability[];
     } catch (error) {
       console.error('❌ Error in bulk development creation:', error);
       throw error;
     }
   },
 
-  add_BulkTechnicalSkills: async (data: TechnicalSkillData[]) => {
+  add_BulkTechnicalSkills: async (data: TechnicalSkillData[]): Promise<EmployeeSkill[]> => {
     try {
-      // Include skillId so backend can link to existing skill
       const formattedData = data.map(item => ({
         employeeId: item.employeeId,
-        skillId: item.skillId,  // ✅ CRITICAL: Include skillId
+        skillId: item.skillId,
         skillName: item.skillName,
         yearsOfExperience: item.yearsOfExperience || 0,
         experienceLevel: item.experienceLevel || "",
@@ -770,9 +792,13 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
 
       console.log('📤 Sending Bulk Technical Data with skillId:', formattedData);
 
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/technical/bulk`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(formattedData),
       });
 
@@ -783,7 +809,7 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       await get().fetch_SkillData();
-      return await response.json();
+      return await response.json() as EmployeeSkill[];
     } catch (error) {
       console.error('Error in bulk technical creation:', error);
       throw error;

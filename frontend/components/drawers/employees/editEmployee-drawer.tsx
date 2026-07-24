@@ -21,11 +21,13 @@ import type { Employee } from "@/types/employee"
 import { mainStore } from "@/store/mainStore"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Edit03Icon } from "@hugeicons/core-free-icons"
+import type { Course } from "@/types/course"
 
 interface EditEmployeeDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   employee: Employee | null
+  courses: Course[] | null
   onSuccess?: () => void
 }
 
@@ -33,6 +35,7 @@ export function EditEmployeeDrawer({
   open,
   onOpenChange,
   employee,
+  courses,
   onSuccess,
 }: EditEmployeeDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -302,7 +305,7 @@ export function EditEmployeeDrawer({
                   onDropdownOpenChange={handleDropdownOpenChange}
                 />
               ) : (
-                <EmployeeView employee={employee} />
+                <EmployeeView employee={employee} courses={courses}/>
               )}
             </div>
           </div>

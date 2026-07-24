@@ -101,19 +101,16 @@ public class EmployeeController {
 
     // @DeleteMapping("/{id}")
     // public ResponseEntity<Void> delete(@PathVariable String id) {
-    //     service.softDelete(id);
-    //     return ResponseEntity.noContent().build();
+    // service.softDelete(id);
+    // return ResponseEntity.noContent().build();
     // }
 
     @PatchMapping("/{id}/restore")
     public ResponseEntity<EmployeeResponseDTO> restore(@PathVariable String id) {
-        // When restoring, the existing record is soft-deleted so getById() will not find it.
-        // Fetch the deleted record representation and then restore it.
-        EmployeeResponseDTO oldValue = service.getDeletedById(id);
         EmployeeResponseDTO restored = service.restore(id);
         auditLogService.log("Update", MODULE,
                 "Employee restored - " + id,
-                oldValue, restored, httpServletRequest);
+                null, restored, httpServletRequest);
         return ResponseEntity.ok(restored);
     }
 

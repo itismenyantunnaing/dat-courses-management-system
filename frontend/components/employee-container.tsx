@@ -311,6 +311,9 @@ export function EmployeeContainer({
     divisions,
     dat_departments,
     teams,
+    fetchAll_CourseData,
+    courses,
+
   } = mainStore()
 
   useEffect(() => {
@@ -349,6 +352,10 @@ export function EmployeeContainer({
           promises.push(fetch_roles())
         }
 
+        if (!courses || courses.length === 0) {
+          promises.push(fetchAll_CourseData())
+        }
+
 
         hasLoadedRef.current = true
       } catch (error) {
@@ -360,6 +367,7 @@ export function EmployeeContainer({
 
     loadData()
   }, [])
+
 
   // Check if any filters are active
   const hasActiveFilters =
@@ -671,11 +679,7 @@ export function EmployeeContainer({
     newName: string,
     parentId?: number
   ) => {
-    console.log(`🔄 Updating ${dialogItemType}:`, {
-      oldName,
-      newName,
-      parentId,
-    })
+
 
     let result = null
 
@@ -2159,7 +2163,7 @@ export function EmployeeContainer({
                   <div className="col-span-full py-8 text-center text-muted-foreground">
                     {drilldownSearchTerm ? (
                       <>
-                        No employees found matching "{drilldownSearchTerm}" in{" "}
+                        No employees found matching &quot;{drilldownSearchTerm}&quot; in{" "}
                         {selectedItem}
                       </>
                     ) : (
@@ -2168,7 +2172,7 @@ export function EmployeeContainer({
                   </div>
                 ) : (
                   drillDownPaginated.map((employee, index) => {
-                    const isEmployee = (emp: any): emp is Employee =>
+                    const isEmployee = (emp: Employee): emp is Employee =>
                       emp && typeof emp === "object" && "id" in emp
 
                     if (!isEmployee(employee)) return null
@@ -2320,7 +2324,7 @@ export function EmployeeContainer({
                     </TableRow>
                   ) : (
                     paginatedEmployees.map((employee, index) => {
-                      const isEmployee = (emp: any): emp is Employee =>
+                      const isEmployee = (emp: Employee): emp is Employee =>
                         emp && typeof emp === "object" && "id" in emp
 
                       if (!isEmployee(employee)) return null
@@ -2663,6 +2667,7 @@ export function EmployeeContainer({
         open={editDrawerOpen}
         onOpenChange={setEditDrawerOpen}
         employee={selectedEmployee}
+        courses={courses}
       />
 
       <AddDivDeptTeamDialog

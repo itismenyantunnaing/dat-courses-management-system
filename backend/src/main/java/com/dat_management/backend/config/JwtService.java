@@ -1,9 +1,12 @@
 package com.dat_management.backend.config;
 
+import com.dat_management.backend.entity.SystemConfig;
+import com.dat_management.backend.repository.SystemConfigRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,65 +21,82 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
-    
+
+    private final SystemConfigRepository systemConfigRepository;
+
     @Value("${jwt.secret}")
     private String secret;
-    
-    @Value("${jwt.expiration}")
-    private Long expiration;
-    
+
     private SecretKey getSigningKey() {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
-    
+
+    private long getExpirationTime() {
+
+        SystemConfig config = systemConfigRepository.findById(1L)
+                .orElseThrow(() ->
+                        new RuntimeException("System configuration not found"));
+
+        return config.getJwtExpiryHours() * 60L * 60L * 1000L;
+    }
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
-    
+
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
-    
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+
+    public <T> T extractClaim(
+            String token,
+            Function<Claims, T> claimsResolver) {
+
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
-    
+
     private Claims extractAllClaims(String token) {
+
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
-    
+
     private Boolean isTokenExpired(String token) {
+
         Date expiration = extractExpiration(token);
-        boolean isExpired = expiration.before(new Date());
-        if (isExpired) {
-            logger.debug("Token expired at: {}", expiration);
-        }
-        return isExpired;
+        return expiration.before(new Date());
     }
-    
+
     public String generateToken(UserDetails userDetails) {
+
         Map<String, Object> claims = new HashMap<>();
-        claims.put("authorities", userDetails.getAuthorities().toString());
-        return createToken(claims, userDetails.getUsername());
+        claims.put(
+                "authorities",
+                userDetails.getAuthorities().toString());
+
+        return createToken(
+                claims,
+                userDetails.getUsername());
     }
-    
-    private String createToken(Map<String, Object> claims, String subject) {
+
+    private String createToken(
+            Map<String, Object> claims,
+            String subject) {
+
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
-        
-        logger.debug("Generating token for user: {}", subject);
-        logger.debug("Token issued at: {}", now);
-        logger.debug("Token expires at: {}", expiryDate);
-        
+
+        Date expiryDate =
+                new Date(now.getTime() + getExpirationTime());
+
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
@@ -85,38 +105,32 @@ public class JwtService {
                 .signWith(getSigningKey())
                 .compact();
     }
-    
-    // 🔥 ADD THIS METHOD - Single parameter version for basic validation
+
     public Boolean validateToken(String token) {
+
         try {
             return !isTokenExpired(token);
         } catch (ExpiredJwtException e) {
-            logger.error("Token expired: {}", e.getMessage());
             return false;
         } catch (Exception e) {
-            logger.error("Token validation error: {}", e.getMessage());
             return false;
         }
     }
-    
-    // Keep this method for UserDetails validation
-    public Boolean validateToken(String token, UserDetails userDetails) {
+
+    public Boolean validateToken(
+            String token,
+            UserDetails userDetails) {
+
         try {
-            final String username = extractUsername(token);
-            boolean isTokenValid = username.equals(userDetails.getUsername()) && !isTokenExpired(token);
-            
-            if (isTokenValid) {
-                logger.debug("Token validation successful for user: {}", username);
-            } else {
-                logger.debug("Token validation failed for user: {}", username);
-            }
-            
-            return isTokenValid;
-        } catch (ExpiredJwtException e) {
-            logger.error("Token expired for user: {}", e.getClaims().getSubject());
-            return false;
+
+            final String username =
+                    extractUsername(token);
+
+            return username.equals(
+                    userDetails.getUsername())
+                    && !isTokenExpired(token);
+
         } catch (Exception e) {
-            logger.error("Token validation error: {}", e.getMessage());
             return false;
         }
     }

@@ -18,17 +18,19 @@ import {
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 
-// Types
+// Types - Updated to match API response
 interface AuditLog {
   id: number
-  employee_id: string
-  employee_name: string
+  employeeId: string
+  employeeName: string | null
+  employeeRole: string | null
   action: string
   module: string
-  old_value: string | null
-  new_value: string | null
-  ip_address: string
-  created_at: string
+  oldValue: string | null
+  newValue: string | null
+  description: string
+  ipAddress: string
+  createdAt: string
 }
 
 interface AuditLogDetailsDrawerProps {
@@ -38,7 +40,8 @@ interface AuditLogDetailsDrawerProps {
 }
 
 // Helper to get initials
-const getInitials = (name: string) => {
+const getInitials = (name: string | null) => {
+  if (!name) return "U"
   return (
     name
       ?.split(" ")
@@ -102,7 +105,7 @@ const getChangedFields = (oldValue: string | null, newValue: string | null) => {
 
 // Get action badge color
 const getActionBadge = (action: string) => {
-  switch (action) {
+  switch (action?.toUpperCase()) {
     case "CREATE":
       return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
     case "UPDATE":
@@ -133,7 +136,7 @@ export function AuditLogDetailsDrawer({
 }: AuditLogDetailsDrawerProps) {
   if (!log) return null
 
-  const changes = getChangedFields(log.old_value, log.new_value)
+  const changes = getChangedFields(log.oldValue, log.newValue)
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -151,7 +154,7 @@ export function AuditLogDetailsDrawer({
                   className="h-4 w-4"
                 />
                 <p className="text-sm">
-                  {formatDate(log.created_at)}
+                  {formatDate(log.createdAt)}
                 </p>
               </div>
             </div>
@@ -165,34 +168,50 @@ export function AuditLogDetailsDrawer({
               <Avatar className="h-12 w-12 rounded-full">
                 <AvatarImage
                   src="/avatars/default.jpg"
-                  alt={log.employee_name}
+                  alt={log.employeeName || "User"}
                 />
                 <AvatarFallback className="rounded-full text-sm font-medium">
-                  {getInitials(log.employee_name)}
+                  {getInitials(log.employeeName)}
                 </AvatarFallback>
               </Avatar>
 
               <div>
-                <p className="text-base font-semibold">{log.employee_name}</p>
+                <p className="text-base font-semibold">
+                  {log.employeeName || "Unknown User"}
+                </p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{log.employee_id}</span>
-                  <span>•</span>
+                  <span>{log.employeeId}</span>
+                  {log.employeeRole && (
+                    <>
+                      <span>•</span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                        {log.employeeRole}
+                      </Badge>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
             <div>
               <h4 className="font-medium">IP Address</h4>
-              <p className="text-sm text-muted-foreground">{log.ip_address}</p>
+              <p className="text-sm text-muted-foreground">{log.ipAddress}</p>
             </div>
           </div>
 
+          {/* Description */}
+          {log.description && (
+            <div className="mb-4 rounded-lg border p-3">
+              <h4 className="mb-1 text-xs font-medium text-muted-foreground">Description</h4>
+              <p className="text-sm">{log.description}</p>
+            </div>
+          )}
+
           {/* Changes Section - Old and New Value in one row */}
           <div>
-            <div className="flex gap-2">
-              <h4 className="mb-3 text-sm font-semibold">Changes</h4>
-              <span>•</span>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <h4 className="text-sm font-semibold">Changes</h4>
               <Badge className={getActionBadge(log.action)}>{log.action}</Badge>
-              <span>in</span>
+              <span className="text-sm text-muted-foreground">in</span>
               <Badge variant="outline" className="text-xs">
                 {log.module}
               </Badge>
@@ -200,7 +219,7 @@ export function AuditLogDetailsDrawer({
 
             {/* If there are changes, show diff view */}
             {changes && changes.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {changes.map((change, idx) => (
                   <div key={idx} className="rounded-lg border p-3">
                     <div className="mb-2 flex items-center gap-2">
@@ -216,7 +235,7 @@ export function AuditLogDetailsDrawer({
                         <p className="text-[10px] font-medium text-red-600 dark:text-red-400">
                           Old Value
                         </p>
-                        <p className="font-mono text-sm text-red-700 line-through dark:text-red-300">
+                        <p className="font-mono text-sm text-red-700 line-through dark:text-red-300 break-all">
                           {String(change.old)}
                         </p>
                       </div>
@@ -224,7 +243,7 @@ export function AuditLogDetailsDrawer({
                         <p className="text-[10px] font-medium text-green-600 dark:text-green-400">
                           New Value
                         </p>
-                        <p className="font-mono text-sm font-medium text-green-700 dark:text-green-300">
+                        <p className="font-mono text-sm font-medium text-green-700 dark:text-green-300 break-all">
                           {String(change.new)}
                         </p>
                       </div>
@@ -234,18 +253,18 @@ export function AuditLogDetailsDrawer({
               </div>
             ) : (
               // Show full JSON if no specific changes detected
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {/* Old Value */}
                 <div className="rounded-lg border p-3">
                   <p className="mb-2 text-xs font-medium text-muted-foreground">
                     Old Value
                   </p>
-                  {log.old_value ? (
-                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap">
-                      {formatJSON(log.old_value)}
+                  {log.oldValue ? (
+                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap break-all">
+                      {formatJSON(log.oldValue)}
                     </pre>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground italic">
                       No previous value
                     </p>
                   )}
@@ -256,12 +275,12 @@ export function AuditLogDetailsDrawer({
                   <p className="mb-2 text-xs font-medium text-muted-foreground">
                     New Value
                   </p>
-                  {log.new_value ? (
-                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap">
-                      {formatJSON(log.new_value)}
+                  {log.newValue ? (
+                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap break-all">
+                      {formatJSON(log.newValue)}
                     </pre>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground italic">
                       No new value
                     </p>
                   )}

@@ -12,9 +12,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -65,13 +62,13 @@ import {
   FilterMailIcon,
   SortByDown01Icon,
   SortByUp01Icon,
+  RefreshIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuCheckboxItem,
   DropdownMenuShortcut,
@@ -82,111 +79,22 @@ import {
   DropdownMenuSubContent,
 } from "./ui/dropdown-menu"
 import { AuditLogDetailsDrawer } from "./drawers/auditLogs/auditLogDetails-drawer"
+import { mainStore } from "@/store/mainStore"
 
-// Types
+// Types - Updated to match API response
 interface AuditLog {
   id: number
-  employee_id: string
-  employee_name: string
+  employeeId: string
+  employeeName: string | null
+  employeeRole: string | null
   action: string
   module: string
-  old_value: string | null
-  new_value: string | null
-  ip_address: string
-  created_at: string
+  oldValue: string | null
+  newValue: string | null
+  description: string
+  ipAddress: string
+  createdAt: string
 }
-
-// Mock data
-const mockAuditLogs: AuditLog[] = [
-  {
-    id: 1,
-    employee_id: "EMP001",
-    employee_name: "John Doe",
-    action: "CREATE",
-    module: "EMPLOYEES",
-    old_value: null,
-    new_value: '{"name":"John Doe","email":"john@example.com"}',
-    ip_address: "192.168.1.1",
-    created_at: "2026-07-21 10:30:00",
-  },
-  {
-    id: 2,
-    employee_id: "EMP002",
-    employee_name: "Jane Smith",
-    action: "UPDATE",
-    module: "COURSES",
-    old_value: '{"status":"draft"}',
-    new_value: '{"status":"published"}',
-    ip_address: "192.168.1.2",
-    created_at: "2026-07-21 09:15:00",
-  },
-  {
-    id: 3,
-    employee_id: "EMP003",
-    employee_name: "Bob Johnson",
-    action: "DELETE",
-    module: "EMPLOYEES",
-    old_value: '{"name":"Bob Johnson","email":"bob@example.com"}',
-    new_value: null,
-    ip_address: "192.168.1.3",
-    created_at: "2026-07-20 16:45:00",
-  },
-  {
-    id: 4,
-    employee_id: "EMP001",
-    employee_name: "John Doe",
-    action: "UPDATE",
-    module: "SETTINGS",
-    old_value: '{"theme":"light"}',
-    new_value: '{"theme":"dark"}',
-    ip_address: "192.168.1.1",
-    created_at: "2026-07-20 14:20:00",
-  },
-  {
-    id: 5,
-    employee_id: "EMP004",
-    employee_name: "Alice Williams",
-    action: "CREATE",
-    module: "DEPARTMENTS",
-    old_value: null,
-    new_value: '{"name":"Engineering"}',
-    ip_address: "192.168.1.4",
-    created_at: "2026-07-20 11:00:00",
-  },
-  {
-    id: 6,
-    employee_id: "EMP002",
-    employee_name: "Jane Smith",
-    action: "UPDATE",
-    module: "EMPLOYEES",
-    old_value: '{"role":"member"}',
-    new_value: '{"role":"admin"}',
-    ip_address: "192.168.1.2",
-    created_at: "2026-07-19 15:30:00",
-  },
-  {
-    id: 7,
-    employee_id: "EMP005",
-    employee_name: "Michael Brown",
-    action: "DELETE",
-    module: "COURSES",
-    old_value: '{"title":"Old Course"}',
-    new_value: null,
-    ip_address: "192.168.1.5",
-    created_at: "2026-07-19 12:10:00",
-  },
-  {
-    id: 8,
-    employee_id: "EMP003",
-    employee_name: "Bob Johnson",
-    action: "CREATE",
-    module: "SKILLS",
-    old_value: null,
-    new_value: '{"name":"React"}',
-    ip_address: "192.168.1.3",
-    created_at: "2026-07-19 09:00:00",
-  },
-]
 
 // Filter state type
 type FilterState = {
@@ -210,7 +118,7 @@ const MODULE_OPTIONS = [
   { value: "SETTINGS", label: "Settings" },
 ]
 
-// Bordered Table Cell component (matching employee table)
+// Bordered Table Cell component
 const BorderedTableCell = ({
   children,
   className = "",
@@ -236,7 +144,8 @@ const BorderedTableHead = ({
 )
 
 // Helper function to get initials
-const getInitials = (name: string) => {
+const getInitials = (name: string | null) => {
+  if (!name) return "U"
   return (
     name
       ?.split(" ")
@@ -248,11 +157,25 @@ const getInitials = (name: string) => {
 }
 
 export function AuditLogsContainer() {
+  // Get store functions and state
+  const {
+    auditLogs: storeAuditLogs,
+    pagination,
+    isLoading,
+    fetch_AuditLogsWithFilters,
+    delete_AuditLog,
+    delete_BulkAuditLogs,
+    nextPage,
+    prevPage,
+    goToPage,
+    setPageSize,
+    clearFilters,
+  } = mainStore()
+
+  // Local state for UI
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
-  const [isLoading, setIsLoading] = useState(false)
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(mockAuditLogs)
   const [filters, setFilters] = useState<FilterState>({
     action: [],
     module: [],
@@ -264,15 +187,28 @@ export function AuditLogsContainer() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc") // Default: newest first
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+
+  // Sync store data with local state
+  useEffect(() => {
+    if (storeAuditLogs && storeAuditLogs.length > 0) {
+      setAuditLogs(storeAuditLogs)
+    }
+  }, [storeAuditLogs])
+
+  // Initial fetch
+  useEffect(() => {
+    fetch_AuditLogsWithFilters(undefined, undefined, undefined, undefined, undefined, 0, itemsPerPage)
+  }, [])
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(
     (filterArray) => filterArray.length > 0
   )
 
-  // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
+  // Keyboard shortcut for search focus
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -285,7 +221,7 @@ export function AuditLogsContainer() {
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  // Keyboard shortcut for clearing filters (Escape key)
+  // Keyboard shortcut for clearing filters
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -304,13 +240,16 @@ export function AuditLogsContainer() {
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [hasActiveFilters])
 
-  // Sort data by ID
+  // Sort data
   const sortData = (data: AuditLog[]) => {
     return [...data].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime()
+      const dateB = new Date(b.createdAt).getTime()
+
       if (sortOrder === "desc") {
-        return b.id - a.id
+        return dateB - dateA
       } else {
-        return a.id - b.id
+        return dateA - dateB
       }
     })
   }
@@ -324,11 +263,12 @@ export function AuditLogsContainer() {
       const searchLower = searchTerm.toLowerCase()
       data = data.filter(
         (log) =>
-          log.employee_name.toLowerCase().includes(searchLower) ||
-          log.employee_id.toLowerCase().includes(searchLower) ||
-          log.action.toLowerCase().includes(searchLower) ||
-          log.module.toLowerCase().includes(searchLower) ||
-          log.ip_address.includes(searchLower)
+          log.employeeName?.toLowerCase().includes(searchLower) ||
+          log.employeeId?.toLowerCase().includes(searchLower) ||
+          log.action?.toLowerCase().includes(searchLower) ||
+          log.module?.toLowerCase().includes(searchLower) ||
+          log.ipAddress?.includes(searchLower) ||
+          log.description?.toLowerCase().includes(searchLower)
       )
     }
 
@@ -342,14 +282,13 @@ export function AuditLogsContainer() {
       data = data.filter((log) => filters.module.includes(log.module))
     }
 
-    // Apply sorting
     return sortData(data)
   }
 
   // Toggle sort order
   const toggleSortOrder = () => {
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
-    setCurrentPage(1) // Reset to first page when sorting changes
+    setCurrentPage(1)
   }
 
   const filteredData = getFilteredData()
@@ -360,14 +299,35 @@ export function AuditLogsContainer() {
     startIndex + itemsPerPage
   )
 
+  // Handle items per page change
   const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(Number(value))
+    const newSize = Number(value)
+    setItemsPerPage(newSize)
     setCurrentPage(1)
+    setPageSize(newSize)
   }
 
-  const handlePrevious = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
-  const handleNext = () =>
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+  // Handle page navigation using store
+  const handlePrevious = async () => {
+    if (currentPage > 1) {
+      const newPage = currentPage - 1
+      setCurrentPage(newPage)
+      await prevPage()
+    }
+  }
+
+  const handleNext = async () => {
+    if (currentPage < totalPages) {
+      const newPage = currentPage + 1
+      setCurrentPage(newPage)
+      await nextPage()
+    }
+  }
+
+  const handleGoToPage = async (page: number) => {
+    setCurrentPage(page)
+    await goToPage(page - 1)
+  }
 
   // Handle select all
   const handleSelectAll = () => {
@@ -425,12 +385,13 @@ export function AuditLogsContainer() {
   }
 
   // Helper to clear all filters
-  const clearAllFilters = () => {
+  const clearAllFilters = async () => {
     setFilters({
       action: [],
       module: [],
     })
     setCurrentPage(1)
+    await clearFilters()
   }
 
   // Handle bulk delete
@@ -451,9 +412,11 @@ export function AuditLogsContainer() {
     if (!logToDelete) return
     setIsDeleting(true)
     try {
+      await delete_AuditLog(logToDelete.id)
       setAuditLogs((prev) => prev.filter((log) => log.id !== logToDelete.id))
       setDeleteDialogOpen(false)
       setLogToDelete(null)
+      await fetch_AuditLogsWithFilters(undefined, undefined, undefined, undefined, undefined, currentPage - 1, itemsPerPage)
     } catch (error) {
       console.error("Failed to delete log:", error)
     } finally {
@@ -469,11 +432,13 @@ export function AuditLogsContainer() {
 
     setIsDeleting(true)
     try {
+      await delete_BulkAuditLogs(selectedIds)
       setAuditLogs((prev) =>
         prev.filter((log) => !selectedIds.includes(log.id))
       )
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
+      await fetch_AuditLogsWithFilters(undefined, undefined, undefined, undefined, undefined, currentPage - 1, itemsPerPage)
     } catch (error) {
       console.error("Failed to delete logs:", error)
     } finally {
@@ -518,9 +483,9 @@ export function AuditLogsContainer() {
     paginatedData.length > 0 &&
     paginatedData.every((log) => rowSelection[log.id.toString()])
 
-  // Get action badge color with lowercase styling
+  // Get action badge color
   const getActionBadge = (action: string) => {
-    switch (action) {
+    switch (action?.toUpperCase()) {
       case "CREATE":
         return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
       case "UPDATE":
@@ -556,6 +521,7 @@ export function AuditLogsContainer() {
                 placeholder="Search logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={isLoading}
               />
               <InputGroupAddon>
                 <HugeiconsIcon
@@ -570,6 +536,38 @@ export function AuditLogsContainer() {
             </InputGroup>
 
             <div className="flex items-center gap-1.5">
+              {/* Refresh Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={() => {
+                      fetch_AuditLogsWithFilters(
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        currentPage - 1,
+                        itemsPerPage
+                      )
+                    }}
+                    disabled={isLoading}
+                  >
+                    <HugeiconsIcon
+                      icon={RefreshIcon}
+                      strokeWidth={2}
+                      className={cn("h-4 w-4", isLoading && "animate-spin")}
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Refresh</p>
+                </TooltipContent>
+              </Tooltip>
+
               {/* Sort Button */}
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -590,8 +588,7 @@ export function AuditLogsContainer() {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
-                    Click to switch ascending and descending
-
+                    {sortOrder === "desc" ? "Newest First" : "Oldest First"}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -688,6 +685,16 @@ export function AuditLogsContainer() {
             </div>
           </div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                Loading logs...
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           <div
             className="relative mx-4 overflow-x-auto rounded-md border"
@@ -701,6 +708,7 @@ export function AuditLogsContainer() {
                       checked={areAllFilteredSelected}
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all"
+                      disabled={isLoading || paginatedData.length === 0}
                     />
                   </BorderedTableHead>
                   <BorderedTableHead className="align-middle whitespace-nowrap">
@@ -711,6 +719,9 @@ export function AuditLogsContainer() {
                   </BorderedTableHead>
                   <BorderedTableHead className="align-middle whitespace-nowrap">
                     Action
+                  </BorderedTableHead>
+                  <BorderedTableHead className="align-middle whitespace-nowrap">
+                    Description
                   </BorderedTableHead>
                   <BorderedTableHead className="align-middle whitespace-nowrap">
                     Module
@@ -734,10 +745,10 @@ export function AuditLogsContainer() {
               </TableHeader>
 
               <TableBody>
-                {paginatedData.length === 0 ? (
+                {paginatedData.length === 0 && !isLoading ? (
                   <TableRow>
                     <BorderedTableCell
-                      colSpan={10}
+                      colSpan={11}
                       className="py-8 text-center text-muted-foreground"
                     >
                       {searchTerm || hasActiveFilters ? (
@@ -788,26 +799,41 @@ export function AuditLogsContainer() {
                             <Avatar className="h-8 w-8 rounded-full">
                               <AvatarImage
                                 src="/avatars/default.jpg"
-                                alt={log.employee_name}
+                                alt={log.employeeName || ""}
                               />
                               <AvatarFallback className="rounded-full text-xs">
-                                {getInitials(log.employee_name)}
+                                {getInitials(log.employeeName)}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <div className="text-sm font-medium">
-                                {log.employee_name}
+                                {log.employeeName || "Unknown User"}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {log.employee_id}
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-muted-foreground">
+                                  {log.employeeId}
+                                </span>
+                                {log.employeeRole && (
+                                  <>
+                                    <span className="text-xs text-muted-foreground">·</span>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                      {log.employeeRole}
+                                    </Badge>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
                           <Badge className={getActionBadge(log.action)}>
-                            {`${log.action[0]}${log.action.slice(1).toLowerCase()}`}
+                            {log.action}
                           </Badge>
+                        </BorderedTableCell>
+                        <BorderedTableCell selected={isSelected}>
+                          <div className="text-sm max-w-[200px] truncate">
+                            {log.description}
+                          </div>
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
                           <Badge variant="outline" className="text-xs">
@@ -818,25 +844,25 @@ export function AuditLogsContainer() {
                           className="max-w-[150px] truncate font-mono text-xs"
                           selected={isSelected}
                         >
-                          {log.old_value || "-"}
+                          {log.oldValue || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell
                           className="max-w-[150px] truncate font-mono text-xs"
                           selected={isSelected}
                         >
-                          {log.new_value || "-"}
+                          {log.newValue || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell
                           className="font-mono text-xs"
                           selected={isSelected}
                         >
-                          {log.ip_address}
+                          {log.ipAddress}
                         </BorderedTableCell>
                         <BorderedTableCell
                           className="text-sm"
                           selected={isSelected}
                         >
-                          {formatDate(log.created_at)}
+                          {formatDate(log.createdAt)}
                         </BorderedTableCell>
                         <BorderedTableCell
                           selected={isSelected}
@@ -887,6 +913,7 @@ export function AuditLogsContainer() {
                       variant="destructive"
                       size="sm"
                       onClick={handleBulkDelete}
+                      disabled={isDeleting}
                     >
                       <HugeiconsIcon
                         icon={Delete02Icon}
@@ -922,6 +949,7 @@ export function AuditLogsContainer() {
               <Select
                 value={itemsPerPage.toString()}
                 onValueChange={handleItemsPerPageChange}
+                disabled={isLoading}
               >
                 <SelectTrigger className="w-15" id="select-rows-per-page">
                   <SelectValue />
@@ -950,7 +978,7 @@ export function AuditLogsContainer() {
                       handlePrevious()
                     }}
                     className={
-                      currentPage === 1 || filteredData.length === 0
+                      currentPage === 1 || filteredData.length === 0 || isLoading
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -966,7 +994,7 @@ export function AuditLogsContainer() {
                         isActive={currentPage === page}
                         onClick={(e) => {
                           e.preventDefault()
-                          setCurrentPage(page as number)
+                          handleGoToPage(page as number)
                         }}
                       >
                         {page}
@@ -982,7 +1010,7 @@ export function AuditLogsContainer() {
                       handleNext()
                     }}
                     className={
-                      currentPage === totalPages || filteredData.length === 0
+                      currentPage === totalPages || filteredData.length === 0 || isLoading
                         ? "pointer-events-none opacity-50"
                         : ""
                     }
@@ -1003,7 +1031,7 @@ export function AuditLogsContainer() {
               Are you sure you want to delete this audit log entry?
               <br />
               <span className="font-semibold">
-                {logToDelete?.employee_name} - {logToDelete?.action} on{" "}
+                {logToDelete?.employeeName || "Unknown"} - {logToDelete?.action} on{" "}
                 {logToDelete?.module}
               </span>
               <br />
@@ -1061,6 +1089,7 @@ export function AuditLogsContainer() {
             <Button
               variant="outline"
               onClick={() => setBulkDeleteDialogOpen(false)}
+              disabled={isDeleting}
             >
               Cancel
             </Button>

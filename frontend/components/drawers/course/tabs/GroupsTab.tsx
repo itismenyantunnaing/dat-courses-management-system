@@ -12,12 +12,20 @@ import {
   TabsTrigger as TabsTriggerComponent,
   TabsContent as TabsContentComponent,
 } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Calendar05Icon,
   User02Icon,
   Calendar03Icon,
   Alert01Icon,
+  Tick02Icon,
+  ChevronDownIcon,
 } from "@hugeicons/core-free-icons"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -59,6 +67,14 @@ const capitalizeFirstLetter = (str: string) => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
+// Attendance status options with labels and icons
+const ATTENDANCE_OPTIONS = [
+  { value: "PRESENT", label: "Present", icon: "✅" },
+  { value: "ABSENT", label: "Absent", icon: "❌" },
+  { value: "LATE", label: "Late", icon: "⏰" },
+  { value: "EXCUSED", label: "Excused", icon: "📝" },
+]
+
 export function GroupsTab({
   course,
   enrollments,
@@ -75,7 +91,9 @@ export function GroupsTab({
   const isAdmin = userRole === "admin"
   const isLearner = userRole === "learner"
   const isApprover = userRole === "approver"
-  const TESTING_DATE = new Date("2026-08-4")
+  const TESTING_DATE = new Date()
+  // const TESTING_DATE = new Date("2026-08-4")
+
 
   const getEmployeesByGroup = (groupId: number) => {
     return enrollments.filter(
@@ -106,6 +124,27 @@ export function GroupsTab({
     )
   }
 
+  // Get display label for attendance status
+  const getAttendanceLabel = (status: string) => {
+    const option = ATTENDANCE_OPTIONS.find(opt => opt.value === status)
+    return option ? `${option.icon} ${option.label}` : status
+  }
+
+  // Check if the first session is upcoming
+  const isFirstSessionUpcoming = (sessions: any[]) => {
+    if (!sessions || sessions.length === 0) return false
+    const sortedSessions = [...sessions].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0
+      const dateB = b.date ? new Date(b.date).getTime() : 0
+      return dateA - dateB
+    })
+    const firstSession = sortedSessions[0]
+    if (!firstSession || !firstSession.date) return false
+    const currentDate = TESTING_DATE || new Date()
+    const sessionDate = new Date(firstSession.date)
+    return sessionDate.getTime() > currentDate.getTime()
+  }
+
   return (
     <TabsContent value="groups" className="pt-4">
       <div className="space-y-6">
@@ -120,6 +159,9 @@ export function GroupsTab({
           .map((group: any, index: number) => {
             const groupEmployees = getEmployeesByGroup(parseInt(group.id))
             const uniqueStatuses = getUniqueStatuses(groupEmployees)
+            
+            // Check if first session is upcoming
+            const firstSessionUpcoming = isFirstSessionUpcoming(group.sessions)
 
             return (
               <Card key={index} className="overflow-hidden">
@@ -167,7 +209,7 @@ export function GroupsTab({
                 </CardHeader>
 
                 <CardContent className="pt-4">
-                  {/* Group Sessions with Attendance */}
+                  {/* Group Sessions - Always show sessions but hide attendance table if first session is upcoming */}
                   <div className="mb-4">
                     <h5 className="mb-2 flex items-center gap-2 text-sm font-medium">
                       <HugeiconsIcon
@@ -290,188 +332,226 @@ export function GroupsTab({
                                     )}
                                 </div>
 
-                                {/* Attendance Table - Simplified for brevity */}
-                                <div className="overflow-x-auto">
-                                  {groupEmployees.length > 0 ? (
-                                    <table className="w-full text-sm">
-                                      <thead>
-                                        <tr className="border-b">
-                                          <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                                            Employee
-                                          </th>
-                                          <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                                            Department
-                                          </th>
-                                          <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                                            Status
-                                          </th>
-                                          {!isApprover && (
+                                {/* Attendance Table - Hidden if first session is upcoming */}
+                                {!firstSessionUpcoming && (
+                                  <div className="overflow-x-auto">
+                                    {groupEmployees.length > 0 ? (
+                                      <table className="w-full text-sm">
+                                        <thead>
+                                          <tr className="border-b">
                                             <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                                              Action
+                                              Employee
                                             </th>
-                                          )}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {groupEmployees
-                                          .filter((employee) => {
-                                            if (userRole === "learner") {
-                                              return (
-                                                employee.employeeId ===
-                                                currentUserId
-                                              )
-                                            }
-                                            if (
-                                              userRole === "approver" &&
-                                              profile?.team
-                                            ) {
-                                              return (
-                                                employee.teamName ===
-                                                profile.team
-                                              )
-                                            }
-                                            return true
-                                          })
-                                          .map((employee) => {
-                                            const attendance =
-                                              getAttendanceForSession(
-                                                parseInt(sessionId),
-                                                employee.id
-                                              )
-                                            const key = `${sessionId}-${employee.id}`
-                                            const currentStatus =
-                                              attendanceStatuses[key] ||
-                                              attendance?.attendanceStatus ||
-                                              ""
-                                            const isSaving =
-                                              savingAttendance[key] || false
+                                            <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                                              Department
+                                            </th>
+                                            <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                                              Status
+                                            </th>
+                                            {!isApprover && (
+                                              <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                                                Action
+                                              </th>
+                                            )}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {groupEmployees
+                                            .filter((employee) => {
+                                              if (userRole === "learner") {
+                                                return (
+                                                  employee.employeeId ===
+                                                  currentUserId
+                                                )
+                                              }
+                                              if (
+                                                userRole === "approver" &&
+                                                profile?.team
+                                              ) {
+                                                return (
+                                                  employee.teamName ===
+                                                  profile.team
+                                                )
+                                              }
+                                              return true
+                                            })
+                                            .map((employee) => {
+                                              const attendance =
+                                                getAttendanceForSession(
+                                                  parseInt(sessionId),
+                                                  employee.id
+                                                )
+                                              const key = `${sessionId}-${employee.id}`
+                                              const currentStatus =
+                                                attendanceStatuses[key] ||
+                                                attendance?.attendanceStatus ||
+                                                ""
+                                              const isSaving =
+                                                savingAttendance[key] || false
 
-                                            const canEdit =
-                                              isAdmin ||
-                                              (userRole === "learner" &&
-                                                canEditAttendance &&
-                                                employee.employeeId ===
-                                                  currentUserId)
+                                              const canEdit =
+                                                isAdmin ||
+                                                (userRole === "learner" &&
+                                                  canEditAttendance &&
+                                                  employee.employeeId ===
+                                                    currentUserId)
 
-                                            return (
-                                              <tr
-                                                key={employee.id}
-                                                className="border-b border-muted/50"
-                                              >
-                                                <td className="px-2 py-2">
-                                                  <div className="flex items-center gap-2">
-                                                    <Avatar className="h-6 w-6">
-                                                      <AvatarImage
-                                                        src={
-                                                          employee.pfImage || ""
-                                                        }
-                                                      />
-                                                      <AvatarFallback className="text-[10px]">
-                                                        {getInitials(
-                                                          employee.employeeName
-                                                        )}
-                                                      </AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="text-xs font-medium">
-                                                      {truncateText(
-                                                        employee.employeeName,
-                                                        20
-                                                      )}
-                                                    </span>
-                                                  </div>
-                                                </td>
-                                                <td className="px-2 py-2 text-xs text-muted-foreground">
-                                                  {truncateText(
-                                                    employee.departmentName,
-                                                    20
-                                                  )}
-                                                </td>
-                                                <td className="px-2 py-2">
-                                                  {attendance &&
-                                                  attendance.attendanceStatus ? (
-                                                    <Badge className="border-green-200 bg-green-100 text-[10px] text-green-700">
-                                                      {
-                                                        attendance.attendanceStatus
-                                                      }
-                                                    </Badge>
-                                                  ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                      {isFutureSession &&
-                                                      userRole === "learner"
-                                                        ? "Pending"
-                                                        : "Not recorded"}
-                                                    </span>
-                                                  )}
-                                                </td>
-                                                {!isApprover && (
+                                              return (
+                                                <tr
+                                                  key={employee.id}
+                                                  className="border-b border-muted/50"
+                                                >
                                                   <td className="px-2 py-2">
-                                                    {canEdit ? (
-                                                      <div className="flex items-center gap-2">
-                                                        <select
-                                                          value={currentStatus}
-                                                          onChange={(e) =>
-                                                            onAttendanceChange(
-                                                              sessionId,
-                                                              employee.id.toString(),
-                                                              e.target.value,
-                                                              employee.id,
-                                                              parseInt(group.id)
-                                                            )
+                                                    <div className="flex items-center gap-2">
+                                                      <Avatar className="h-6 w-6">
+                                                        <AvatarImage
+                                                          src={
+                                                            employee.pfImage || ""
                                                           }
-                                                          disabled={
-                                                            isSaving ||
-                                                            isSessionLocked
-                                                          }
-                                                          className="h-7 w-[130px] rounded-md border bg-background px-2 text-xs"
-                                                        >
-                                                          <option value="">
-                                                            Select status
-                                                          </option>
-                                                          <option value="PRESENT">
-                                                            ✅ Present
-                                                          </option>
-                                                          <option value="ABSENT">
-                                                            ❌ Absent
-                                                          </option>
-                                                          <option value="LATE">
-                                                            ⏰ Late
-                                                          </option>
-                                                          <option value="EXCUSED">
-                                                            📝 Excused
-                                                          </option>
-                                                        </select>
-                                                        {isSaving ? (
-                                                          <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-primary"></span>
-                                                        ) : savedAttendance[
-                                                            key
-                                                          ] ? (
-                                                          <span className="text-green-500">
-                                                            ✓
-                                                          </span>
-                                                        ) : null}
-                                                      </div>
+                                                        />
+                                                        <AvatarFallback className="text-[10px]">
+                                                          {getInitials(
+                                                            employee.employeeName
+                                                          )}
+                                                        </AvatarFallback>
+                                                      </Avatar>
+                                                      <span className="text-xs font-medium">
+                                                        {truncateText(
+                                                          employee.employeeName,
+                                                          20
+                                                        )}
+                                                      </span>
+                                                    </div>
+                                                  </td>
+                                                  <td className="px-2 py-2 text-xs text-muted-foreground">
+                                                    {truncateText(
+                                                      employee.departmentName,
+                                                      20
+                                                    )}
+                                                  </td>
+                                                  <td className="px-2 py-2">
+                                                    {attendance &&
+                                                    attendance.attendanceStatus ? (
+                                                      <Badge className="border-green-200 bg-green-100 text-[10px] text-green-700">
+                                                        {getAttendanceLabel(
+                                                          attendance.attendanceStatus
+                                                        )}
+                                                      </Badge>
                                                     ) : (
                                                       <span className="text-xs text-muted-foreground">
-                                                        {isFutureSession
-                                                          ? "Coming Soon"
-                                                          : isOverdue
-                                                            ? "Locked"
-                                                            : "No access"}
+                                                        {isFutureSession &&
+                                                        userRole === "learner"
+                                                          ? "Pending"
+                                                          : "Not recorded"}
                                                       </span>
                                                     )}
                                                   </td>
-                                                )}
-                                              </tr>
-                                            )
-                                          })}
-                                      </tbody>
-                                    </table>
-                                  ) : (
-                                    <div className="py-6 text-center text-sm text-muted-foreground">
-                                      No employees enrolled in this group yet.
-                                    </div>
-                                  )}
-                                </div>
+                                                  {!isApprover && (
+                                                    <td className="px-2 py-2">
+                                                      {canEdit ? (
+                                                        <div className="flex items-center gap-2">
+                                                          <DropdownMenu>
+                                                            <DropdownMenuTrigger
+                                                              className={cn(
+                                                                "flex h-7 w-[130px] items-center justify-between rounded-md border bg-background px-2 text-xs",
+                                                                isSaving && "opacity-50 cursor-not-allowed",
+                                                                isSessionLocked && "opacity-50 cursor-not-allowed"
+                                                              )}
+                                                              disabled={
+                                                                isSaving ||
+                                                                isSessionLocked
+                                                              }
+                                                            >
+                                                              <span>
+                                                                {currentStatus
+                                                                  ? getAttendanceLabel(currentStatus)
+                                                                  : "Select status"}
+                                                              </span>
+                                                              <HugeiconsIcon
+                                                                icon={ChevronDownIcon}
+                                                                strokeWidth={2}
+                                                                className="h-3 w-3"
+                                                              />
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent
+                                                              align="start"
+                                                              className="w-[150px]"
+                                                            >
+                                                             
+                                                              {ATTENDANCE_OPTIONS.map(
+                                                                (option) => (
+                                                                  <DropdownMenuItem
+                                                                    key={option.value}
+                                                                    onClick={() =>
+                                                                      onAttendanceChange(
+                                                                        sessionId,
+                                                                        employee.id.toString(),
+                                                                        option.value,
+                                                                        employee.id,
+                                                                        parseInt(group.id)
+                                                                      )
+                                                                    }
+                                                                    className={cn(
+                                                                      "text-xs",
+                                                                      currentStatus ===
+                                                                        option.value &&
+                                                                        "bg-accent"
+                                                                    )}
+                                                                  >
+                                                                    <span className="mr-2">
+                                                                      {option.icon}
+                                                                    </span>
+                                                                    {option.label}
+                                                                    {currentStatus ===
+                                                                      option.value && (
+                                                                      <HugeiconsIcon
+                                                                        icon={
+                                                                          Tick02Icon
+                                                                        }
+                                                                        strokeWidth={
+                                                                          2
+                                                                        }
+                                                                        className="ml-auto h-3 w-3"
+                                                                      />
+                                                                    )}
+                                                                  </DropdownMenuItem>
+                                                                )
+                                                              )}
+                                                            </DropdownMenuContent>
+                                                          </DropdownMenu>
+                                                          {isSaving ? (
+                                                            <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-primary"></span>
+                                                          ) : savedAttendance[
+                                                              key
+                                                            ] ? (
+                                                              <span className="text-green-500">
+                                                                ✓
+                                                              </span>
+                                                            ) : null}
+                                                        </div>
+                                                      ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                          {isFutureSession
+                                                            ? "Coming Soon"
+                                                            : isOverdue
+                                                              ? "Locked"
+                                                              : "No access"}
+                                                        </span>
+                                                      )}
+                                                    </td>
+                                                  )}
+                                                </tr>
+                                              )
+                                            })}
+                                        </tbody>
+                                      </table>
+                                    ) : (
+                                      <div className="py-6 text-center text-sm text-muted-foreground">
+                                        No employees enrolled in this group yet.
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </Card>
                           )
@@ -481,7 +561,7 @@ export function GroupsTab({
                   </div>
 
                   {/* Enrolled Employees for this Group */}
-                  {groupEmployees.length > 0 && (
+                  {groupEmployees.length > 0 && (isAdmin || isApprover) && (
                     <div>
                       <div className="mb-3 flex items-center justify-between">
                         <h5 className="flex items-center gap-2 text-sm font-medium">

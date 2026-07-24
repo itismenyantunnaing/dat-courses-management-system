@@ -25,8 +25,8 @@ import java.util.Map;
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class AuditLogController {
 
-   private final AuditLogService auditLogService;
-private final HttpServletRequest httpServletRequest;
+    private final AuditLogService auditLogService;
+    private final HttpServletRequest httpServletRequest;
 
     @GetMapping
     public ResponseEntity<Page<AuditLogResponseDTO>> getAll(
@@ -48,9 +48,9 @@ private final HttpServletRequest httpServletRequest;
     }
 
     @PostMapping
-public ResponseEntity<?> create(@Valid @RequestBody AuditLogRequestDTO dto) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(auditLogService.create(dto, httpServletRequest));
-}
+    public ResponseEntity<?> create(@Valid @RequestBody AuditLogRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(auditLogService.create(dto, httpServletRequest));
+    }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody AuditLogRequestDTO dto) {
@@ -75,7 +75,8 @@ public ResponseEntity<?> create(@Valid @RequestBody AuditLogRequestDTO dto) {
             return supplier.get();
         } catch (RuntimeException e) {
             HttpStatus status = e.getMessage() != null && e.getMessage().contains("not found")
-                    ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST;
             return ResponseEntity.status(status).body(Map.of("success", false, "message", e.getMessage()));
         }
     }

@@ -4,43 +4,77 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class CertificateFileStorageService {
 
-    @Value("${file.upload-dir:../uploads/certificates}")
+    @Value("${file.upload-dir:../frontend/public/uploads/certificates}")
     private String uploadDir;
+    
+    private Path uploadPath;
+
+    @PostConstruct
+    public void init() {
+        // Find the project root (dat-courses-management-system)
+        Path currentDir = Paths.get(System.getProperty("user.dir"));
+        Path projectRoot = null;
+
+        // Traverse up to find the directory that contains both backend and frontend
+        Path tempDir = currentDir;
+        while (tempDir != null) {
+            if (Files.exists(tempDir.resolve("backend")) && Files.exists(tempDir.resolve("frontend"))) {
+                projectRoot = tempDir;
+                break;
+            }
+            tempDir = tempDir.getParent();
+        }
+
+        // If project root found, use it
+        if (projectRoot != null) {
+            this.uploadPath = projectRoot
+                .resolve("frontend")
+                .resolve("public")
+                .resolve("uploads")
+                .resolve("certificates")
+                .normalize()
+                .toAbsolutePath();
+        } else {
+            // Fallback: use the configured upload directory
+            this.uploadPath = Paths.get(uploadDir).normalize().toAbsolutePath();
+        }
+        
+        System.out.println("=========================================");
+        System.out.println("📁 Current working directory: " + currentDir);
+        System.out.println("📁 Project root found: " + projectRoot);
+        System.out.println("📁 Upload directory: " + uploadPath);
+        
+        try {
+            if (!Files.exists(uploadPath)) {
+                System.out.println("📁 Directory does not exist, creating...");
+                Files.createDirectories(uploadPath);
+                System.out.println("✅ Created directory: " + uploadPath);
+            } else {
+                System.out.println("✅ Directory exists: " + uploadPath);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Failed to create directory: " + e.getMessage());
+            throw new RuntimeException("Cannot create upload directory: " + e.getMessage(), e);
+        }
+    }
 
     public String storeFile(MultipartFile file, String employeeId, String certificateType, String japaneseLevel)
             throws IOException {
 
         System.out.println("=========================================");
-        System.out.println("📁 Current working directory: " + System.getProperty("user.dir"));
-        System.out.println("📁 Upload directory configured: " + uploadDir);
-
-        // ✅ Try to create directory with better error handling
-        Path uploadPath = Paths.get(uploadDir);
-        System.out.println("📁 Resolved upload path: " + uploadPath.toAbsolutePath());
-
-        try {
-            if (!Files.exists(uploadPath)) {
-                System.out.println("📁 Directory does not exist, attempting to create...");
-                Files.createDirectories(uploadPath);
-                System.out.println("✅ Created directory: " + uploadPath.toAbsolutePath());
-            } else {
-                System.out.println("✅ Directory exists: " + uploadPath.toAbsolutePath());
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Failed to create directory: " + e.getMessage());
-            throw new IOException("Cannot create upload directory: " + e.getMessage(), e);
-        }
+        System.out.println("📁 Upload directory: " + uploadPath);
 
         // ✅ Check if file is null or empty
         if (file == null || file.isEmpty()) {
@@ -62,22 +96,27 @@ public class CertificateFileStorageService {
             throw new RuntimeException("Only JPG and PNG image files are allowed. Provided: " + extension);
         }
 
-        // Generate filename
-        String fileName = employeeId + "_" +
-                certificateType.toUpperCase() + "_" +
-                japaneseLevel.toUpperCase() +
-                extension;
+        // Generate filename with timestamp to ensure uniqueness
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String fileName = String.format("%s_%s_%s_%s%s",
+                employeeId,
+                certificateType.toUpperCase(),
+                japaneseLevel.toUpperCase(),
+                timestamp,
+                extension);
 
-        // Handle duplicates
+        // Handle duplicates (if same timestamp, add counter)
         Path filePath = uploadPath.resolve(fileName);
         int counter = 1;
         while (Files.exists(filePath)) {
-            String baseName = employeeId + "_" +
-                    certificateType.toUpperCase() + "_" +
-                    japaneseLevel.toUpperCase();
-            fileName = baseName + "_" + counter + extension;
+            fileName = String.format("%s_%s_%s_%s_%d%s",
+                    employeeId,
+                    certificateType.toUpperCase(),
+                    japaneseLevel.toUpperCase(),
+                    timestamp,
+                    counter++,
+                    extension);
             filePath = uploadPath.resolve(fileName);
-            counter++;
         }
 
         // ✅ Save file with better error handling
@@ -97,28 +136,27 @@ public class CertificateFileStorageService {
             throw new IOException("Failed to save file: " + e.getMessage(), e);
         }
 
-
+        // Return the relative path for the database
         return "uploads/certificates/" + fileName;
     }
 
     public void deleteFile(String filePath) throws IOException {
         if (filePath != null && !filePath.isEmpty()) {
-            Path uploadPath = Paths.get(uploadDir);
             String filename = Paths.get(filePath).getFileName().toString();
             Path path = uploadPath.resolve(filename);
             if (Files.exists(path)) {
                 Files.delete(path);
+                System.out.println("🗑️ Deleted file: " + path);
             }
         }
     }
 
     public byte[] getFile(String filePath) throws IOException {
-        Path uploadPath = Paths.get(uploadDir);
         // Extract just the filename from the path
         String filename = Paths.get(filePath).getFileName().toString();
         Path path = uploadPath.resolve(filename);
         if (!Files.exists(path)) {
-            throw new RuntimeException("File not found: " + filePath);
+            throw new RuntimeException("File not found: " + filePath + " at path: " + path);
         }
         return Files.readAllBytes(path);
     }
@@ -132,7 +170,7 @@ public class CertificateFileStorageService {
         String contentType = file.getContentType();
         if (contentType != null) {
             String contentTypeLower = contentType.toLowerCase();
-            // Only allow image content types - NO PDF
+            // Only allow image content types
             if (contentTypeLower.equals("image/jpeg") ||
                     contentTypeLower.equals("image/jpg") ||
                     contentTypeLower.equals("image/png")) {

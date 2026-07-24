@@ -1,7 +1,6 @@
-// components/course/tabs/LearnersTab.tsx
 "use client"
 
-import React from "react"
+import React, { useState, useMemo, useCallback, useDeferredValue, useEffect, useRef } from "react"
 import { TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,9 +16,28 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserGroupIcon, RefreshIcon } from "@hugeicons/core-free-icons"
+import {
+  UserGroupIcon,
+  RefreshIcon,
+  PlusSignIcon,
+  LayoutGridIcon,
+  TableIcon,
+  Delete02Icon,
+} from "@hugeicons/core-free-icons"
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from "@/components/ui/command"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { mainStore } from "@/store/mainStore"
+import { MentionedLearner } from "@/types/course"
 
 interface LearnersTabProps {
   enrollments: any[]
@@ -27,7 +45,18 @@ interface LearnersTabProps {
   profile?: any
   enrollmentSearchTerm: string
   onSearchChange: (value: string) => void
-  onOpenChangeGroup: () => void
+  course?: any
+  onRefreshEnrollments?: () => Promise<void>
+  onAdminChangeGroup?: (enrollmentId: number, newGroupId: number) => Promise<void>
+  isChangingGroup?: boolean
+  groupChangeError?: string | null
+  groupChangeSuccess?: string | null
+  allEmployees?: any[]
+  groups?: any[]
+  onEnrollEmployee?: (employeeId: string | number, groupId?: number) => Promise<void>
+  onUnenrollEmployee?: (enrollmentId: number) => Promise<void>
+  isEnrolling?: boolean
+  isUnenrolling?: boolean
 }
 
 const getInitials = (name: string) => {
@@ -37,10 +66,9 @@ const getInitials = (name: string) => {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
-const truncateText = (text: string, maxLength: number = 30) => {
-  if (!text) return ""
-  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text
-}
+type ViewMode = "table" | "card"
+
+const AVAILABLE_LEARNERS_PER_PAGE = 10
 
 export function LearnersTab({
   enrollments,
@@ -48,9 +76,29 @@ export function LearnersTab({
   profile,
   enrollmentSearchTerm,
   onSearchChange,
-  onOpenChangeGroup,
+  course,
+  onRefreshEnrollments,
+  allEmployees = [],
+  groups = [],
+  onEnrollEmployee,
+  onUnenrollEmployee,
+  isEnrolling = false,
+  isUnenrolling = false,
 }: LearnersTabProps) {
   const isApprover = userRole === "approver"
+  const isAdmin = userRole === "admin"
+  const [viewMode, setViewMode] = useState<ViewMode>("table")
+  const [learnersCommandOpen, setLearnersCommandOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [visibleLearnersCount, setVisibleLearnersCount] = useState(AVAILABLE_LEARNERS_PER_PAGE)
+  const [isEnrollingEmployee, setIsEnrollingEmployee] = useState(false)
+  const [isUnenrollingEmployee, setIsUnenrollingEmployee] = useState<number | null>(null)
+  
+  const deferredSearchQuery = useDeferredValue(searchQuery)
+  const commandListRef = useRef<HTMLDivElement>(null)
+  const isLoadingMoreRef = useRef(false)
+
+  const { fetch_courseEnrollments } = mainStore()
 
   let activeEnrollments = enrollments.filter(
     (e) => e.enrollmentStatus !== "CANCELLED"
@@ -97,6 +145,135 @@ export function LearnersTab({
     "bg-emerald-100 text-emerald-700 border-emerald-200",
   ]
 
+  // Get already enrolled employee IDs
+  const enrolledIds = useMemo(() => {
+    return new Set(activeEnrollments.map((e: any) => e.employeeId))
+  }, [activeEnrollments])
+
+  // Filter available employees (not already enrolled)
+  const availableEmployees = useMemo(() => {
+    return allEmployees.filter(
+      (employee) => !enrolledIds.has(employee.id)
+    )
+  }, [allEmployees, enrolledIds])
+
+  const displayedLearners = useMemo(() => {
+    if (!deferredSearchQuery.trim()) {
+      return availableEmployees
+    }
+    const query = deferredSearchQuery.toLowerCase().trim()
+    return availableEmployees.filter((learner) => {
+      const searchableFields = [
+        learner.name || "",
+        learner.email || "",
+        learner.department || "",
+        learner.team || "",
+      ]
+      return searchableFields.some((field) =>
+        field.toLowerCase().includes(query)
+      )
+    })
+  }, [availableEmployees, deferredSearchQuery])
+
+  const visibleLearners = useMemo(() => {
+    return displayedLearners.slice(0, visibleLearnersCount)
+  }, [displayedLearners, visibleLearnersCount])
+
+  const hasMoreLearners = visibleLearnersCount < displayedLearners.length
+
+  // Handle scroll to load more
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget
+      const bottom =
+        target.scrollHeight - target.scrollTop <= target.clientHeight + 10
+
+      if (bottom && hasMoreLearners && !isLoadingMoreRef.current) {
+        isLoadingMoreRef.current = true
+        setVisibleLearnersCount((prev) => {
+          const newCount = prev + AVAILABLE_LEARNERS_PER_PAGE
+          return Math.min(newCount, displayedLearners.length)
+        })
+        setTimeout(() => {
+          isLoadingMoreRef.current = false
+        }, 200)
+      }
+    },
+    [hasMoreLearners, displayedLearners.length]
+  )
+
+  useEffect(() => {
+    if (!learnersCommandOpen) {
+      setSearchQuery("")
+      setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
+    }
+  }, [learnersCommandOpen])
+
+  const handleEnrollEmployee = async (employee: any) => {
+    if (!onEnrollEmployee) {
+      alert("Enroll function not available")
+      return
+    }
+
+    // For trainer courses, get the first group ID
+    const isTrainer = course?.courseType === "trainer"
+    let groupId = 1
+    
+    if (isTrainer && groups.length > 0) {
+      groupId = parseInt(String(groups[0].id).replace("g", ""))
+    }
+
+    setIsEnrollingEmployee(true)
+    try {
+      await onEnrollEmployee(employee.id, groupId)
+      setLearnersCommandOpen(false)
+      setSearchQuery("")
+      setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
+      
+      // Refresh enrollments
+      if (course?.id) {
+        await fetch_courseEnrollments(course.id)
+      }
+      if (onRefreshEnrollments) {
+        await onRefreshEnrollments()
+      }
+    } catch (error) {
+      console.error("Error enrolling employee:", error)
+      alert("Failed to enroll employee")
+    } finally {
+      setIsEnrollingEmployee(false)
+    }
+  }
+
+  const handleUnenrollEmployee = async (enrollmentId: number, employeeName: string) => {
+    if (!onUnenrollEmployee) {
+      alert("Unenroll function not available")
+      return
+    }
+
+    if (!confirm(`Are you sure you want to unenroll ${employeeName}?`)) {
+      return
+    }
+
+    setIsUnenrollingEmployee(enrollmentId)
+    try {
+      await onUnenrollEmployee(enrollmentId)
+      
+      // Refresh enrollments
+      if (course?.id) {
+        await fetch_courseEnrollments(course.id)
+      }
+      if (onRefreshEnrollments) {
+        await onRefreshEnrollments()
+      }
+    } catch (error) {
+      console.error("Error unenrolling employee:", error)
+      alert("Failed to unenroll employee")
+    } finally {
+      setIsUnenrollingEmployee(null)
+    }
+  }
+
   return (
     <TabsContent value="learners" className="pt-4">
       <Card>
@@ -118,20 +295,58 @@ export function LearnersTab({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenChangeGroup}
-                className="gap-2"
-                disabled={activeEnrollments.length === 0}
-              >
-                <HugeiconsIcon
-                  icon={RefreshIcon}
-                  strokeWidth={2}
-                  className="h-4 w-4"
-                />
-                Change Group
-              </Button>
+              {/* Add Employee Button - Directly opens dialog */}
+              {isAdmin && course && availableEmployees.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setLearnersCommandOpen(true)}
+                  disabled={isEnrolling}
+                >
+                  <HugeiconsIcon
+                    icon={PlusSignIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                  Add Employee
+                </Button>
+              )}
+
+              {/* View Toggle Buttons */}
+              <div className="flex rounded-md border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 rounded-none px-2",
+                    viewMode === "table" && "bg-muted"
+                  )}
+                  onClick={() => setViewMode("table")}
+                >
+                  <HugeiconsIcon
+                    icon={TableIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 rounded-none px-2",
+                    viewMode === "card" && "bg-muted"
+                  )}
+                  onClick={() => setViewMode("card")}
+                >
+                  <HugeiconsIcon
+                    icon={LayoutGridIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                </Button>
+              </div>
+
               <Input
                 placeholder="Filter by name, dept, team, or group..."
                 value={enrollmentSearchTerm}
@@ -155,25 +370,23 @@ export function LearnersTab({
                   : "No learners enrolled in this course yet"}
               </p>
             </div>
-          ) : (
+          ) : viewMode === "table" ? (
+            // Table View with Delete Button
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="text-xs font-medium">Sr.</TableHead>
-                    <TableHead className="text-xs font-medium">
-                      Employee ID
-                    </TableHead>
+                    <TableHead className="text-xs font-medium">Employee ID</TableHead>
                     <TableHead className="text-xs font-medium">Name</TableHead>
                     <TableHead className="text-xs font-medium">Email</TableHead>
-                    <TableHead className="text-xs font-medium">
-                      Department
-                    </TableHead>
+                    <TableHead className="text-xs font-medium">Department</TableHead>
                     <TableHead className="text-xs font-medium">Team</TableHead>
                     <TableHead className="text-xs font-medium">Group</TableHead>
-                    <TableHead className="text-xs font-medium">
-                      Enrolled At
-                    </TableHead>
+                    <TableHead className="text-xs font-medium">Enrolled At</TableHead>
+                    {isAdmin && (
+                      <TableHead className="text-xs font-medium text-center">Action</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -183,10 +396,11 @@ export function LearnersTab({
                         (e) => e.courseGroupName === employee.courseGroupName
                       ).length > 0
                         ? filteredEnrollments.findIndex(
-                            (e) =>
-                              e.courseGroupName === employee.courseGroupName
+                            (e) => e.courseGroupName === employee.courseGroupName
                           ) % groupColors.length
                         : index % groupColors.length
+
+                    const isUnenrolling = isUnenrollingEmployee === employee.id
 
                     return (
                       <TableRow
@@ -236,15 +450,228 @@ export function LearnersTab({
                             ? format(new Date(employee.enrolledAt), "MMM d, yyyy")
                             : "-"}
                         </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() =>
+                                handleUnenrollEmployee(
+                                  employee.id,
+                                  employee.employeeName
+                                )
+                              }
+                              disabled={isUnenrolling}
+                            >
+                              {isUnenrolling ? (
+                                <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+                              ) : (
+                                <HugeiconsIcon
+                                  icon={Delete02Icon}
+                                  strokeWidth={2}
+                                  className="h-4 w-4"
+                                />
+                              )}
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     )
                   })}
                 </TableBody>
               </Table>
             </div>
+          ) : (
+            // Card View with Delete Button
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredEnrollments.map((employee, index) => {
+                const groupIndex =
+                  filteredEnrollments.filter(
+                    (e) => e.courseGroupName === employee.courseGroupName
+                  ).length > 0
+                    ? filteredEnrollments.findIndex(
+                        (e) => e.courseGroupName === employee.courseGroupName
+                      ) % groupColors.length
+                    : index % groupColors.length
+
+                const isUnenrolling = isUnenrollingEmployee === employee.id
+
+                return (
+                  <div
+                    key={employee.id}
+                    className="flex flex-col rounded-lg border bg-muted/5 p-4 transition-colors hover:bg-muted/10"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={employee.pfImage || ""} />
+                        <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
+                          {getInitials(employee.employeeName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="truncate font-medium">
+                              {employee.employeeName}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {employee.email || "-"}
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                              <Badge variant="outline" className="text-[10px]">
+                                ID: {employee.employeeId || "-"}
+                              </Badge>
+                              <Badge
+                                className={cn(
+                                  "text-[10px]",
+                                  groupColors[groupIndex % groupColors.length]
+                                )}
+                              >
+                                {employee.courseGroupName || "-"}
+                              </Badge>
+                            </div>
+                          </div>
+                          {isAdmin && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() =>
+                                handleUnenrollEmployee(
+                                  employee.id,
+                                  employee.employeeName
+                                )
+                              }
+                              disabled={isUnenrolling}
+                            >
+                              {isUnenrolling ? (
+                                <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+                              ) : (
+                                <HugeiconsIcon
+                                  icon={Delete02Icon}
+                                  strokeWidth={2}
+                                  className="h-4 w-4"
+                                />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 border-t pt-2 text-xs text-muted-foreground">
+                      <span>{employee.departmentName || "-"}</span>
+                      <span>•</span>
+                      <span>{employee.teamName || "-"}</span>
+                      <span>•</span>
+                      <span>
+                        {employee.enrolledAt
+                          ? format(new Date(employee.enrolledAt), "MMM d, yyyy")
+                          : "-"}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Add Employee Command Dialog */}
+      {isAdmin && course && (
+        <CommandDialog
+          open={learnersCommandOpen}
+          onOpenChange={setLearnersCommandOpen}
+        >
+          <Command className="gap-3" shouldFilter={false}>
+            <CommandInput
+              placeholder="Search employees by name, department or team..."
+              value={searchQuery}
+              onValueChange={(value) => {
+                setSearchQuery(value)
+                setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
+              }}
+            />
+            <CommandList
+              ref={commandListRef}
+              onScroll={handleScroll}
+              className="max-h-[400px] overflow-y-auto"
+            >
+              <CommandEmpty>
+                {searchQuery && displayedLearners.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    No employees found matching "{searchQuery}"
+                  </div>
+                ) : displayedLearners.length === 0 && !searchQuery ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    All available employees are already enrolled
+                  </div>
+                ) : null}
+              </CommandEmpty>
+              <CommandGroup className="gap-2">
+                {visibleLearners.map((learner) => (
+                  <CommandItem
+                    key={learner.id}
+                    onSelect={() => handleEnrollEmployee(learner)}
+                    className="flex items-center justify-between"
+                    disabled={isEnrolling || isEnrollingEmployee}
+                  >
+                    <Avatar className="h-8 w-8 rounded-lg">
+                      <AvatarImage src={learner.avatar} alt={learner.name} />
+                      <AvatarFallback className="rounded-lg">
+                        {getInitials(learner.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">{learner.name}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {learner.department} • {learner.team}
+                      </span>
+                    </div>
+                    <CommandShortcut>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                      >
+                        <HugeiconsIcon
+                          icon={PlusSignIcon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                      </Button>
+                    </CommandShortcut>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+
+              {hasMoreLearners && (
+                <div className="border-t p-4">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                      <span>Loading more employees...</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      Showing {visibleLearners.length} of {displayedLearners.length} employees
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {!hasMoreLearners && displayedLearners.length > 0 && (
+                <div className="border-t p-3 text-center text-xs text-muted-foreground">
+                  Showing all {displayedLearners.length} employees
+                </div>
+              )}
+            </CommandList>
+          </Command>
+        </CommandDialog>
+      )}
     </TabsContent>
   )
 }
