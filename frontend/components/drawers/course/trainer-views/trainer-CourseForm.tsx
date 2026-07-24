@@ -775,12 +775,12 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
+                {/* <p className="text-xs text-muted-foreground">
                   {formData.status === "draft" && "📝 Course is being created, not visible to learners"}
                   {formData.status === "active" && "✅ Course is open for enrollment"}
                   {formData.status === "upcoming" && "📅 Course is scheduled but not yet open"}
                   {formData.status === "completed" && "🏁 Course has finished"}
-                </p>
+                </p> */}
               </div>
 
               {isTrainer && (
@@ -838,12 +838,12 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                       Registration deadline is required
                     </p>
                   )}
-                  {formData.registrationDeadline && (
+                  {/* {formData.registrationDeadline && (
                     <p className="text-xs text-muted-foreground">
-                      Registration closes on{" "}
+                      Registration will close on{" "}
                       {formatLocalDateDisplay(formData.registrationDeadline)}
                     </p>
-                  )}
+                  )} */}
                 </div>
               )}
 

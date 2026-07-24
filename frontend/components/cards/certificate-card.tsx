@@ -94,9 +94,7 @@ export function CertificateCard({
 
           {/* Status Badge - Top Right - New design */}
           <div className="absolute top-3 right-3">
-            <Badge
-              className={`${getStatusStyles(status)}`}
-            >
+            <Badge className={`${getStatusStyles(status)}`}>
               {`${status[0].toUpperCase()}${status.slice(1).toLowerCase()}`}
             </Badge>
           </div>
@@ -105,11 +103,18 @@ export function CertificateCard({
         {/* Certificate Type with Level */}
         <div className="flex items-center justify-between px-4 pt-4">
           <div className="flex w-full items-center justify-between">
-            <h3 className="line-clamp-1 text-lg leading-tight font-semibold">
-              {certificate.certificateType}
-            </h3>
-            <span className="shrink-0 text-sm text-muted-foreground">
-              {certificate.japaneseLevel}
+            <div className="flex gap-2">
+              <h3 className="line-clamp-1 text-lg leading-tight font-semibold">
+                {certificate.certificateType}
+              </h3>
+              <span>•</span>
+              <span className="shrink-0 text-sm text-muted-foreground">
+                {certificate.japaneseLevel}
+              </span>
+            </div>
+
+            <span className="text-xs text-muted-foreground">
+              {format(new Date(submittedDate), "MMM d, yyyy")}
             </span>
           </div>
         </div>
@@ -127,8 +132,8 @@ export function CertificateCard({
         )}
 
         {/* Verified By Information - Show if certificate is verified */}
-        {isVerified && verifiedByName && (
-          <div className="px-4 mt-2">
+        {/* {isVerified && verifiedByName && (
+          <div className="mt-2 px-4">
             <div className="rounded-md border border-muted bg-muted/30 px-2 py-2">
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">
@@ -147,15 +152,15 @@ export function CertificateCard({
               )}
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Employee Information - Only show if showEmployeeInfo is true */}
         {showEmployeeInfo && (
-          <div className="px-4 pt-2">
+          <div className="px-3 pt-2">
             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-              <Avatar className="h-0 w-0 rounded-lg">
+              <Avatar className="h-8 w-8 rounded-full">
                 <AvatarImage src={employeeAvatar} alt={employeeName} />
-                <AvatarFallback className="rounded-lg">
+                <AvatarFallback className="rounded-full">
                   {getInitials(employeeName)}
                 </AvatarFallback>
               </Avatar>
@@ -165,9 +170,6 @@ export function CertificateCard({
                   {employeeEmail}
                 </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {format(new Date(submittedDate), "MMM d, yyyy")}
-              </span>
             </div>
           </div>
         )}

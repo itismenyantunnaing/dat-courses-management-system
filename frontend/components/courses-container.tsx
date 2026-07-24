@@ -1,16 +1,32 @@
 // components/courses/course-container.tsx
 "use client"
 
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { Kbd } from "@/components/ui/kbd"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  DiplomaIcon,
   ArrowLeft01Icon,
   CourseIcon,
+  AlertCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { Course, type CourseCategory } from "@/types/course"
 import { CourseCard } from "../components/cards/course-card"
@@ -18,24 +34,25 @@ import { CourseDetail } from "../components/drawers/course/course-detail"
 import { Trainer_CourseForm } from "./drawers/course/trainer-views/trainer-CourseForm"
 import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 const STROKE_WIDTH = 2
 
 interface CoursesContainerProps {
-  searchPlaceholder?: string;
-  userRole?: "admin" | "learner" | "approver";
+  searchPlaceholder?: string
+  userRole?: "admin" | "learner" | "approver"
 }
 
 // Add this helper function at the top of the file, after imports
 const formatLocalDateForAPI = (date: Date): string => {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-    return '';
+    return ""
   }
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
 
 // Helper function to get course start date
 const getCourseStartDate = (course: Course): Date | null => {
@@ -60,7 +77,10 @@ const getCourseSessionsCount = (course: Course): number => {
   return course.sessions?.length || 0
 }
 
-export function CoursesContainer({ searchPlaceholder = "Search courses...", userRole }: CoursesContainerProps) {
+export function CoursesContainer({
+  searchPlaceholder = "Search courses...",
+  userRole,
+}: CoursesContainerProps) {
   const {
     courses,
     fetchAll_CourseData,
@@ -84,7 +104,23 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
   const [searchTerm, setSearchTerm] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [activeTab, setActiveTab] = useState<string>("all")
 
+  // Search input ref for keyboard shortcut
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
   // Fetch courses and categories from API on mount
   useEffect(() => {
@@ -92,14 +128,45 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
     fetch_courseCategories()
   }, [fetchAll_CourseData, fetch_courseCategories])
 
-
   const canEditTrainerCourses = userRole === "admin"
   const isLearner = userRole === "learner" || userRole === "approver"
+
+  // Get current user's enrolled course IDs
+  const { enrollments, getUserId } = mainStore()
+  const currentUserId = getUserId?.() || null
+
+  const userEnrolledCourseIds = useMemo(() => {
+    if (!currentUserId) return new Set()
+    const userEnrollments = enrollments.filter(
+      (e: any) =>
+        e.employeeId === currentUserId && e.enrollmentStatus !== "CANCELLED"
+    )
+    return new Set(userEnrollments.map((e: any) => e.courseId))
+  }, [enrollments, currentUserId])
+
+  // Get counts for each tab (admin)
+  const getAdminTabCounts = useMemo(() => {
+    const all = courses.length
+    const draft = courses.filter((c) => c.status === "draft").length
+    const active = courses.filter(
+      (c) => c.status === "active" || c.status === "upcoming"
+    ).length
+    return { all, draft, active }
+  }, [courses])
+
+  // Get counts for each tab (learner)
+  const getLearnerTabCounts = useMemo(() => {
+    const all = courses.filter((c) => c.status !== "draft").length
+    const yourCourses = courses.filter(
+      (c) => userEnrolledCourseIds.has(c.id) && c.status !== "draft"
+    ).length
+    return { all, yourCourses }
+  }, [courses, userEnrolledCourseIds])
 
   const filteredCourses = useMemo(() => {
     const search = searchTerm.toLowerCase()
 
-    return courses
+    let filtered = courses
       .filter(() => {
         if (userRole === "admin") {
           return true
@@ -120,7 +187,23 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
           sessionsCount.toString().includes(search)
         )
       })
-  }, [courses, searchTerm, userRole])
+
+    // Apply tab filter
+    if (activeTab === "draft") {
+      filtered = filtered.filter((course) => course.status === "draft")
+    } else if (activeTab === "active") {
+      filtered = filtered.filter(
+        (course) => course.status === "active" || course.status === "upcoming"
+      )
+    } else if (activeTab === "your-courses") {
+      filtered = filtered.filter((course) =>
+        userEnrolledCourseIds.has(course.id)
+      )
+    }
+    // "all" tab shows everything
+
+    return filtered
+  }, [courses, searchTerm, userRole, activeTab, userEnrolledCourseIds])
 
   const handleView = (course: Course) => {
     setSelectedCourse(course)
@@ -153,11 +236,10 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
       if (result.success) {
         resetForm()
       } else {
-        alert(result.message || 'Failed to delete course')
+        alert(result.message || "Failed to delete course")
       }
     }
   }
-
 
   const handleSubmit = async (data: CourseCategory) => {
     setIsSubmitting(true)
@@ -166,7 +248,7 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
       const categoryId = data.course_category_id
 
       if (!categoryId) {
-        alert('Please select a valid category')
+        alert("Please select a valid category")
         setIsSubmitting(false)
         return
       }
@@ -175,74 +257,105 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
       const category = getCategoryByValue(data.category)
 
       const statusMap: Record<string, string> = {
-        'active': 'OPEN',
-        'upcoming': 'CLOSED',
-        'completed': 'COMPLETED',
-        'draft': 'DRAFT'
+        active: "OPEN",
+        upcoming: "CLOSED",
+        completed: "COMPLETED",
+        draft: "DRAFT",
       }
 
-      const currentStatus = data.status || 'draft'
-      const backendStatus = statusMap[currentStatus] || 'DRAFT'
+      const currentStatus = data.status || "draft"
+      const backendStatus = statusMap[currentStatus] || "DRAFT"
 
       // Prepare groups for trainer courses
       let newGroups = null
-      if (data.courseType === 'trainer' && data.groups && data.groups.length > 0) {
+      if (
+        data.courseType === "trainer" &&
+        data.groups &&
+        data.groups.length > 0
+      ) {
         newGroups = data.groups.map((group: any, index: number) => {
-          const existingGroup = editingCourse?.groups?.find((g: any) => g.id === group.id)
+          const existingGroup = editingCourse?.groups?.find(
+            (g: any) => g.id === group.id
+          )
 
           return {
-            ...(editingCourse && existingGroup?.id && { id: parseInt(existingGroup.id) }),
+            ...(editingCourse &&
+              existingGroup?.id && { id: parseInt(existingGroup.id) }),
             group_name: group.name || `Group ${index + 1}`,
-            capacity: group.capacity === 'unlimited' ? null : (Number(group.capacity) || null),
+            capacity:
+              group.capacity === "unlimited"
+                ? null
+                : Number(group.capacity) || null,
             // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
-            start_date: group.startDate instanceof Date
-              ? formatLocalDateForAPI(group.startDate)
-              : group.startDate || null,
-            end_date: group.endDate instanceof Date
-              ? formatLocalDateForAPI(group.endDate)
-              : group.endDate || null,
+            start_date:
+              group.startDate instanceof Date
+                ? formatLocalDateForAPI(group.startDate)
+                : group.startDate || null,
+            end_date:
+              group.endDate instanceof Date
+                ? formatLocalDateForAPI(group.endDate)
+                : group.endDate || null,
             sessions_per_week: group.sessionsPerWeek || [],
             group_status: group.status || "OPEN",
-            sessions: (group.sessions || []).map((session: any, sIndex: number) => {
-              const existingSession = existingGroup?.sessions?.find((s: any) => s.id === session.id)
+            sessions: (group.sessions || []).map(
+              (session: any, sIndex: number) => {
+                const existingSession = existingGroup?.sessions?.find(
+                  (s: any) => s.id === session.id
+                )
 
-              return {
-                ...(editingCourse && existingSession?.id && { id: parseInt(existingSession.id) }),
-                session_no: sIndex + 1,
-                // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
-                session_date: session.date instanceof Date
-                  ? formatLocalDateForAPI(session.date)
-                  : session.date,
-                start_time: session.startTime || group.startTime || "09:00",
-                end_time: session.endTime || group.endTime || "10:00",
-                session_status: session.status || 'PLANNED'
+                return {
+                  ...(editingCourse &&
+                    existingSession?.id && {
+                      id: parseInt(existingSession.id),
+                    }),
+                  session_no: sIndex + 1,
+                  // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
+                  session_date:
+                    session.date instanceof Date
+                      ? formatLocalDateForAPI(session.date)
+                      : session.date,
+                  start_time: session.startTime || group.startTime || "09:00",
+                  end_time: session.endTime || group.endTime || "10:00",
+                  session_status: session.status || "PLANNED",
+                }
               }
-            })
+            ),
           }
         })
       }
 
       // Prepare self-study sessions
       let newSelfStudySessions = null
-      if (data.courseType === 'self-study' && data.sessions && data.sessions.length > 0) {
-        const isJLPT = data.selfStudyType === 'jlpt'
-        newSelfStudySessions = data.sessions.map((session: any, index: number) => {
-          const existingSession = editingCourse?.self_study_sessions?.find((s: any) => s.id === session.id)
+      if (
+        data.courseType === "self-study" &&
+        data.sessions &&
+        data.sessions.length > 0
+      ) {
+        const isJLPT = data.selfStudyType === "jlpt"
+        newSelfStudySessions = data.sessions.map(
+          (session: any, index: number) => {
+            const existingSession = editingCourse?.self_study_sessions?.find(
+              (s: any) => s.id === session.id
+            )
 
-          return {
-            ...(editingCourse && existingSession?.id && { id: parseInt(existingSession.id) }),
-            session_no: index + 1,
-            duration_per_session: session.durationPerSession || 7,
-            file_path: isJLPT ? null : (session.link || null),
-            filepath: isJLPT ? null : (session.link || null),
-            kanji_target: isJLPT ? (session.kanjiCount || 0) : 0,
-            vocabulary_target: isJLPT ? (session.vocabularyCount || 0) : 0,
-            grammar_target: isJLPT ? (session.grammarCount || 0) : 0,
-            reading_target_minutes: isJLPT ? (session.readingMinutes || 0) : 0,
-            listening_target_minutes: isJLPT ? (session.listeningMinutes || 0) : 0,
-            session_status: session.status || 'PLANNED'
+            return {
+              ...(editingCourse &&
+                existingSession?.id && { id: parseInt(existingSession.id) }),
+              session_no: index + 1,
+              duration_per_session: session.durationPerSession || 7,
+              file_path: isJLPT ? null : session.link || null,
+              filepath: isJLPT ? null : session.link || null,
+              kanji_target: isJLPT ? session.kanjiCount || 0 : 0,
+              vocabulary_target: isJLPT ? session.vocabularyCount || 0 : 0,
+              grammar_target: isJLPT ? session.grammarCount || 0 : 0,
+              reading_target_minutes: isJLPT ? session.readingMinutes || 0 : 0,
+              listening_target_minutes: isJLPT
+                ? session.listeningMinutes || 0
+                : 0,
+              session_status: session.status || "PLANNED",
+            }
           }
-        })
+        )
       }
 
       // Create the base course data
@@ -252,19 +365,29 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
         trainer_name: data.trainerName || null,
         self_study_type: data.selfStudyType || null,
         target_level: data.targetLevel || null,
-        total_sessions: data.courseType === 'trainer'
-          ? data.groups?.reduce((total: number, g: any) => total + (g.sessions?.length || 0), 0)
-          : data.sessions?.length || 0,
-        session_per_days: data.courseType === 'self-study' ? data.daysPerSession : null,
+        total_sessions:
+          data.courseType === "trainer"
+            ? data.groups?.reduce(
+                (total: number, g: any) => total + (g.sessions?.length || 0),
+                0
+              )
+            : data.sessions?.length || 0,
+        session_per_days:
+          data.courseType === "self-study" ? data.daysPerSession : null,
         start_date: null,
         end_date: null,
-        registration_deadline: data.registrationDeadline instanceof Date
-          ? formatLocalDateForAPI(data.registrationDeadline)
-          : data.registrationDeadline || null,
+        registration_deadline:
+          data.registrationDeadline instanceof Date
+            ? formatLocalDateForAPI(data.registrationDeadline)
+            : data.registrationDeadline || null,
         status: backendStatus,
       }
       // ============ ADD DEFAULT GROUP 1 FOR SELF-STUDY ============
-      if (data.courseType === 'self-study' && data.sessions && data.sessions.length > 0) {
+      if (
+        data.courseType === "self-study" &&
+        data.sessions &&
+        data.sessions.length > 0
+      ) {
         const existingGroup = editingCourse?.groups?.[0]
         const existingSessions = editingCourse?.self_study_sessions || []
 
@@ -272,20 +395,23 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
         courseData.start_date = null
         courseData.end_date = null
 
-        courseData.groups = [{
-          ...(editingCourse && existingGroup?.id && { id: parseInt(existingGroup.id) }),
-          group_name: 'Group 1',
-          capacity: null,
-          start_date: null,
-          end_date: null,
-          sessions_per_week: [],
-          group_status: 'OPEN',
-          sessions: [] // Self-study courses do not need trainer sessions in the dummy group
-        }]
+        courseData.groups = [
+          {
+            ...(editingCourse &&
+              existingGroup?.id && { id: parseInt(existingGroup.id) }),
+            group_name: "Group 1",
+            capacity: null,
+            start_date: null,
+            end_date: null,
+            sessions_per_week: [],
+            group_status: "OPEN",
+            sessions: [], // Self-study courses do not need trainer sessions in the dummy group
+          },
+        ]
       }
 
       // Add trainer groups if applicable
-      if (newGroups && data.courseType === 'trainer') {
+      if (newGroups && data.courseType === "trainer") {
         courseData.groups = newGroups
 
         // Set course start and end dates from groups
@@ -305,39 +431,43 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
       }
 
       // Add self-study sessions
-      if (newSelfStudySessions && data.courseType === 'self-study') {
+      if (newSelfStudySessions && data.courseType === "self-study") {
         courseData.self_study_sessions = newSelfStudySessions
       }
 
-      console.log('=== COURSE DATA ===')
-      console.log('Course Titleype:', data.courseType)
-      console.log('Mode:', editingCourse ? 'UPDATE' : 'CREATE')
-      console.log('Start Date:', courseData.start_date)
-      console.log('End Date:', courseData.end_date)
-      console.log('Groups:', JSON.stringify(courseData.groups, null, 2))
-      console.log('Self-study sessions:', courseData.self_study_sessions)
-      console.log('===================')
+      console.log("=== COURSE DATA ===")
+      console.log("Course Titleype:", data.courseType)
+      console.log("Mode:", editingCourse ? "UPDATE" : "CREATE")
+      console.log("Start Date:", courseData.start_date)
+      console.log("End Date:", courseData.end_date)
+      console.log("Groups:", JSON.stringify(courseData.groups, null, 2))
+      console.log("Self-study sessions:", courseData.self_study_sessions)
+      console.log("===================")
 
       let result
       if (editingCourse) {
         // ============ UPDATE MODE ============
-        console.log('🔄 Updating existing course:', editingCourse.id)
+        console.log("🔄 Updating existing course:", editingCourse.id)
 
         // For self-study, we need to handle the update carefully
-        if (data.courseType === 'self-study') {
+        if (data.courseType === "self-study") {
           // First, clear existing self-study sessions
           const clearPayload: any = {
             ...courseData,
             self_study_sessions: [],
-            groups: courseData.groups ? [{
-              ...courseData.groups[0],
-              sessions: [] // Clear sessions in the group too
-            }] : undefined
+            groups: courseData.groups
+              ? [
+                  {
+                    ...courseData.groups[0],
+                    sessions: [], // Clear sessions in the group too
+                  },
+                ]
+              : undefined,
           }
 
           await update_CourseData(editingCourse.id, clearPayload)
           // Small delay to ensure transaction completes
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100))
         }
 
         result = await update_CourseData(editingCourse.id, courseData)
@@ -345,11 +475,10 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
         // Handle image changes during update
         if (result.success) {
           if (!data.imageUrl && editingCourse.imageUrl) {
-            console.log('Deleting course image...')
+            console.log("Deleting course image...")
             await delete_CourseImage(editingCourse.id)
-          }
-          else if (data.imageUrl && data.imageUrl.startsWith("data:")) {
-            console.log('Uploading new course image...')
+          } else if (data.imageUrl && data.imageUrl.startsWith("data:")) {
+            console.log("Uploading new course image...")
             const res = await fetch(data.imageUrl)
             const blob = await res.blob()
             const file = new File(
@@ -361,28 +490,34 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
             const imageFormData = new FormData()
             imageFormData.append("image", file)
 
-            const imageResult = await upload_CourseImage(editingCourse.id, imageFormData)
+            const imageResult = await upload_CourseImage(
+              editingCourse.id,
+              imageFormData
+            )
             if (!imageResult.success) {
-              console.error("Image upload failed during update:", imageResult.message)
+              console.error(
+                "Image upload failed during update:",
+                imageResult.message
+              )
             }
           }
         }
       } else {
         // ============ CREATE MODE ============
-        console.log('✨ Creating new course')
+        console.log("✨ Creating new course")
 
         const formData = new FormData()
-        const jsonBlob = new Blob([JSON.stringify(courseData)], { type: 'application/json' })
-        formData.append('data', jsonBlob)
+        const jsonBlob = new Blob([JSON.stringify(courseData)], {
+          type: "application/json",
+        })
+        formData.append("data", jsonBlob)
 
         if (data.imageUrl && data.imageUrl.startsWith("data:")) {
           const res = await fetch(data.imageUrl)
           const blob = await res.blob()
-          const file = new File(
-            [blob],
-            `course-${Date.now()}.jpg`,
-            { type: blob.type || "image/jpeg" }
-          )
+          const file = new File([blob], `course-${Date.now()}.jpg`, {
+            type: blob.type || "image/jpeg",
+          })
           formData.append("image", file)
         }
 
@@ -397,11 +532,11 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
           await fetch_courseEnrollments(editingCourse.id)
         }
       } else {
-        alert(result.message || 'Failed to save course')
+        alert(result.message || "Failed to save course")
       }
     } catch (error) {
       console.error("Failed to save course:", error)
-      alert('An error occurred while saving the course')
+      alert("An error occurred while saving the course")
     } finally {
       setIsSubmitting(false)
     }
@@ -410,68 +545,122 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
   // Learner view
   if (isLearner) {
     return (
-      <div className="flex flex-col gap-4 py-6">
+      <div className="flex flex-col gap-4 py-4">
         <CardContent className="px-4">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {selectedCourse ? (
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={handleBackFromDetail}>
-                  <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} className="h-4 w-4" />
-                  Back
-                </Button>
-                <h2 className="text-lg font-semibold">Course Details</h2>
-              </div>
-            ) : (
-              <>
-                <div className="relative max-w-sm flex-1">
-                  <HugeiconsIcon
-                    icon={Search01Icon}
-                    strokeWidth={STROKE_WIDTH}
-                    className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-                  />
-                  <Input
+          {selectedCourse ? (
+            <CourseDetail
+              course={selectedCourse}
+              onEdit={handleEdit}
+              onBack={handleBackFromDetail}
+              userRole={userRole}
+            />
+          ) : (
+            <>
+              {/* Tabs and Search Bar */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <Tabs
+                  defaultValue="all"
+                  value={activeTab}
+                  onValueChange={(value) => {
+                    setActiveTab(value)
+                    setSearchTerm("")
+                  }}
+                >
+                  <TabsList className="h-auto">
+                    <TabsTrigger value="all" className="gap-2">
+                      All
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "h-5 px-1.5 text-xs",
+                          activeTab === "all"
+                            ? "bg-secondary"
+                            : "bg-muted-foreground/20 text-muted-foreground"
+                        )}
+                      >
+                        {getLearnerTabCounts.all}
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="your-courses" className="gap-2">
+                      Your Courses
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "h-5 px-1.5 text-xs",
+                          activeTab === "your-courses"
+                            ? "bg-secondary"
+                            : "bg-muted-foreground/20 text-muted-foreground"
+                        )}
+                      >
+                        {getLearnerTabCounts.yourCourses}
+                      </Badge>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+                <InputGroup className="w-full max-w-sm sm:w-[250px]">
+                  <InputGroupInput
+                    ref={searchInputRef}
                     placeholder={searchPlaceholder}
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value)
+                    }}
                   />
-                </div>
-              </>
-            )}
-          </div>
+                  <InputGroupAddon>
+                    <HugeiconsIcon
+                      icon={Search01Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4 text-muted-foreground"
+                    />
+                  </InputGroupAddon>
+                  <InputGroupAddon align="inline-end">
+                    <Kbd>Ctrl + K</Kbd>
+                  </InputGroupAddon>
+                </InputGroup>
+              </div>
 
-          {selectedCourse && (
-            <div className="p-2">
-              <CourseDetail
-                course={selectedCourse}
-                onEdit={handleEdit}
-                onBack={handleBackFromDetail}
-                userRole={userRole}
-              />
-            </div>
-          )}
-
-          {!selectedCourse && (
-            <>
+              {/* Course Grid */}
               {filteredCourses.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {filteredCourses.map((course) => {
                     if (course.status !== "draft") {
                       return (
-                        <CourseCard key={course.id} course={course} onView={handleView} />
+                        <CourseCard
+                          key={course.id}
+                          course={course}
+                          onView={handleView}
+                        />
                       )
                     }
-
                   })}
                 </div>
               ) : (
-                <div className="rounded-lg border bg-card p-8 text-center">
-                  <p className="text-muted-foreground">
-                    {searchTerm
-                      ? "No courses found matching your search"
-                      : "No courses available."}
-                  </p>
-                </div>
+                <Empty className="mt-6 h-full">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <HugeiconsIcon
+                        icon={CourseIcon}
+                        strokeWidth={1.5}
+                        className="h-8 w-8"
+                      />
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {searchTerm
+                        ? "No courses found"
+                        : activeTab === "your-courses"
+                          ? "No enrolled courses"
+                          : "No courses available"}
+                    </EmptyTitle>
+                    <EmptyDescription className="max-w-xs text-pretty">
+                      {searchTerm
+                        ? `No courses match "${searchTerm}". Try adjusting your search.`
+                        : activeTab === "your-courses"
+                          ? "You haven't enrolled in any courses yet. Browse available courses to get started."
+                          : "There are no courses available at the moment. Check back later."}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
               )}
             </>
           )}
@@ -482,69 +671,165 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
 
   // Admin view
   return (
-    <div className="flex flex-col gap-4 py-6">
+    <div className="flex flex-col gap-4 pt-4">
       <CardContent className="px-4">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {isFormVisible ? (
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={handleCancel}>
-                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} className="h-4 w-4" />
-                Back
-              </Button>
-              <h2 className="text-lg font-semibold">
-                {editingCourse ? "Edit Course" : "Create New Course"}
-              </h2>
-            </div>
-          ) : selectedCourse ? (
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={handleBackFromDetail}>
-                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} className="h-4 w-4" />
-                Back
-              </Button>
-              <h2 className="text-lg font-semibold">Course Details</h2>
-            </div>
-          ) : (
-            <>
-              <div className="relative max-w-sm flex-1">
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  strokeWidth={STROKE_WIDTH}
-                  className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-                />
-                <Input
-                  placeholder={searchPlaceholder}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              <div className="flex gap-2">
+        {isFormVisible ? (
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={handleCancel}>
+              <HugeiconsIcon
+                icon={ArrowLeft01Icon}
+                strokeWidth={2}
+                className="h-4 w-4"
+              />
+            </Button>
+            <h2 className="text-lg font-semibold">
+              {editingCourse ? "Edit Course" : "Create New Course"}
+            </h2>
+          </div>
+        ) : selectedCourse ? (
+          <CourseDetail
+            course={selectedCourse}
+            onEdit={handleEdit}
+            onBack={handleBackFromDetail}
+            userRole={userRole}
+          />
+        ) : (
+          <>
+            {/* Tabs and Search Bar + New Course Button */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <Tabs
+                defaultValue="all"
+                value={activeTab}
+                onValueChange={(value) => {
+                  setActiveTab(value)
+                  setSearchTerm("")
+                }}
+              >
+                <TabsList className="h-auto">
+                  <TabsTrigger value="all" className="gap-2">
+                    All
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        activeTab === "all"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {getAdminTabCounts.all}
+                    </Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="draft" className="gap-2">
+                    Draft
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        activeTab === "draft"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {getAdminTabCounts.draft}
+                    </Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="active" className="gap-2">
+                    Active
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        activeTab === "active"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {getAdminTabCounts.active}
+                    </Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="flex w-full items-center gap-2 sm:w-auto">
+                <InputGroup className="flex-1 sm:w-[300px]">
+                  <InputGroupInput
+                    ref={searchInputRef}
+                    placeholder={searchPlaceholder}
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value)
+                    }}
+                  />
+                  <InputGroupAddon>
+                    <HugeiconsIcon
+                      icon={Search01Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4 text-muted-foreground"
+                    />
+                  </InputGroupAddon>
+                  <InputGroupAddon align="inline-end">
+                    <Kbd>Ctrl + K</Kbd>
+                  </InputGroupAddon>
+                </InputGroup>
                 <Button
                   variant="default"
                   onClick={handleNewCourse}
-                  className="bg-primary hover:bg-primary/90"
+                  className="shrink-0 bg-primary hover:bg-primary/90"
                 >
                   <HugeiconsIcon icon={CourseIcon} strokeWidth={2} />
                   New Course
                 </Button>
               </div>
-            </>
-          )}
-        </div>
+            </div>
 
-        {selectedCourse && (
-          <div className="p-2">
-            <CourseDetail
-              course={selectedCourse}
-              onEdit={handleEdit}
-              onBack={handleBackFromDetail}
-              userRole={userRole}
-            />
-          </div>
+            {/* Course Grid */}
+            {filteredCourses.length > 0 ? (
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredCourses.map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    onView={handleView}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Empty className="mt-6 h-full">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <HugeiconsIcon
+                      icon={CourseIcon}
+                      strokeWidth={1.5}
+                      className="h-8 w-8"
+                    />
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    {searchTerm
+                      ? "No courses found"
+                      : activeTab === "draft"
+                        ? "No draft courses"
+                        : activeTab === "active"
+                          ? "No active courses"
+                          : "No courses available"}
+                  </EmptyTitle>
+                  <EmptyDescription className="max-w-xs text-pretty">
+                    {searchTerm
+                      ? `No courses match "${searchTerm}". Try adjusting your search.`
+                      : activeTab === "draft"
+                        ? "You don't have any draft courses. Create a new course to see it here."
+                        : activeTab === "active"
+                          ? "There are no active courses. Publish a course to see it here."
+                          : "Get started by creating your first course."}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </>
         )}
 
         {isFormVisible && !selectedCourse && canEditTrainerCourses && (
-          <div className="p-2">
+          <div className="mt-6">
             <Trainer_CourseForm
               mode={editingCourse ? "edit" : "add"}
               initialData={editingCourse || undefined}
@@ -555,26 +840,6 @@ export function CoursesContainer({ searchPlaceholder = "Search courses...", user
               isSubmitting={isSubmitting || isCreating || isUpdating}
             />
           </div>
-        )}
-
-        {!isFormVisible && !selectedCourse && (
-          <>
-            {filteredCourses.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredCourses.map((course) => (
-                  <CourseCard key={course.id} course={course} onView={handleView} />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border bg-card p-8 text-center">
-                <p className="text-muted-foreground">
-                  {searchTerm
-                    ? "No courses found matching your search"
-                    : "No courses available. Create your first course!"}
-                </p>
-              </div>
-            )}
-          </>
         )}
       </CardContent>
     </div>

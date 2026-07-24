@@ -131,14 +131,13 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       case "japanese-certificates":
         return "Japanese Certificates"
       case "certificates-requests":
-        return "Certificates Requests Management"
+        return "Certificates Requests"
       case "feedback":
         return "Learners' feedback"
       case "exam_progress_report":
         return "Exam Progress Report"
       case "self_study_progress":
         return "Self Study Progress Report"
-        return "Certificates Requests"
       case "feedback":
         return "Learners' feedback"
       case "audit_logs":

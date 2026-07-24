@@ -14,12 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  UserIcon,
   ClockIcon,
-  MonitorDotIcon,
-  DatabaseIcon,
-  FileSearchIcon,
-  ArrowLeft01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 

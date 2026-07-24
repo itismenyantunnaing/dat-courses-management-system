@@ -41,7 +41,7 @@ import {
 import { JapaneseCertificate } from "@/types/certificate"
 import { CertificateCard } from "../components/cards/certificate-card"
 import { NewCertificateDrawer } from "../components/drawers/certificate/newCertificate-drawer"
-import { EditCertificateDrawer } from "../components/drawers/certificate/editCertificate-drawer"
+import { CertificateDetailDrawer } from "../components/drawers/certificate/certificateDetail-drawer"
 import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -78,13 +78,18 @@ const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
 }
 
 export function JapaneseCertificateContainer() {
-  const { certificateData, fetch_CertificateData, getUserId, isLoading } =
-    mainStore()
+  const {
+    certificateData,
+    fetch_CertificateData,
+    getUserId,
+    isLoading,
+    delete_CertificateData,
+  } = mainStore()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isNewDrawerOpen, setIsNewDrawerOpen] = useState(false)
-  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
+  const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false)
   const [editingCertificate, setEditingCertificate] =
     useState<JapaneseCertificate | null>(null)
 
@@ -146,9 +151,33 @@ export function JapaneseCertificateContainer() {
     })
   }, [certificateData, searchTerm, statusFilter])
 
-  const handleEdit = (certificate: JapaneseCertificate) => {
+  // Handle card click - opens detail drawer
+  const handleCardClick = (certificate: JapaneseCertificate) => {
     setEditingCertificate(certificate)
-    setIsEditDrawerOpen(true)
+    setIsDetailDrawerOpen(true)
+  }
+
+  // Handle delete from detail drawer
+  const handleDeleteCertificate = async (certificate: JapaneseCertificate) => {
+    try {
+      const result = await delete_CertificateData(certificate.id)
+      if (result.includes("successfully")) {
+        alert("✅ Certificate deleted successfully!")
+        await fetch_CertificateData()
+        setIsDetailDrawerOpen(false)
+        setEditingCertificate(null)
+      } else {
+        alert("❌ " + result)
+      }
+    } catch (error) {
+      console.error("❌ Error deleting certificate:", error)
+      alert("❌ Failed to delete certificate")
+    }
+  }
+
+  // Handle update success from detail drawer
+  const handleUpdateSuccess = async () => {
+    await fetch_CertificateData()
   }
 
   if (isLoading) {
@@ -167,26 +196,33 @@ export function JapaneseCertificateContainer() {
   const getEmptyStateMessage = () => {
     const parts = []
     if (statusCounts.pending > 0) {
-      parts.push(`${statusCounts.pending} pending certificate${statusCounts.pending > 1 ? "s" : ""}`)
+      parts.push(
+        `${statusCounts.pending} pending certificate${statusCounts.pending > 1 ? "s" : ""}`
+      )
     }
     if (statusCounts.approved > 0) {
-      parts.push(`${statusCounts.approved} approved certificate${statusCounts.approved > 1 ? "s" : ""}`)
+      parts.push(
+        `${statusCounts.approved} approved certificate${statusCounts.approved > 1 ? "s" : ""}`
+      )
     }
     if (statusCounts.rejected > 0) {
-      parts.push(`${statusCounts.rejected} rejected certificate${statusCounts.rejected > 1 ? "s" : ""}`)
+      parts.push(
+        `${statusCounts.rejected} rejected certificate${statusCounts.rejected > 1 ? "s" : ""}`
+      )
     }
 
     if (parts.length === 0) {
       return "You don't have any certificates yet."
     }
 
-    const statusFilterLabel = statusFilter === "all" 
-      ? "" 
-      : statusFilter === "pending" 
-        ? "pending " 
-        : statusFilter === "approved" 
-          ? "approved " 
-          : "rejected "
+    const statusFilterLabel =
+      statusFilter === "all"
+        ? ""
+        : statusFilter === "pending"
+          ? "pending "
+          : statusFilter === "approved"
+            ? "approved "
+            : "rejected "
 
     if (statusFilter !== "all") {
       const count = statusCounts[statusFilter as keyof typeof statusCounts]
@@ -260,13 +296,13 @@ export function JapaneseCertificateContainer() {
             <CertificateCard
               key={certificate.id}
               certificate={certificate}
-              onEdit={handleEdit}
+              onEdit={handleCardClick}
             />
           ))}
         </div>
       ) : (
         // Empty state
-        <Empty className="m-auto w-[400px] min-h-[300px] rounded-lg">
+        <Empty className="m-auto min-h-[300px] w-[400px] rounded-lg">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <HugeiconsIcon
@@ -278,7 +314,7 @@ export function JapaneseCertificateContainer() {
             <EmptyTitle>
               {hasCertificates ? "No Matching Certificates" : "No Certificates"}
             </EmptyTitle>
-            <EmptyDescription className="max-w-sm text-pretty text-center">
+            <EmptyDescription className="max-w-sm text-center text-pretty">
               {hasCertificates ? (
                 <>
                   {getEmptyStateMessage()}
@@ -289,7 +325,7 @@ export function JapaneseCertificateContainer() {
                   )}
                 </>
               ) : (
-                "You haven't uploaded any Japanese certificates yet. Upload your first certificate to get started."
+                "You haven't uploaded any Japanese certificates yet."
               )}
             </EmptyDescription>
           </EmptyHeader>
@@ -322,15 +358,19 @@ export function JapaneseCertificateContainer() {
         </Empty>
       )}
 
+      {/* New Certificate Drawer */}
       <NewCertificateDrawer
         open={isNewDrawerOpen}
         onOpenChange={setIsNewDrawerOpen}
       />
 
-      <EditCertificateDrawer
-        open={isEditDrawerOpen}
-        onOpenChange={setIsEditDrawerOpen}
+      {/* Certificate Detail Drawer */}
+      <CertificateDetailDrawer
+        open={isDetailDrawerOpen}
+        onOpenChange={setIsDetailDrawerOpen}
         certificate={editingCertificate}
+        onDelete={handleDeleteCertificate}
+        onUpdateSuccess={handleUpdateSuccess}
       />
     </div>
   )

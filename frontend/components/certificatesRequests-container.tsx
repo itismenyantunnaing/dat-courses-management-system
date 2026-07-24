@@ -412,6 +412,54 @@ export function CertificatesRequestsContainer() {
 
   const totalColumns = certificateHeaders.length
 
+  // Get empty state message based on current tab
+  const getEmptyStateMessage = () => {
+    const statusCounts = {
+      pending: getStatusCount("pending"),
+      approved: getStatusCount("approved"),
+      rejected: getStatusCount("rejected"),
+    }
+
+    if (statusTab === "all") {
+      return "No certificate requests found"
+    }
+
+    const statusLabel = statusLabels[statusTab as keyof typeof statusLabels]
+    const count = statusCounts[statusTab as keyof typeof statusCounts]
+
+    if (count === 0) {
+      // Check if there are other statuses with certificates
+      const hasPending = statusCounts.pending > 0
+      const hasApproved = statusCounts.approved > 0
+      const hasRejected = statusCounts.rejected > 0
+
+      if (statusTab === "pending" && (hasApproved || hasRejected)) {
+        const parts = []
+        if (hasApproved) parts.push(`${statusCounts.approved} approved`)
+        if (hasRejected) parts.push(`${statusCounts.rejected} rejected`)
+        return `You have ${parts.join(" and ")} certificate${statusCounts.approved + statusCounts.rejected > 1 ? "s" : ""} but no pending certificates.`
+      }
+
+      if (statusTab === "approved" && (hasPending || hasRejected)) {
+        const parts = []
+        if (hasPending) parts.push(`${statusCounts.pending} pending`)
+        if (hasRejected) parts.push(`${statusCounts.rejected} rejected`)
+        return `You have ${parts.join(" and ")} certificate${statusCounts.pending + statusCounts.rejected > 1 ? "s" : ""} but no approved certificates.`
+      }
+
+      if (statusTab === "rejected" && (hasPending || hasApproved)) {
+        const parts = []
+        if (hasPending) parts.push(`${statusCounts.pending} pending`)
+        if (hasApproved) parts.push(`${statusCounts.approved} approved`)
+        return `You have ${parts.join(" and ")} certificate${statusCounts.pending + statusCounts.approved > 1 ? "s" : ""} but no rejected certificates.`
+      }
+
+      return `No ${statusLabel.toLowerCase()} certificate requests found`
+    }
+
+    return `No ${statusLabel.toLowerCase()} certificate requests found`
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -443,7 +491,7 @@ export function CertificatesRequestsContainer() {
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
         <CardContent className="px-0">
-          {/* Tabs and Search Bar */}
+          {/* Tabs */}
           <div className="mb-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
             {/* Tabs */}
             <div>
@@ -460,7 +508,7 @@ export function CertificatesRequestsContainer() {
                     <Badge
                       variant="secondary"
                       className={cn(
-                        "ml-1 h-5 px-1.5 text-xs",
+                        "h-5 px-1.5 text-xs",
                         statusTab === "all"
                           ? "bg-secondary"
                           : "bg-muted-foreground/20 text-muted-foreground"
@@ -474,7 +522,7 @@ export function CertificatesRequestsContainer() {
                     <Badge
                       variant="secondary"
                       className={cn(
-                        "ml-1 h-5 px-1.5 text-xs",
+                        "h-5 px-1.5 text-xs",
                         statusTab === "pending"
                           ? "bg-secondary"
                           : "bg-muted-foreground/20 text-muted-foreground"
@@ -488,7 +536,7 @@ export function CertificatesRequestsContainer() {
                     <Badge
                       variant="secondary"
                       className={cn(
-                        "ml-1 h-5 px-1.5 text-xs",
+                        "h-5 px-1.5 text-xs",
                         statusTab === "approved"
                           ? "bg-secondary"
                           : "bg-muted-foreground/20 text-muted-foreground"
@@ -502,7 +550,7 @@ export function CertificatesRequestsContainer() {
                     <Badge
                       variant="secondary"
                       className={cn(
-                        "ml-1 h-5 px-1.5 text-xs",
+                        "h-5 px-1.5 text-xs",
                         statusTab === "rejected"
                           ? "bg-secondary"
                           : "bg-muted-foreground/20 text-muted-foreground"
@@ -612,10 +660,8 @@ export function CertificatesRequestsContainer() {
                             No certificate requests found matching "{searchTerm}
                             "
                           </>
-                        ) : statusTab !== "all" ? (
-                          <>No {statusTab} certificate requests found</>
                         ) : (
-                          "No certificate requests found"
+                          getEmptyStateMessage()
                         )}
                       </BorderedTableCell>
                     </TableRow>
@@ -680,10 +726,8 @@ export function CertificatesRequestsContainer() {
                   <div className="col-span-full py-8 text-center text-muted-foreground">
                     {searchTerm ? (
                       <>No certificate requests found matching "{searchTerm}"</>
-                    ) : statusTab !== "all" ? (
-                      <>No {statusTab} certificate requests found</>
                     ) : (
-                      "No certificate requests found"
+                      getEmptyStateMessage()
                     )}
                   </div>
                 ) : (
@@ -701,7 +745,7 @@ export function CertificatesRequestsContainer() {
           )}
 
           {/* Pagination */}
-          {filteredCertificates.length > 0 && (
+          {filteredCertificates.length > itemsPerPage && (
             <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
               <Field orientation="horizontal" className="w-fit">
                 <FieldLabel htmlFor="select-rows-per-page">

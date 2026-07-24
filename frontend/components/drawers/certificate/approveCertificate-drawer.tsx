@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   CERTIFICATE_TYPES,
   CERTIFICATE_LEVELS,
@@ -25,6 +26,7 @@ import { CertificateForm } from "@/components/drawers/certificate/certificateFor
 import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"
 import Image from "next/image"
+import { Cancel01Icon } from "@hugeicons/core-free-icons"
 
 interface ApproveCertificateDrawerProps {
   open: boolean
@@ -79,7 +81,6 @@ export function ApproveCertificateDrawer({
     (state) => state.reject_CertificateData
   )
 
-
   // Reset states when drawer opens
   useEffect(() => {
     if (open && certificate) {
@@ -97,7 +98,6 @@ export function ApproveCertificateDrawer({
     setIsSubmitting(true)
 
     try {
-
       // Update certificate status to "approved" with remark
       const result = await verify_CertificateData(certificate.id, remark)
 
@@ -134,7 +134,6 @@ export function ApproveCertificateDrawer({
     setIsSubmitting(true)
 
     try {
-
       // Update certificate status to "rejected" with remark
       const result = await reject_CertificateData(certificate.id, remark)
 
@@ -203,8 +202,9 @@ export function ApproveCertificateDrawer({
   const employeeName = certificate.employee.name || ""
   const employeeEmail = certificate.email || "No email provided"
   const employeeAvatar = ""
-  const submittedDate =
-    certificate.createdAt ? certificate.createdAt.toISOString() : new Date().toISOString()
+  const submittedDate = certificate.createdAt
+    ? certificate.createdAt.toISOString()
+    : new Date().toISOString()
   return (
     <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
       <DrawerContent
@@ -216,17 +216,19 @@ export function ApproveCertificateDrawer({
           }
         }}
       >
-        <DrawerHeader className="shrink-0 border-b">
+        <DrawerHeader className="flex w-full justify-between border-b">
           <DrawerTitle>Review Certificate Request</DrawerTitle>
-          <p className="text-sm text-muted-foreground">
-            Review certificate details and make a decision
-          </p>
+          {/* <DrawerClose asChild>
+            <Button variant="ghost" size="icon" disabled={isSubmitting}>
+              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+            </Button>
+          </DrawerClose> */}
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-6 px-6 py-4">
             {/* Certificate Image */}
-            <div className="relative aspect-[4/3] w-full max-w-md overflow-hidden rounded-lg border bg-muted">
+            <div className="relative m-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-lg border bg-muted">
               {!imageError ? (
                 <Image
                   src={imageUrl}
@@ -259,13 +261,14 @@ export function ApproveCertificateDrawer({
             </div>
 
             {/* Certificate Details */}
-            <div className="space-y-4">
-              <div>
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold">
                   {certificate.certificateType}
                 </h3>
+                <span>•</span>
                 <p className="text-sm text-muted-foreground">
-                  Level: {certificate.japaneseLevel}
+                  {certificate.japaneseLevel}
                 </p>
               </div>
 
@@ -276,10 +279,14 @@ export function ApproveCertificateDrawer({
                 <h4 className="mb-2 text-sm font-medium text-muted-foreground">
                   Submitted By
                 </h4>
-                <div className="flex items-center gap-3 rounded-lg border p-3">
-                  <Avatar className="overflow-hidden h-10 w-10 rounded-lg">
-                    <AvatarImage className="overflow-hidden h-10 w-10 rounded-lg" src={employeeAvatar} alt={employeeName} />
-                    <AvatarFallback className="overflow-hidden rounded-lg">
+                <div className="flex items-center gap-2 rounded-lg py-3">
+                  <Avatar className="h-10 w-10 overflow-hidden rounded-full">
+                    <AvatarImage
+                      className="h-10 w-10 overflow-hidden rounded-full"
+                      src={employeeAvatar}
+                      alt={employeeName}
+                    />
+                    <AvatarFallback className="overflow-hidden rounded-full">
                       {getInitials(employeeName)}
                     </AvatarFallback>
                   </Avatar>
@@ -290,7 +297,8 @@ export function ApproveCertificateDrawer({
                     </p>
                   </div>
                   <div className="ml-auto text-sm text-muted-foreground">
-                    Submitted: {format(new Date(submittedDate), "MMM d, yyyy")}
+                    Submitted on:{" "}
+                    {format(new Date(submittedDate), "MMM d, yyyy")}
                   </div>
                 </div>
               </div>
@@ -317,7 +325,7 @@ export function ApproveCertificateDrawer({
 
         <DrawerFooter className="shrink-0 border-t">
           <div className="flex gap-2">
-            {status !== "rejected" &&
+            {status !== "rejected" && (
               <Button
                 className="flex-1 bg-red-600 text-white hover:bg-red-700"
                 onClick={handleDeny}
@@ -325,8 +333,8 @@ export function ApproveCertificateDrawer({
               >
                 {isSubmitting ? "Processing..." : "Deny"}
               </Button>
-            }
-            {status !== "approved" &&
+            )}
+            {status !== "approved" && (
               <Button
                 className="flex-1 bg-green-600 text-white hover:bg-green-700"
                 onClick={handleApprove}
@@ -334,8 +342,7 @@ export function ApproveCertificateDrawer({
               >
                 {isSubmitting ? "Processing..." : "Approve"}
               </Button>
-            }
-
+            )}
           </div>
         </DrawerFooter>
       </DrawerContent>
