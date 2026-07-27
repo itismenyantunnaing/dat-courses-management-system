@@ -285,9 +285,6 @@ export default function SelfStudyProgressReportContainer() {
     }
   }, [selfStudyCourses, selectedCourseId])
 
-  console.log(studyProgress)
-  
-
   // Fetch progress data when course is selected
   useEffect(() => {
     const loadProgress = async () => {

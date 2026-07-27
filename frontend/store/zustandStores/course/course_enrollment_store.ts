@@ -151,7 +151,6 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({ ...state, isUnenrolling: true, enrollmentError: null }))
 
     try {
-      console.log('🔵 cancelEnrollment called with:', { courseId, enrollmentId })
 
       const headers = get().getAuthHeaders()
 
@@ -159,8 +158,6 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         method: 'DELETE',
         headers: headers
       })
-
-      console.log('🔵 Response status:', response.status)
 
       if (!response.ok) {
         let errorMessage = `HTTP error! status: ${response.status}`
@@ -247,7 +244,6 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const data = await response.json()
-      console.log('🔵 My courses data:', data)
 
       return {
         success: true,

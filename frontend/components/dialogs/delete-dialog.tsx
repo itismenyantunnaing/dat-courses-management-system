@@ -110,21 +110,31 @@ export function DeleteDialog({
   const handleDelete = () => {
     if (selectedItems.length === 0) return
 
+    // Get labels for all selected items
+    const itemLabels = selectedItems
+      .map(id => deleteOptions.find(opt => opt.id === id)?.label || id)
+      .join(', ');
+
+    // Show ONE confirmation for all items
+    if (!confirm(`Are you sure you want to delete: ${itemLabels}?\n\nThis action cannot be undone!`)) {
+      return;
+    }
+
     setIsDeleting(true)
 
-    setTimeout(() => {
-      selectedItems.forEach((itemId) => {
-        const tab = allTabs.find((t) => t.id === itemId)
-        if (tab && tab.onDelete) {
-          tab.onDelete([itemId])
-        }
-      })
-      setIsDeleting(false)
-      onOpenChange(false)
-      setSelectedItems([])
-      hasSetPreselectedForSession.current = false
-      previousOpenState.current = false
-    }, 1500)
+    // Execute all deletions
+    selectedItems.forEach((itemId) => {
+      const tab = allTabs.find((t) => t.id === itemId)
+      if (tab && tab.onDelete) {
+        tab.onDelete([itemId])
+      }
+    })
+
+    setIsDeleting(false)
+    onOpenChange(false)
+    setSelectedItems([])
+    hasSetPreselectedForSession.current = false
+    previousOpenState.current = false
   }
 
   const handleCancel = () => {

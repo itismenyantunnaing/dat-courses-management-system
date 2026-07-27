@@ -173,7 +173,6 @@ export function SkillsetForm({
       updated.push(newSkill)
     }
 
-    console.log("Technical Skill Data:", updated)
     onTechnicalSkillChange(updated)
   }
 

@@ -154,7 +154,6 @@ export function EditCurrentTargetDrawer({
 
   const handleSubmit = async () => {
     if (!hasChanges()) {
-      console.log("No changes to save")
       return
     }
 

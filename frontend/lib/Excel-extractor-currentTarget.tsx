@@ -175,7 +175,6 @@ function debugRow(worksheet: ExcelJS.Worksheet, rowIndex: number, maxCols: numbe
         const val = getCellValue(row.getCell(c));
         values.push(val ? `"${val}"` : '(empty)');
     }
-    console.log(`  Row ${rowIndex}: ${values.join(' | ')}`);
 }
 
 // COMPLETELY REWRITTEN findHeaders function
@@ -195,10 +194,7 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
     let maxFoundCount = 0;
     let bestRowAllHeaders: string[] = [];
 
-    console.log('🔍 Starting header detection...');
 
-    // Debug first 5 rows
-    console.log('🔍 DEBUG - Scanning header rows:');
     for (let rowIdx = 1; rowIdx <= Math.min(5, worksheet.rowCount); rowIdx++) {
         const row = worksheet.getRow(rowIdx);
         const values: string[] = [];
@@ -208,9 +204,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                 values.push(`[${colNumber}]="${value}"`);
             }
         });
-        if (values.length > 0) {
-            console.log(`Row ${rowIdx}: ${values.join(' | ')}`);
-        }
     }
 
     // Scan rows for headers
@@ -228,12 +221,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
             const lowerValue = value.toLowerCase().trim();
             currentFoundHeaders.push(value);
             allHeaderValues[colNumber] = value;
-
-            // LOG: Found relevant headers
-            if (lowerValue.includes('target') || lowerValue.includes('jlpt') || lowerValue.includes('communication')) {
-                console.log(`🔍 Found relevant header at column ${colNumber}, row ${rowIndex}: "${value}"`);
-            }
-
             // ===== TARGET 1 DETECTION =====
             
             // 1. Detect Target 1 Communication Level (with date)
@@ -243,7 +230,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
                     dynamicHeaders[headerKey] = value;
-                    console.log(`✅ Detected Target 1 Communication Level at col ${colNumber}: "${value}"`);
                 }
             }
             // Fallback: Detect "Target Level" with date for Target 1
@@ -255,7 +241,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                         currentColumnMap[headerKey] = colNumber;
                         foundCount++;
                         dynamicHeaders[headerKey] = value;
-                        console.log(`✅ Detected Target 1 Communication Level (date) at col ${colNumber}: "${value}"`);
                     }
                 }
             }
@@ -267,7 +252,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
                     dynamicHeaders[headerKey] = value;
-                    console.log(`✅ Detected Target 1 JLPT/NAT Level at col ${colNumber}: "${value}"`);
                 }
             }
             // Fallback: Detect "Target JLPT/NAT Level" with date for Target 1
@@ -278,7 +262,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
                     dynamicHeaders[headerKey] = value;
-                    console.log(`✅ Detected Target 1 JLPT/NAT Level (date) at col ${colNumber}: "${value}"`);
                 }
             }
 
@@ -291,7 +274,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
                     dynamicHeaders[headerKey] = value;
-                    console.log(`✅ Detected Target 2 Communication Level at col ${colNumber}: "${value}"`);
                 }
             }
             // Fallback: Detect "Target Level" with date for Target 2
@@ -302,7 +284,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                         currentColumnMap[headerKey] = colNumber;
                         foundCount++;
                         dynamicHeaders[headerKey] = value;
-                        console.log(`✅ Detected Target 2 Communication Level (date) at col ${colNumber}: "${value}"`);
                     }
                 }
             }
@@ -314,7 +295,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
                     dynamicHeaders[headerKey] = value;
-                    console.log(`✅ Detected Target 2 JLPT/NAT Level at col ${colNumber}: "${value}"`);
                 }
             }
             // Fallback: Detect "Target JLPT/NAT Level" with date for Target 2
@@ -325,7 +305,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
                     dynamicHeaders[headerKey] = value;
-                    console.log(`✅ Detected Target 2 JLPT/NAT Level (date) at col ${colNumber}: "${value}"`);
                 }
             }
 
@@ -337,7 +316,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                 if (!currentColumnMap[headerKey]) {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
-                    console.log(`✅ Detected Current Communication Level at col ${colNumber}: "${value}"`);
                 }
             }
 
@@ -348,7 +326,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                 if (!currentColumnMap[headerKey]) {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
-                    console.log(`✅ Detected JLPT/NAT Test at col ${colNumber}: "${value}"`);
                 }
             }
 
@@ -373,7 +350,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                     currentColumnMap[headerKey] = colNumber;
                     foundCount++;
                     dynamicHeaders[headerKey] = value;
-                    console.log(`✅ Detected Want to sit JLPT exam at col ${colNumber}: "${value}"`);
                 }
             }
 
@@ -385,7 +361,6 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
                 if (keywords.some(keyword => lowerValue.includes(keyword.toLowerCase()))) {
                     currentColumnMap[headerName] = colNumber;
                     foundCount++;
-                    console.log(`✅ Detected ${headerName} at col ${colNumber}: "${value}"`);
                     break;
                 }
             }
@@ -401,15 +376,12 @@ function findHeaders(worksheet: ExcelJS.Worksheet): {
         }
     }
 
-    console.log(`📋 Found ${Object.keys(columnMap).length} headers at row ${headerRow}`);
-    console.log('📋 Column map:', columnMap);
 
     return { columnMap, headerRow, allFoundHeaders: bestRowAllHeaders, columnPositions, allHeaderValues, dynamicHeaders };
 }
 
 export async function extractCurrentTargetDataFromExcel(file: File): Promise<CurrentTargetExtractionResult> {
     try {
-        console.log('🚀 Starting Excel extraction...');
         const arrayBuffer = await file.arrayBuffer();
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(arrayBuffer);
@@ -423,8 +395,6 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
                 error: "No sheet with Current Target data found"
             };
         }
-
-        console.log('📄 Worksheet found:', worksheet.name);
 
         const { columnMap, headerRow, allFoundHeaders, columnPositions, allHeaderValues, dynamicHeaders } = findHeaders(worksheet);
 
@@ -463,8 +433,6 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
             dataStartRow = headerRow + 1;
         }
 
-        console.log('📍 Data starts at row:', dataStartRow);
-
         const data: CurrentTargetRow[] = [];
 
         // Build fullColumnMap from detected headers
@@ -477,13 +445,11 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
 
         // For any missing headers, try to find them by scanning all header values
         const missingHeaders = HEADER_NAMES.filter(h => !fullColumnMap[h]);
-        console.log('🔍 Missing headers:', missingHeaders);
 
         // If we're missing Target fields, try to find them by position relative to other fields
         if (!fullColumnMap["Target 1 JLPT / NAT Test Level"] || !fullColumnMap["Target 1 Communication Level"] ||
             !fullColumnMap["Target 2 JLPT / NAT Test Level"] || !fullColumnMap["Target 2 Communication Level"]) {
             
-            console.log('⚠️ Some Target fields missing, attempting position-based detection...');
             
             // If we have Communication Level and other fields, Target fields are usually after them
             const commLevelCol = fullColumnMap["Communication Level"];
@@ -491,22 +457,18 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
                 // Target 1 JLPT/NAT is usually 1-2 columns after Communication Level
                 if (!fullColumnMap["Target 1 JLPT / NAT Test Level"]) {
                     fullColumnMap["Target 1 JLPT / NAT Test Level"] = commLevelCol + 1;
-                    console.log(`🔧 Assigned Target 1 JLPT/NAT to column ${commLevelCol + 1} (relative to Communication Level)`);
                 }
                 // Target 1 Communication is usually 2 columns after Communication Level
                 if (!fullColumnMap["Target 1 Communication Level"]) {
                     fullColumnMap["Target 1 Communication Level"] = commLevelCol + 2;
-                    console.log(`🔧 Assigned Target 1 Communication to column ${commLevelCol + 2} (relative to Communication Level)`);
                 }
                 // Target 2 JLPT/NAT is usually 3 columns after Communication Level
                 if (!fullColumnMap["Target 2 JLPT / NAT Test Level"]) {
                     fullColumnMap["Target 2 JLPT / NAT Test Level"] = commLevelCol + 3;
-                    console.log(`🔧 Assigned Target 2 JLPT/NAT to column ${commLevelCol + 3} (relative to Communication Level)`);
                 }
                 // Target 2 Communication is usually 4 columns after Communication Level
                 if (!fullColumnMap["Target 2 Communication Level"]) {
                     fullColumnMap["Target 2 Communication Level"] = commLevelCol + 4;
-                    console.log(`🔧 Assigned Target 2 Communication to column ${commLevelCol + 4} (relative to Communication Level)`);
                 }
             }
         }
@@ -538,12 +500,9 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
         for (const header of HEADER_NAMES) {
             if (!fullColumnMap[header] && fallbackColumns[header]) {
                 fullColumnMap[header] = fallbackColumns[header];
-                console.log(`🔧 Using fallback column ${fallbackColumns[header]} for "${header}"`);
             }
         }
 
-        console.log('📋 Final column map:', fullColumnMap);
-        console.log('📋 Dynamic headers captured:', dynamicHeaders);
 
         for (let r = dataStartRow; r <= worksheet.rowCount; r++) {
             const row = worksheet.getRow(r);
@@ -571,13 +530,6 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
             }
         }
 
-        console.log(`📊 Extracted ${data.length} records`);
-
-        // Log first record's dynamic headers if available
-        if (data.length > 0 && data[0]['_dynamicHeaders']) {
-            console.log('📅 FIRST RECORD DYNAMIC HEADERS:', JSON.parse(data[0]['_dynamicHeaders']));
-        }
-
         return {
             success: true,
             headers: Object.keys(fullColumnMap),
@@ -594,62 +546,6 @@ export async function extractCurrentTargetDataFromExcel(file: File): Promise<Cur
             error: err instanceof Error ? err.message : "An unexpected parsing error occurred"
         };
     }
-}
-
-export function logExtractedData(data: CurrentTargetRow[], headers: string[]): void {
-    console.log('='.repeat(80));
-    console.log('📊 EXTRACTED CURRENT TARGET DATA REPORT');
-    console.log('='.repeat(80));
-
-    console.log(`\n📈 Total Records: ${data.length}`);
-    console.log(`📋 Total Headers: ${headers.length}`);
-
-    console.log('\n📋 HEADER LIST:');
-    headers.forEach((header, index) => {
-        console.log(`  ${index + 1}. ${header}`);
-    });
-
-    // Check for dynamic headers in first record
-    if (data.length > 0 && data[0]['_dynamicHeaders']) {
-        console.log('\n📅 DYNAMIC HEADERS DETECTED:');
-        try {
-            const dynamicHeaders = JSON.parse(data[0]['_dynamicHeaders']);
-            Object.entries(dynamicHeaders).forEach(([key, value]) => {
-                console.log(`  ${key}: ${value}`);
-            });
-        } catch (e) {
-            // Ignore parsing errors
-        }
-    }
-
-    console.log('\n📝 ALL EXTRACTED RECORDS:');
-    console.log('-'.repeat(80));
-
-    data.forEach((record, index) => {
-        console.log(`\n🔹 Record #${index + 1}:`);
-        Object.entries(record).forEach(([key, value]) => {
-            if (key !== '_dynamicHeaders') {
-                console.log(`  ${key}: ${value || '(empty)'}`);
-            }
-        });
-        console.log('-'.repeat(40));
-    });
-
-    console.log('\n📊 TABLE VIEW:');
-    console.table(data.map(record => {
-        const { _dynamicHeaders, ...rest } = record;
-        return rest;
-    }));
-
-    console.log('\n📋 STAFF ID SUMMARY:');
-    data.forEach(record => {
-        const staffId = record['Staff ID'] || 'N/A';
-        const name = record['Name'] || 'No Name';
-        const jlpt = record['JLPT / NAT Test'] || 'Not specified';
-        console.log(`  ${staffId} | ${name} | JLPT: ${jlpt}`);
-    });
-
-    console.log('\n' + '='.repeat(80));
 }
 
 export function validateCurrentTargetData(data: CurrentTargetRow[]): {
@@ -739,7 +635,6 @@ export function transformToApiFormat(data: CurrentTargetRow[]): any[] {
                 const dynamicHeaders = JSON.parse(row['_dynamicHeaders']);
                 if (dynamicHeaders['ExamDate']) {
                     examDate = dynamicHeaders['ExamDate'];
-                    console.log('📅 Exam Date extracted in transform:', examDate);
                 }
             } catch (e) {
                 // Ignore parsing errors

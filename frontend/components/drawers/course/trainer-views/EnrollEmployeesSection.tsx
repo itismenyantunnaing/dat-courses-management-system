@@ -441,10 +441,6 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
       .join(",")
 
     if (currentGroupIds !== prevGroupIds) {
-      console.log("🔄 Groups detected change!")
-      console.log("Previous groups:", prevGroupIds)
-      console.log("Current groups:", currentGroupIds)
-
       prevGroupsRef.current = groups
       redistributeEnrollmentsUI(groups)
     }
@@ -624,16 +620,6 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
       }
 
       const newNumericGroupId = parseInt(newGroupId.replace("g", ""))
-
-      // ✅ Add detailed logging for debugging
-      console.log("🔍 Group change debug:", {
-        employeeName: employee.employeeName,
-        currentGroupId: currentGroupId,
-        currentGroupIdType: typeof employee.courseGroupId,
-        newGroupId: newGroupId,
-        newNumericGroupId: newNumericGroupId,
-        isSameGroup: currentGroupId === newNumericGroupId,
-      })
 
       // ✅ Check if changing to the same group
       if (currentGroupId === newNumericGroupId) {

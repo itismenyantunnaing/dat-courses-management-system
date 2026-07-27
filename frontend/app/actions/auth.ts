@@ -270,7 +270,6 @@ export async function verifyOtp(email: string, otp: string): Promise<{ success: 
 // Forgot Password - Reset Password
 export async function resetPassword(email: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
     try {
-        console.log("Reset password called with:", { email, newPassword: "***" })
 
         const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
             method: "POST",
@@ -280,10 +279,8 @@ export async function resetPassword(email: string, newPassword: string): Promise
             body: JSON.stringify({ email, newPassword }),
         })
 
-        console.log("Reset password response status:", response.status)
 
         const rawText = await response.text()
-        console.log("Raw response text:", rawText)
 
         let data;
         try {
@@ -307,8 +304,6 @@ async function parseResponse(response: Response): Promise<any> {
     const contentType = response.headers.get("content-type")
     const text = await response.text()
 
-    console.log("Raw response:", text)
-    console.log("Content-Type:", contentType)
 
     if (contentType && contentType.includes("application/json")) {
         try {

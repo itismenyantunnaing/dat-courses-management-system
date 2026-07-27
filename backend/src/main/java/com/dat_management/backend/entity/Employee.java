@@ -136,4 +136,16 @@ public class Employee implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
+
+    @Column(name = "course_announcements", nullable = false)
+    private Boolean courseAnnounce = true;
+
+    @Column(name = "exam_announcements", nullable = false)
+    private Boolean jlptExamAnnounce = true;
+
+    @Column(name = "certificate_updates", nullable = false)
+    private Boolean certificateUpdates = true;
+
+    @Column(name = "email_notifications", nullable = false)
+    private Boolean emailNoti = true;
 }

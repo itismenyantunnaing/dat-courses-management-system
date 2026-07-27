@@ -79,7 +79,6 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const data = await response.json();
-            console.log('✅ Enrollments fetched:', data);
 
             set((state: Course_StoreType) => ({ 
                 ...state, 
@@ -124,7 +123,6 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const data = await response.json();
-            console.log('✅ Attendance fetched:', data);
 
             // Handle different response formats
             const attendanceData = data.attendance || data || [];
@@ -177,7 +175,6 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const data = await response.json();
-            console.log('✅ Attendance created:', data);
 
             const attendanceData = data.attendance || data;
             const currentAttendances = get().attendances;
@@ -231,7 +228,6 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const data = await response.json();
-            console.log('✅ Attendance updated:', data);
 
             const updatedAttendance = data.attendance || data;
             const currentAttendances = get().attendances;

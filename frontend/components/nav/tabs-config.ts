@@ -12,6 +12,7 @@ import { exportEmployeesToExcel, exportEmployeesToCSV, exportEmployeesToPDF } fr
 import { exportSkillsToCSV, exportSkillsToExcel, exportSkillsToPDF } from "@/lib/export/Export-skillsetData";
 import { exportHolidaysToExcel, exportHolidaysToCSV, exportHolidaysToPDF } from "@/lib/export/Export-holidayData";
 import { exportCurrentTargetToExcel, exportCurrentTargetToCSV, exportCurrentTargetToPDF } from "@/lib/export/Export-currentTargetData";
+import type { Employee } from "@/types/employee";
 
 // Helper: Normalize string for comparison
 function normalizeString(str: any): string {
@@ -207,55 +208,28 @@ export const allTabs = [
         }
 
         // Import in smaller batches for better reliability
-        // const BATCH_SIZE = 50
-        // let importedCount = 0
-        // const failedRecords: { id: string; name: string }[] = []
-
-        // for (let i = 0; i < employeeDtos.length; i += BATCH_SIZE) {
-        //   const batch = employeeDtos.slice(i, i + BATCH_SIZE)
-
-        //   try {
-        //     await store.bulkCreate_EmployeeData(batch)
-        //     importedCount += batch.length
-        //   } catch (error) {
-        //     // Try to import failed batch one by one
-        //     for (let j = 0; j < batch.length; j++) {
-        //       try {
-        //         await store.bulkCreate_EmployeeData([batch[j]])
-        //         importedCount++
-        //       } catch (retryError) {
-        //         failedRecords.push({
-        //           id: batch[j].id || "MISSING",
-        //           name: batch[j].name || "MISSING",
-        //         })
-        //       }
-        //     }
-        //   }
-        // }
-
-        // Import ALL at once (no batching)
+        const BATCH_SIZE = 50
         let importedCount = 0
         const failedRecords: { id: string; name: string }[] = []
 
-        try {
-          // Send ALL employees in one API call
-          await store.bulkCreate_EmployeeData(employeeDtos)
-          importedCount = employeeDtos.length
-          console.log(`✅ Successfully imported all ${importedCount} employees`)
-        } catch (error) {
-          console.error('❌ Bulk import failed:', error)
-          alert(`Bulk import failed. Trying individual imports...`)
+        for (let i = 0; i < employeeDtos.length; i += BATCH_SIZE) {
+          const batch = employeeDtos.slice(i, i + BATCH_SIZE)
 
-          // Fallback: try one by one if bulk fails
-          for (let j = 0; j < employeeDtos.length; j++) {
-            try {
-              await store.bulkCreate_EmployeeData([employeeDtos[j]])
-              importedCount++
-            } catch (retryError) {
-              failedRecords.push({
-                id: employeeDtos[j].id || "MISSING",
-                name: employeeDtos[j].name || "MISSING",
-              })
+          try {
+            await store.bulkCreate_EmployeeData(batch)
+            importedCount += batch.length
+          } catch (error) {
+            // Try to import failed batch one by one
+            for (let j = 0; j < batch.length; j++) {
+              try {
+                await store.bulkCreate_EmployeeData([batch[j]])
+                importedCount++
+              } catch (retryError) {
+                failedRecords.push({
+                  id: batch[j].id || "MISSING",
+                  name: batch[j].name || "MISSING",
+                })
+              }
             }
           }
         }
@@ -282,15 +256,6 @@ export const allTabs = [
         }
 
         alert(`✅ ${message}`)
-
-        if (store && store.fetch_EmployeeData) {
-          await store.fetch_EmployeeData()
-          await store.fetch_divisions()
-          await store.fetch_dat_departments()
-          await store.fetch_teams()
-          await store.fetch_roles()
-        }
-
 
         return {
           success: importedCount > 0,
@@ -338,8 +303,18 @@ export const allTabs = [
         )
       }
     },
-    onDelete: (selectedItems: string[]) => {
-      console.log("Deleting employees data", selectedItems)
+    onDelete: async (selectedItems: string[]) => {
+      const store = (window as any).mainStore?.getState()
+      const { employee_data } = store || { employee_data: [] }
+      const employeeIds = employee_data.map((emp: Employee) => emp.id)
+      try {
+        await store.delete_EmployeeData(employeeIds)
+      } catch (error) {
+        console.error("❌ Error deleting employees:", error);
+        alert(`Failed to delete employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+
     },
   },
   {
@@ -1589,10 +1564,8 @@ export const allTabs = [
 
         try {
           // Send ALL current target data in one API call
-          console.log(`📤 Sending ${filteredApiData.length} current target records in one request...`)
           await store.bulkCreate_CurrentTargetData(filteredApiData)
           importedCount = filteredApiData.length
-          console.log(`✅ Successfully imported all ${importedCount} current target records`)
         } catch (error) {
           console.error('❌ Bulk import failed:', error)
           alert(`Bulk import of ${filteredApiData.length} records failed. Trying one by one...`)
@@ -1776,17 +1749,31 @@ export const allTabs = [
         )
       }
     },
-    onDelete: (selectedItems: string[]) => {
-      console.log("Deleting holidays data", selectedItems)
+    onDelete: async (selectedItems: string[]) => {
+      const store = (window as any).mainStore?.getState();
+      const { holiday_data } = store || { holiday_data: [] }
+      if (!holiday_data || !Array.isArray(holiday_data) || holiday_data.length === 0) {
+        return;
+      }
+      const holidayIds = holiday_data.map((holiday: Employee) => holiday.id)
+
+      try {
+        await store.delete_HolidayData(holidayIds)
+      } catch (error) {
+        console.error("❌ Error deleting holidays:", error);
+        alert(`Failed to delete holidays: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     },
   },
 ]
 
 export const importTabs = allTabs
 export const exportTabs = allTabs
-export const deleteOptions = allTabs.map((tab) => ({
-  id: tab.id,
-  label: tab.label,
-}))
+export const deleteOptions = allTabs
+  .filter(tab => tab.id === "employees" || tab.id === "holidays")
+  .map((tab) => ({
+    id: tab.id,
+    label: tab.label,
+  }))
 
 export const VISIBLE_TABS_COUNT = 4

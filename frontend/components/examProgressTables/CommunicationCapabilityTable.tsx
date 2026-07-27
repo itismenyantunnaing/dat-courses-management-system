@@ -92,8 +92,6 @@ export function CommunicationCapabilityTable({
     if (currentPage < totalPages) onPageChange(currentPage + 1) 
   }
 
-console.log(data)
-
   const getPageNumbers = () => {
     const pages: (number | string)[] = []
     const maxVisible = 5

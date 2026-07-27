@@ -66,8 +66,6 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
         isLoading: false
       }));
 
-      console.log('✅ Successfully created target dates:', newTerm);
-
       return `Target dates created successfully`;
 
     } catch (error) {
@@ -147,7 +145,6 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
 
     try {
       const token = getAuthToken();
-      console.log(token)
       const response = await fetch(`${apiUrl}/api/employee-japanese-profiles`, {
         method: 'POST',
         headers: {
@@ -208,8 +205,6 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
         isLoading: false
       }));
 
-      console.log('✅ Successfully updated Japanese profile:', updatedProfile);
-
       return `Successfully updated Japanese profile for employee "${employeeId}"`;
 
     } catch (error) {
@@ -248,8 +243,6 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
         employeeJapaneseLevel_Data: optimisticData,
         isDeleting: false
       }));
-
-      console.log(`✅ Successfully deleted profile with ID: ${id}`);
 
       return `1 Japanese profile deleted successfully`;
 
@@ -346,8 +339,6 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
         isDeleting: false
       }));
 
-      console.log(`✅ Successfully deleted profile for employee: ${employeeId}`);
-
       return `Japanese profile for employee "${employeeId}" deleted successfully`;
 
     } catch (error) {
@@ -364,7 +355,6 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
 
   // Bulk Import Japanese Profiles
   bulkCreate_CurrentTargetData: async (data: EmployeeJapaneseLevel[]) => {
-    console.log(`📦 Bulk importing ${data.length} Japanese profiles...`);
 
     if (!data || data.length === 0) {
       console.warn('⚠️ No data to import');

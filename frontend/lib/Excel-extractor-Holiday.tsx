@@ -83,9 +83,6 @@ export const extractHolidayDataFromExcel = async (
     const arrayBuffer = await file.arrayBuffer();
     await workbook.xlsx.load(arrayBuffer);
 
-    const sheetNames = workbook.worksheets.map(ws => ws.name);
-    console.log('Available sheets:', sheetNames);
-
     // Find the Holiday sheet
     let worksheet = workbook.worksheets.find(ws => 
       ws.name.toLowerCase().includes('holiday')
@@ -119,7 +116,6 @@ export const extractHolidayDataFromExcel = async (
       }
     });
 
-    console.log(`📊 Extracted ${extractedData.length} valid holidays`);
     return extractedData;
     
   } catch (error) {

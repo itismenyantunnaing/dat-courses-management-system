@@ -111,7 +111,7 @@ export function SendMailDialog({
     courseAnnouncements: true,
     jlptExamAnnouncements: true,
     certificateUpdates: true,
-    systemNotifications: true,
+    emailNotifications: true,
     emailNotifications: true,
   })
 
@@ -761,7 +761,6 @@ export function SendMailDialog({
                   const isSelected = selectedEmployees.some(
                     (selected) => selected.id === employee.id
                   )
-                  console.log(employee)
                   return (
                     <CommandItem
                       key={employee.email}

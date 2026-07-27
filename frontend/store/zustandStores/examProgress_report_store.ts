@@ -193,10 +193,6 @@ export const examProgressReport_Store = (set: StoreSet, get: StoreGet) => ({
 
     getTargetDates: () => {
         const state = get()
-        console.log('getTargetDates called:', {
-            target1Date: state.target1Date,
-            target2Date: state.target2Date
-        })
         return {
             target1Date: state.target1Date,
             target2Date: state.target2Date

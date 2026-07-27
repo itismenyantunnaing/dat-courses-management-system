@@ -752,8 +752,6 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
         yearsOfExperience: item.yearsOfExperience || 0,
       }));
 
-      console.log('📤 Sending Bulk Development Data:', JSON.stringify(formattedData, null, 2));
-
       const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/development/bulk`, {
         method: 'POST',
@@ -789,8 +787,6 @@ export const skillSetDataStore = (set: StoreSet, get: StoreGet) => ({
         categoryName: item.categoryName,
         subCategoryName: item.subCategoryName,
       }));
-
-      console.log('📤 Sending Bulk Technical Data with skillId:', formattedData);
 
       const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/skills/technical/bulk`, {

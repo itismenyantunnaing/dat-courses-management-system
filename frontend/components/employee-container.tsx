@@ -1766,7 +1766,7 @@ export function EmployeeContainer({
                                 <span className="block truncate">{team}</span>
                               )}
                               {isActive && (
-                                  <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} />
+                                <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} />
                               )}
                             </DropdownMenuItem>
                           )

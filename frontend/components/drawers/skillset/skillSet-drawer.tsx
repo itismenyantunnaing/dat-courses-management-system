@@ -276,7 +276,6 @@ export function SkillsetDrawer({
     }
 
     if (!hasChanges()) {
-      console.log("No changes to save")
       return
     }
 
@@ -308,11 +307,9 @@ export function SkillsetDrawer({
         let result
         if (existingDev) {
           // Update existing
-          console.log(`Updating ${dev.developmentTypeName}:`, devData)
           result = await update_devCapData(existingDev.id, devData)
         } else {
           // Create new
-          console.log(`Creating ${dev.developmentTypeName}:`, devData)
           result = await add_devCapData(devData)
         }
         results.push(result)
@@ -332,11 +329,9 @@ export function SkillsetDrawer({
 
         if (existingLangSkill) {
           // Update existing language skill
-          console.log("Updating language skill:", langData)
           await update_japaneseLevel(existingLangSkill.id, langData)
         } else {
           // Create new language skill
-          console.log("Creating language skill:", langData)
           await add_japaneseLevel(langData)
         }
       }
@@ -366,11 +361,9 @@ export function SkillsetDrawer({
 
         if (existingManagementSkill) {
           // Update existing management skill
-          console.log("Updating management skill:", mgmtData)
           await update_managementScoreData(existingManagementSkill.id, mgmtData)
         } else {
           // Create new management skill
-          console.log("Creating management skill:", mgmtData)
           await add_managementScoreData(mgmtData)
         }
       }
@@ -425,17 +418,9 @@ export function SkillsetDrawer({
         if (existingTechSkill) {
           // Update existing technical skill
           const skillId = existingTechSkill.id || existingTechSkill.skillId
-          console.log(
-            `Updating technical skill ${techSkill.skillName}:`,
-            techData
-          )
           await update_SkillData(skillId, techData)
         } else {
           // Create new technical skill
-          console.log(
-            `Creating technical skill ${techSkill.skillName}:`,
-            techData
-          )
           await add_SkillData(techData)
         }
       }

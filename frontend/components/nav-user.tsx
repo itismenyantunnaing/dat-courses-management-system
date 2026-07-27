@@ -79,7 +79,7 @@ export function NavUser() {
     courseAnnouncements: true,
     jlptExamAnnouncements: true,
     certificateUpdates: true,
-    systemNotifications: true,
+    emailNotifications: true,
     emailNotifications: true,
   })
 
@@ -101,7 +101,6 @@ export function NavUser() {
   const handleSavePersonalInfo = async (image: string) => {
     setIsLoading(true)
     try {
-      console.log("Saving profile image:", image)
       // Add your API call here
     } catch (error) {
       console.error("Failed to save:", error)
@@ -117,10 +116,7 @@ export function NavUser() {
   ) => {
     setIsLoading(true)
     try {
-      console.log("Saving settings:", {
-        updatedConfig,
-        updatedNotificationSettings,
-      })
+    
       setConfig(updatedConfig)
       setNotificationSettings(updatedNotificationSettings)
       setSettingsDialogOpen(false)
@@ -147,7 +143,6 @@ export function NavUser() {
   }) => {
     setIsLoading(true)
     try {
-      console.log("Password updated successfully")
       setChangePasswordDialogOpen(false)
       resetPasswordForm()
     } catch (error) {
@@ -355,7 +350,6 @@ export function NavUser() {
         open={rolePermissionsDialogOpen}
         onOpenChange={setRolePermissionsDialogOpen}
         onSave={(roles) => {
-          console.log("Roles saved:", roles)
           // Handle save logic here
         }}
       />

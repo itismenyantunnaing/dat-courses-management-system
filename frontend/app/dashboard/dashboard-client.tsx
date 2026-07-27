@@ -56,6 +56,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const [isProfileLoaded, setIsProfileLoaded] = useState(false) // Add this state
   const [sendMailOpen, setSendMailOpen] = useState(false)
 
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
+  const [selectedCertificateId, setSelectedCertificateId] = useState<number | null>(null)
+
   // Get session store actions
   const { setSession, fetch_profile, profile } = mainStore()
   const initialized = useRef(false)
@@ -63,7 +66,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Initialize session in Zustand store when component mounts
   useEffect(() => {
     if (!initialized.current && userData) {
-      ;(async () => {
+      ; (async () => {
         setSession(userData)
         await fetch_profile(userData.userId)
         initialized.current = true
@@ -76,7 +79,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     setMounted(true)
     // Attach store to window for global access in non-hook files
     if (typeof window !== "undefined") {
-      ;(window as any).mainStore = mainStore
+      ; (window as any).mainStore = mainStore
     }
   }, [])
 
@@ -147,6 +150,30 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     }
   }
 
+  // Handle notification actions
+  const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
+    if (action === 'view-course') {
+      setSelectedCourseId(id)
+      setActiveTab('courses')
+    } else if (action === 'view-certificate') {
+      setSelectedCertificateId(id)
+      setActiveTab('certificates-requests')
+    }
+  }
+
+  // Reset selected course ID when switching away from courses tab
+  useEffect(() => {
+    if (activeTab !== 'courses') {
+      setSelectedCourseId(null)
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'certificates-requests') {
+      setSelectedCertificateId(null)
+    }
+  }, [activeTab])
+
   const tabConfigs = [
     { value: "admin-dashboard", component: AdminDashboardContainer },
     { value: "approver-dashboard", component: ApproverDashboardContainer },
@@ -155,7 +182,10 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     {
       value: "courses",
       component: CoursesContainer,
-      props: { userRole: userRole },
+      props: {
+        userRole: userRole,
+        selectedCourseId: selectedCourseId
+      },
     },
     { value: "seminar", component: SeminarContainer },
     { value: "exams", component: ExamsContainer },
@@ -170,6 +200,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     {
       value: "certificates-requests",
       component: CertificatesRequestsContainer,
+      props: {
+        selectedCertificateId: selectedCertificateId  
+      },
     },
   ]
 
@@ -252,6 +285,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       <NotificationsDrawer
         open={notificationDrawerOpen}
         onOpenChange={setNotificationDrawerOpen}
+        onAction={handleNotificationAction}
       />
 
       {/* Send Mail Dialog */}

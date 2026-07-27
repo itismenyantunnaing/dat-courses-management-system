@@ -641,9 +641,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
 
     const handleGroupAdded = useCallback(async (group: CourseGroup, allGroups: CourseGroup[]) => {
-      console.log('Group Added:', group);
-      console.log('All Groups after addition:', allGroups);
-
       // Update the form data
       setFormData((prev) => ({
         ...prev,
@@ -656,9 +653,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
     }, [setFormData, setActiveGroupTab]);
 
     const handleGroupRemoved = useCallback(async (groupId: string, remainingGroups: CourseGroup[]) => {
-      console.log('Group Removed - ID:', groupId);
-      console.log('Remaining Groups:', remainingGroups);
-
       // Update the form data
       setFormData((prev) => ({
         ...prev,

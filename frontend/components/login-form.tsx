@@ -84,13 +84,11 @@ export function LoginForm({
     newPassword: string
     oldPassword?: string
   }) => {
-    console.log("Forgot password completed successfully for:", data.staffId)
     setForgotPasswordOpen(false)
     resetForm()
   }
 
   const handleForgotPasswordClose = () => {
-    console.log("Close forgot password dialog")
     resetForm()
     setForgotPasswordOpen(false)
   }

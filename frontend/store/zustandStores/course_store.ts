@@ -566,11 +566,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({ ...state, isUpdating: true, error: null }))
 
     try {
-      console.log('📝 Update Course Data:', JSON.stringify(courseData, null, 2));
-
       const backendRequest = get().transformFrontendToBackendRequest(courseData)
-      console.log('🚀 Sending to API:', JSON.stringify(backendRequest, null, 2));
-
       const headers = get().getAuthHeaders()
 
       const response = await fetch(`${apiUrl}/api/courses/${id}`, {

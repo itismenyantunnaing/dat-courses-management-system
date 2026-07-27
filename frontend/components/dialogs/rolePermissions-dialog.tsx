@@ -245,7 +245,6 @@ export function RolePermissionsDialog({
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      console.log("Saving roles:", roles)
       onSave?.(roles)
       onOpenChange(false)
       setSelectedRoleId(null)

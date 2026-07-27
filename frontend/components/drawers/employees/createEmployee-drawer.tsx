@@ -149,13 +149,10 @@ export function CreateEmployeeDrawer({
   }
 
   const handleItemAdded = async (name: string) => {
-    console.log('🔄 handleItemAdded called with:', { addItemType, name });
-
     let result = null;
 
     // Call the appropriate function based on the type
     if (addItemType === "division") {
-      console.log('📝 Calling add_division for:', name);
       result = await add_division(name);
       
       if (result && result.success) {
@@ -166,7 +163,6 @@ export function CreateEmployeeDrawer({
       }
       
     } else if (addItemType === "department") {
-      console.log('📝 Calling add_dat_department for:', name);
       
       // You need to get the division ID from the selected division
       // Find the selected division from the divisions list
@@ -203,7 +199,6 @@ export function CreateEmployeeDrawer({
         return;
       }
       
-      console.log('🔍 Using divisionId:', finalDivisionId);
       result = await add_dat_department(finalDivisionId, name);
       
       if (result && result.success) {
@@ -214,7 +209,6 @@ export function CreateEmployeeDrawer({
       }
       
     } else if (addItemType === "team") {
-      console.log('📝 Calling add_team for:', name);
       
       // You need to get the department ID from the selected department
       const selectedDepartment = dat_departments.find((dept: any) => 
@@ -233,7 +227,6 @@ export function CreateEmployeeDrawer({
         return;
       }
       
-      console.log('🔍 Using departmentId:', departmentId);
       result = await add_team(departmentId, name);
       
       if (result && result.success) {
@@ -243,9 +236,6 @@ export function CreateEmployeeDrawer({
         alert(`❌ Failed to add team: ${result?.error || 'Unknown error'}`);
       }
     }
-
-    // Log the result for debugging
-    console.log('📊 Result from API:', result);
   }
 
   const handleDropdownOpenChange = (isOpen: boolean) => {

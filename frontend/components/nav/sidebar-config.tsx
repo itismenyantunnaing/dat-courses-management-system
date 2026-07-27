@@ -164,13 +164,7 @@ export const adminData: SidebarConfig = {
               label: "Export data",
               tabId: "skills",
               action: "export",
-            },
-            {
-              label: "Delete data",
-              tabId: "skills",
-              action: "delete",
-              destructive: true,
-            },
+            }
           ],
         },
         {
@@ -188,12 +182,6 @@ export const adminData: SidebarConfig = {
               label: "Export data",
               tabId: "current_target_data",
               action: "export",
-            },
-            {
-              label: "Delete data",
-              tabId: "current_target_data",
-              action: "delete",
-              destructive: true,
             },
           ],
         },
@@ -345,23 +333,6 @@ export const learnerData: SidebarConfig = {
           type: "primary",
           icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
         },
-        {
-          title: "My Study Hours",
-          tabId: "study-hours",
-          type: "primary",
-          icon: <HugeiconsIcon icon={Time04Icon} strokeWidth={STROKE_WIDTH} />,
-        },
-        {
-          title: "My Progress",
-          tabId: "progress",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon
-              icon={CalendarAnalysisIcon}
-              strokeWidth={STROKE_WIDTH}
-            />
-          ),
-        },
       ],
     },
     // {
@@ -379,37 +350,10 @@ export const learnerData: SidebarConfig = {
       groupLabel: "Achievements",
       items: [
         {
-          title: "Offstore Certificates",
-          tabId: "offstore-certificates",
-          type: "primary",
-          icon: <HugeiconsIcon icon={Certificate01Icon} strokeWidth={STROKE_WIDTH} />,
-        },
-        {
           title: "Japanese Certificates",
           tabId: "japanese-certificates",
           type: "primary",
           icon: <HugeiconsIcon icon={Certificate01Icon} strokeWidth={STROKE_WIDTH} />,
-        },
-      ],
-    },
-    {
-      groupLabel: "Reports",
-      items: [
-        {
-          title: "My Learning Report",
-          tabId: "my-learning-report",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon icon={GoogleDocIcon} strokeWidth={STROKE_WIDTH} />
-          ),
-        },
-        {
-          title: "Study Analysis",
-          tabId: "study-analysis",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon icon={Analytics01Icon} strokeWidth={STROKE_WIDTH} />
-          ),
         },
       ],
     },

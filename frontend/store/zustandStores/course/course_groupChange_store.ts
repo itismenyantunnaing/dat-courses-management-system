@@ -35,15 +35,11 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         groupId
       }
 
-      console.log('🔵 Requesting group change:', requestBody)
-
       const response = await fetch(`${apiUrl}/api/groupchange/request`, {
         method: 'PUT',
         headers: headers,
         body: JSON.stringify(requestBody)
       })
-
-      console.log('🔵 Response status:', response.status)
 
       let result
       const contentType = response.headers.get("content-type")

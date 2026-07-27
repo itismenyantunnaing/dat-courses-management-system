@@ -183,7 +183,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   add_dat_department: async (divisionId: number, deptName: string) => {
-    console.log('📝 add_dat_department called with:', { divisionId, deptName });
 
     if (!divisionId) {
       console.error('❌ Division ID is required');
@@ -222,7 +221,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const data = responseText ? JSON.parse(responseText) : null;
-      console.log('✅ Department created successfully:', data);
 
       await get().fetch_dat_departments();
 
@@ -242,7 +240,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   add_team: async (departmentDatId: number, teamName: string) => {
-    console.log('📝 add_team called with:', { departmentDatId, teamName });
 
     if (!departmentDatId) {
       console.error('❌ Department ID is required');
@@ -281,7 +278,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const data = responseText ? JSON.parse(responseText) : null;
-      console.log('✅ Team created successfully:', data);
 
       await get().fetch_teams();
 
@@ -301,7 +297,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   update_division: async (id: number, divisionName: string) => {
-    console.log('📝 update_division called with:', { id, divisionName });
 
     if (!id) {
       return {
@@ -335,7 +330,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const data = responseText ? JSON.parse(responseText) : null;
-      console.log('✅ Division updated successfully:', data);
 
       await get().fetch_divisions();
 
@@ -638,13 +632,10 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // Update employee
   update_EmployeeData: async (id: string, updatedEmployee: Employee) => {
-    console.log('🔍 update_EmployeeData called with:', { id, updatedEmployee });
 
     const previousData = get().employee_data;
-    console.log('📊 Previous data count:', previousData.length);
 
     const existingEmployee = previousData.find(emp => emp.id === id);
-    console.log('👤 Existing employee:', existingEmployee);
 
     if (!existingEmployee) {
       return `Employee with ID "${id}" not found.`;
@@ -897,7 +888,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const result = await response.json();
 
-      await get().fetch_EmployeeData();
+      await get().fetch_EmployeeData(true);
 
       const updatedData = get().employee_data;
       const divisions = [...new Set(updatedData.map((emp: Employee) => emp.div_name).filter(Boolean))]

@@ -2,7 +2,7 @@
 import { skillSetDataStore } from "./zustandStores/skillset_data_store"
 import { create } from "zustand"
 import { employeeDataStore } from "./zustandStores/employee_data_store"
-import { Employee_StoreType, Holiday_StoreType, CurrentTarget_StoreType, SkillSet_StoreType, ExamProgressReport_StoreType, Certificates_StoreType, Session_StoreType, type Course_StoreType, type Feedback_StoreType, type DashboardData_StoreType, type AuditLog_StoreType, SystemConfig_StoreType } from "@/store/types"
+import { Employee_StoreType, Holiday_StoreType, CurrentTarget_StoreType, SkillSet_StoreType, ExamProgressReport_StoreType, Certificates_StoreType, Session_StoreType, type Course_StoreType, type Feedback_StoreType, type DashboardData_StoreType, type AuditLog_StoreType, SystemConfig_StoreType, type NotificationStoreType } from "@/store/types"
 import { holidayDataStore } from "./zustandStores/holiday_data_store"
 import { currentTargetStore } from "./zustandStores/current_target_store"
 import { examProgressReport_Store } from "./zustandStores/examProgress_report_store"
@@ -13,9 +13,10 @@ import { courseStore } from "./zustandStores/course_store"
 import { FeedbackDataStore } from "./zustandStores/feedback_store"
 import { auditLogStore } from "./zustandStores/audtiLog_store"
 import { systemConfigStore } from "./zustandStores/system_config_store"
+import { notificationStore } from "./zustandStores/notification_store"
 
 // Combine all store types
-type combineTypes = Employee_StoreType & SkillSet_StoreType & CurrentTarget_StoreType & Holiday_StoreType & ExamProgressReport_StoreType & Certificates_StoreType & Session_StoreType & Course_StoreType & Feedback_StoreType & DashboardData_StoreType & AuditLog_StoreType & SystemConfig_StoreType
+type combineTypes = Employee_StoreType & SkillSet_StoreType & CurrentTarget_StoreType & Holiday_StoreType & ExamProgressReport_StoreType & Certificates_StoreType & Session_StoreType & Course_StoreType & Feedback_StoreType & DashboardData_StoreType & AuditLog_StoreType & SystemConfig_StoreType & NotificationStoreType
 
 type StoreSet = (
   fn: (state: any) => Partial<any>
@@ -28,7 +29,6 @@ const sessionStore = (set: StoreSet, get: StoreGet) => ({
   isAuthenticated: false,
 
   setSession: (session: SessionData | null) => {
-    console.log('📝 Setting session in store:', session);
     set((state: any) => ({ 
       session, 
       isAuthenticated: !!session 
@@ -36,7 +36,6 @@ const sessionStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   clearSession: () => {
-    console.log('🗑️ Clearing session');
     set((state: any) => ({ 
       session: null, 
       isAuthenticated: false 
@@ -45,7 +44,6 @@ const sessionStore = (set: StoreSet, get: StoreGet) => ({
 
   getToken: () => {
     const state = get()
-    console.log('🔑 Getting token from store:', state.session?.token ? 'Present' : 'Missing');
     return state.session?.token || null
   },
 
@@ -68,7 +66,8 @@ export const mainStore = create<combineTypes>((set, get) => ({
   ...courseStore(set, get),
   ...FeedbackDataStore(set, get),
   ...auditLogStore(set, get),
-  ...systemConfigStore(set, get)
+  ...systemConfigStore(set, get),
+  ...notificationStore(set, get)
 }))
 
 // Helper function to get token from store (can be used outside React components)

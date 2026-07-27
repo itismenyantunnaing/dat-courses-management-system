@@ -257,17 +257,6 @@ export default function ApproverDashboardContainer() {
     loadData()
   }, [])
 
-  // Moved console logs to useEffect to avoid re-render spam
-  useEffect(() => {
-    if (!isLoading) {
-      console.log("=== Approver Dashboard Data ===")
-      console.log("Profile Team:", profile?.team)
-      console.log("Team Certificate Stats:", teamCertificateStats)
-      console.log("Daily Attendance:", dailyAttendance)
-      console.log("================================")
-    }
-  }, [isLoading, profile?.team, teamCertificateStats, dailyAttendance])
-
   // Combine course categories with useMemo
   const combinedCourseCategories = useMemo(() => {
     if (!courseCategory_data) return []

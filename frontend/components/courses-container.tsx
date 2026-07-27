@@ -41,6 +41,7 @@ const STROKE_WIDTH = 2
 interface CoursesContainerProps {
   searchPlaceholder?: string
   userRole?: "admin" | "learner" | "approver"
+  selectedCourseId?: number | null
 }
 
 // Add this helper function at the top of the file, after imports
@@ -80,6 +81,7 @@ const getCourseSessionsCount = (course: Course): number => {
 export function CoursesContainer({
   searchPlaceholder = "Search courses...",
   userRole,
+  selectedCourseId,
 }: CoursesContainerProps) {
   const {
     courses,
@@ -105,7 +107,8 @@ export function CoursesContainer({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [activeTab, setActiveTab] = useState<string>("all")
-
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true)
+  const [hasProcessedSelectedId, setHasProcessedSelectedId] = useState(false)
   // Search input ref for keyboard shortcut
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -122,11 +125,76 @@ export function CoursesContainer({
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
 
+
   // Fetch courses and categories from API on mount
   useEffect(() => {
-    fetchAll_CourseData()
-    fetch_courseCategories()
+    const loadData = async () => {
+      setIsLoadingCourses(true)
+      await fetchAll_CourseData()
+      await fetch_courseCategories()
+      setIsLoadingCourses(false)
+    }
+    loadData()
   }, [fetchAll_CourseData, fetch_courseCategories])
+
+
+
+  useEffect(() => {
+    if (selectedCourseId) {
+      setHasProcessedSelectedId(false)
+    }
+  }, [selectedCourseId])
+
+  // Effect to find and open the course when selectedCourseId is provided
+  useEffect(() => {
+    // Only process if:
+    // 1. We have a selectedCourseId
+    // 2. Courses are loaded
+    // 3. We haven't processed this ID yet
+    if (!selectedCourseId || isLoadingCourses || hasProcessedSelectedId) {
+      return
+    }
+
+    // Find the course (convert ID to string for comparison)
+    const courseIdStr = selectedCourseId.toString()
+    const foundCourse = courses.find(c => c.id === courseIdStr)
+
+    if (foundCourse) {
+      // Found the course - open it in detail view
+      setSelectedCourse(foundCourse)
+      setHasProcessedSelectedId(true)
+
+      // Auto-select the correct tab based on course status
+      if (foundCourse.status === 'draft' && activeTab !== 'draft') {
+        setActiveTab('draft')
+      } else if (foundCourse.status !== 'draft' && activeTab === 'draft') {
+        setActiveTab('all')
+      }
+      return
+    }
+
+    // If course not found and we're not on 'all' tab, switch to 'all' and try again
+    if (activeTab !== 'all') {
+      setActiveTab('all')
+      // The effect will re-run after state update
+      return
+    }
+
+    // If still not found on 'all' tab, try to refresh data
+    console.warn(`Course with ID ${selectedCourseId} not found. Refreshing...`)
+    fetchAll_CourseData().then(() => {
+      // After refresh, check again
+      const refreshedCourse = courses.find(c => c.id === courseIdStr)
+      if (refreshedCourse) {
+        setSelectedCourse(refreshedCourse)
+      } else {
+        console.error(`Course with ID ${selectedCourseId} not found after refresh`)
+      }
+      setHasProcessedSelectedId(true)
+    })
+  }, [selectedCourseId, courses, isLoadingCourses, hasProcessedSelectedId, activeTab, fetchAll_CourseData])
+
+
 
   const canEditTrainerCourses = userRole === "admin"
   const isLearner = userRole === "learner" || userRole === "approver"
@@ -200,7 +268,6 @@ export function CoursesContainer({
         userEnrolledCourseIds.has(course.id)
       )
     }
-    // "all" tab shows everything
 
     return filtered
   }, [courses, searchTerm, userRole, activeTab, userEnrolledCourseIds])
@@ -229,6 +296,8 @@ export function CoursesContainer({
     resetForm()
     setIsSubmitting(false)
   }
+
+  console.log(selectedCourse)
 
   const handleDeleteCourse = async () => {
     if (editingCourse) {
@@ -306,8 +375,8 @@ export function CoursesContainer({
                 return {
                   ...(editingCourse &&
                     existingSession?.id && {
-                      id: parseInt(existingSession.id),
-                    }),
+                    id: parseInt(existingSession.id),
+                  }),
                   session_no: sIndex + 1,
                   // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
                   session_date:
@@ -368,9 +437,9 @@ export function CoursesContainer({
         total_sessions:
           data.courseType === "trainer"
             ? data.groups?.reduce(
-                (total: number, g: any) => total + (g.sessions?.length || 0),
-                0
-              )
+              (total: number, g: any) => total + (g.sessions?.length || 0),
+              0
+            )
             : data.sessions?.length || 0,
         session_per_days:
           data.courseType === "self-study" ? data.daysPerSession : null,
@@ -435,19 +504,10 @@ export function CoursesContainer({
         courseData.self_study_sessions = newSelfStudySessions
       }
 
-      console.log("=== COURSE DATA ===")
-      console.log("Course Titleype:", data.courseType)
-      console.log("Mode:", editingCourse ? "UPDATE" : "CREATE")
-      console.log("Start Date:", courseData.start_date)
-      console.log("End Date:", courseData.end_date)
-      console.log("Groups:", JSON.stringify(courseData.groups, null, 2))
-      console.log("Self-study sessions:", courseData.self_study_sessions)
-      console.log("===================")
 
       let result
       if (editingCourse) {
         // ============ UPDATE MODE ============
-        console.log("🔄 Updating existing course:", editingCourse.id)
 
         // For self-study, we need to handle the update carefully
         if (data.courseType === "self-study") {
@@ -457,11 +517,11 @@ export function CoursesContainer({
             self_study_sessions: [],
             groups: courseData.groups
               ? [
-                  {
-                    ...courseData.groups[0],
-                    sessions: [], // Clear sessions in the group too
-                  },
-                ]
+                {
+                  ...courseData.groups[0],
+                  sessions: [], // Clear sessions in the group too
+                },
+              ]
               : undefined,
           }
 
@@ -475,10 +535,8 @@ export function CoursesContainer({
         // Handle image changes during update
         if (result.success) {
           if (!data.imageUrl && editingCourse.imageUrl) {
-            console.log("Deleting course image...")
             await delete_CourseImage(editingCourse.id)
           } else if (data.imageUrl && data.imageUrl.startsWith("data:")) {
-            console.log("Uploading new course image...")
             const res = await fetch(data.imageUrl)
             const blob = await res.blob()
             const file = new File(
@@ -504,7 +562,6 @@ export function CoursesContainer({
         }
       } else {
         // ============ CREATE MODE ============
-        console.log("✨ Creating new course")
 
         const formData = new FormData()
         const jsonBlob = new Blob([JSON.stringify(courseData)], {
@@ -627,7 +684,7 @@ export function CoursesContainer({
                     if (course.status !== "draft") {
                       return (
                         <CourseCard
-                          key={course.id}
+                          key={selectedCourseId?.toString() || course.id}
                           course={course}
                           onView={handleView}
                         />
@@ -788,7 +845,7 @@ export function CoursesContainer({
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredCourses.map((course) => (
                   <CourseCard
-                    key={course.id}
+                    key={selectedCourseId?.toString() || course.id}
                     course={course}
                     onView={handleView}
                   />

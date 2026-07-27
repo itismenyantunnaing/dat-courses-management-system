@@ -330,8 +330,6 @@ export default function LearnerDashboardContainer() {
         attendanceStatus: value as 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
       };
 
-      console.log('🔵 Attendance request:', attendanceRequest);
-
       // Check if attendance already exists
       if (session.attendanceId) {
         // Update existing attendance
@@ -341,7 +339,6 @@ export default function LearnerDashboardContainer() {
           session.attendanceId,
           attendanceRequest
         );
-        console.log('✅ Attendance updated successfully');
       } else {
         // Create new attendance
         await createAttendance(
@@ -349,7 +346,6 @@ export default function LearnerDashboardContainer() {
           session.groupId,
           attendanceRequest
         );
-        console.log('✅ Attendance created successfully');
       }
 
       // Show saved indicator

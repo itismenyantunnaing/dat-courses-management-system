@@ -430,7 +430,7 @@ export function CurrentTargetContainer({
 
   // Employee Headers
   const employeeHeaders = [
-    { field: "select", header_name: "" },
+    // { field: "select", header_name: "" },
     { field: "Sr", header_name: "Sr" },
     { field: "staff_id", header_name: "Staff ID" },
     { field: "name", header_name: "Name" },
@@ -1522,9 +1522,9 @@ export function CurrentTargetContainer({
                       )}
                     </BorderedTableHead>
                   ))}
-                  {visibleJapaneseHeaderGroups.map((group) => (
+                  {visibleJapaneseHeaderGroups.map((group, index) => (
                     <BorderedTableHead
-                      key={group.groupName}
+                      key={index}
                       className={cn(
                         "bg-muted/30 text-center align-middle whitespace-nowrap",
                         (group.groupName.includes("Target Level") ||
@@ -1589,7 +1589,7 @@ export function CurrentTargetContainer({
                         className="cursor-pointer transition-colors hover:bg-muted/50"
                         onClick={() => handleRowClick(employee)}
                       >
-                        <BorderedTableCell
+                        {/* <BorderedTableCell
                           className="w-10 min-w-[40px]"
                           selected={isSelected}
                           onClick={(e) => e.stopPropagation()}
@@ -1601,7 +1601,7 @@ export function CurrentTargetContainer({
                             }
                             aria-label={`Select ${employee.name}`}
                           />
-                        </BorderedTableCell>
+                        </BorderedTableCell> */}
                         <BorderedTableCell selected={isSelected}>
                           {globalIndex}
                         </BorderedTableCell>

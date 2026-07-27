@@ -205,7 +205,6 @@ export default function ChangePassword({
       )
 
       const text = await response.text()
-      console.log("Send OTP response:", text)
 
       if (response.ok) {
         if (onEmailChange) {
@@ -255,7 +254,6 @@ export default function ChangePassword({
       )
 
       const text = await response.text()
-      console.log("Verify OTP response:", text)
 
       if (
         response.ok &&
@@ -358,7 +356,6 @@ export default function ChangePassword({
       )
 
       const text = await response.text()
-      console.log("Verify current password response:", text)
 
       if (response.ok) {
         handleStepChange("new-password")
@@ -417,7 +414,6 @@ export default function ChangePassword({
         )
 
         const verifyText = await verifyResponse.text()
-        console.log("Re-verify response:", verifyText)
 
         if (
           !verifyResponse.ok ||
@@ -446,7 +442,6 @@ export default function ChangePassword({
         )
 
         const resetText = await resetResponse.text()
-        console.log("Password reset response:", resetText)
 
         if (
           resetResponse.ok &&
@@ -493,8 +488,7 @@ export default function ChangePassword({
         )
 
         const changeText = await changeResponse.text()
-        console.log("Password change response:", changeText)
-
+        
         if (
           changeResponse.ok &&
           (changeText.toLowerCase().includes("success") ||

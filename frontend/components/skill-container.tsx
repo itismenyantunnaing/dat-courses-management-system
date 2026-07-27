@@ -369,9 +369,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       })
 
       setSkillMap(map)
-    } else {
-      console.log("No skillData available")
-    }
+    } 
   }, [skillData])
 
   // Build devCap map for quick lookup: employee_id -> Map<developmentTypeName, { years, experience_process }>

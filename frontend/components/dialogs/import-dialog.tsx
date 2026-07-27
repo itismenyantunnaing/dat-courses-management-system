@@ -131,9 +131,6 @@ export function ImportDialog({
       if (result && typeof result === "object") {
         if (result.success) {
           onOpenChange(false)
-        } else {
-          // Failure with message
-          if (result.message) console.log(`ℹ️ ${result.message}`)
         }
       } else {
         alert(`✅ Successfully imported ${currentTabData.label} data!`)

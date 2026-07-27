@@ -270,8 +270,6 @@ export function ChangeGroupRequestDialogs({
         const employee = selectedEmployeesForChange[i]
 
         try {
-          console.log(`🔄 Changing group for ${employee.employeeName} (${i + 1}/${selectedEmployeesForChange.length})`)
-
           // Call the individual adminChangeGroup API
           const result = await adminChangeGroup(employee.id, newGroupId)
 

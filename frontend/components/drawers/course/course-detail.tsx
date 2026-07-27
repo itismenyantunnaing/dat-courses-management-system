@@ -497,14 +497,12 @@ export function CourseDetail({
           existingAttendance.id,
           request
         )
-        console.log('✅ Attendance updated:', result)
       } else {
         result = await createAttendance(
           parseInt(course.id),
           groupId,
           request
         )
-        console.log('✅ Attendance created:', result)
       }
 
       setSavedAttendance(prev => ({ ...prev, [key]: true }))

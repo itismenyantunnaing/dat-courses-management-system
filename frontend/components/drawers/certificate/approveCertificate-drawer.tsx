@@ -101,8 +101,6 @@ export function ApproveCertificateDrawer({
       // Update certificate status to "approved" with remark
       const result = await verify_CertificateData(certificate.id, remark)
 
-      console.log("✅ Approve result:", result)
-
       if (result.includes("successfully")) {
         alert("✅ Certificate approved successfully!")
         onOpenChange(false)
@@ -136,8 +134,6 @@ export function ApproveCertificateDrawer({
     try {
       // Update certificate status to "rejected" with remark
       const result = await reject_CertificateData(certificate.id, remark)
-
-      console.log("❌ Deny result:", result)
 
       if (result.includes("successfully")) {
         alert("✅ Certificate denied successfully!")

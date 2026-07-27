@@ -38,7 +38,6 @@ const allTab = {
   exportDescription:
     "Export all data from the system in your preferred format.",
   onExport: (format: string) => {
-    console.log(`Exporting all data as ${format}`)
     exportTabs.forEach((tab) => {
       tab.onExport(format)
     })
@@ -187,43 +186,34 @@ export function ExportDialog({
         switch (tabId) {
           case "all":
             // Export all data
-            console.log(`📊 Exporting all data as ${format}`)
             for (const tab of exportTabs) {
               await tab.onExport(format)
             }
             break
 
           case "employees":
-            console.log(`👤 Exporting Employees data as ${format}`)
             await currentTabData.onExport(format)
             break
 
           case "skills":
-            console.log(`💻 Exporting Skills data as ${format} (Language: ${exportLanguage})`)
             // Pass language preference to the export function
             await currentTabData.onExport(format, exportLanguage)
             break
 
           case "current_target_data":
-            console.log(`🎯 Exporting Current Target data as ${format}`)
             await currentTabData.onExport(format)
             break
 
           case "holidays":
-            console.log(`📅 Exporting Holidays data as ${format}`)
             await currentTabData.onExport(format)
             break
 
           case "courses":
-            console.log(`📚 Exporting Courses data as ${format}`)
             await currentTabData.onExport(format)
             break
 
           default:
-            // Default export
-            console.log(
-              `📋 Exporting ${currentTabData.label} data as ${format}`
-            )
+
             await currentTabData.onExport(format)
         }
 

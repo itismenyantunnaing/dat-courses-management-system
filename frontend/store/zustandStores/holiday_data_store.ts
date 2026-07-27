@@ -200,6 +200,29 @@ export const holidayDataStore = (set: StoreSet, get: StoreGet) => ({
   bulkCreate_HolidayData: async (holidays: { holidayName: string; holidayDate: string }[]) => {
     const previousData = get().holiday_data;
 
+    // Check if there are any existing holidays
+    if (previousData.length > 0) {
+
+      // Get all existing holiday IDs
+      const existingIds = previousData
+        .map(h => h.id)
+        .filter((id): id is number => id !== undefined && id > 0);
+
+      if (existingIds.length > 0) {
+        try {
+          // Wait a moment for the deletion to complete on the server
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Refresh data to ensure we have the latest state
+          await get().fetch_HolidayData();
+        } catch (deleteError) {
+          console.error('❌ Error deleting existing holidays:', deleteError);
+          throw new Error(`Failed to clear existing holidays: ${deleteError instanceof Error ? deleteError.message : 'Unknown error'}`);
+        }
+      }
+    }
+
+    // Now proceed with bulk creation
     // Create optimistic items with temporary IDs
     const optimisticHolidays = holidays.map((h, index) => ({
       id: -Date.now() - index,
@@ -209,7 +232,7 @@ export const holidayDataStore = (set: StoreSet, get: StoreGet) => ({
 
     // Optimistically add all holidays to the UI
     set(() => ({
-      holiday_data: [...previousData, ...optimisticHolidays]
+      holiday_data: [...get().holiday_data, ...optimisticHolidays]
     }));
 
     try {
@@ -222,17 +245,19 @@ export const holidayDataStore = (set: StoreSet, get: StoreGet) => ({
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('✅ Bulk insert successful:', result);
 
       // Refresh the holiday data to get the actual IDs from the database
       await get().fetch_HolidayData();
 
+      return `Successfully imported ${holidays.length} holidays`;
+
     } catch (error) {
-      console.error('Error bulk creating holidays:', error);
+      console.error('❌ Error bulk creating holidays:', error);
 
       // Rollback to original state if the API fails
       set(() => ({

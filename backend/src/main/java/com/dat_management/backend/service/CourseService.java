@@ -6,6 +6,7 @@ import com.dat_management.backend.entity.Course.CourseStatus;
 import com.dat_management.backend.entity.CourseCategory.CourseType;
 import com.dat_management.backend.entity.CourseGroup.GroupStatus;
 import com.dat_management.backend.entity.CourseSession.SessionStatus;
+import com.dat_management.backend.entity.Notification.NotificationType;
 import com.dat_management.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class CourseService {
     private final CourseEnrollmentRepository enrollmentRepo;
     private final SelfStudySessionRepository selfStudyRepo;
     private final CourseImageStorageService courseImageStorageService;
+    private final NotificationService notificationService;
 
     // =========================================================
     // API 1 — GET /api/courses
@@ -96,7 +98,15 @@ public class CourseService {
             }
         }
 
-        return toCourseDto(courseRepo.findById(course.getId()).get(), false);
+        
+        CourseDto result = toCourseDto(courseRepo.findById(course.getId()).get(), false);
+        notificationService.sendToAllActive(
+                NotificationType.COURSE,
+                "New course available",
+                "A new course \"" + course.getCourseName() + "\" has been created. Please check the course details and enrollment deadline.",
+                course.getId());
+
+        return result;
     }
 
     // =========================================================

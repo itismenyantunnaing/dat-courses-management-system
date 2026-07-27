@@ -1,19 +1,23 @@
 package com.dat_management.backend.service;
 
-import com.dat_management.backend.dto.TargetTermRequest;
-import com.dat_management.backend.dto.TargetTermResponse;
-import com.dat_management.backend.entity.TargetTerm;
-import com.dat_management.backend.repository.TargetTermRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import com.dat_management.backend.dto.TargetTermRequest;
+import com.dat_management.backend.dto.TargetTermResponse;
+import com.dat_management.backend.entity.Notification.NotificationType;
+import com.dat_management.backend.entity.TargetTerm;
+import com.dat_management.backend.repository.TargetTermRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class TargetTermService {
 
     private final TargetTermRepository targetTermRepository;
+    private final NotificationService notificationService;
 
     public List<TargetTermResponse> getAll() {
         return targetTermRepository.findAll()
@@ -51,9 +55,19 @@ public class TargetTermService {
         TargetTerm targetTerm = targetTermRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Target term not found with id: " + id));
 
+        java.time.LocalDate oldExamDate = targetTerm.getExamDate();
         setFields(targetTerm, request);
+        TargetTerm saved = targetTermRepository.save(targetTerm);
 
-        return toResponse(targetTermRepository.save(targetTerm));
+        if (oldExamDate != null && saved.getExamDate() != null && !oldExamDate.equals(saved.getExamDate())) {
+            notificationService.sendToAllActive(
+                    NotificationType.JLPT_EXAM,
+                    "Exam date updated",
+                    "The exam date has been changed from " + oldExamDate + " to " + saved.getExamDate() + ".",
+                    saved.getId());
+        }
+
+        return toResponse(saved);
     }
 
     public void delete(Integer id) {

@@ -77,6 +77,10 @@ interface CertificateRequest {
   email?: string
 }
 
+interface CertificatesRequestsContainerProps {
+  selectedCertificateId?: string | number | null
+}
+
 const STROKE_WIDTH = 2
 type ViewMode = "list" | "card"
 type StatusTab = "all" | "approved" | "pending" | "rejected"
@@ -182,7 +186,7 @@ const transformToCertificate = (
   } as JapaneseCertificate
 }
 
-export function CertificatesRequestsContainer() {
+export function CertificatesRequestsContainer({ selectedCertificateId }: CertificatesRequestsContainerProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [statusTab, setStatusTab] = useState<StatusTab>("all")
@@ -259,6 +263,52 @@ export function CertificatesRequestsContainer() {
 
   // Search input ref for keyboard shortcut
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const hasProcessedSelectedIdRef = useRef(false)
+
+  // Reset processed flag when selectedCertificateId changes
+  useEffect(() => {
+    if (selectedCertificateId) {
+      console.log("🔄 Reset processed flag for certificate:", selectedCertificateId)
+      hasProcessedSelectedIdRef.current = false
+    }
+  }, [selectedCertificateId])
+
+  // Effect to find and open the certificate when selectedCertificateId is provided
+  useEffect(() => {
+    // Only process if:
+    // 1. We have a selectedCertificateId
+    // 2. We're not loading
+    // 3. We haven't processed this ID yet
+    // 4. We have certificates loaded
+    if (!selectedCertificateId || isLoading || hasProcessedSelectedIdRef.current || transformedCertificates.length === 0) {
+      return
+    }
+
+    // Find the certificate (convert ID to string for comparison)
+    const certIdStr = selectedCertificateId.toString()
+    const foundCertificate = transformedCertificates.find(c => c.id === certIdStr)
+
+    if (foundCertificate) {
+      // Open the certificate detail drawer
+      handleCertificateClick(foundCertificate)
+      hasProcessedSelectedIdRef.current = true
+      return
+    }
+
+    // If certificate not found, try to refresh data
+    console.warn(`Certificate with ID ${selectedCertificateId} not found. Refreshing...`)
+    fetch_AllCertificates().then(() => {
+      // After refresh, check again
+      const refreshedCertificate = transformedCertificates.find(c => c.id === certIdStr)
+      if (refreshedCertificate) {
+        console.log("✅ Found certificate after refresh:", refreshedCertificate.id)
+        handleCertificateClick(refreshedCertificate)
+      } else {
+        console.error(`Certificate with ID ${selectedCertificateId} not found after refresh`)
+      }
+      hasProcessedSelectedIdRef.current = true
+    })
+  }, [selectedCertificateId, transformedCertificates, isLoading, fetch_AllCertificates])
 
   // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -287,6 +337,8 @@ export function CertificatesRequestsContainer() {
 
     loadData()
   }, [fetch_AllCertificates])
+
+
 
   // Filter certificates based on search term and status tab
   const getFilteredCertificates = () => {
@@ -355,7 +407,6 @@ export function CertificatesRequestsContainer() {
 
   // Handle approve success
   const handleApproveSuccess = async (id: string, remark: string) => {
-    console.log("✅ Approved certificate:", id, remark)
     await fetch_AllCertificates()
     setApproveDrawerOpen(false)
     setSelectedCertificate(null)
@@ -363,7 +414,6 @@ export function CertificatesRequestsContainer() {
 
   // Handle deny success
   const handleDenySuccess = async (id: string, remark: string) => {
-    console.log("❌ Denied certificate:", id, remark)
     await fetch_AllCertificates()
     setDenyDrawerOpen(false)
     setSelectedCertificate(null)
@@ -486,6 +536,8 @@ export function CertificatesRequestsContainer() {
       </div>
     )
   }
+
+  console.log(selectedCertificateId)
 
   return (
     <>
@@ -731,9 +783,9 @@ export function CertificatesRequestsContainer() {
                     )}
                   </div>
                 ) : (
-                  paginatedCertificates.map((certificate) => (
+                  paginatedCertificates.map((certificate, index) => (
                     <CertificateCard
-                      key={certificate.id}
+                      key={index}
                       certificate={transformToCertificate(certificate)}
                       onEdit={() => handleCertificateClick(certificate)}
                       showEmployeeInfo={true}
@@ -821,7 +873,7 @@ export function CertificatesRequestsContainer() {
                       }}
                       className={
                         currentPage === totalPages ||
-                        filteredCertificates.length === 0
+                          filteredCertificates.length === 0
                           ? "pointer-events-none opacity-50"
                           : ""
                       }

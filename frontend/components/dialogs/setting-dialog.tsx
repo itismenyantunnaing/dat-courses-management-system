@@ -30,32 +30,28 @@ import { mainStore } from "@/store/mainStore"
 interface SettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  // Notification settings are left as props for now
-  notificationSettings: {
-    courseAnnouncements: boolean
-    jlptExamAnnouncements: boolean
-    certificateUpdates: boolean
-    systemNotifications: boolean
-    emailNotifications: boolean
-  }
-  onSaveNotificationSettings?: (settings: any) => Promise<void>
 }
 
 export function SettingDialog({
   open,
   onOpenChange,
-  notificationSettings: initialNotificationSettings,
-  onSaveNotificationSettings,
 }: SettingsDialogProps) {
   const { 
     systemConfig, 
     fetch_SystemConfig, 
     update_SystemConfig,
+    notificationSettings: storeNotificationSettings,
+    fetch_NotificationSettings,
+    update_NotificationSettings,
     isLoading,
-    isSaving 
+    isSaving,
+    isUpdating,
+    profile
   } = mainStore();
 
-  // Add local loading state for initial fetch
+  const employeeId = profile?.id;
+
+  // Local states
   const [isLoadingInitial, setIsLoadingInitial] = useState(false)
 
   // Transform backend config to dialog config format
@@ -101,22 +97,48 @@ export function SettingDialog({
   }
 
   const [config, setConfig] = useState(getInitialConfig())
-  const [notificationSettings, setNotificationSettings] = useState(initialNotificationSettings)
   const [initialConfig, setInitialConfig] = useState(getInitialConfig())
-  const [initialNotificationState, setInitialNotificationState] = useState(initialNotificationSettings)
   const [hasChanges, setHasChanges] = useState(false)
   const [showGmailPassword, setShowGmailPassword] = useState(false)
   const [showOutlookPassword, setShowOutlookPassword] = useState(false)
+  
+  // Local copy of notification settings for editing
+  const [localSettings, setLocalSettings] = useState({
+    courseAnnouncements: true,
+    examAnnouncements: true,
+    certificateUpdates: true,
+    emailNotifications: true,
+  })
 
-  // Fetch system config when dialog opens
+  // Fetch system config and notification settings when dialog opens
   useEffect(() => {
-    if (open) {
+    if (open && employeeId) {
+      setIsLoadingInitial(true)
+      Promise.all([
+        fetch_SystemConfig(),
+        fetch_NotificationSettings(employeeId)
+      ]).finally(() => {
+        setIsLoadingInitial(false)
+      })
+    } else if (open && !employeeId) {
       setIsLoadingInitial(true)
       fetch_SystemConfig().finally(() => {
         setIsLoadingInitial(false)
       })
     }
-  }, [open, fetch_SystemConfig])
+  }, [open, employeeId])
+
+  // Update local settings when store data changes
+  useEffect(() => {
+    if (storeNotificationSettings) {
+      setLocalSettings({
+        courseAnnouncements: storeNotificationSettings.courseAnnouncements ?? true,
+        examAnnouncements: storeNotificationSettings.examAnnouncements ?? true,
+        certificateUpdates: storeNotificationSettings.certificateUpdates ?? true,
+        emailNotifications: storeNotificationSettings.emailNotifications ?? true,
+      })
+    }
+  }, [storeNotificationSettings])
 
   // Update local config and initial config when systemConfig is loaded
   useEffect(() => {
@@ -127,30 +149,35 @@ export function SettingDialog({
     }
   }, [systemConfig])
 
-  // Reset local state and initial state when dialog opens
+  // Reset local state when dialog opens
   useEffect(() => {
     if (open) {
       const newInitialConfig = getInitialConfig()
       setConfig(newInitialConfig)
       setInitialConfig(newInitialConfig)
-      setNotificationSettings(initialNotificationSettings)
-      setInitialNotificationState(initialNotificationSettings)
+      
+      if (storeNotificationSettings) {
+        setLocalSettings({
+          courseAnnouncements: storeNotificationSettings.courseAnnouncements ?? true,
+          examAnnouncements: storeNotificationSettings.examAnnouncements ?? true,
+          certificateUpdates: storeNotificationSettings.certificateUpdates ?? true,
+          emailNotifications: storeNotificationSettings.emailNotifications ?? true,
+        })
+      }
       setHasChanges(false)
     }
-  }, [open, systemConfig, initialNotificationSettings])
+  }, [open])
 
   // Simple deep equality check for config objects
   const configEqual = (a: any, b: any) => {
     if (a === b) return true
     if (!a || !b) return false
     
-    // Check all top-level properties
     const keys = Object.keys(a)
     if (keys.length !== Object.keys(b).length) return false
     
     for (const key of keys) {
       if (key === "smtp") {
-        // Check smtp object
         const smtpKeys = Object.keys(a[key])
         if (smtpKeys.length !== Object.keys(b[key]).length) return false
         for (const smtpKey of smtpKeys) {
@@ -163,45 +190,83 @@ export function SettingDialog({
     return true
   }
 
-  // Check for changes whenever config or notification settings update
+  // Check for changes
   useEffect(() => {
+    if (!storeNotificationSettings) return
+
     const configChanged = !configEqual(config, initialConfig)
+    
+    const storeSettings = {
+      courseAnnouncements: storeNotificationSettings.courseAnnouncements ?? true,
+      examAnnouncements: storeNotificationSettings.examAnnouncements ?? true,
+      certificateUpdates: storeNotificationSettings.certificateUpdates ?? true,
+      emailNotifications: storeNotificationSettings.emailNotifications ?? true,
+    }
+    
     const notificationChanged = 
-      notificationSettings.courseAnnouncements !== initialNotificationState.courseAnnouncements ||
-      notificationSettings.jlptExamAnnouncements !== initialNotificationState.jlptExamAnnouncements ||
-      notificationSettings.certificateUpdates !== initialNotificationState.certificateUpdates ||
-      notificationSettings.systemNotifications !== initialNotificationState.systemNotifications ||
-      notificationSettings.emailNotifications !== initialNotificationState.emailNotifications
+      localSettings.courseAnnouncements !== storeSettings.courseAnnouncements ||
+      localSettings.examAnnouncements !== storeSettings.examAnnouncements ||
+      localSettings.certificateUpdates !== storeSettings.certificateUpdates ||
+      localSettings.emailNotifications !== storeSettings.emailNotifications
 
     setHasChanges(configChanged || notificationChanged)
-  }, [config, initialConfig, notificationSettings, initialNotificationState])
+  }, [config, initialConfig, localSettings, storeNotificationSettings])
 
   const handleSave = async () => {
-    if (hasChanges) {
-      // Transform dialog config to backend format
-      const backendConfig = {
-        fileUploadSizeMb: config.fileUploadSize,
-        sessionTimeoutMinutes: config.sessionTimeout,
-        jwtExpiryHours: config.jwtExpiry,
-        maxLoginAttempts: config.maxLoginAttempts,
-        activeSmtpProvider: config.smtp.gmailDefault ? "GMAIL" : "OUTLOOK",
-        gmailHost: config.smtp.gmailHost,
-        gmailPort: config.smtp.gmailPort,
-        gmailUsername: config.smtp.gmailUsername,
-        gmailPassword: config.smtp.gmailPassword,
-        outlookHost: config.smtp.outlookHost,
-        outlookPort: config.smtp.outlookPort,
-        outlookUsername: config.smtp.outlookUsername,
-        outlookPassword: config.smtp.outlookPassword,
+    if (!hasChanges) return
+
+    try {
+      // Save system config if changed
+      if (!configEqual(config, initialConfig)) {
+        const backendConfig = {
+          fileUploadSizeMb: config.fileUploadSize,
+          sessionTimeoutMinutes: config.sessionTimeout,
+          jwtExpiryHours: config.jwtExpiry,
+          maxLoginAttempts: config.maxLoginAttempts,
+          activeSmtpProvider: config.smtp.gmailDefault ? "GMAIL" : "OUTLOOK",
+          gmailHost: config.smtp.gmailHost,
+          gmailPort: config.smtp.gmailPort,
+          gmailUsername: config.smtp.gmailUsername,
+          gmailPassword: config.smtp.gmailPassword,
+          outlookHost: config.smtp.outlookHost,
+          outlookPort: config.smtp.outlookPort,
+          outlookUsername: config.smtp.outlookUsername,
+          outlookPassword: config.smtp.outlookPassword,
+        }
+        await update_SystemConfig(backendConfig)
+      }
+
+      // Save notification settings if changed
+      const storeSettings = {
+        courseAnnouncements: storeNotificationSettings?.courseAnnouncements ?? true,
+        examAnnouncements: storeNotificationSettings?.examAnnouncements ?? true,
+        certificateUpdates: storeNotificationSettings?.certificateUpdates ?? true,
+        emailNotifications: storeNotificationSettings?.emailNotifications ?? true,
       }
       
-      await update_SystemConfig(backendConfig)
-      
-      if (onSaveNotificationSettings) {
-        await onSaveNotificationSettings(notificationSettings)
+      const notificationChanged = 
+        localSettings.courseAnnouncements !== storeSettings.courseAnnouncements ||
+        localSettings.examAnnouncements !== storeSettings.examAnnouncements ||
+        localSettings.certificateUpdates !== storeSettings.certificateUpdates ||
+        localSettings.emailNotifications !== storeSettings.emailNotifications
+
+      if (notificationChanged && employeeId) {
+        const settingsToSave = {
+          employeeId: employeeId,
+          courseAnnouncements: localSettings.courseAnnouncements,
+          examAnnouncements: localSettings.examAnnouncements,
+          certificateUpdates: localSettings.certificateUpdates,
+          emailNotifications: localSettings.emailNotifications,
+        }
+        
+        await update_NotificationSettings(settingsToSave)
+        await fetch_NotificationSettings(employeeId)
       }
-      
+
+      await fetch_SystemConfig()
       onOpenChange(false)
+    } catch (error) {
+      console.error('Error saving settings:', error)
     }
   }
 
@@ -226,6 +291,8 @@ export function SettingDialog({
       },
     })
   }
+
+  const isNotificationSaving = isUpdating || isLoading
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -244,11 +311,11 @@ export function SettingDialog({
           <div className="flex flex-1 items-center justify-center py-12">
             <div className="flex flex-col items-center gap-3">
               <HugeiconsIcon
-                   icon={Loading03Icon}
-                   role="status"
-                   aria-label="Loading"
-                   className={"size-4 animate-spin"}
-                 />
+                icon={Loading03Icon}
+                role="status"
+                aria-label="Loading"
+                className="size-4 animate-spin"
+              />
               <p className="text-sm text-muted-foreground">Loading settings...</p>
             </div>
           </div>
@@ -573,7 +640,7 @@ export function SettingDialog({
 
               <Separator />
 
-              {/* Notification Settings Section */}
+              {/* Notification Settings Section - Using storeNotificationSettings directly */}
               <div>
                 <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
                   Notification Settings
@@ -602,14 +669,14 @@ export function SettingDialog({
                     </div>
                     <Switch
                       id="course-announcements"
-                      checked={notificationSettings.courseAnnouncements}
+                      checked={localSettings.courseAnnouncements}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings({
-                          ...notificationSettings,
+                        setLocalSettings({
+                          ...localSettings,
                           courseAnnouncements: checked,
                         })
                       }
-                      disabled={isSaving || isLoading}
+                      disabled={isSaving || isLoading || isNotificationSaving}
                     />
                   </div>
 
@@ -635,14 +702,14 @@ export function SettingDialog({
                     </div>
                     <Switch
                       id="jlpt-exam-announcements"
-                      checked={notificationSettings.jlptExamAnnouncements}
+                      checked={localSettings.examAnnouncements}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings({
-                          ...notificationSettings,
-                          jlptExamAnnouncements: checked,
+                        setLocalSettings({
+                          ...localSettings,
+                          examAnnouncements: checked,
                         })
                       }
-                      disabled={isSaving || isLoading}
+                      disabled={isSaving || isLoading || isNotificationSaving}
                     />
                   </div>
 
@@ -668,14 +735,14 @@ export function SettingDialog({
                     </div>
                     <Switch
                       id="certificate-updates"
-                      checked={notificationSettings.certificateUpdates}
+                      checked={localSettings.certificateUpdates}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings({
-                          ...notificationSettings,
+                        setLocalSettings({
+                          ...localSettings,
                           certificateUpdates: checked,
                         })
                       }
-                      disabled={isSaving || isLoading}
+                      disabled={isSaving || isLoading || isNotificationSaving}
                     />
                   </div>
 
@@ -701,14 +768,14 @@ export function SettingDialog({
                     </div>
                     <Switch
                       id="email-notifications"
-                      checked={notificationSettings.emailNotifications}
+                      checked={localSettings.emailNotifications}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings({
-                          ...notificationSettings,
+                        setLocalSettings({
+                          ...localSettings,
                           emailNotifications: checked,
                         })
                       }
-                      disabled={isSaving || isLoading}
+                      disabled={isSaving || isLoading || isNotificationSaving}
                     />
                   </div>
                 </div>
@@ -722,16 +789,22 @@ export function SettingDialog({
             className="flex-1"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isSaving || isLoadingInitial}
+            disabled={isSaving || isLoading || isNotificationSaving}
           >
-            Close
+            Cancel
           </Button>
           <Button
             className="flex-1"
             onClick={handleSave}
-            disabled={isSaving || isLoading || isLoadingInitial || !hasChanges}
+            disabled={
+              isSaving || 
+              isLoading || 
+              isLoadingInitial || 
+              isNotificationSaving ||
+              !hasChanges
+            }
           >
-            {isSaving ? "Saving..." : "Save Changes"}
+            {isSaving || isNotificationSaving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>
       </DialogContent>

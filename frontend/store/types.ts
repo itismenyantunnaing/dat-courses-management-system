@@ -42,6 +42,7 @@ import {
 } from '@/types/dashboard';
 import type { FeedbackSuggestionDto } from "@/types/feedback"
 import type { AuditLog } from "@/types/audit-log"
+import type { NotificationSettings } from "@/types/notification"
 
 export interface SystemConfig {
   id: number;
@@ -270,6 +271,24 @@ export interface Certificates_StoreType {
   delete_CertificateData: (id: string) => Promise<string>
   verify_CertificateData: (id: string, remark?: string) => Promise<string>
   reject_CertificateData: (id: string, remark?: string) => Promise<string>
+}
+
+export interface NotificationStoreType {
+  notifications: Notification[];
+  unreadCount: number;
+  notificationSettings: NotificationSettings | null;
+  isLoading: boolean;
+  isUpdating: boolean;
+
+  // Notification methods
+  fetch_Notifications: (employeeId: string, unreadOnly?: boolean) => Promise<void>;
+  fetch_UnreadCount: (employeeId: string) => Promise<void>;
+  mark_NotificationRead: (id: number, employeeId: string) => Promise<string>;
+  mark_AllNotificationsRead: (employeeId: string) => Promise<string>;
+
+  // Settings methods
+  fetch_NotificationSettings: (employeeId: string) => Promise<void>;
+  update_NotificationSettings: (settings: NotificationSettings) => Promise<string>;
 }
 
 

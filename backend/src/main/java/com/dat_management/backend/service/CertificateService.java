@@ -1,5 +1,6 @@
 package com.dat_management.backend.service;
 
+import com.dat_management.backend.entity.Notification.NotificationType;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,6 +29,7 @@ public class CertificateService {
     private final EmployeeCertificateRepository certificateRepository;
     private final EmployeeJapaneseProfileRepository japaneseProfileRepository;
     private final CertificateFileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     @Value("${file.max-size:5242880}")
     private long maxFileSize;
@@ -185,7 +187,12 @@ public class CertificateService {
                 certificate.getJapaneseLevel());
 
         EmployeeCertificate verifiedCertificate = certificateRepository.save(certificate);
-
+        notificationService.send(
+                certificate.getEmployee(),
+                NotificationType.CERTIFICATE,
+                "Certificate approved",
+                "Your " + certificate.getCertificateType().name() + " certificate (" + certificate.getJapaneseLevel() + ") has been approved.",
+                certificate.getId());
         return toDto(verifiedCertificate);
     }
 
@@ -220,6 +227,11 @@ public class CertificateService {
         certificate.setVerificationStatus(VerificationStatus.PENDING);
 
         EmployeeCertificate savedCertificate = certificateRepository.save(certificate);
+        notificationService.sendToAdmins(
+                NotificationType.CERTIFICATE,
+                "Certificate submitted for approval",
+                employee.getName() + " uploaded a " + enumCertType.name() + " certificate (" + level + ") for review.",
+                savedCertificate.getId());
         return toDto(savedCertificate);
     }
 
@@ -287,7 +299,13 @@ public class CertificateService {
         certificate.setRemark(remark);
 
         EmployeeCertificate rejectedCertificate = certificateRepository.save(certificate);
-
+        String reason = remark == null || remark.isBlank() ? "" : " Remark: " + remark;
+        notificationService.send(
+                certificate.getEmployee(),
+                NotificationType.CERTIFICATE,
+                "Certificate rejected",
+                "Your " + certificate.getCertificateType().name() + " certificate (" + certificate.getJapaneseLevel() + ") was rejected." + reason,
+                certificate.getId());
         return toDto(rejectedCertificate);
     }
 

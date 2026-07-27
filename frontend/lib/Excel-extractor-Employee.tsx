@@ -151,8 +151,6 @@ export const extractEmployeeDataFromExcel = async (
         const arrayBuffer = await file.arrayBuffer();
         await workbook.xlsx.load(arrayBuffer);
         
-        const loadTime = performance.now() - startTime;
-        console.log(`📂 File loaded in ${loadTime.toFixed(0)}ms`);
         
         // Find the Employee sheet
         const worksheet = findEmployeeSheetOptimized(workbook);
@@ -162,17 +160,9 @@ export const extractEmployeeDataFromExcel = async (
         
         // Find header row and column mapping
         const { headerRowIndex, columnMap } = findHeaderRowOptimized(worksheet);
-        console.log('📊 Column mapping:', columnMap);
         
         // Optimized data extraction
         const extractedData = extractDataOptimized(worksheet, headerRowIndex, columnMap);
-        
-        const totalTime = performance.now() - startTime;
-        console.log(`✅ Extracted ${extractedData.length} employee records in ${totalTime.toFixed(0)}ms`);
-        
-        if (extractedData.length > 0) {
-            console.log('📋 Sample (first 3 rows):', extractedData.slice(0, 3));
-        }
         
         return extractedData;
         
@@ -266,10 +256,6 @@ const extractDataOptimized = (
             extractedData.push(rowData);
         }
     }
-    
-    const extractTime = performance.now() - startTime;
-    console.log(`📊 Data extraction took ${extractTime.toFixed(0)}ms for ${extractedData.length} rows`);
-    
     return extractedData;
 };
 
@@ -314,8 +300,6 @@ export const validateEmployeeData = (data: EmployeeExcelData[]): {
         }
     }
     
-    const validateTime = performance.now() - startTime;
-    console.log(`✅ Validation completed in ${validateTime.toFixed(0)}ms - Valid: ${valid.length}, Invalid: ${invalid.length}`);
     
     return { valid, invalid };
 };

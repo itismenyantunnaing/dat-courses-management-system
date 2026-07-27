@@ -43,7 +43,6 @@ export const courseSelfStudyProgressStore = (set: StoreSet, get: StoreGet) => ({
         progressError: null
       }))
 
-      console.log(data)
 
       return { success: true, data }
 
