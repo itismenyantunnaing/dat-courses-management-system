@@ -91,9 +91,8 @@ export function GroupsTab({
   const isAdmin = userRole === "admin"
   const isLearner = userRole === "learner"
   const isApprover = userRole === "approver"
-  const TESTING_DATE = new Date()
-  // const TESTING_DATE = new Date("2026-08-4")
-
+  // const TESTING_DATE = new Date()
+  const TESTING_DATE = new Date("2026-07-29")
 
   const getEmployeesByGroup = (groupId: number) => {
     return enrollments.filter(
@@ -126,7 +125,7 @@ export function GroupsTab({
 
   // Get display label for attendance status
   const getAttendanceLabel = (status: string) => {
-    const option = ATTENDANCE_OPTIONS.find(opt => opt.value === status)
+    const option = ATTENDANCE_OPTIONS.find((opt) => opt.value === status)
     return option ? `${option.icon} ${option.label}` : status
   }
 
@@ -159,12 +158,12 @@ export function GroupsTab({
           .map((group: any, index: number) => {
             const groupEmployees = getEmployeesByGroup(parseInt(group.id))
             const uniqueStatuses = getUniqueStatuses(groupEmployees)
-            
+
             // Check if first session is upcoming
             const firstSessionUpcoming = isFirstSessionUpcoming(group.sessions)
 
             return (
-              <Card key={index} className="overflow-hidden">
+              <div key={index} className="overflow-hidden">
                 <CardHeader className="bg-muted/30 pb-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -221,7 +220,7 @@ export function GroupsTab({
                     </h5>
 
                     {(userRole === "learner" || isAdmin || isApprover) && (
-                      <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {group.sessions.map((session: any, idx: number) => {
                           const sessionId = session.id
                           const sessionDate = session.date
@@ -269,8 +268,8 @@ export function GroupsTab({
                               )}
                             >
                               <div className="p-3">
-                                <div className="mb-3 flex items-center justify-between">
-                                  <div className="flex items-center gap-4">
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                  <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-sm font-medium">
                                       Session {session.sessionNo || idx + 1}
                                     </span>
@@ -284,6 +283,8 @@ export function GroupsTab({
                                         {session.startTime} - {session.endTime}
                                       </span>
                                     )}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
                                     <Badge
                                       variant="outline"
                                       className="text-[10px]"
@@ -306,31 +307,30 @@ export function GroupsTab({
                                       </Badge>
                                     )}
                                   </div>
-                                  {isSessionLocked &&
-                                    userRole === "learner" && (
-                                      <div className="flex items-center gap-1 text-xs">
-                                        {isFutureSession ? (
-                                          <span className="flex items-center gap-1 text-blue-500">
-                                            <HugeiconsIcon
-                                              icon={Calendar03Icon}
-                                              strokeWidth={2}
-                                              className="h-3 w-3"
-                                            />
-                                            Coming Soon
-                                          </span>
-                                        ) : isOverdue ? (
-                                          <span className="flex items-center gap-1 text-red-500">
-                                            <HugeiconsIcon
-                                              icon={Alert01Icon}
-                                              strokeWidth={2}
-                                              className="h-3 w-3"
-                                            />
-                                            Locked
-                                          </span>
-                                        ) : null}
-                                      </div>
-                                    )}
                                 </div>
+                                {isSessionLocked && userRole === "learner" && (
+                                  <div className="mb-2 flex items-center gap-1 text-xs">
+                                    {isFutureSession ? (
+                                      <span className="flex items-center gap-1 text-blue-500">
+                                        <HugeiconsIcon
+                                          icon={Calendar03Icon}
+                                          strokeWidth={2}
+                                          className="h-3 w-3"
+                                        />
+                                        Coming Soon
+                                      </span>
+                                    ) : isOverdue ? (
+                                      <span className="flex items-center gap-1 text-red-500">
+                                        <HugeiconsIcon
+                                          icon={Alert01Icon}
+                                          strokeWidth={2}
+                                          className="h-3 w-3"
+                                        />
+                                        Locked
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                )}
 
                                 {/* Attendance Table - Hidden if first session is upcoming */}
                                 {!firstSessionUpcoming && (
@@ -406,7 +406,8 @@ export function GroupsTab({
                                                       <Avatar className="h-6 w-6">
                                                         <AvatarImage
                                                           src={
-                                                            employee.pfImage || ""
+                                                            employee.pfImage ||
+                                                            ""
                                                           }
                                                         />
                                                         <AvatarFallback className="text-[10px]">
@@ -454,8 +455,10 @@ export function GroupsTab({
                                                             <DropdownMenuTrigger
                                                               className={cn(
                                                                 "flex h-7 w-[130px] items-center justify-between rounded-md border bg-background px-2 text-xs",
-                                                                isSaving && "opacity-50 cursor-not-allowed",
-                                                                isSessionLocked && "opacity-50 cursor-not-allowed"
+                                                                isSaving &&
+                                                                  "cursor-not-allowed opacity-50",
+                                                                isSessionLocked &&
+                                                                  "cursor-not-allowed opacity-50"
                                                               )}
                                                               disabled={
                                                                 isSaving ||
@@ -464,11 +467,15 @@ export function GroupsTab({
                                                             >
                                                               <span>
                                                                 {currentStatus
-                                                                  ? getAttendanceLabel(currentStatus)
+                                                                  ? getAttendanceLabel(
+                                                                      currentStatus
+                                                                    )
                                                                   : "Select status"}
                                                               </span>
                                                               <HugeiconsIcon
-                                                                icon={ChevronDownIcon}
+                                                                icon={
+                                                                  ChevronDownIcon
+                                                                }
                                                                 strokeWidth={2}
                                                                 className="h-3 w-3"
                                                               />
@@ -477,18 +484,21 @@ export function GroupsTab({
                                                               align="start"
                                                               className="w-[150px]"
                                                             >
-                                                             
                                                               {ATTENDANCE_OPTIONS.map(
                                                                 (option) => (
                                                                   <DropdownMenuItem
-                                                                    key={option.value}
+                                                                    key={
+                                                                      option.value
+                                                                    }
                                                                     onClick={() =>
                                                                       onAttendanceChange(
                                                                         sessionId,
                                                                         employee.id.toString(),
                                                                         option.value,
                                                                         employee.id,
-                                                                        parseInt(group.id)
+                                                                        parseInt(
+                                                                          group.id
+                                                                        )
                                                                       )
                                                                     }
                                                                     className={cn(
@@ -499,9 +509,13 @@ export function GroupsTab({
                                                                     )}
                                                                   >
                                                                     <span className="mr-2">
-                                                                      {option.icon}
+                                                                      {
+                                                                        option.icon
+                                                                      }
                                                                     </span>
-                                                                    {option.label}
+                                                                    {
+                                                                      option.label
+                                                                    }
                                                                     {currentStatus ===
                                                                       option.value && (
                                                                       <HugeiconsIcon
@@ -524,10 +538,10 @@ export function GroupsTab({
                                                           ) : savedAttendance[
                                                               key
                                                             ] ? (
-                                                              <span className="text-green-500">
-                                                                ✓
-                                                              </span>
-                                                            ) : null}
+                                                            <span className="text-green-500">
+                                                              ✓
+                                                            </span>
+                                                          ) : null}
                                                         </div>
                                                       ) : (
                                                         <span className="text-xs text-muted-foreground">
@@ -561,7 +575,7 @@ export function GroupsTab({
                   </div>
 
                   {/* Enrolled Employees for this Group */}
-                  {groupEmployees.length > 0 && (isAdmin || isApprover) && (
+                  {/* {groupEmployees.length > 0 && (isAdmin || isApprover) && (
                     <div>
                       <div className="mb-3 flex items-center justify-between">
                         <h5 className="flex items-center gap-2 text-sm font-medium">
@@ -680,9 +694,9 @@ export function GroupsTab({
                         })}
                       </TabsComponent>
                     </div>
-                  )}
+                  )} */}
                 </CardContent>
-              </Card>
+              </div>
             )
           })}
 

@@ -72,7 +72,8 @@ export function SessionsTab({
     {}
   )
 
-  const TESTING_DATE = new Date("2026-08-4")
+  const TESTING_DATE = new Date()
+  // const TESTING_DATE = new Date("2026-08-4")
 
   const getSessionStatus = (sessionDate: Date | string | undefined) => {
     if (!sessionDate) return "unknown"
@@ -313,7 +314,7 @@ export function SessionsTab({
     <TabsContent value="sessions" className="pt-4">
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Sessions</h3>
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sessionsList.map((session, index) => {
             const isJLPT = isJLPTType(course.selfStudyType as any)
             const sessionId = session.id
@@ -413,31 +414,31 @@ export function SessionsTab({
               <Card
                 key={sessionId || index}
                 className={cn(
-                  "overflow-hidden border-muted bg-muted/5 transition-colors",
+                  "flex flex-col overflow-hidden border-muted bg-muted/5 transition-colors",
                   isFutureSession &&
                     index !== firstFutureSessionIndex &&
                     "opacity-70",
                   isOverdue && !isCompleted && "border-red-200 bg-red-50/5"
                 )}
               >
-                <div className="flex flex-col">
-                  <div className="flex flex-1 items-center justify-between bg-muted/10 p-4">
-                    <div className="flex items-center gap-4">
+                <div className="flex h-full flex-col">
+                  <div className="flex flex-col gap-2 bg-muted/10 p-3">
+                    <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold">
                         Session {index + 1}
                       </span>
                       {statusBadge}
-                      {isFutureSession && index === firstFutureSessionIndex && (
-                        <Badge className="bg-purple-500 text-[10px] text-white">
-                          Available Now
-                        </Badge>
-                      )}
-                      {isToday && (
-                        <Badge className="bg-green-500 text-[10px] text-white">
-                          Today
-                        </Badge>
-                      )}
                     </div>
+                    {isFutureSession && index === firstFutureSessionIndex && (
+                      <Badge className="self-start bg-purple-500 text-[10px] text-white">
+                        Available Now
+                      </Badge>
+                    )}
+                    {isToday && (
+                      <Badge className="self-start bg-green-500 text-[10px] text-white">
+                        Today
+                      </Badge>
+                    )}
                     <div className="flex items-center gap-2 text-xs">
                       {isJLPT ? (
                         <>
@@ -478,11 +479,11 @@ export function SessionsTab({
                   </div>
 
                   {isJLPT && (
-                    <div className="bg-muted/5 p-4">
+                    <div className="bg-muted/5 p-3">
                       <p className="mb-2 text-xs text-muted-foreground">
                         🎯 Session Targets:
                       </p>
-                      <div className="flex flex-wrap gap-x-6 gap-y-2">
+                      <div className="grid grid-cols-3 gap-x-4 gap-y-1.5">
                         <div className="flex items-center gap-1.5 text-[11px]">
                           <span className="text-muted-foreground">Kanji:</span>
                           <span className="font-semibold text-primary">
@@ -527,8 +528,8 @@ export function SessionsTab({
                     isUserEnrolled &&
                     hasProgress &&
                     userRole === "learner" && (
-                      <div className="bg-muted/10 p-4">
-                        <div className="mb-3 flex items-center justify-between">
+                      <div className="flex-1 bg-muted/10 p-3">
+                        <div className="mb-2 flex items-center justify-between">
                           <p className="text-xs text-muted-foreground">
                             📊 Your Progress:
                           </p>
@@ -550,9 +551,9 @@ export function SessionsTab({
                           </div>
                         </div>
 
-                        <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-5">
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
+                        <div className="space-y-2">
+                          <div className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
                               <span className="text-muted-foreground">
                                 Kanji
                               </span>
@@ -568,14 +569,10 @@ export function SessionsTab({
                                 }}
                               />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {progress?.kanji_count || 0} /{" "}
-                              {session.kanjiCount || 0}
-                            </p>
                           </div>
 
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
+                          <div className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
                               <span className="text-muted-foreground">
                                 Vocab
                               </span>
@@ -591,14 +588,10 @@ export function SessionsTab({
                                 }}
                               />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {progress?.vocabulary_count || 0} /{" "}
-                              {session.vocabularyCount || 0}
-                            </p>
                           </div>
 
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
+                          <div className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
                               <span className="text-muted-foreground">
                                 Grammar
                               </span>
@@ -614,14 +607,10 @@ export function SessionsTab({
                                 }}
                               />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {progress?.grammar_count || 0} /{" "}
-                              {session.grammarCount || 0}
-                            </p>
                           </div>
 
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
+                          <div className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
                               <span className="text-muted-foreground">
                                 Reading
                               </span>
@@ -637,14 +626,10 @@ export function SessionsTab({
                                 }}
                               />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {progress?.reading_minutes || 0}min /{" "}
-                              {session.readingMinutes || 0}min
-                            </p>
                           </div>
 
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
+                          <div className="space-y-0.5">
+                            <div className="flex justify-between text-[10px]">
                               <span className="text-muted-foreground">
                                 Listening
                               </span>
@@ -660,35 +645,13 @@ export function SessionsTab({
                                 }}
                               />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {progress?.listening_minutes || 0}min /{" "}
-                              {session.listeningMinutes || 0}min
-                            </p>
                           </div>
-                        </div>
-
-                        <div className="mt-1 flex items-center gap-4 border-t pt-2 text-xs text-muted-foreground">
-                          <span>
-                            Overall Progress:
-                            <span className="ml-1 font-semibold text-primary">
-                              {overallProgress}%
-                            </span>
-                          </span>
-                          {progress?.completed_at && (
-                            <span>
-                              Completed:{" "}
-                              {format(
-                                new Date(progress.completed_at),
-                                "MMM d, yyyy HH:mm"
-                              )}
-                            </span>
-                          )}
                         </div>
                       </div>
                     )}
 
                   {isEditable && (
-                    <div className="bg-muted/10 p-4">
+                    <div className="flex-1 bg-muted/10 p-3">
                       <p className="mb-2 text-xs text-muted-foreground">
                         📝 Enter Your Progress:
                         {isToday && (
@@ -703,146 +666,152 @@ export function SessionsTab({
                             </span>
                           )}
                       </p>
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
-                            Kanji Completed
-                          </Label>
-                          <Input
-                            type="number"
-                            value={
-                              sessionInputs[sessionId]?.kanjiCount ??
-                              progress?.kanji_count ??
-                              0
-                            }
-                            onChange={(e) =>
-                              handleSessionInputChange(
-                                sessionId,
-                                "kanjiCount",
-                                e.target.value
-                              )
-                            }
-                            className="h-8 text-sm"
-                            min={0}
-                            placeholder="0"
-                            disabled={savingSessions[sessionId]}
-                          />
-                          <p className="text-[10px] text-muted-foreground">
-                            Target: {session.kanjiCount || 0}
-                          </p>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">
+                              Kanji Completed
+                            </Label>
+                            <Input
+                              type="number"
+                              value={
+                                sessionInputs[sessionId]?.kanjiCount ??
+                                progress?.kanji_count ??
+                                0
+                              }
+                              onChange={(e) =>
+                                handleSessionInputChange(
+                                  sessionId,
+                                  "kanjiCount",
+                                  e.target.value
+                                )
+                              }
+                              className="h-7 text-sm"
+                              min={0}
+                              placeholder="0"
+                              disabled={savingSessions[sessionId]}
+                            />
+                            <p className="text-[9px] text-muted-foreground">
+                              Target: {session.kanjiCount || 0}
+                            </p>
+                          </div>
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">
+                              Vocab Completed
+                            </Label>
+                            <Input
+                              type="number"
+                              value={
+                                sessionInputs[sessionId]?.vocabularyCount ??
+                                progress?.vocabulary_count ??
+                                0
+                              }
+                              onChange={(e) =>
+                                handleSessionInputChange(
+                                  sessionId,
+                                  "vocabularyCount",
+                                  e.target.value
+                                )
+                              }
+                              className="h-7 text-sm"
+                              min={0}
+                              placeholder="0"
+                              disabled={savingSessions[sessionId]}
+                            />
+                            <p className="text-[9px] text-muted-foreground">
+                              Target: {session.vocabularyCount || 0}
+                            </p>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
-                            Vocab Completed
-                          </Label>
-                          <Input
-                            type="number"
-                            value={
-                              sessionInputs[sessionId]?.vocabularyCount ??
-                              progress?.vocabulary_count ??
-                              0
-                            }
-                            onChange={(e) =>
-                              handleSessionInputChange(
-                                sessionId,
-                                "vocabularyCount",
-                                e.target.value
-                              )
-                            }
-                            className="h-8 text-sm"
-                            min={0}
-                            placeholder="0"
-                            disabled={savingSessions[sessionId]}
-                          />
-                          <p className="text-[10px] text-muted-foreground">
-                            Target: {session.vocabularyCount || 0}
-                          </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">
+                              Grammar Completed
+                            </Label>
+                            <Input
+                              type="number"
+                              value={
+                                sessionInputs[sessionId]?.grammarCount ??
+                                progress?.grammar_count ??
+                                0
+                              }
+                              onChange={(e) =>
+                                handleSessionInputChange(
+                                  sessionId,
+                                  "grammarCount",
+                                  e.target.value
+                                )
+                              }
+                              className="h-7 text-sm"
+                              min={0}
+                              placeholder="0"
+                              disabled={savingSessions[sessionId]}
+                            />
+                            <p className="text-[9px] text-muted-foreground">
+                              Target: {session.grammarCount || 0}
+                            </p>
+                          </div>
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">
+                              Reading (min)
+                            </Label>
+                            <Input
+                              type="number"
+                              value={
+                                sessionInputs[sessionId]?.readingMinutes ??
+                                progress?.reading_minutes ??
+                                0
+                              }
+                              onChange={(e) =>
+                                handleSessionInputChange(
+                                  sessionId,
+                                  "readingMinutes",
+                                  e.target.value
+                                )
+                              }
+                              className="h-7 text-sm"
+                              min={0}
+                              placeholder="0"
+                              disabled={savingSessions[sessionId]}
+                            />
+                            <p className="text-[9px] text-muted-foreground">
+                              Target: {session.readingMinutes || 0}min
+                            </p>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
-                            Grammar Completed
-                          </Label>
-                          <Input
-                            type="number"
-                            value={
-                              sessionInputs[sessionId]?.grammarCount ??
-                              progress?.grammar_count ??
-                              0
-                            }
-                            onChange={(e) =>
-                              handleSessionInputChange(
-                                sessionId,
-                                "grammarCount",
-                                e.target.value
-                              )
-                            }
-                            className="h-8 text-sm"
-                            min={0}
-                            placeholder="0"
-                            disabled={savingSessions[sessionId]}
-                          />
-                          <p className="text-[10px] text-muted-foreground">
-                            Target: {session.grammarCount || 0}
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
-                            Reading Completed (min)
-                          </Label>
-                          <Input
-                            type="number"
-                            value={
-                              sessionInputs[sessionId]?.readingMinutes ??
-                              progress?.reading_minutes ??
-                              0
-                            }
-                            onChange={(e) =>
-                              handleSessionInputChange(
-                                sessionId,
-                                "readingMinutes",
-                                e.target.value
-                              )
-                            }
-                            className="h-8 text-sm"
-                            min={0}
-                            placeholder="0"
-                            disabled={savingSessions[sessionId]}
-                          />
-                          <p className="text-[10px] text-muted-foreground">
-                            Target: {session.readingMinutes || 0}min
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
-                            Listening Completed (min)
-                          </Label>
-                          <Input
-                            type="number"
-                            value={
-                              sessionInputs[sessionId]?.listeningMinutes ??
-                              progress?.listening_minutes ??
-                              0
-                            }
-                            onChange={(e) =>
-                              handleSessionInputChange(
-                                sessionId,
-                                "listeningMinutes",
-                                e.target.value
-                              )
-                            }
-                            className="h-8 text-sm"
-                            min={0}
-                            placeholder="0"
-                            disabled={savingSessions[sessionId]}
-                          />
-                          <p className="text-[10px] text-muted-foreground">
-                            Target: {session.listeningMinutes || 0}min
-                          </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="col-span-2 space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">
+                              Listening (min)
+                            </Label>
+                            <Input
+                              type="number"
+                              value={
+                                sessionInputs[sessionId]?.listeningMinutes ??
+                                progress?.listening_minutes ??
+                                0
+                              }
+                              onChange={(e) =>
+                                handleSessionInputChange(
+                                  sessionId,
+                                  "listeningMinutes",
+                                  e.target.value
+                                )
+                              }
+                              className="h-7 text-sm"
+                              min={0}
+                              placeholder="0"
+                              disabled={savingSessions[sessionId]}
+                            />
+                            <p className="text-[9px] text-muted-foreground">
+                              Target: {session.listeningMinutes || 0}min
+                            </p>
+                          </div>
                         </div>
                       </div>
                       <Button
                         size="sm"
-                        className="mt-3 gap-2"
+                        className="mt-3 w-full gap-2"
                         onClick={() => handleSaveSession(sessionId)}
                         disabled={savingSessions[sessionId]}
                       >
@@ -866,7 +835,7 @@ export function SessionsTab({
                   )}
 
                   {isLocked && (
-                    <div className="border-t border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20">
+                    <div className="border-t border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/20">
                       <p className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
                         <HugeiconsIcon
                           icon={Alert01Icon}
@@ -889,7 +858,7 @@ export function SessionsTab({
                   )}
 
                   {!isJLPT && session.link && (
-                    <div className="bg-muted/5 p-4">
+                    <div className="mt-auto bg-muted/5 p-3">
                       <div className="flex items-center gap-2 text-[11px]">
                         <HugeiconsIcon
                           icon={Megaphone02Icon}
@@ -900,7 +869,7 @@ export function SessionsTab({
                           href={session.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="max-w-[200px] truncate font-medium text-primary hover:underline"
+                          className="max-w-[150px] truncate font-medium text-primary hover:underline"
                         >
                           Resources Link: {session.link}
                         </a>
@@ -914,7 +883,7 @@ export function SessionsTab({
         </div>
 
         {/* Enrolled Employees */}
-        {filteredEmployees.length > 0 && (
+        {/* {filteredEmployees.length > 0 && (
           <div className="mt-8">
             <Card>
               <CardHeader className="bg-muted/30 pb-3">
@@ -987,7 +956,7 @@ export function SessionsTab({
               </CardContent>
             </Card>
           </div>
-        )}
+        )} */}
       </div>
     </TabsContent>
   )

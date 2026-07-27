@@ -345,7 +345,7 @@ export function LearnersTab({
             </EmptyMedia>
             <EmptyTitle>No Learners Enrolled</EmptyTitle>
             <EmptyDescription className="max-w-xs text-pretty">
-               Add learners to attend this course.
+              Add learners to attend this course.
             </EmptyDescription>
           </EmptyHeader>
           {isAdmin && course && availableEmployees.length > 0 && (
@@ -451,9 +451,11 @@ export function LearnersTab({
                       <TableHead className="text-xs font-medium">
                         Team
                       </TableHead>
-                      <TableHead className="text-xs font-medium">
-                        Group
-                      </TableHead>
+                      {course.courseType === "trainer" && (
+                        <TableHead className="text-xs font-medium">
+                          Group
+                        </TableHead>
+                      )}
                       <TableHead className="text-xs font-medium">
                         Enrolled At
                       </TableHead>
@@ -487,7 +489,7 @@ export function LearnersTab({
                           <TableCell className="text-center text-xs">
                             {index + 1}
                           </TableCell>
-                          <TableCell className=" text-xs">
+                          <TableCell className="text-xs">
                             {employee.employeeId || "-"}
                           </TableCell>
                           <TableCell>
@@ -512,16 +514,19 @@ export function LearnersTab({
                           <TableCell className="text-xs">
                             {employee.teamName || "-"}
                           </TableCell>
-                          <TableCell>
-                            <Badge
-                              className={cn(
-                                "text-xs font-normal",
-                                groupColors[groupIndex % groupColors.length]
-                              )}
-                            >
-                              {employee.courseGroupName || "-"}
-                            </Badge>
-                          </TableCell>
+                          {course.courseType === "trainer" && (
+                            <TableCell>
+                              <Badge
+                                className={cn(
+                                  "text-xs font-normal",
+                                  groupColors[groupIndex % groupColors.length]
+                                )}
+                              >
+                                {employee.courseGroupName || "-"}
+                              </Badge>
+                            </TableCell>
+                          )}
+
                           <TableCell className="text-xs text-muted-foreground">
                             {employee.enrolledAt
                               ? format(
