@@ -43,6 +43,12 @@ import { StatCard } from "../charts/stat-card"
 import { NotificationsDrawer } from "../drawers/notifications-drawer"
 import { mainStore } from "@/store/mainStore"
 
+interface LearnerDashboardContainerProps {
+  onNavigateToCourse?: (courseId: number) => void
+  onNavigateToCertificate?: (certificateId: number) => void
+  onNavigateToNotifications?: () => void
+}
+
 const getInitials = (name: string) => {
   return (
     name
@@ -110,7 +116,11 @@ const formatTime = (timestamp: string) => {
   return date.toLocaleDateString()
 }
 
-export default function LearnerDashboardContainer() {
+export default function LearnerDashboardContainer({
+  onNavigateToCourse,
+  onNavigateToCertificate,
+  onNavigateToNotifications
+}: LearnerDashboardContainerProps) {
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false)
@@ -522,41 +532,39 @@ export default function LearnerDashboardContainer() {
   // Handle notification actions
   const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
     if (action === 'view-course') {
-      // Navigate to course details
-      console.log('Navigate to course:', id);
-      // You can use router.push(`/courses/${id}`) here
+      // Use the navigation callback
+      if (onNavigateToCourse) {
+        onNavigateToCourse(id);
+      }
     } else if (action === 'view-certificate') {
-      // Navigate to certificate details
-      console.log('Navigate to certificate:', id);
-      // You can use router.push(`/certificates/${id}`) here
+      // Use the navigation callback
+      if (onNavigateToCertificate) {
+        onNavigateToCertificate(id);
+      } 
     }
   };
 
-  // Transform notifications for display in the card
+  // Transform notifications for display in the card - Show ALL types, latest 3, no filtering
   const getDisplayNotifications = () => {
+
     if (!storeNotifications || storeNotifications.length === 0) {
       return []
     }
 
-    // Show only unread or latest 4 notifications
-    const unreadNotifications = storeNotifications.filter((n: any) => !n.read)
-    const notificationsToShow = unreadNotifications.length > 0 
-      ? unreadNotifications.slice(0, 4)
-      : storeNotifications.slice(0, 4)
+    // Sort notifications by createdAt (newest first)
+    const sortedNotifications = [...storeNotifications].sort((a: any, b: any) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
 
-    return notificationsToShow.map((notif: any) => {
-      let type: 'course' | 'certificate' | 'jlpt' = 'course'
-      let actionText = ''
+    // Take only the latest 3 notifications
+    const latestNotifications = sortedNotifications.slice(0, 3)
 
-      if (notif.type === 'COURSE') {
-        type = 'course'
-        actionText = 'new course available'
-      } else if (notif.type === 'CERTIFICATE') {
-        type = 'certificate'
-        actionText = 'certificate uploaded'
-      } else if (notif.type === 'JLPT_EXAM') {
-        type = 'jlpt'
-        actionText = 'exam update'
+
+    return latestNotifications.map((notif: any) => {
+      // Determine if action is needed based on type
+      let hasAction = false
+      if (notif.type === 'COURSE' || notif.type === 'CERTIFICATE') {
+        hasAction = true
       }
 
       return {
@@ -564,16 +572,19 @@ export default function LearnerDashboardContainer() {
         message: notif.message,
         time: formatTime(notif.createdAt),
         unread: !notif.read,
-        type,
-        actionText,
+        type: notif.type,
         courseId: notif.courseId,
         certificateId: notif.certificateId,
-        hasAction: notif.type === 'COURSE' || notif.type === 'CERTIFICATE'
+        hasAction
       }
     })
   }
 
   const displayNotifications = getDisplayNotifications()
+
+  // Get total count of all notifications
+  const totalNotificationsCount = storeNotifications?.length || 0
+
 
   // If loading, show loading state
   if (isLoading) {
@@ -596,9 +607,9 @@ export default function LearnerDashboardContainer() {
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard
             title="Total Courses"
-            value={employeeCourseStats?.totalCourses}
+            value={employeeCourseStats?.totalCourses || 0}
             icon={BookOpenIcon}
-            description={`${employeeCourseStats?.completedCourses} completed`}
+            description={`${employeeCourseStats?.completedCourses || 0} completed`}
           />
           <StatCard
             title="Average Attendance"
@@ -610,7 +621,7 @@ export default function LearnerDashboardContainer() {
             title="Total Sessions"
             value={employeeCourseStats?.totalSessions}
             icon={DashboardBrowsingIcon}
-            description={`${employeeCourseStats?.activeSessions} active`}
+            description={`${employeeCourseStats?.activeSessions || 0} active`}
           />
           <StatCard
             title="JLPT Level"
@@ -973,9 +984,9 @@ export default function LearnerDashboardContainer() {
                 onClick={() => setNotificationsDrawerOpen(true)}
               >
                 All Notifications
-                {unreadCount && unreadCount > 0 && (
+                {totalNotificationsCount > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">
-                    {unreadCount}
+                    {totalNotificationsCount}
                   </Badge>
                 )}
                 <HugeiconsIcon
@@ -1025,32 +1036,20 @@ export default function LearnerDashboardContainer() {
                         <p className="mt-1 text-[13px] text-gray-400">
                           {notification.time}
                         </p>
-                        {notification.hasAction && (
+                        {notification.hasAction && notification.courseId && (
                           <div className="mt-3 flex items-center gap-2">
-                            {notification.type === 'course' && notification.courseId && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  console.log('View course:', notification.courseId)
-                                  // Navigate to course
-                                }}
-                              >
-                                View Course
-                              </Button>
-                            )}
-                            {notification.type === 'certificate' && notification.certificateId && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  console.log('View certificate:', notification.certificateId)
-                                  // Navigate to certificate
-                                }}
-                              >
-                                View Certificate
-                              </Button>
-                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                // Use the navigation callback
+                                if (onNavigateToCourse) {
+                                  onNavigateToCourse(notification.courseId);
+                                }
+                              }}
+                            >
+                              View Course
+                            </Button>
                           </div>
                         )}
                       </div>

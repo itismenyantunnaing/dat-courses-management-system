@@ -268,7 +268,6 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
   // Reset processed flag when selectedCertificateId changes
   useEffect(() => {
     if (selectedCertificateId) {
-      console.log("🔄 Reset processed flag for certificate:", selectedCertificateId)
       hasProcessedSelectedIdRef.current = false
     }
   }, [selectedCertificateId])

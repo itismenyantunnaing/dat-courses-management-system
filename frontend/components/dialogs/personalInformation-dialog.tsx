@@ -16,6 +16,8 @@ import { Separator } from "@/components/ui/separator"
 import { CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   UserAccountIcon,
@@ -27,7 +29,12 @@ import {
   CodeIcon,
   Language,
   ClockIcon,
+  Loading03Icon,
+  CalendarIcon,
+  UserGroupIcon,
+  PlaneIcon,
 } from "@hugeicons/core-free-icons"
+import { mainStore } from "@/store/mainStore"
 
 // Custom progress bar component
 const ProgressBar = ({
@@ -53,57 +60,224 @@ const ProgressBar = ({
 interface PersonalInformationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  profile: any
-  onSave: (image: string) => Promise<void>
 }
 
 export function PersonalInformationDialog({
   open,
   onOpenChange,
-  profile,
-  onSave,
 }: PersonalInformationDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [profileImage, setProfileImage] = useState(
-    profile?.profilePhotoPath || profile?.avatar || ""
-  )
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewImage, setPreviewImage] = useState<string>("")
   const [isUploading, setIsUploading] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
+  // Form fields state
+  const [isCorePersonnel, setIsCorePersonnel] = useState<boolean>(false)
+  const [hasJapanBusinessTrip, setHasJapanBusinessTrip] = useState<boolean>(false)
+  const [dob, setDob] = useState<string>("")
+
+  // Store initial values for change detection
+  const [initialValues, setInitialValues] = useState({
+    isCorePersonnel: false,
+    hasJapanBusinessTrip: false,
+    dob: "",
+    profilePhotoPath: "",
+  })
+
+  // Track if image was removed
+  const [imageRemoved, setImageRemoved] = useState(false)
+
+  // Get store actions and state
+  const {
+    employeeProfile,
+    fetch_EmployeeProfile,
+    update_EmployeeProfileFields,
+    update_ProfileImage,
+    delete_ProfileImage,
+    isUpdating,
+    isLoading,
+    profile,
+  } = mainStore()
+
+  const employeeId = profile?.id
+
+  // Fetch employee profile when dialog opens
   useEffect(() => {
-    if (profile) {
-      setProfileImage(profile.profilePhotoPath || profile.avatar || "")
+    if (open && employeeId) {
+      fetch_EmployeeProfile(employeeId)
     }
-  }, [profile])
+  }, [open, employeeId, fetch_EmployeeProfile])
+
+  // Update form fields when profile data loads
+  useEffect(() => {
+    
+    if (employeeProfile) {
+      const corePersonnel = employeeProfile.isCorePersonnel ?? false
+      const japanTrip = employeeProfile.hasJapanBusinessTrip ?? false
+      const dobValue = employeeProfile.dob || ""
+      const photoPath = employeeProfile.profilePhotoPath || ""
+
+
+      setIsCorePersonnel(corePersonnel)
+      setHasJapanBusinessTrip(japanTrip)
+      setDob(dobValue)
+
+      setInitialValues({
+        isCorePersonnel: corePersonnel,
+        hasJapanBusinessTrip: japanTrip,
+        dob: dobValue,
+        profilePhotoPath: photoPath,
+      })
+      
+      // Reset image removed flag when profile loads
+      setImageRemoved(false)
+      setSelectedFile(null)
+      setPreviewImage("")
+    } else if (profile) {
+      const corePersonnel = profile.isCorePersonnel ?? false
+      const japanTrip = profile.hasJapanBusinessTrip ?? false
+      const dobValue = profile.dob || ""
+      const photoPath = profile.profilePhotoPath || profile.avatar || ""
+
+
+      setIsCorePersonnel(corePersonnel)
+      setHasJapanBusinessTrip(japanTrip)
+      setDob(dobValue)
+
+      setInitialValues({
+        isCorePersonnel: corePersonnel,
+        hasJapanBusinessTrip: japanTrip,
+        dob: dobValue,
+        profilePhotoPath: photoPath,
+      })
+      
+      setImageRemoved(false)
+      setSelectedFile(null)
+      setPreviewImage("")
+    }
+  }, [employeeProfile, profile])
+
+  // Reset preview and image removed state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setSelectedFile(null)
+      setPreviewImage("")
+      setImageRemoved(false)
+    }
+  }, [open])
+
+  // Check if there are any changes
+  const hasChanges = () => {
+    const hasImageChange = 
+      selectedFile !== null || 
+      imageRemoved || // Check if image was removed
+      (previewImage !== "" && previewImage !== initialValues.profilePhotoPath)
+    
+    const hasFieldChanges =
+      isCorePersonnel !== initialValues.isCorePersonnel ||
+      hasJapanBusinessTrip !== initialValues.hasJapanBusinessTrip ||
+      dob !== initialValues.dob
+
+    const hasChangesValue = hasImageChange || hasFieldChanges
+    
+    return hasChangesValue
+  }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size exceeds 5MB limit. Please choose a smaller file.")
+        return
+      }
+
+      // Validate file type
+      const validTypes = ["image/jpeg", "image/png", "image/gif"]
+      if (!validTypes.includes(file.type)) {
+        alert("Please upload a valid image file (JPG, PNG, or GIF).")
+        return
+      }
+
+      setSelectedFile(file)
+      setImageRemoved(false) // Reset removed flag when uploading new image
       setIsUploading(true)
-      setTimeout(() => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          setProfileImage(reader.result as string)
-          setIsUploading(false)
-        }
-        reader.readAsDataURL(file)
-      }, 1000)
+      
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string)
+        setIsUploading(false)
+      }
+      reader.readAsDataURL(file)
     }
   }
 
   const handleRemoveImage = () => {
-    setProfileImage("")
+    setSelectedFile(null)
+    setPreviewImage("")
+    setImageRemoved(true) // Mark image as removed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
   const handleSave = async () => {
-    setIsLoading(true)
+    if (!employeeId) {
+      console.error("❌ No employee ID found")
+      return
+    }
+
+    if (!hasChanges()) {
+      onOpenChange(false)
+      return
+    }
+
+    setIsSaving(true)
     try {
-      await onSave(profileImage)
+      // 1. Handle image changes
+      if (imageRemoved) {
+        // Remove existing image from server
+        try {
+          const result = await delete_ProfileImage(employeeId)
+        } catch (deleteError) {
+          console.error("❌ Error deleting image:", deleteError)
+          // Continue with other updates even if image deletion fails
+        }
+      } else if (selectedFile) {
+        // Upload new profile image
+        try {
+          const result = await update_ProfileImage(employeeId, selectedFile)
+        } catch (uploadError) {
+          console.error("❌ Error uploading image:", uploadError)
+          // Continue with other updates even if image upload fails
+        }
+      } 
+      // 2. Handle field changes
+      const fieldChanges: {
+        isCorePersonnel?: boolean
+        hasJapanBusinessTrip?: boolean
+        dob?: string
+      } = {}
+
+      if (isCorePersonnel !== initialValues.isCorePersonnel) {
+        fieldChanges.isCorePersonnel = isCorePersonnel
+      }
+      if (hasJapanBusinessTrip !== initialValues.hasJapanBusinessTrip) {
+        fieldChanges.hasJapanBusinessTrip = hasJapanBusinessTrip
+      }
+      if (dob !== initialValues.dob) {
+        fieldChanges.dob = dob
+      }
+
+      // 3. Refresh profile data
+      await fetch_EmployeeProfile(employeeId)
+      
       onOpenChange(false)
     } catch (error) {
-      console.error("Failed to save:", error)
+      console.error("❌ Failed to save profile:", error)
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
   }
 
@@ -125,7 +299,51 @@ export function PersonalInformationDialog({
     return Math.min((years / 10) * 100, 100)
   }
 
-  if (!profile) return null
+  // Get the profile image to display
+  const getProfileImage = () => {
+    // If image was removed, show default avatar
+    if (imageRemoved) return ""
+    if (previewImage) return previewImage
+    if (employeeProfile?.profilePhotoPath) return employeeProfile?.profilePhotoPath
+    if (profile?.profilePhotoPath) return profile?.profilePhotoPath
+    if (profile?.avatar) return profile?.avatar
+    return ""
+  }
+
+  // Get employee name
+  const getEmployeeName = () => {
+    return profile?.name || employeeProfile?.employeeId || "User"
+  }
+
+  // Check if there's an existing image
+  const hasExistingImage = () => {
+    return !imageRemoved && (employeeProfile?.profilePhotoPath || profile?.profilePhotoPath || profile?.avatar)
+  }
+
+  // Use profile data, fallback to employeeProfile
+  const displayProfile = profile || employeeProfile || {}
+
+  if (isLoading && !employeeProfile) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[700px]">
+          <div className="flex flex-1 items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-3">
+              <HugeiconsIcon
+                icon={Loading03Icon}
+                role="status"
+                aria-label="Loading"
+                className="size-4 animate-spin"
+              />
+              <p className="text-sm text-muted-foreground">Loading profile...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  if (!displayProfile && !employeeProfile) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -143,11 +361,11 @@ export function PersonalInformationDialog({
             <div className="relative">
               <Avatar className="h-24 w-24 cursor-pointer transition-opacity hover:opacity-80">
                 <AvatarImage
-                  src={profileImage || "/avatars/default.jpg"}
-                  alt={profile.name}
+                  src={getProfileImage() || "/avatars/default.jpg"}
+                  alt={getEmployeeName()}
                 />
                 <AvatarFallback className="text-2xl">
-                  {profile.name
+                  {getEmployeeName()
                     ?.split(" ")
                     .map((n) => n[0])
                     .join("")
@@ -160,7 +378,7 @@ export function PersonalInformationDialog({
                 variant="secondary"
                 className="absolute -right-2 -bottom-2 h-8 w-8 rounded-full"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
+                disabled={isUploading || isUpdating || isSaving}
               >
                 <HugeiconsIcon
                   icon={Camera01Icon}
@@ -179,23 +397,25 @@ export function PersonalInformationDialog({
             {isUploading && (
               <p className="text-sm text-muted-foreground">Uploading...</p>
             )}
-            {profileImage &&
-              profileImage !== profile.profilePhotoPath &&
-              profileImage !== profile.avatar && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRemoveImage}
-                  className="text-destructive"
-                >
-                  <HugeiconsIcon
-                    icon={Delete02Icon}
-                    strokeWidth={2}
-                    className="mr-2 h-4 w-4"
-                  />
-                  Remove Photo
-                </Button>
-              )}
+            
+            {/* Show Remove button if there's an existing image or preview */}
+            {(hasExistingImage() || previewImage) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRemoveImage}
+                className="text-destructive"
+                disabled={isUpdating || isSaving}
+              >
+                <HugeiconsIcon
+                  icon={Delete02Icon}
+                  strokeWidth={2}
+                  className="mr-2 h-4 w-4"
+                />
+                Remove Photo
+              </Button>
+            )}
+            
             <p className="text-center text-xs text-muted-foreground">
               Supported formats: JPG, PNG, GIF (Max 5MB)
             </p>
@@ -203,7 +423,7 @@ export function PersonalInformationDialog({
 
           <Separator className="my-4" />
 
-          {/* Basic Information */}
+          {/* Basic Information - keep existing code */}
           <div className="py-2">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <HugeiconsIcon
@@ -219,26 +439,30 @@ export function PersonalInformationDialog({
                   <Label className="text-sm text-muted-foreground">
                     Employee Name
                   </Label>
-                  <p className="text-base font-medium">{profile.name}</p>
+                  <p className="text-base font-medium">
+                    {profile?.name || "Not specified"}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm text-muted-foreground">
                     Staff ID
                   </Label>
                   <p className="text-base font-medium">
-                    {profile.staffId || profile.id || "Not assigned"}
+                    {profile?.staffId || profile?.id || employeeId || "Not assigned"}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm text-muted-foreground">
                     Email Address
                   </Label>
-                  <p className="text-base font-medium">{profile.email}</p>
+                  <p className="text-base font-medium">
+                    {profile?.email || "Not specified"}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm text-muted-foreground">Role</Label>
                   <p className="text-base font-medium">
-                    {profile.role || "Not specified"}
+                    {profile?.role || "Not specified"}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -247,10 +471,10 @@ export function PersonalInformationDialog({
                   </Label>
                   <Badge
                     className={getStatusColor(
-                      profile.empStatus || profile.status || ""
+                      profile?.empStatus || profile?.status || ""
                     )}
                   >
-                    {profile.empStatus || profile.status || "Unknown"}
+                    {profile?.empStatus || profile?.status || "Unknown"}
                   </Badge>
                 </div>
               </div>
@@ -259,7 +483,7 @@ export function PersonalInformationDialog({
 
           <Separator className="my-4" />
 
-          {/* Department & Team */}
+          {/* Department & Team - keep existing code */}
           <div className="py-2">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <HugeiconsIcon
@@ -276,7 +500,7 @@ export function PersonalInformationDialog({
                     Department
                   </Label>
                   <p className="text-base font-medium">
-                    {profile.department || profile.deptDat || "Not specified"}
+                    {profile?.department || profile?.deptDat || "Not specified"}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -284,13 +508,13 @@ export function PersonalInformationDialog({
                     Division
                   </Label>
                   <p className="text-base font-medium">
-                    {profile.divName || "Not specified"}
+                    {profile?.divName || "Not specified"}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm text-muted-foreground">Team</Label>
                   <p className="text-base font-medium">
-                    {profile.team || "Not specified"}
+                    {profile?.team || "Not specified"}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -298,15 +522,114 @@ export function PersonalInformationDialog({
                     Door Log
                   </Label>
                   <p className="text-base font-medium">
-                    {profile.doorlog || "Not specified"}
+                    {profile?.doorlog || "Not specified"}
                   </p>
                 </div>
               </div>
             </CardContent>
           </div>
 
-          {/* Technical Skills */}
-          {profile.technicalSkills && profile.technicalSkills.length > 0 && (
+          {/* Editable Fields Section - CRUD for Additional Information */}
+          <Separator className="my-4" />
+          <div className="py-2">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
+              <HugeiconsIcon
+                icon={ClockIcon}
+                strokeWidth={2}
+                className="h-4 w-4"
+              />
+              Additional Information
+            </h3>
+            <CardContent className="space-y-4 p-0">
+              {/* Core Personnel */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon
+                      icon={UserGroupIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4 text-muted-foreground"
+                    />
+                    <Label
+                      className="cursor-pointer text-sm font-medium"
+                      htmlFor="core-personnel"
+                    >
+                      Core Personnel
+                    </Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Mark as core personnel for special assignments
+                  </p>
+                </div>
+                <Switch
+                  id="core-personnel"
+                  checked={isCorePersonnel}
+                  onCheckedChange={(checked) => {
+                    setIsCorePersonnel(checked)
+                  }}
+                  disabled={isUpdating || isSaving}
+                />
+              </div>
+
+              {/* Japan Business Trip */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon
+                      icon={PlaneIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4 text-muted-foreground"
+                    />
+                    <Label
+                      className="cursor-pointer text-sm font-medium"
+                      htmlFor="japan-trip"
+                    >
+                      Japan Business Trip
+                    </Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Eligible for Japan business trips
+                  </p>
+                </div>
+                <Switch
+                  id="japan-trip"
+                  checked={hasJapanBusinessTrip}
+                  onCheckedChange={(checked) => {
+                    setHasJapanBusinessTrip(checked)
+                  }}
+                  disabled={isUpdating || isSaving}
+                />
+              </div>
+
+              {/* Date of Birth */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon
+                    icon={CalendarIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                  <Label htmlFor="dob" className="text-sm font-medium">
+                    Date of Birth
+                  </Label>
+                </div>
+                <Input
+                  id="dob"
+                  type="date"
+                  value={dob}
+                  onChange={(e) => {
+                    setDob(e.target.value)
+                  }}
+                  disabled={isUpdating || isSaving}
+                  className="max-w-[200px]"
+                />
+              </div>
+            </CardContent>
+          </div>
+
+
+          {/* Technical Skills - keep existing code */}
+          {profile?.technicalSkills && profile.technicalSkills.length > 0 && (
             <>
               <Separator className="my-4" />
               <div className="py-2">
@@ -376,8 +699,8 @@ export function PersonalInformationDialog({
             </>
           )}
 
-          {/* Development Skills */}
-          {profile.developmentSkills &&
+          {/* Development Skills - keep existing code */}
+          {profile?.developmentSkills &&
             profile.developmentSkills.length > 0 && (
               <>
                 <Separator className="my-4" />
@@ -432,8 +755,8 @@ export function PersonalInformationDialog({
               </>
             )}
 
-          {/* Language Skills */}
-          {profile.languageSkill && (
+          {/* Language Skills - keep existing code */}
+          {profile?.languageSkill && (
             <>
               <Separator className="my-4" />
               <div className="py-2">
@@ -470,8 +793,8 @@ export function PersonalInformationDialog({
             </>
           )}
 
-          {/* Management Skills */}
-          {profile.managementSkill && (
+          {/* Management Skills - keep existing code */}
+          {profile?.managementSkill && (
             <>
               <Separator className="my-4" />
               <div className="py-2">
@@ -531,55 +854,6 @@ export function PersonalInformationDialog({
               </div>
             </>
           )}
-
-          {/* Additional Info */}
-          <Separator className="my-4" />
-          <div className="py-2">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <HugeiconsIcon
-                icon={ClockIcon}
-                strokeWidth={2}
-                className="h-4 w-4"
-              />
-              Additional Information
-            </h3>
-            <CardContent className="space-y-2 p-0">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Core Personnel
-                  </Label>
-                  <p className="text-base font-medium">
-                    {profile.isCorePersonnel ? "Yes" : "No"}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Japan Business Trip
-                  </Label>
-                  <p className="text-base font-medium">
-                    {profile.hasJapanBusinessTrip ? "Yes" : "No"}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Date of Birth
-                  </Label>
-                  <p className="text-base font-medium">
-                    {profile.dob || "Not specified"}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm text-muted-foreground">
-                    Notifications
-                  </Label>
-                  <p className="text-base font-medium">
-                    {profile.notiSetting ? "Enabled" : "Disabled"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </div>
         </div>
 
         <DialogFooter className="border-t p-6 pt-4">
@@ -587,11 +861,27 @@ export function PersonalInformationDialog({
             className="flex-1"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            disabled={isUpdating || isSaving}
           >
             Close
           </Button>
-          <Button className="flex-1" onClick={handleSave} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Changes"}
+          <Button
+            className="flex-1"
+            onClick={handleSave}
+            disabled={isUpdating || isSaving || !hasChanges()}
+          >
+            {isUpdating || isSaving ? (
+              <>
+                <HugeiconsIcon
+                  icon={Loading03Icon}
+                  strokeWidth={2}
+                  className="mr-2 h-4 w-4 animate-spin"
+                />
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

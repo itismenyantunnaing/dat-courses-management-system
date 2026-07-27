@@ -139,47 +139,108 @@ export const allTabs = [
       try {
         const startTime = performance.now()
 
+        // Get current store data
+        const store = (window as any).mainStore?.getState()
+        if (!store || !store.bulkCreate_EmployeeData) {
+          throw new Error("System store not initialized. Please refresh and try again.")
+        }
+
+        // ===== FETCH LATEST EMPLOYEE DATA FIRST =====
+        await store.fetch_EmployeeData(true)
+
+        // Get fresh store data after fetch
+        const freshStore = (window as any).mainStore?.getState()
+        const currentEmployees = freshStore?.employee_data || []
+
         // Extract employee data from Excel
         const employeeData = await extractEmployeeDataFromExcel(file)
 
         if (employeeData.length === 0) {
-          alert(
-            "No employee data found in the Excel file. Please check the data."
-          )
+          alert("No employee data found in the Excel file.")
           return { success: false, message: "No data found" }
         }
+
+        // ===== COMPARE EXCEL DATA WITH CURRENT EMPLOYEE DATA =====
+        // Extract IDs from Excel
+        const excelEmployeeIds = new Set(
+          employeeData
+            .map((item: EmployeeExcelData) => item.staffId?.trim())
+            .filter(Boolean)
+        )
+
+        // Find employees in system that are NOT in Excel
+        const employeesToDelete = currentEmployees.filter(
+          (emp: Employee) => !excelEmployeeIds.has(emp.id)
+        )
+
+        // Find employees in Excel that are NOT in system
+        const newEmployees = employeeData.filter(
+          (item: EmployeeExcelData) => {
+            const staffId = item.staffId?.trim()
+            return staffId && !currentEmployees.some((emp: Employee) => emp.id === staffId)
+          }
+        )
+
+        // Existing employees that will be updated
+        const existingInExcel = employeeData.filter((item: EmployeeExcelData) => {
+          const staffId = item.staffId?.trim()
+          return staffId && currentEmployees.some((emp: Employee) => emp.id === staffId)
+        })
 
         // Validate the data
         const { valid, invalid } = validateEmployeeData(employeeData)
 
-        // Handle invalid rows
-        if (invalid.length > 0) {
-          const shouldContinue = confirm(
-            `⚠️ ${invalid.length} rows have missing or invalid data.\n\n` +
-            `Valid rows: ${valid.length}\n` +
-            `Invalid rows: ${invalid.length}\n\n` +
-            `Continue with ${valid.length} valid rows?`
-          )
-
-          if (!shouldContinue) {
-            return { success: false, message: "Import cancelled by user" }
-          }
-        }
-
         if (valid.length === 0) {
-          alert("No valid employee records found. Please check the data.")
+          alert("No valid employee records found.")
           return { success: false, message: "No valid data" }
         }
 
-        const shouldProceed = confirm(
-          `You are about to import ${valid.length} employees into the database. This may take a few moments. Continue?`
-        )
+        // ===== SINGLE CONCISE CONFIRMATION =====
+        let confirmMsg = `📊 Import Summary\n\n`
+        confirmMsg += `📄 ${employeeData.length} rows in Excel\n`
+        confirmMsg += `👥 ${currentEmployees.length} employees in system\n`
+        confirmMsg += `✅ ${valid.length} valid records\n`
 
-        if (!shouldProceed) {
-          return { success: false, message: "Import cancelled by user" }
+        if (invalid.length > 0) {
+          confirmMsg += `⚠️ ${invalid.length} invalid (skipped)\n`
         }
 
-        // Prepare employee data for bulk insert
+        confirmMsg += `\nActions:\n`
+        confirmMsg += `   🗑️ Delete: ${employeesToDelete.length}\n`
+        confirmMsg += `   ➕ Create: ${newEmployees.length}\n`
+        confirmMsg += `   📝 Update: ${existingInExcel.length}\n`
+
+        if (employeesToDelete.length > 0) {
+          confirmMsg += `\n⚠️ ${employeesToDelete.length} employees will be DELETED`
+        }
+
+        if (!confirm(confirmMsg)) {
+          return { success: false, message: "Import cancelled" }
+        }
+
+        // ===== DELETE EMPLOYEES MISSING FROM EXCEL =====
+        let deletedCount = 0
+
+        if (employeesToDelete.length > 0) {
+          try {
+            const idsToDelete = employeesToDelete.map((emp: Employee) => emp.id)
+            await store.delete_EmployeeData(idsToDelete)
+            deletedCount = employeesToDelete.length
+          } catch (deleteError) {
+            console.error('Error deleting employees:', deleteError)
+            // Try one by one
+            for (const emp of employeesToDelete) {
+              try {
+                await store.delete_EmployeeData([emp.id])
+                deletedCount++
+              } catch (singleError) {
+                console.error(`Failed to delete ${emp.id}:`, singleError)
+              }
+            }
+          }
+        }
+
+        // ===== IMPORT EMPLOYEES =====
         const employeeDtos = valid.map((item: EmployeeExcelData) => ({
           id: item.staffId?.trim() || "",
           name: item.name?.trim() || "",
@@ -199,27 +260,16 @@ export const allTabs = [
           profile_photo_path: "",
         }))
 
-        // Access store via window
-        const store = (window as any).mainStore?.getState()
-        if (!store || !store.bulkCreate_EmployeeData) {
-          throw new Error(
-            "System store not initialized. Please refresh and try again."
-          )
-        }
-
-        // Import in smaller batches for better reliability
         const BATCH_SIZE = 50
         let importedCount = 0
         const failedRecords: { id: string; name: string }[] = []
 
         for (let i = 0; i < employeeDtos.length; i += BATCH_SIZE) {
           const batch = employeeDtos.slice(i, i + BATCH_SIZE)
-
           try {
             await store.bulkCreate_EmployeeData(batch)
             importedCount += batch.length
           } catch (error) {
-            // Try to import failed batch one by one
             for (let j = 0; j < batch.length; j++) {
               try {
                 await store.bulkCreate_EmployeeData([batch[j]])
@@ -236,42 +286,44 @@ export const allTabs = [
 
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
 
-        // Build the result message
-        let message = `Successfully imported ${importedCount} out of ${employeeDtos.length} employees in ${totalTime}s!`
+        // ===== FINAL CONCISE SUMMARY =====
+        let resultMsg = `✅ Import complete (${totalTime}s)\n\n`
+        resultMsg += `📥 Imported: ${importedCount}/${valid.length}\n`
+        resultMsg += `🗑️ Deleted: ${deletedCount}\n`
 
         if (invalid.length > 0) {
-          message += ` Skipped ${invalid.length} invalid rows.`
+          resultMsg += `⚠️ Skipped: ${invalid.length} invalid rows\n`
         }
 
         if (failedRecords.length > 0) {
-          // Create a detailed list of failed records for the alert
-          const failedList = failedRecords
-            .map(
-              (record, index) =>
-                `${index + 1}. ID: ${record.id}, Name: ${record.name}`
-            )
-            .join("\n")
-
-          message += `\n\n❌ ${failedRecords.length} records failed to import:\n${failedList}`
+          resultMsg += `\n❌ ${failedRecords.length} failed:`
+          failedRecords.slice(0, 3).forEach((r) => {
+            resultMsg += `\n   • ${r.id} - ${r.name}`
+          })
+          if (failedRecords.length > 3) {
+            resultMsg += `\n   ... and ${failedRecords.length - 3} more`
+          }
         }
 
-        alert(`✅ ${message}`)
+        alert(resultMsg)
 
         return {
           success: importedCount > 0,
-          message: message,
+          message: resultMsg,
           details: {
             total: employeeDtos.length,
             imported: importedCount,
             invalid: invalid.length,
             failedRecords: failedRecords.length,
+            deletedCount: deletedCount,
+            newEmployees: newEmployees.length,
+            updatedEmployees: existingInExcel.length,
+            employeesToDelete: employeesToDelete.length,
           },
         }
       } catch (error) {
-        console.error("❌ Employee import error:", error)
-        alert(
-          `❌ Failed to import: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
+        console.error("Employee import error:", error)
+        alert(`❌ Import failed: ${error instanceof Error ? error.message : "Unknown error"}`)
         throw error
       }
     },

@@ -21,8 +21,6 @@ import { login, sendOtp, verifyOtp, resetPassword } from "@/app/actions/auth"
 import { EyeIcon, ViewOffIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
-
 export function LoginForm({
   className,
   ...props
@@ -47,7 +45,7 @@ export function LoginForm({
     setForgotPasswordError("")
   }
 
-  // Handle Login
+  // Handle Login - Using Server Action
   const handleLoginForm = async () => {
     if (!credentials.staff_Id || !credentials.password) {
       setError("Please enter both Staff ID and Password")
@@ -76,7 +74,88 @@ export function LoginForm({
     }
   }
 
-  // Handle Forgot Password completion
+  // Handle Forgot Password - Send OTP
+  const handleSendOtp = async () => {
+    if (!forgotPasswordEmail) {
+      setForgotPasswordError("Please enter your email")
+      return
+    }
+
+    setForgotPasswordLoading(true)
+    setForgotPasswordError("")
+
+    try {
+      const result = await sendOtp(forgotPasswordEmail)
+      
+      if (result.success) {
+        setForgotPasswordStep("otp")
+        setForgotPasswordError("")
+      } else {
+        setForgotPasswordError(result.message || "Failed to send OTP")
+      }
+    } catch (error) {
+      console.error("Send OTP error:", error)
+      setForgotPasswordError("Network error")
+    } finally {
+      setForgotPasswordLoading(false)
+    }
+  }
+
+  // Handle Forgot Password - Verify OTP
+  const handleVerifyOtp = async () => {
+    if (!forgotPasswordOtp) {
+      setForgotPasswordError("Please enter the OTP")
+      return
+    }
+
+    setForgotPasswordLoading(true)
+    setForgotPasswordError("")
+
+    try {
+      const result = await verifyOtp(forgotPasswordEmail, forgotPasswordOtp)
+      
+      if (result.success) {
+        setForgotPasswordStep("reset-password")
+        setForgotPasswordError("")
+      } else {
+        setForgotPasswordError(result.message || "Invalid OTP")
+      }
+    } catch (error) {
+      console.error("Verify OTP error:", error)
+      setForgotPasswordError("Network error")
+    } finally {
+      setForgotPasswordLoading(false)
+    }
+  }
+
+  // Handle Forgot Password - Reset Password
+  const handleResetPassword = async (newPassword: string, confirmPassword: string) => {
+    if (newPassword !== confirmPassword) {
+      setForgotPasswordError("Passwords do not match")
+      return
+    }
+
+    setForgotPasswordLoading(true)
+    setForgotPasswordError("")
+
+    try {
+      const result = await resetPassword(forgotPasswordEmail, newPassword)
+      
+      if (result.success) {
+        setForgotPasswordOpen(false)
+        resetForm()
+        alert("Password reset successfully! Please login with your new password.")
+      } else {
+        setForgotPasswordError(result.message || "Failed to reset password")
+      }
+    } catch (error) {
+      console.error("Reset password error:", error)
+      setForgotPasswordError("Network error")
+    } finally {
+      setForgotPasswordLoading(false)
+    }
+  }
+
   const handleForgotPasswordUpdate = async (data: {
     staffId?: string
     email?: string
@@ -84,8 +163,7 @@ export function LoginForm({
     newPassword: string
     oldPassword?: string
   }) => {
-    setForgotPasswordOpen(false)
-    resetForm()
+    await handleResetPassword(data.newPassword, data.newPassword)
   }
 
   const handleForgotPasswordClose = () => {
@@ -225,6 +303,8 @@ export function LoginForm({
             error={forgotPasswordError}
             onEmailChange={setForgotPasswordEmail}
             onOtpChange={setForgotPasswordOtp}
+            onSendOtp={handleSendOtp}
+            onVerifyOtp={handleVerifyOtp}
           />
         </DialogContent>
       </Dialog>

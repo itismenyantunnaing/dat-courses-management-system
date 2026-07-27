@@ -25,18 +25,12 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import { Kbd } from "@/components/ui/kbd"
-import { Badge } from "@/components/ui/badge"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  DiplomaIcon,
   Loading03Icon,
-  Upload01Icon,
   Certificate01Icon,
   Upload05Icon,
-  CheckmarkCircle01Icon,
-  Clock01Icon,
-  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { JapaneseCertificate } from "@/types/certificate"
 import { CertificateCard } from "../components/cards/certificate-card"
@@ -52,6 +46,10 @@ const statusLabels = {
   approved: "Approved",
   pending: "Pending",
   rejected: "Rejected",
+}
+
+interface CertificatesRequestsContainerProps {
+  selectedCertificateId?: string | number | null
 }
 
 // Spinner component
@@ -77,7 +75,7 @@ const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
   )
 }
 
-export function JapaneseCertificateContainer() {
+export function JapaneseCertificateContainer({ selectedCertificateId }: CertificatesRequestsContainerProps) {
   const {
     certificateData,
     fetch_CertificateData,
@@ -115,7 +113,7 @@ export function JapaneseCertificateContainer() {
     if (userId) {
       fetch_CertificateData(userId)
     }
-  }, [])
+  }, [fetch_CertificateData, getUserId])
 
   // Count certificates by status
   const statusCounts = useMemo(() => {
@@ -163,7 +161,7 @@ export function JapaneseCertificateContainer() {
       const result = await delete_CertificateData(certificate.id)
       if (result.includes("successfully")) {
         alert("✅ Certificate deleted successfully!")
-        await fetch_CertificateData()
+        await fetch_CertificateData(getUserId() || "")
         setIsDetailDrawerOpen(false)
         setEditingCertificate(null)
       } else {
@@ -177,7 +175,7 @@ export function JapaneseCertificateContainer() {
 
   // Handle update success from detail drawer
   const handleUpdateSuccess = async () => {
-    await fetch_CertificateData()
+    await fetch_CertificateData(getUserId() || "")
   }
 
   if (isLoading) {

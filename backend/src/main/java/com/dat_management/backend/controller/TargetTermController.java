@@ -29,7 +29,7 @@ public class TargetTermController {
     }
 
     @GetMapping("/{id}")
-    public visibleJapaneseHeaderGroups.map getById(@PathVariable Integer id) {
+    public TargetTermResponse getById(@PathVariable Integer id) {
         return targetTermService.getById(id);
     }
 

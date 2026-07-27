@@ -702,3 +702,28 @@ export interface AuditLog_StoreType {
   clearFilters: () => Promise<void>;
   resetPagination: () => Promise<void>;
 }
+
+export interface EmployeeProfileStoreType {
+  employeeProfile: EmployeeProfile | null;
+  isLoading: boolean;
+  isUpdating: boolean;
+  error: string | null;
+
+  fetch_EmployeeProfile: (employeeId: string) => Promise<void>;
+  update_EmployeeProfile: (employeeId: string, formData: FormData) => Promise<string>;
+  update_EmployeeProfileFields: (employeeId: string, fields: {
+    isCorePersonnel?: boolean;
+    hasJapanBusinessTrip?: boolean;
+    dob?: string;
+  }) => Promise<string>;
+  update_ProfileImage: (employeeId: string, file: File) => Promise<string>;
+  delete_ProfileImage: (employeeId: string) => Promise<string>;
+}
+
+export interface EmployeeProfile {
+  employeeId: string;
+  profilePhotoPath: string | null;
+  isCorePersonnel: boolean;
+  hasJapanBusinessTrip: boolean;
+  dob: string | null;
+}

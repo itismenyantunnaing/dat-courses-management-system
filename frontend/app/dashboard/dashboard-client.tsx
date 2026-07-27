@@ -85,10 +85,10 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
   useEffect(() => {
     // Automatically open change password dialog if user status is "default"
-    if (userData.status === "default") {
+    if (profile.status === "default") {
       setIsChangePasswordOpen(true)
     }
-  }, [])
+  }, [profile])
 
   const userRole = profile?.role
     ? (profile.role.toLowerCase() as "admin" | "learner" | "approver")
@@ -157,7 +157,14 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       setActiveTab('courses')
     } else if (action === 'view-certificate') {
       setSelectedCertificateId(id)
-      setActiveTab('certificates-requests')
+      // Navigate to the appropriate certificate tab based on user role
+      if (user_role === 'learner') {
+        setActiveTab('japanese-certificates')
+        // Just navigate to the tab, don't open drawer for learners
+      } else {
+        setActiveTab('certificates-requests')
+        // For admin/approver, we might want to open the detail
+      }
     }
   }
 
@@ -177,7 +184,20 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const tabConfigs = [
     { value: "admin-dashboard", component: AdminDashboardContainer },
     { value: "approver-dashboard", component: ApproverDashboardContainer },
-    { value: "learner-dashboard", component: LearnerDashboardContainer },
+    {
+      value: "learner-dashboard",
+      component: LearnerDashboardContainer,
+      props: {
+        onNavigateToCourse: (courseId: number) => {
+          setSelectedCourseId(courseId)
+          setActiveTab('courses')
+        },
+        onNavigateToCertificate: (certificateId: number) => {
+          setSelectedCertificateId(certificateId)
+          setActiveTab('japanese-certificates')
+        }
+      },
+    },
     { value: "employees", component: EmployeeContainer },
     {
       value: "courses",
@@ -196,7 +216,13 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     { value: "audit_logs", component: AuditLogsContainer },
     { value: "exam_progress_report", component: ExamProgressReportContainer },
     { value: "self_study_progress", component: SelfStudyProgessReportContainer },
-    { value: "japanese-certificates", component: JapaneseCertificateContainer },
+    {
+      value: "japanese-certificates",
+      component: JapaneseCertificateContainer,
+      props: {
+        selectedCertificateId: selectedCertificateId
+      },
+    },
     {
       value: "certificates-requests",
       component: CertificatesRequestsContainer,
@@ -299,20 +325,20 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       />
 
       {/* Forced Password Change Dialog for New Users */}
-      {/* <Dialog
+      <Dialog
         open={isChangePasswordOpen}
         onOpenChange={(open) => {
-          if (userData.status === "default" && !open) return
+          if (profile.status === "default" && !open) return
           setIsChangePasswordOpen(open)
         }}
       >
         <DialogContent
           className="sm:max-w-[425px]"
           onPointerDownOutside={(e) => {
-            if (userData.status === "default") e.preventDefault()
+            if (profile.status === "default") e.preventDefault()
           }}
           onEscapeKeyDown={(e) => {
-            if (userData.status === "default") e.preventDefault()
+            if (profile.status === "default") e.preventDefault()
           }}
         >
           <ChangePassword
@@ -322,7 +348,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             onClose={() => setIsChangePasswordOpen(false)}
           />
         </DialogContent>
-      </Dialog> */}
+      </Dialog>
     </>
   )
 }

@@ -1,4 +1,3 @@
-// actions/auth.ts
 'use server'
 
 import { cookies } from 'next/headers'
@@ -36,8 +35,8 @@ const SESSION_CONFIG = {
     COOKIE_NAME: 'auth_session',
     COOKIE_OPTIONS: {
         httpOnly: true,
-        secure: true, 
-        sameSite: 'strict' as const,
+        secure: true,
+        sameSite: 'lax' as const, 
         path: '/',
     }
 }
@@ -78,7 +77,7 @@ export async function getSession(): Promise<SessionData | null> {
     try {
         const sessionData: SessionData = JSON.parse(sessionCookie.value)
         
-        //  Check if session has expired
+        // Check if session has expired
         if (Date.now() >= sessionData.expiresAt) {
             await clearSession()
             return null
@@ -216,7 +215,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
 // Logout action
 export async function logout() {
     await clearSession()
-    redirect('/') // ✅ Better to redirect to login page
+    redirect('/')
 }
 
 // Forgot Password - Send OTP
@@ -270,7 +269,6 @@ export async function verifyOtp(email: string, otp: string): Promise<{ success: 
 // Forgot Password - Reset Password
 export async function resetPassword(email: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
     try {
-
         const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
             method: "POST",
             headers: {
@@ -278,7 +276,6 @@ export async function resetPassword(email: string, newPassword: string): Promise
             },
             body: JSON.stringify({ email, newPassword }),
         })
-
 
         const rawText = await response.text()
 
@@ -303,7 +300,6 @@ export async function resetPassword(email: string, newPassword: string): Promise
 async function parseResponse(response: Response): Promise<any> {
     const contentType = response.headers.get("content-type")
     const text = await response.text()
-
 
     if (contentType && contentType.includes("application/json")) {
         try {
@@ -434,4 +430,3 @@ export async function withAuth<T>(
         return null
     }
 }
-

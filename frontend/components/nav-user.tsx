@@ -1,7 +1,8 @@
+// app/components/nav-user.tsx
 /* eslint-disable react-hooks/purity */
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -46,7 +47,11 @@ import { mainStore } from "@/store/mainStore"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const { profile } = mainStore()
+  const { 
+    profile, 
+    employeeProfile,
+    fetch_EmployeeProfile 
+  } = mainStore()
 
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
   const [changePasswordDialogOpen, setChangePasswordDialogOpen] =
@@ -57,6 +62,22 @@ export function NavUser() {
     useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
+
+  // Fetch employee profile when component mounts
+  useEffect(() => {
+    if (profile?.id) {
+      fetch_EmployeeProfile(profile.id)
+    }
+  }, [profile?.id, fetch_EmployeeProfile])
+
+  // Use employeeProfile for image if available, fallback to profile
+  const displayProfile = {
+    ...profile,
+    profilePhotoPath: employeeProfile?.profilePhotoPath || profile?.profilePhotoPath || profile?.avatar || null,
+    isCorePersonnel: employeeProfile?.isCorePersonnel ?? profile?.isCorePersonnel ?? false,
+    hasJapanBusinessTrip: employeeProfile?.hasJapanBusinessTrip ?? profile?.hasJapanBusinessTrip ?? false,
+    dob: employeeProfile?.dob || profile?.dob || null,
+  }
 
   // Configuration states - Outlook is default
   const [config, setConfig] = useState({
@@ -79,7 +100,6 @@ export function NavUser() {
     courseAnnouncements: true,
     jlptExamAnnouncements: true,
     certificateUpdates: true,
-    emailNotifications: true,
     emailNotifications: true,
   })
 
@@ -186,14 +206,13 @@ export function NavUser() {
                 <Avatar className="h-8 w-8 rounded-full">
                   <AvatarImage
                     src={
-                      profile.profilePhotoPath ||
-                      profile.avatar ||
+                      displayProfile.profilePhotoPath ||
                       "/avatars/default.jpg"
                     }
-                    alt={profile.name}
+                    alt={displayProfile.name}
                   />
                   <AvatarFallback className="rounded-full">
-                    {profile.name
+                    {displayProfile.name
                       ?.split(" ")
                       .map((n) => n[0])
                       .join("")
@@ -202,8 +221,8 @@ export function NavUser() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{profile.name}</span>
-                  <span className="truncate text-xs">{profile.email}</span>
+                  <span className="truncate font-medium">{displayProfile.name}</span>
+                  <span className="truncate text-xs">{displayProfile.email}</span>
                 </div>
                 <HugeiconsIcon
                   icon={UnfoldMoreIcon}
@@ -223,14 +242,13 @@ export function NavUser() {
                   <Avatar className="h-8 w-8 rounded-full">
                     <AvatarImage
                       src={
-                        profile.profilePhotoPath ||
-                        profile.avatar ||
+                        displayProfile.profilePhotoPath ||
                         "/avatars/default.jpg"
                       }
-                      alt={profile.name}
+                      alt={displayProfile.name}
                     />
                     <AvatarFallback className="rounded-full">
-                      {profile.name
+                      {displayProfile.name
                         ?.split(" ")
                         .map((n) => n[0])
                         .join("")
@@ -239,8 +257,8 @@ export function NavUser() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{profile.name}</span>
-                    <span className="truncate text-xs">{profile.email}</span>
+                    <span className="truncate font-medium">{displayProfile.name}</span>
+                    <span className="truncate text-xs">{displayProfile.email}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
@@ -298,11 +316,11 @@ export function NavUser() {
         </SidebarMenuItem>
       </SidebarMenu>
 
-      {/* Personal Information Dialog */}
+      {/* Personal Information Dialog - Pass displayProfile instead of profile */}
       <PersonalInformationDialog
         open={personalInfoDialogOpen}
         onOpenChange={setPersonalInfoDialogOpen}
-        profile={profile}
+        profile={displayProfile}
         onSave={handleSavePersonalInfo}
       />
 
