@@ -897,7 +897,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const result = await response.json();
 
-      await get().fetch_EmployeeData();
+      await get().fetch_EmployeeData(true);
 
       const updatedData = get().employee_data;
       const divisions = [...new Set(updatedData.map((emp: Employee) => emp.div_name).filter(Boolean))]

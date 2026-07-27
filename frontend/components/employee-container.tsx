@@ -313,7 +313,6 @@ export function EmployeeContainer({
     teams,
     fetchAll_CourseData,
     courses,
-
   } = mainStore()
 
   useEffect(() => {
@@ -356,10 +355,9 @@ export function EmployeeContainer({
           promises.push(fetchAll_CourseData())
         }
 
-
         hasLoadedRef.current = true
       } catch (error) {
-        console.error('❌ Error loading data:', error)
+        console.error("❌ Error loading data:", error)
       } finally {
         setIsLoading(false)
       }
@@ -367,7 +365,6 @@ export function EmployeeContainer({
 
     loadData()
   }, [])
-
 
   // Check if any filters are active
   const hasActiveFilters =
@@ -499,8 +496,8 @@ export function EmployeeContainer({
       const divs = getUniqueValues("div_name")
       const filteredDivs = searchTerm.trim()
         ? divs.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : divs
       // Add "Others" category if there are employees with empty div_name
       const othersCount = getEmployeesWithEmptyCategory("div_name").length
@@ -512,8 +509,8 @@ export function EmployeeContainer({
       const depts = getUniqueValues("dept_dat")
       const filteredDepts = searchTerm.trim()
         ? depts.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : depts
       // Add "Others" category if there are employees with empty dept_dat
       const othersCount = getEmployeesWithEmptyCategory("dept_dat").length
@@ -525,8 +522,8 @@ export function EmployeeContainer({
       const teams = getUniqueValues("team")
       const filteredTeams = searchTerm.trim()
         ? teams.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : teams
       // Add "Others" category if there are employees with empty team
       const othersCount = getEmployeesWithEmptyCategory("team").length
@@ -622,6 +619,20 @@ export function EmployeeContainer({
     ? listItems.slice(startIndex, startIndex + itemsPerPage)
     : filteredEmployees.slice(startIndex, startIndex + itemsPerPage)
 
+  // Get counts for each tab
+  const tabCounts = {
+    employees: employee_data.length,
+    divisions:
+      getUniqueValues("div_name").length +
+      (getEmployeesWithEmptyCategory("div_name").length > 0 ? 1 : 0),
+    departments:
+      getUniqueValues("dept_dat").length +
+      (getEmployeesWithEmptyCategory("dept_dat").length > 0 ? 1 : 0),
+    teams:
+      getUniqueValues("team").length +
+      (getEmployeesWithEmptyCategory("team").length > 0 ? 1 : 0),
+  }
+
   const handleNewEmployee = () => {
     setIsNewEmployeeDrawerOpen(true)
   }
@@ -679,8 +690,6 @@ export function EmployeeContainer({
     newName: string,
     parentId?: number
   ) => {
-
-
     let result = null
 
     try {
@@ -1719,7 +1728,7 @@ export function EmployeeContainer({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="start"
-                  className={`scrollbar-none w-auto max-w-[${DROPDOWN_MAX_WIDTH}] max-h-[350px] overflow-y-auto`}
+                  className={`w-auto scrollbar-none max-w-[${DROPDOWN_MAX_WIDTH}] max-h-[350px] overflow-y-auto`}
                 >
                   {allDepartments.map((dept) => {
                     // Get teams for this department
@@ -1766,7 +1775,10 @@ export function EmployeeContainer({
                                 <span className="block truncate">{team}</span>
                               )}
                               {isActive && (
-                                  <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} />
+                                <HugeiconsIcon
+                                  icon={Tick02Icon}
+                                  strokeWidth={2}
+                                />
                               )}
                             </DropdownMenuItem>
                           )
@@ -1813,11 +1825,29 @@ export function EmployeeContainer({
                 }}
               >
                 <TabsList className="h-auto">
-                  {VIEW_TABS.map((tab) => (
-                    <TabsTrigger key={tab.id} value={tab.id} className="gap-2">
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
+                  {VIEW_TABS.map((tab) => {
+                    const count = tabCounts[tab.id as keyof typeof tabCounts]
+                    return (
+                      <TabsTrigger
+                        key={tab.id}
+                        value={tab.id}
+                        className="gap-2"
+                      >
+                        {tab.label}
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "h-5 px-1.5 text-xs",
+                            activeView === tab.id
+                              ? "bg-secondary"
+                              : "bg-muted-foreground/20 text-muted-foreground"
+                          )}
+                        >
+                          {count}
+                        </Badge>
+                      </TabsTrigger>
+                    )
+                  })}
                 </TabsList>
               </Tabs>
             </div>
@@ -2163,8 +2193,8 @@ export function EmployeeContainer({
                   <div className="col-span-full py-8 text-center text-muted-foreground">
                     {drilldownSearchTerm ? (
                       <>
-                        No employees found matching &quot;{drilldownSearchTerm}&quot; in{" "}
-                        {selectedItem}
+                        No employees found matching &quot;{drilldownSearchTerm}
+                        &quot; in {selectedItem}
                       </>
                     ) : (
                       <>No employees found in {selectedItem}</>
@@ -2230,7 +2260,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === 1 ||
-                              drillDownEmployees.length === 0
+                            drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -2265,7 +2295,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === drillDownTotalPages ||
-                              drillDownEmployees.length === 0
+                            drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -2566,7 +2596,7 @@ export function EmployeeContainer({
                       }}
                       className={
                         currentPage === totalPages ||
-                          filteredEmployees.length === 0
+                        filteredEmployees.length === 0
                           ? "pointer-events-none opacity-50"
                           : ""
                       }

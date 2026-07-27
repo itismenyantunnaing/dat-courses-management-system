@@ -1,6 +1,13 @@
 "use client"
 
-import React, { useState, useMemo, useCallback, useDeferredValue, useEffect, useRef } from "react"
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useRef,
+} from "react"
 import { TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +30,9 @@ import {
   LayoutGridIcon,
   TableIcon,
   Delete02Icon,
+  UserAdd01Icon,
+  Search01Icon,
+  UserIcon,
 } from "@hugeicons/core-free-icons"
 import {
   Command,
@@ -38,6 +48,20 @@ import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { mainStore } from "@/store/mainStore"
 import { MentionedLearner } from "@/types/course"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { Kbd } from "@/components/ui/kbd"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 
 interface LearnersTabProps {
   enrollments: any[]
@@ -47,13 +71,19 @@ interface LearnersTabProps {
   onSearchChange: (value: string) => void
   course?: any
   onRefreshEnrollments?: () => Promise<void>
-  onAdminChangeGroup?: (enrollmentId: number, newGroupId: number) => Promise<void>
+  onAdminChangeGroup?: (
+    enrollmentId: number,
+    newGroupId: number
+  ) => Promise<void>
   isChangingGroup?: boolean
   groupChangeError?: string | null
   groupChangeSuccess?: string | null
   allEmployees?: any[]
   groups?: any[]
-  onEnrollEmployee?: (employeeId: string | number, groupId?: number) => Promise<void>
+  onEnrollEmployee?: (
+    employeeId: string | number,
+    groupId?: number
+  ) => Promise<void>
   onUnenrollEmployee?: (enrollmentId: number) => Promise<void>
   isEnrolling?: boolean
   isUnenrolling?: boolean
@@ -90,13 +120,18 @@ export function LearnersTab({
   const [viewMode, setViewMode] = useState<ViewMode>("table")
   const [learnersCommandOpen, setLearnersCommandOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [visibleLearnersCount, setVisibleLearnersCount] = useState(AVAILABLE_LEARNERS_PER_PAGE)
+  const [visibleLearnersCount, setVisibleLearnersCount] = useState(
+    AVAILABLE_LEARNERS_PER_PAGE
+  )
   const [isEnrollingEmployee, setIsEnrollingEmployee] = useState(false)
-  const [isUnenrollingEmployee, setIsUnenrollingEmployee] = useState<number | null>(null)
-  
+  const [isUnenrollingEmployee, setIsUnenrollingEmployee] = useState<
+    number | null
+  >(null)
+
   const deferredSearchQuery = useDeferredValue(searchQuery)
   const commandListRef = useRef<HTMLDivElement>(null)
   const isLoadingMoreRef = useRef(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { fetch_courseEnrollments } = mainStore()
 
@@ -152,9 +187,7 @@ export function LearnersTab({
 
   // Filter available employees (not already enrolled)
   const availableEmployees = useMemo(() => {
-    return allEmployees.filter(
-      (employee) => !enrolledIds.has(employee.id)
-    )
+    return allEmployees.filter((employee) => !enrolledIds.has(employee.id))
   }, [allEmployees, enrolledIds])
 
   const displayedLearners = useMemo(() => {
@@ -209,6 +242,23 @@ export function LearnersTab({
     }
   }, [learnersCommandOpen])
 
+  // Keyboard shortcut for search focus (Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault()
+        if (searchInputRef.current) {
+          searchInputRef.current.focus()
+        }
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [])
+
   const handleEnrollEmployee = async (employee: any) => {
     if (!onEnrollEmployee) {
       alert("Enroll function not available")
@@ -218,7 +268,7 @@ export function LearnersTab({
     // For trainer courses, get the first group ID
     const isTrainer = course?.courseType === "trainer"
     let groupId = 1
-    
+
     if (isTrainer && groups.length > 0) {
       groupId = parseInt(String(groups[0].id).replace("g", ""))
     }
@@ -229,7 +279,7 @@ export function LearnersTab({
       setLearnersCommandOpen(false)
       setSearchQuery("")
       setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
-      
+
       // Refresh enrollments
       if (course?.id) {
         await fetch_courseEnrollments(course.id)
@@ -245,7 +295,10 @@ export function LearnersTab({
     }
   }
 
-  const handleUnenrollEmployee = async (enrollmentId: number, employeeName: string) => {
+  const handleUnenrollEmployee = async (
+    enrollmentId: number,
+    employeeName: string
+  ) => {
     if (!onUnenrollEmployee) {
       alert("Unenroll function not available")
       return
@@ -258,7 +311,7 @@ export function LearnersTab({
     setIsUnenrollingEmployee(enrollmentId)
     try {
       await onUnenrollEmployee(enrollmentId)
-      
+
       // Refresh enrollments
       if (course?.id) {
         await fetch_courseEnrollments(course.id)
@@ -274,311 +327,345 @@ export function LearnersTab({
     }
   }
 
+  // Check if there are no enrolled learners
+  const hasNoLearners = activeEnrollments.length === 0
+
   return (
     <TabsContent value="learners" className="pt-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="flex items-center gap-2 text-lg font-semibold">
+      {hasNoLearners ? (
+        // Empty State - No learners enrolled
+        <Empty className="h-full">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <HugeiconsIcon
+                icon={UserIcon}
+                strokeWidth={1.5}
+                className="h-12 w-12"
+              />
+            </EmptyMedia>
+            <EmptyTitle>No Learners Enrolled</EmptyTitle>
+            <EmptyDescription className="max-w-xs text-pretty">
+               Add learners to attend this course.
+            </EmptyDescription>
+          </EmptyHeader>
+          {isAdmin && course && availableEmployees.length > 0 && (
+            <EmptyContent>
+              <Button
+                variant="outline"
+                onClick={() => setLearnersCommandOpen(true)}
+                disabled={isEnrolling}
+              >
+                <HugeiconsIcon
+                  icon={UserAdd01Icon}
+                  strokeWidth={2}
+                  className="h-4 w-4"
+                />
+                Add Learner
+              </Button>
+            </EmptyContent>
+          )}
+        </Empty>
+      ) : (
+        // Normal view with header and content
+        <div>
+          <CardHeader className="px-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="flex items-center gap-2 text-xl font-semibold">
+                  Enrolled Learners
+                </h4>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Updated Search Bar with InputGroup */}
+                <InputGroup className="w-sm">
+                  <InputGroupInput
+                    ref={searchInputRef}
+                    placeholder="Search by name, dept, team, or group..."
+                    value={enrollmentSearchTerm}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                  />
+                  <InputGroupAddon>
+                    <HugeiconsIcon
+                      icon={Search01Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4 text-muted-foreground"
+                    />
+                  </InputGroupAddon>
+                  <InputGroupAddon align="inline-end">
+                    <Kbd>Ctrl + K</Kbd>
+                  </InputGroupAddon>
+                </InputGroup>
+
+                {/* Add Employee Button - Directly opens dialog */}
+                {isAdmin && course && availableEmployees.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLearnersCommandOpen(true)}
+                    disabled={isEnrolling}
+                  >
+                    <HugeiconsIcon
+                      icon={UserAdd01Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                    Add Learner
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-0 pt-4">
+            {filteredEnrollments.length === 0 ? (
+              <div className="py-8 text-center">
                 <HugeiconsIcon
                   icon={UserGroupIcon}
                   strokeWidth={1.5}
-                  className="h-5 w-5"
+                  className="mx-auto h-12 w-12 text-muted-foreground/50"
                 />
-                Enrolled Learners
-              </h4>
-              <p className="text-sm text-muted-foreground">
-                {isApprover && profile?.team
-                  ? `Learners from your team enrolled in this course (${activeEnrollments.length} active)`
-                  : `All learners enrolled in this course (${activeEnrollments.length} active)`}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Add Employee Button - Directly opens dialog */}
-              {isAdmin && course && availableEmployees.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setLearnersCommandOpen(true)}
-                  disabled={isEnrolling}
-                >
-                  <HugeiconsIcon
-                    icon={PlusSignIcon}
-                    strokeWidth={2}
-                    className="h-4 w-4"
-                  />
-                  Add Employee
-                </Button>
-              )}
-
-              {/* View Toggle Buttons */}
-              <div className="flex rounded-md border">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-8 rounded-none px-2",
-                    viewMode === "table" && "bg-muted"
-                  )}
-                  onClick={() => setViewMode("table")}
-                >
-                  <HugeiconsIcon
-                    icon={TableIcon}
-                    strokeWidth={2}
-                    className="h-4 w-4"
-                  />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-8 rounded-none px-2",
-                    viewMode === "card" && "bg-muted"
-                  )}
-                  onClick={() => setViewMode("card")}
-                >
-                  <HugeiconsIcon
-                    icon={LayoutGridIcon}
-                    strokeWidth={2}
-                    className="h-4 w-4"
-                  />
-                </Button>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {enrollmentSearchTerm
+                    ? "No matching learners found"
+                    : "No learners enrolled in this course yet"}
+                </p>
               </div>
+            ) : viewMode === "table" ? (
+              // Table View with Delete Button
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-xs font-medium">Sr.</TableHead>
+                      <TableHead className="text-xs font-medium">
+                        Employee ID
+                      </TableHead>
+                      <TableHead className="text-xs font-medium">
+                        Name
+                      </TableHead>
+                      <TableHead className="text-xs font-medium">
+                        Email
+                      </TableHead>
+                      <TableHead className="text-xs font-medium">
+                        Department
+                      </TableHead>
+                      <TableHead className="text-xs font-medium">
+                        Team
+                      </TableHead>
+                      <TableHead className="text-xs font-medium">
+                        Group
+                      </TableHead>
+                      <TableHead className="text-xs font-medium">
+                        Enrolled At
+                      </TableHead>
+                      {isAdmin && (
+                        <TableHead className="text-center text-xs font-medium">
+                          Action
+                        </TableHead>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEnrollments.map((employee, index) => {
+                      const groupIndex =
+                        filteredEnrollments.filter(
+                          (e) => e.courseGroupName === employee.courseGroupName
+                        ).length > 0
+                          ? filteredEnrollments.findIndex(
+                              (e) =>
+                                e.courseGroupName === employee.courseGroupName
+                            ) % groupColors.length
+                          : index % groupColors.length
 
-              <Input
-                placeholder="Filter by name, dept, team, or group..."
-                value={enrollmentSearchTerm}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="h-8 w-[250px] text-sm"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-4">
-          {filteredEnrollments.length === 0 ? (
-            <div className="py-8 text-center">
-              <HugeiconsIcon
-                icon={UserGroupIcon}
-                strokeWidth={1.5}
-                className="mx-auto h-12 w-12 text-muted-foreground/50"
-              />
-              <p className="mt-2 text-sm text-muted-foreground">
-                {enrollmentSearchTerm
-                  ? "No matching learners found"
-                  : "No learners enrolled in this course yet"}
-              </p>
-            </div>
-          ) : viewMode === "table" ? (
-            // Table View with Delete Button
-            <div className="overflow-x-auto rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="text-xs font-medium">Sr.</TableHead>
-                    <TableHead className="text-xs font-medium">Employee ID</TableHead>
-                    <TableHead className="text-xs font-medium">Name</TableHead>
-                    <TableHead className="text-xs font-medium">Email</TableHead>
-                    <TableHead className="text-xs font-medium">Department</TableHead>
-                    <TableHead className="text-xs font-medium">Team</TableHead>
-                    <TableHead className="text-xs font-medium">Group</TableHead>
-                    <TableHead className="text-xs font-medium">Enrolled At</TableHead>
-                    {isAdmin && (
-                      <TableHead className="text-xs font-medium text-center">Action</TableHead>
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEnrollments.map((employee, index) => {
-                    const groupIndex =
-                      filteredEnrollments.filter(
-                        (e) => e.courseGroupName === employee.courseGroupName
-                      ).length > 0
-                        ? filteredEnrollments.findIndex(
-                            (e) => e.courseGroupName === employee.courseGroupName
-                          ) % groupColors.length
-                        : index % groupColors.length
+                      const isUnenrolling =
+                        isUnenrollingEmployee === employee.id
 
-                    const isUnenrolling = isUnenrollingEmployee === employee.id
-
-                    return (
-                      <TableRow
-                        key={employee.id}
-                        className="transition-colors hover:bg-muted/50"
-                      >
-                        <TableCell className="text-center text-xs">
-                          {index + 1}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {employee.employeeId || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={employee.pfImage || ""} />
-                              <AvatarFallback className="bg-primary/10 text-[10px] text-primary">
-                                {getInitials(employee.employeeName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">
-                              {employee.employeeName}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {employee.email || "-"}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {employee.departmentName || "-"}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {employee.teamName || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={cn(
-                              "text-xs font-normal",
-                              groupColors[groupIndex % groupColors.length]
-                            )}
-                          >
-                            {employee.courseGroupName || "-"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {employee.enrolledAt
-                            ? format(new Date(employee.enrolledAt), "MMM d, yyyy")
-                            : "-"}
-                        </TableCell>
-                        {isAdmin && (
-                          <TableCell className="text-center">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() =>
-                                handleUnenrollEmployee(
-                                  employee.id,
-                                  employee.employeeName
-                                )
-                              }
-                              disabled={isUnenrolling}
-                            >
-                              {isUnenrolling ? (
-                                <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
-                              ) : (
-                                <HugeiconsIcon
-                                  icon={Delete02Icon}
-                                  strokeWidth={2}
-                                  className="h-4 w-4"
-                                />
-                              )}
-                            </Button>
+                      return (
+                        <TableRow
+                          key={employee.id}
+                          className="transition-colors hover:bg-muted/50"
+                        >
+                          <TableCell className="text-center text-xs">
+                            {index + 1}
                           </TableCell>
-                        )}
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            // Card View with Delete Button
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredEnrollments.map((employee, index) => {
-                const groupIndex =
-                  filteredEnrollments.filter(
-                    (e) => e.courseGroupName === employee.courseGroupName
-                  ).length > 0
-                    ? filteredEnrollments.findIndex(
-                        (e) => e.courseGroupName === employee.courseGroupName
-                      ) % groupColors.length
-                    : index % groupColors.length
-
-                const isUnenrolling = isUnenrollingEmployee === employee.id
-
-                return (
-                  <div
-                    key={employee.id}
-                    className="flex flex-col rounded-lg border bg-muted/5 p-4 transition-colors hover:bg-muted/10"
-                  >
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={employee.pfImage || ""} />
-                        <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
-                          {getInitials(employee.employeeName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="truncate font-medium">
-                              {employee.employeeName}
-                            </p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {employee.email || "-"}
-                            </p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                              <Badge variant="outline" className="text-[10px]">
-                                ID: {employee.employeeId || "-"}
-                              </Badge>
-                              <Badge
-                                className={cn(
-                                  "text-[10px]",
-                                  groupColors[groupIndex % groupColors.length]
-                                )}
-                              >
-                                {employee.courseGroupName || "-"}
-                              </Badge>
+                          <TableCell className=" text-xs">
+                            {employee.employeeId || "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={employee.pfImage || ""} />
+                                <AvatarFallback className="bg-primary/10 text-[10px] text-primary">
+                                  {getInitials(employee.employeeName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm font-medium">
+                                {employee.employeeName}
+                              </span>
                             </div>
-                          </div>
-                          {isAdmin && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() =>
-                                handleUnenrollEmployee(
-                                  employee.id,
-                                  employee.employeeName
-                                )
-                              }
-                              disabled={isUnenrolling}
-                            >
-                              {isUnenrolling ? (
-                                <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
-                              ) : (
-                                <HugeiconsIcon
-                                  icon={Delete02Icon}
-                                  strokeWidth={2}
-                                  className="h-4 w-4"
-                                />
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {employee.email || "-"}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {employee.departmentName || "-"}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {employee.teamName || "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className={cn(
+                                "text-xs font-normal",
+                                groupColors[groupIndex % groupColors.length]
                               )}
-                            </Button>
+                            >
+                              {employee.courseGroupName || "-"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {employee.enrolledAt
+                              ? format(
+                                  new Date(employee.enrolledAt),
+                                  "MMM d, yyyy"
+                                )
+                              : "-"}
+                          </TableCell>
+                          {isAdmin && (
+                            <TableCell className="text-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() =>
+                                  handleUnenrollEmployee(
+                                    employee.id,
+                                    employee.employeeName
+                                  )
+                                }
+                                disabled={isUnenrolling}
+                              >
+                                {isUnenrolling ? (
+                                  <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+                                ) : (
+                                  <HugeiconsIcon
+                                    icon={Delete02Icon}
+                                    strokeWidth={2}
+                                    className="h-4 w-4"
+                                  />
+                                )}
+                              </Button>
+                            </TableCell>
                           )}
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              // Card View with Delete Button
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredEnrollments.map((employee, index) => {
+                  const groupIndex =
+                    filteredEnrollments.filter(
+                      (e) => e.courseGroupName === employee.courseGroupName
+                    ).length > 0
+                      ? filteredEnrollments.findIndex(
+                          (e) => e.courseGroupName === employee.courseGroupName
+                        ) % groupColors.length
+                      : index % groupColors.length
+
+                  const isUnenrolling = isUnenrollingEmployee === employee.id
+
+                  return (
+                    <div
+                      key={employee.id}
+                      className="flex flex-col rounded-lg border bg-muted/5 p-4 transition-colors hover:bg-muted/10"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={employee.pfImage || ""} />
+                          <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
+                            {getInitials(employee.employeeName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="truncate font-medium">
+                                {employee.employeeName}
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {employee.email || "-"}
+                              </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px]"
+                                >
+                                  ID: {employee.employeeId || "-"}
+                                </Badge>
+                                <Badge
+                                  className={cn(
+                                    "text-[10px]",
+                                    groupColors[groupIndex % groupColors.length]
+                                  )}
+                                >
+                                  {employee.courseGroupName || "-"}
+                                </Badge>
+                              </div>
+                            </div>
+                            {isAdmin && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() =>
+                                  handleUnenrollEmployee(
+                                    employee.id,
+                                    employee.employeeName
+                                  )
+                                }
+                                disabled={isUnenrolling}
+                              >
+                                {isUnenrolling ? (
+                                  <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
+                                ) : (
+                                  <HugeiconsIcon
+                                    icon={Delete02Icon}
+                                    strokeWidth={2}
+                                    className="h-4 w-4"
+                                  />
+                                )}
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <div className="mt-2 flex flex-wrap gap-2 border-t pt-2 text-xs text-muted-foreground">
+                        <span>{employee.departmentName || "-"}</span>
+                        <span>•</span>
+                        <span>{employee.teamName || "-"}</span>
+                        <span>•</span>
+                        <span>
+                          {employee.enrolledAt
+                            ? format(
+                                new Date(employee.enrolledAt),
+                                "MMM d, yyyy"
+                              )
+                            : "-"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2 border-t pt-2 text-xs text-muted-foreground">
-                      <span>{employee.departmentName || "-"}</span>
-                      <span>•</span>
-                      <span>{employee.teamName || "-"}</span>
-                      <span>•</span>
-                      <span>
-                        {employee.enrolledAt
-                          ? format(new Date(employee.enrolledAt), "MMM d, yyyy")
-                          : "-"}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </div>
+      )}
 
       {/* Add Employee Command Dialog */}
       {isAdmin && course && (
@@ -626,7 +713,9 @@ export function LearnersTab({
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">{learner.name}</span>
+                      <span className="truncate font-medium">
+                        {learner.name}
+                      </span>
                       <span className="truncate text-xs text-muted-foreground">
                         {learner.department} • {learner.team}
                       </span>
@@ -657,7 +746,8 @@ export function LearnersTab({
                       <span>Loading more employees...</span>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      Showing {visibleLearners.length} of {displayedLearners.length} employees
+                      Showing {visibleLearners.length} of{" "}
+                      {displayedLearners.length} employees
                     </span>
                   </div>
                 </div>
