@@ -9,6 +9,7 @@ import {
   Edit03Icon,
   RefreshIcon,
   ArrowLeft01Icon,
+  UserSwitchIcon,
 } from "@hugeicons/core-free-icons"
 import {
   Course,
@@ -38,12 +39,13 @@ interface CourseDetailProps {
 // Helper function to convert Employee to MentionedLearner
 const convertEmployeeToMentionedLearner = (employee: any) => ({
   id: employee.id,
-  name: employee.name || employee.full_name || '',
-  email: employee.email || '',
-  avatar: employee.profile_photo_path || employee.avatar || '',
-  department: employee.dept_dat || employee.department || '',
-  team: employee.team || '',
-  status: (employee.status || employee.emp_status || 'active') as 'active' | 'pending' | 'completed' | 'inactive',
+  name: employee.name || employee.full_name || "",
+  email: employee.email || "",
+  avatar: employee.profile_photo_path || employee.avatar || "",
+  department: employee.dept_dat || employee.department || "",
+  team: employee.team || "",
+  status: (employee.status || employee.emp_status || "active") as
+    "active" | "pending" | "completed" | "inactive",
   addedAt: new Date(),
 })
 
@@ -64,15 +66,23 @@ export function CourseDetail({
   const [isUnenrolling, setIsUnenrolling] = useState(false)
   const [currentUserEnrollment, setCurrentUserEnrollment] = useState<any>(null)
   const [changeGroupDialogOpen, setChangeGroupDialogOpen] = useState(false)
-  const [changeGroupRequestDialogOpen, setChangeGroupRequestDialogOpen] = useState(false)
+  const [changeGroupRequestDialogOpen, setChangeGroupRequestDialogOpen] =
+    useState(false)
   const [selectedGroupId, setSelectedGroupId] = useState<string>("")
   const [isRequestingGroupChange, setIsRequestingGroupChange] = useState(false)
   const [isProcessingRequest, setIsProcessingRequest] = useState(false)
+  const [activeTab, setActiveTab] = useState("information")
 
   // Attendance state
-  const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, string>>({})
-  const [savingAttendance, setSavingAttendance] = useState<Record<string, boolean>>({})
-  const [savedAttendance, setSavedAttendance] = useState<Record<string, boolean>>({})
+  const [attendanceStatuses, setAttendanceStatuses] = useState<
+    Record<string, string>
+  >({})
+  const [savingAttendance, setSavingAttendance] = useState<
+    Record<string, boolean>
+  >({})
+  const [savedAttendance, setSavedAttendance] = useState<
+    Record<string, boolean>
+  >({})
 
   const {
     fetch_courseEnrollments,
@@ -133,11 +143,12 @@ export function CourseDetail({
   const isFirstSessionStartedOrPassed = React.useMemo(() => {
     if (!course.groups || course.groups.length === 0) return false
 
-    const allSessions = course.groups.flatMap((group: any) =>
-      group.sessions?.map((session: any) => ({
-        ...session,
-        groupId: group.id
-      })) || []
+    const allSessions = course.groups.flatMap(
+      (group: any) =>
+        group.sessions?.map((session: any) => ({
+          ...session,
+          groupId: group.id,
+        })) || []
     )
 
     if (allSessions.length === 0) return false
@@ -179,26 +190,40 @@ export function CourseDetail({
     if (currentUserEnrollment?.groupChangeStatus === "PENDING") return true
     if (isFirstSessionStartedOrPassed) return true
     return false
-  }, [isUserEnrolled, course.groups, currentUserEnrollment, isFirstSessionStartedOrPassed])
+  }, [
+    isUserEnrolled,
+    course.groups,
+    currentUserEnrollment,
+    isFirstSessionStartedOrPassed,
+  ])
 
-  // Get tooltip text for disabled buttons
+  // Get tooltip text for disabled buttons (kept for reference but no longer used)
   const getChangeGroupTooltip = () => {
-    if (activeEnrollments.length === 0) return "No employees enrolled in this course"
-    if (!course.groups || course.groups.length <= 1) return "Need at least 2 groups to change group"
-    if (isFirstSessionStartedOrPassed) return "Cannot change group after the first session has started"
+    if (activeEnrollments.length === 0)
+      return "No employees enrolled in this course"
+    if (!course.groups || course.groups.length <= 1)
+      return "Need at least 2 groups to change group"
+    if (isFirstSessionStartedOrPassed)
+      return "Cannot change group after the first session has started"
     return "Change employee groups"
   }
 
   const getChangeGroupRequestTooltip = () => {
     if (!isUserEnrolled) return "You are not enrolled in this course"
-    if (!course.groups || course.groups.length <= 1) return "Need at least 2 groups to request a change"
-    if (currentUserEnrollment?.groupChangeStatus === "PENDING") return "You already have a pending group change request"
-    if (isFirstSessionStartedOrPassed) return "Cannot request group change after the first session has started"
+    if (!course.groups || course.groups.length <= 1)
+      return "Need at least 2 groups to request a change"
+    if (currentUserEnrollment?.groupChangeStatus === "PENDING")
+      return "You already have a pending group change request"
+    if (isFirstSessionStartedOrPassed)
+      return "Cannot request group change after the first session has started"
     return "Request to change your group"
   }
 
   // 🆕 Handle enrolling employee from LearnersTab
-  const handleEnrollEmployee = async (employeeId: string | number, groupId?: number) => {
+  const handleEnrollEmployee = async (
+    employeeId: string | number,
+    groupId?: number
+  ) => {
     if (!course.id) {
       alert("Course ID is required to enroll")
       return
@@ -206,7 +231,11 @@ export function CourseDetail({
 
     // If no groupId provided and it's a trainer course, get the first group
     let targetGroupId = groupId || 1
-    if (course.courseType === "trainer" && course.groups && course.groups.length > 0) {
+    if (
+      course.courseType === "trainer" &&
+      course.groups &&
+      course.groups.length > 0
+    ) {
       targetGroupId = parseInt(String(course.groups[0].id).replace("g", ""))
     }
 
@@ -221,7 +250,10 @@ export function CourseDetail({
           await fetch_courseEnrollments(course.id)
         }
         if (course.courseType === "trainer" && course.groups?.[0]?.id) {
-          await fetchAttendance(parseInt(course.id), parseInt(course.groups[0].id))
+          await fetchAttendance(
+            parseInt(course.id),
+            parseInt(course.groups[0].id)
+          )
         }
       } else {
         alert(result.message || "Failed to enroll employee")
@@ -252,7 +284,10 @@ export function CourseDetail({
           await fetch_courseEnrollments(course.id)
         }
         if (course.courseType === "trainer" && course.groups?.[0]?.id) {
-          await fetchAttendance(parseInt(course.id), parseInt(course.groups[0].id))
+          await fetchAttendance(
+            parseInt(course.id),
+            parseInt(course.groups[0].id)
+          )
         }
       } else {
         alert(result.message || "Failed to unenroll employee")
@@ -274,7 +309,10 @@ export function CourseDetail({
 
     setIsRequestingGroupChange(true)
     try {
-      const result = await requestGroupChange(currentUserEnrollment.id, parseInt(groupId))
+      const result = await requestGroupChange(
+        currentUserEnrollment.id,
+        parseInt(groupId)
+      )
 
       if (result.success) {
         alert(result.message || "Group change request submitted successfully!")
@@ -295,7 +333,9 @@ export function CourseDetail({
 
   // Handle approve group change request
   const handleApproveRequest = async (enrollmentId: number) => {
-    if (!confirm("Are you sure you want to approve this group change request?")) {
+    if (
+      !confirm("Are you sure you want to approve this group change request?")
+    ) {
       return
     }
 
@@ -309,7 +349,10 @@ export function CourseDetail({
           await fetch_courseEnrollments(course.id)
         }
         if (course.courseType === "trainer" && course.groups?.[0]?.id) {
-          await fetchAttendance(parseInt(course.id), parseInt(course.groups[0].id))
+          await fetchAttendance(
+            parseInt(course.id),
+            parseInt(course.groups[0].id)
+          )
         }
       } else {
         alert(result.message || "Failed to approve group change request")
@@ -324,7 +367,9 @@ export function CourseDetail({
 
   // Handle reject group change request
   const handleRejectRequest = async (enrollmentId: number) => {
-    if (!confirm("Are you sure you want to reject this group change request?")) {
+    if (
+      !confirm("Are you sure you want to reject this group change request?")
+    ) {
       return
     }
 
@@ -349,20 +394,23 @@ export function CourseDetail({
   }
 
   // Handle admin group change (for LearnersTab)
-  const handleAdminChangeGroup = async (enrollmentId: number, newGroupId: number) => {
+  const handleAdminChangeGroup = async (
+    enrollmentId: number,
+    newGroupId: number
+  ) => {
     try {
       const result = await adminChangeGroup(enrollmentId, newGroupId)
       if (result.success) {
         if (course.id) {
           await fetch_courseEnrollments(course.id)
         }
-        alert('Group changed successfully!')
+        alert("Group changed successfully!")
       } else {
-        alert(result.message || 'Failed to change group')
+        alert(result.message || "Failed to change group")
       }
     } catch (error) {
-      console.error('Failed to change group:', error)
-      alert(error instanceof Error ? error.message : 'Failed to change group')
+      console.error("Failed to change group:", error)
+      alert(error instanceof Error ? error.message : "Failed to change group")
     }
   }
 
@@ -371,7 +419,10 @@ export function CourseDetail({
     if (course.id) {
       await fetch_courseEnrollments(course.id)
       if (course.courseType === "trainer" && course.groups?.[0]?.id) {
-        await fetchAttendance(parseInt(course.id), parseInt(course.groups[0].id))
+        await fetchAttendance(
+          parseInt(course.id),
+          parseInt(course.groups[0].id)
+        )
       }
     }
   }
@@ -473,8 +524,8 @@ export function CourseDetail({
   ) => {
     const key = `${sessionId}-${employeeId}`
 
-    setSavingAttendance(prev => ({ ...prev, [key]: true }))
-    setAttendanceStatuses(prev => ({ ...prev, [key]: value }))
+    setSavingAttendance((prev) => ({ ...prev, [key]: true }))
+    setAttendanceStatuses((prev) => ({ ...prev, [key]: value }))
 
     try {
       const existingAttendance = attendances.find(
@@ -486,7 +537,7 @@ export function CourseDetail({
       const request = {
         enrollmentId,
         courseSessionId: parseInt(sessionId),
-        attendanceStatus: value as 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
+        attendanceStatus: value as "PRESENT" | "ABSENT" | "LATE" | "EXCUSED",
       }
 
       let result
@@ -497,36 +548,33 @@ export function CourseDetail({
           existingAttendance.id,
           request
         )
+        console.log("✅ Attendance updated:", result)
       } else {
-        result = await createAttendance(
-          parseInt(course.id),
-          groupId,
-          request
-        )
+        result = await createAttendance(parseInt(course.id), groupId, request)
+        console.log("✅ Attendance created:", result)
       }
 
-      setSavedAttendance(prev => ({ ...prev, [key]: true }))
+      setSavedAttendance((prev) => ({ ...prev, [key]: true }))
 
       setTimeout(() => {
-        setSavedAttendance(prev => {
+        setSavedAttendance((prev) => {
           const newState = { ...prev }
           delete newState[key]
           return newState
         })
       }, 500)
-
     } catch (error) {
-      console.error('❌ Error saving attendance:', error)
+      console.error("❌ Error saving attendance:", error)
 
-      setAttendanceStatuses(prev => {
+      setAttendanceStatuses((prev) => {
         const newState = { ...prev }
         delete newState[key]
         return newState
       })
 
-      alert('Failed to save attendance. Please try again.')
+      alert("Failed to save attendance. Please try again.")
     } finally {
-      setSavingAttendance(prev => ({ ...prev, [key]: false }))
+      setSavingAttendance((prev) => ({ ...prev, [key]: false }))
     }
   }
 
@@ -596,6 +644,40 @@ export function CourseDetail({
     }
   }
 
+  // Memoized tab counts
+  const tabCounts = useMemo(() => {
+    // Get total learners (excluding cancelled)
+    const totalLearners = enrollments.filter(
+      (e: any) => e.enrollmentStatus !== "CANCELLED"
+    ).length
+
+    // Get learners count based on approver's team
+    let approverLearners = totalLearners
+    if (isApprover && profile?.team) {
+      approverLearners = enrollments.filter(
+        (e: any) =>
+          e.enrollmentStatus !== "CANCELLED" && e.teamName === profile.team
+      ).length
+    }
+
+    return {
+      groups: course.groups?.length || 0,
+      sessions:
+        course.self_study_sessions?.length || course.sessions?.length || 0,
+      learners: isApprover ? approverLearners : totalLearners,
+      groupRequests: enrollments.filter(
+        (e: any) => e.groupChangeStatus === "PENDING"
+      ).length,
+    }
+  }, [
+    enrollments,
+    course.groups,
+    course.self_study_sessions,
+    course.sessions,
+    isApprover,
+    profile,
+  ])
+
   if (isLoadingEnrollments) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -613,7 +695,7 @@ export function CourseDetail({
     <div className="flex flex-col gap-4">
       {/* Tabs */}
       <div className="flex items-center justify-between gap-4">
-        <Tabs defaultValue="information" className="flex-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" onClick={onBack}>
@@ -623,81 +705,108 @@ export function CourseDetail({
                   className="h-4 w-4"
                 />
               </Button>
-              <TabsList>
-                <TabsTrigger value="information">Information</TabsTrigger>
+              <TabsList className="h-auto">
+                <TabsTrigger value="information" className="gap-2">
+                  Information
+                </TabsTrigger>
+
                 {course.courseType === "trainer" &&
                   course.groups &&
                   course.groups.length > 0 && (
-                    <TabsTrigger value="groups">
-                      Groups ({course.groups.length})
+                    <TabsTrigger value="groups" className="gap-2">
+                      Groups
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "h-5 px-1.5 text-xs",
+                          activeTab === "groups"
+                            ? "bg-secondary"
+                            : "bg-muted-foreground/20 text-muted-foreground"
+                        )}
+                      >
+                        {tabCounts.groups}
+                      </Badge>
                     </TabsTrigger>
                   )}
-                {course.courseType === "self-study" && (
-                  <TabsTrigger value="sessions">
-                    Sessions (
-                    {course.self_study_sessions?.length ||
-                      course.sessions?.length ||
-                      0}
-                    )
-                  </TabsTrigger>
-                )}
-                {/* {course.courseType === "trainer" &&
-                  isLearner &&
-                  isUserEnrolled && (
-                    <TabsTrigger value="group-change">Change Group</TabsTrigger>
-                  )} */}
-                {course.courseType === "trainer" && isAdmin && (
-                  <TabsTrigger value="group-requests">
-                    Group Requests
-                    {pendingRequestsCount > 0 && (
-                      <Badge className="ml-2 bg-red-500 px-1.5 text-[10px] text-white">
-                        {pendingRequestsCount}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                )}
-                {!isLearner &&
-                  <TabsTrigger value="learners">
-                    Learners (
-                    {(() => {
-                      let count = enrollments.filter(
-                        (e) => e.enrollmentStatus !== "CANCELLED"
-                      )
-                      if (isApprover && profile?.team) {
-                        count = count.filter((e) => e.teamName === profile.team)
-                      }
-                      return count.length
-                    })()}
-                    )
-                  </TabsTrigger>
-                }
 
+                {course.courseType === "self-study" && (
+                  <TabsTrigger value="sessions" className="gap-2">
+                    Sessions
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        activeTab === "sessions"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {tabCounts.sessions}
+                    </Badge>
+                  </TabsTrigger>
+                )}
+
+                {course.courseType === "trainer" && isAdmin && (
+                  <TabsTrigger value="group-requests" className="gap-2">
+                    Group Requests
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        activeTab === "group-requests"
+                          ? "bg-secondary"
+                          : tabCounts.groupRequests > 0
+                            ? "bg-red-500 text-white"
+                            : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {tabCounts.groupRequests}
+                    </Badge>
+                  </TabsTrigger>
+                )}
+
+                {!isLearner && (
+                  <TabsTrigger value="learners" className="gap-2">
+                    Learners
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        activeTab === "learners"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {tabCounts.learners}
+                    </Badge>
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
             <div className="flex items-center gap-2">
-              {/* Learner - Request Change Group Button */}
-              {isLearner && course.status !== "completed" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setChangeGroupRequestDialogOpen(true)}
-                  className="gap-2"
-                  disabled={isChangeGroupRequestDisabled}
-                  title={getChangeGroupRequestTooltip()}
-                >
-                  <HugeiconsIcon
-                    icon={RefreshIcon}
-                    strokeWidth={2}
-                    className="h-4 w-4"
-                  />
-                  Request Change Group
-                  {currentUserEnrollment?.groupChangeStatus === "PENDING" && (
-                    <Badge className="ml-1 bg-yellow-500 text-[10px] text-white">
-                      Pending
-                    </Badge>
-                  )}
-                </Button>
-              )}
+              {/* Learner - Request Change Group Button - Hidden when disabled */}
+              {isLearner &&
+                course.status !== "completed" &&
+                !isChangeGroupRequestDisabled && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setChangeGroupRequestDialogOpen(true)}
+                    className="gap-2"
+                  >
+                    <HugeiconsIcon
+                      icon={RefreshIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                    Request Change Group
+                    {currentUserEnrollment?.groupChangeStatus === "PENDING" && (
+                      <Badge className="ml-1 bg-yellow-500 text-[10px] text-white">
+                        Pending
+                      </Badge>
+                    )}
+                  </Button>
+                )}
 
               {/* Enrollment Button for Learners */}
               {!isAdmin && (
@@ -726,7 +835,7 @@ export function CourseDetail({
                           const isFull =
                             group.capacity !== undefined &&
                             groupEmployees.length >=
-                            ((group.capacity as number) || 0)
+                              ((group.capacity as number) || 0)
 
                           return (
                             <option
@@ -796,21 +905,22 @@ export function CourseDetail({
               {/* Admin Buttons */}
               {isAdmin && course.status !== "completed" && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setChangeGroupDialogOpen(true)}
-                    className="gap-2"
-                    disabled={isChangeGroupDisabled}
-                    title={getChangeGroupTooltip()}
-                  >
-                    <HugeiconsIcon
-                      icon={RefreshIcon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                    Change Group
-                  </Button>
+                  {/* Change Group Button - Hidden when disabled */}
+                  {!isChangeGroupDisabled && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setChangeGroupDialogOpen(true)}
+                      className="gap-2"
+                    >
+                      <HugeiconsIcon
+                        icon={UserSwitchIcon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                      Change Group
+                    </Button>
+                  )}
                   <Button
                     variant="default"
                     size="sm"
@@ -829,9 +939,10 @@ export function CourseDetail({
           </div>
 
           {/* Tab Contents */}
-          <InformationTab course={course} />
+          {activeTab === "information" && <InformationTab course={course} />}
 
-          {course.courseType === "trainer" &&
+          {activeTab === "groups" &&
+            course.courseType === "trainer" &&
             course.groups &&
             course.groups.length > 0 && (
               <GroupsTab
@@ -849,7 +960,7 @@ export function CourseDetail({
               />
             )}
 
-          {course.courseType === "self-study" && (
+          {activeTab === "sessions" && course.courseType === "self-study" && (
             <SessionsTab
               course={course}
               enrollments={enrollments}
@@ -861,48 +972,54 @@ export function CourseDetail({
             />
           )}
 
-          {course.courseType === "trainer" && isLearner && isUserEnrolled && (
-            <GroupChangeTab
-              course={course}
-              currentUserEnrollment={currentUserEnrollment}
-              onRequestGroupChange={() => { }}
-            />
-          )}
+          {activeTab === "group-change" &&
+            course.courseType === "trainer" &&
+            isLearner &&
+            isUserEnrolled && (
+              <GroupChangeTab
+                course={course}
+                currentUserEnrollment={currentUserEnrollment}
+                onRequestGroupChange={() => {}}
+              />
+            )}
 
-          {course.courseType === "trainer" && isAdmin && (
-            <GroupRequestsTab
+          {activeTab === "group-requests" &&
+            course.courseType === "trainer" &&
+            isAdmin && (
+              <GroupRequestsTab
+                enrollments={enrollments}
+                onRefresh={handleRefresh}
+                onApprove={handleApproveRequest}
+                onReject={handleRejectRequest}
+                isProcessing={isProcessingRequest}
+              />
+            )}
+
+          {activeTab === "learners" && !isLearner && (
+            <LearnersTab
               enrollments={enrollments}
-              onRefresh={handleRefresh}
-              onApprove={handleApproveRequest}
-              onReject={handleRejectRequest}
-              isProcessing={isProcessingRequest}
+              userRole={userRole}
+              profile={profile}
+              enrollmentSearchTerm=""
+              onSearchChange={() => {}}
+              course={course}
+              allEmployees={allEmployees}
+              groups={course.groups || []}
+              onRefreshEnrollments={async () => {
+                if (course.id) {
+                  await fetch_courseEnrollments(course.id)
+                }
+              }}
+              onAdminChangeGroup={handleAdminChangeGroup}
+              isChangingGroup={isAdminChangingGroup}
+              groupChangeError={groupChangeError}
+              groupChangeSuccess={groupChangeSuccess}
+              onEnrollEmployee={handleEnrollEmployee}
+              onUnenrollEmployee={handleUnenrollEmployee}
+              isEnrolling={isEnrolling}
+              isUnenrolling={isUnenrolling}
             />
           )}
-
-          <LearnersTab
-            enrollments={enrollments}
-            userRole={userRole}
-            profile={profile}
-            enrollmentSearchTerm=""
-            onSearchChange={() => { }}
-            course={course}
-            allEmployees={allEmployees}
-            groups={course.groups || []}
-            onRefreshEnrollments={async () => {
-              if (course.id) {
-                await fetch_courseEnrollments(course.id)
-              }
-            }}
-            onAdminChangeGroup={handleAdminChangeGroup}
-            isChangingGroup={isAdminChangingGroup}
-            groupChangeError={groupChangeError}
-            groupChangeSuccess={groupChangeSuccess}
-            // 🆕 Pass enrollment functions
-            onEnrollEmployee={handleEnrollEmployee}
-            onUnenrollEmployee={handleUnenrollEmployee}
-            isEnrolling={isEnrolling}
-            isUnenrolling={isUnenrolling}
-          />
         </Tabs>
       </div>
 

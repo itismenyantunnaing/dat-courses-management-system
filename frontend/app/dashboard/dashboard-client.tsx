@@ -201,7 +201,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       value: "certificates-requests",
       component: CertificatesRequestsContainer,
       props: {
-        selectedCertificateId: selectedCertificateId  
+        selectedCertificateId: selectedCertificateId
       },
     },
   ]
@@ -256,18 +256,21 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                     className="h-5 w-5"
                   />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="relative"
-                  onClick={() => setSendMailOpen(true)}
-                >
-                  <HugeiconsIcon
-                    icon={MailSend02Icon}
-                    strokeWidth={2}
-                    className="h-5 w-5"
-                  />
-                </Button>
+                {user_role !== "learner" &&
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="relative"
+                    onClick={() => setSendMailOpen(true)}
+                  >
+                    <HugeiconsIcon
+                      icon={MailSend02Icon}
+                      strokeWidth={2}
+                      className="h-5 w-5"
+                    />
+                  </Button>
+                }
+
               </div>
             </div>
           </header>

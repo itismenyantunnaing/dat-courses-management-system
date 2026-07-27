@@ -172,20 +172,20 @@ export function CourseCard({
     }
     if (daysUntilClose === 1) {
       return {
-        text: "Closes tomorrow",
+        text: "Registration will close tomorrow",
         className: "text-orange-500",
         icon: AlertCircleIcon,
       }
     }
     if (isRegistrationClosingSoon) {
       return {
-        text: `Closes in ${daysUntilClose} days`,
+        text: `Registration will close in ${daysUntilClose} days`,
         className: "text-orange-500",
         icon: AlertCircleIcon,
       }
     }
     return {
-      text: `Registration closes ${format(new Date(course.registrationDeadline), "MMM d, yyyy")}`,
+      text: `Registration will close ${format(new Date(course.registrationDeadline), "MMM d, yyyy")}`,
       className: "text-muted-foreground",
       icon: Calendar03Icon,
     }

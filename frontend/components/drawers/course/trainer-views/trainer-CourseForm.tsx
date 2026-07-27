@@ -948,7 +948,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           </div>
 
           {/* ===================== ACTION BUTTONS ===================== */}
-          <div className="flex items-center justify-between border-t pt-4">
+          <div className="flex items-center justify-between border-t py-6">
             {mode === "edit" && onDelete && (
               <Dialog
                 open={deleteDialogOpen}

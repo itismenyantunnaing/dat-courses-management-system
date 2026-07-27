@@ -36,6 +36,7 @@ import {
   CheckmarkCircle01Icon,
   Alert01Icon,
   SaveIcon,
+  NotificationIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { StatCard } from "../charts/stat-card"
@@ -93,68 +94,23 @@ const getAttendanceStatusBadge = (status: string | null) => {
   }
 }
 
-// Mock notifications - limited to 4
-const mockNotifications = [
-  {
-    id: 1,
-    actorName: "Dr. Sarah Johnson",
-    actorAvatar: "/avatars/sarah.jpg",
-    action: "published a new course",
-    target: "Advanced React Patterns",
-    targetBold: true,
-    time: "15 mins ago",
-    project: "Learning Platform",
-    unread: true,
-    type: "course",
-  },
-  {
-    id: 2,
-    actorName: "Prof. Michael Chen",
-    actorAvatar: "/avatars/michael.jpg",
-    action: "updated the",
-    target: "JavaScript Mastery",
-    targetBold: true,
-    time: "1 hour ago",
-    project: "Code Academy",
-    unread: true,
-    type: "course",
-    attachment: {
-      name: "JS_Mastery_v2.0.pdf",
-    },
-  },
-  {
-    id: 3,
-    actorName: "Certification Board",
-    actorAvatar: "/avatars/cert-board.jpg",
-    action: "issued a new certificate for",
-    target: "Full Stack Development",
-    targetBold: true,
-    time: "2 hours ago",
-    project: "Certification Program",
-    unread: true,
-    type: "certificate",
-    actions: [
-      { label: "View", variant: "outline" },
-      { label: "Approve", variant: "default" },
-    ],
-  },
-  {
-    id: 4,
-    actorName: "JLPT Admin",
-    actorAvatar: "/avatars/jlpt-admin.jpg",
-    action: "announced",
-    target: "JLPT N2 Exam Registration",
-    targetBold: true,
-    time: "3 hours ago",
-    project: "JLPT Exam Center",
-    unread: true,
-    type: "jlpt",
-    actions: [{ label: "Enroll", variant: "default" }],
-  },
-]
+const formatTime = (timestamp: string) => {
+  if (!timestamp) return "Just now"
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return "Just now"
+  if (diffMins < 60) return `${diffMins} mins ago`
+  if (diffHours < 24) return `${diffHours} hours ago`
+  if (diffDays < 7) return `${diffDays} days ago`
+  return date.toLocaleDateString()
+}
 
 export default function LearnerDashboardContainer() {
-  const [notifications] = useState(mockNotifications)
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false)
@@ -186,7 +142,20 @@ export default function LearnerDashboardContainer() {
     isFetchingProgress,
     isUpdatingProgress,
     progressError,
+    // Notifications
+    notifications: storeNotifications,
+    unreadCount,
+    fetch_Notifications,
+    fetch_UnreadCount,
   } = mainStore()
+
+  // Fetch notifications when component mounts
+  useEffect(() => {
+    if (profile?.id) {
+      fetch_Notifications(profile.id, false)
+      fetch_UnreadCount(profile.id)
+    }
+  }, [profile?.id, fetch_Notifications, fetch_UnreadCount])
 
   useEffect(() => {
     const loadData = async () => {
@@ -549,6 +518,62 @@ export default function LearnerDashboardContainer() {
   };
 
   const filteredSessions = filterSessionsPerCourse(upcomingAllSessionsData);
+
+  // Handle notification actions
+  const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
+    if (action === 'view-course') {
+      // Navigate to course details
+      console.log('Navigate to course:', id);
+      // You can use router.push(`/courses/${id}`) here
+    } else if (action === 'view-certificate') {
+      // Navigate to certificate details
+      console.log('Navigate to certificate:', id);
+      // You can use router.push(`/certificates/${id}`) here
+    }
+  };
+
+  // Transform notifications for display in the card
+  const getDisplayNotifications = () => {
+    if (!storeNotifications || storeNotifications.length === 0) {
+      return []
+    }
+
+    // Show only unread or latest 4 notifications
+    const unreadNotifications = storeNotifications.filter((n: any) => !n.read)
+    const notificationsToShow = unreadNotifications.length > 0 
+      ? unreadNotifications.slice(0, 4)
+      : storeNotifications.slice(0, 4)
+
+    return notificationsToShow.map((notif: any) => {
+      let type: 'course' | 'certificate' | 'jlpt' = 'course'
+      let actionText = ''
+
+      if (notif.type === 'COURSE') {
+        type = 'course'
+        actionText = 'new course available'
+      } else if (notif.type === 'CERTIFICATE') {
+        type = 'certificate'
+        actionText = 'certificate uploaded'
+      } else if (notif.type === 'JLPT_EXAM') {
+        type = 'jlpt'
+        actionText = 'exam update'
+      }
+
+      return {
+        id: notif.id,
+        message: notif.message,
+        time: formatTime(notif.createdAt),
+        unread: !notif.read,
+        type,
+        actionText,
+        courseId: notif.courseId,
+        certificateId: notif.certificateId,
+        hasAction: notif.type === 'COURSE' || notif.type === 'CERTIFICATE'
+      }
+    })
+  }
+
+  const displayNotifications = getDisplayNotifications()
 
   // If loading, show loading state
   if (isLoading) {
@@ -933,7 +958,7 @@ export default function LearnerDashboardContainer() {
             </CardContent>
           </Card>
 
-          {/* Notifications - Limited to 4 */}
+          {/* Notifications - Using real data from store */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between border-b py-0">
               <div>
@@ -948,6 +973,11 @@ export default function LearnerDashboardContainer() {
                 onClick={() => setNotificationsDrawerOpen(true)}
               >
                 All Notifications
+                {unreadCount && unreadCount > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">
+                    {unreadCount}
+                  </Badge>
+                )}
                 <HugeiconsIcon
                   icon={ArrowRight01Icon}
                   strokeWidth={2}
@@ -956,102 +986,83 @@ export default function LearnerDashboardContainer() {
               </Button>
             </CardHeader>
             <CardContent className="max-h-[400px] scrollbar-thin space-y-4 overflow-y-auto">
-              {notifications.slice(0, 4).map((notification, index) => {
-                const isLast = index === notifications.slice(0, 4).length - 1
-                return (
-                  <div
-                    key={notification.id}
-                    className={cn(
-                      "group relative flex gap-3 transition-colors",
-                      !isLast && "border-b border-gray-100 pb-4"
-                    )}
-                  >
-                    {/* Avatar */}
-                    <div className="flex-shrink-0 pt-0.5">
-                      <Avatar className="h-10 w-10 rounded-full">
-                        <AvatarImage
-                          src={
-                            notification.actorAvatar || "/avatars/default.jpg"
-                          }
-                          alt={notification.actorName}
-                        />
-                        <AvatarFallback className="rounded-full text-xs font-semibold text-gray-600">
-                          {getInitials(notification.actorName)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
-
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[15px] leading-snug text-gray-900">
-                        <span className="font-semibold">
-                          {notification.actorName}
-                        </span>
-                        <span className="text-gray-500">
-                          {" "}
-                          {notification.action}{" "}
-                        </span>
-                        {notification.targetBold ? (
-                          <span className="font-semibold">
-                            {notification.target}
-                          </span>
-                        ) : (
-                          <span>{notification.target}</span>
-                        )}
-                        {notification.type === "share" && (
-                          <span className="text-gray-500"> with you</span>
-                        )}
-                        {notification.type === "create" && (
-                          <span className="text-gray-500"> for </span>
-                        )}
-                        {notification.type === "create" && (
-                          <span className="font-semibold">
-                            {notification.project}
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-1 text-[13px] text-gray-400">
-                        {notification.time}
-                        <span className="mx-1.5">•</span>
-                        {notification.project}
-                      </p>
-                      {notification.actions && (
-                        <div className="mt-3 flex items-center gap-2">
-                          {notification.actions.map((action, i) => (
-                            <Button
-                              key={i}
-                              variant={action.variant as "outline" | "default"}
-                              size="sm"
-                              onClick={() =>
-                                console.log(`Action: ${action.label}`)
-                              }
-                            >
-                              {action.label}
-                            </Button>
-                          ))}
-                        </div>
+              {displayNotifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <HugeiconsIcon
+                    icon={NotificationIcon}
+                    strokeWidth={2}
+                    className="mb-2 h-8 w-8 text-gray-300"
+                  />
+                  <p className="text-sm text-gray-400">No notifications</p>
+                </div>
+              ) : (
+                displayNotifications.map((notification, index) => {
+                  const isLast = index === displayNotifications.length - 1
+                  return (
+                    <div
+                      key={notification.id}
+                      className={cn(
+                        "group relative flex gap-3 transition-colors",
+                        !isLast && "border-b border-gray-100 pb-4"
                       )}
-                      {notification.attachment && (
-                        <div className="mt-3 flex items-center gap-2">
+                    >
+                      {/* System Icon */}
+                      <div className="flex-shrink-0 pt-0.5">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
                           <HugeiconsIcon
-                            icon={Attachment01Icon}
+                            icon={NotificationIcon}
                             strokeWidth={2}
-                            className="h-4 w-4 text-gray-400"
+                            className="h-5 w-5 text-gray-500"
                           />
-                          <span className="text-[13px] text-gray-500">
-                            {notification.attachment.name}
-                          </span>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[15px] leading-snug text-gray-900">
+                          {notification.message}
+                        </p>
+                        <p className="mt-1 text-[13px] text-gray-400">
+                          {notification.time}
+                        </p>
+                        {notification.hasAction && (
+                          <div className="mt-3 flex items-center gap-2">
+                            {notification.type === 'course' && notification.courseId && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  console.log('View course:', notification.courseId)
+                                  // Navigate to course
+                                }}
+                              >
+                                View Course
+                              </Button>
+                            )}
+                            {notification.type === 'certificate' && notification.certificateId && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  console.log('View certificate:', notification.certificateId)
+                                  // Navigate to certificate
+                                }}
+                              >
+                                View Certificate
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {notification.unread && (
+                        <div className="flex-shrink-0 pt-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                         </div>
                       )}
                     </div>
-                    {notification.unread && (
-                      <div className="flex-shrink-0 pt-2">
-                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1061,6 +1072,7 @@ export default function LearnerDashboardContainer() {
       <NotificationsDrawer
         open={notificationsDrawerOpen}
         onOpenChange={setNotificationsDrawerOpen}
+        onAction={handleNotificationAction}
       />
     </>
   )
