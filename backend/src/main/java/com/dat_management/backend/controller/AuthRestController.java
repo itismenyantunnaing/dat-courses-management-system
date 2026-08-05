@@ -5,7 +5,10 @@ import com.dat_management.backend.dto.ChangePasswordRequest;
 import com.dat_management.backend.dto.LoginRequest;
 import com.dat_management.backend.dto.VerifyCurrentPassword;
 import com.dat_management.backend.entity.Employee;
+import com.dat_management.backend.entity.SystemConfig;
 import com.dat_management.backend.repository.EmployeeRepository;
+import com.dat_management.backend.repository.SystemConfigRepository;
+
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -31,17 +34,20 @@ public class AuthRestController {
         private final JwtService jwtService;
         private final EmployeeRepository employeeRepository;
         private final PasswordEncoder passwordEncoder;
+        private final SystemConfigRepository systemConfigRepository;
 
         public AuthRestController(
                         AuthenticationManager authenticationManager,
                         JwtService jwtService,
                         EmployeeRepository userRepository,
-                        PasswordEncoder passwordEncoder) {
+                        PasswordEncoder passwordEncoder,
+                        SystemConfigRepository systemConfigRepository) {
 
                 this.authenticationManager = authenticationManager;
                 this.jwtService = jwtService;
                 this.employeeRepository = userRepository;
                 this.passwordEncoder = passwordEncoder;
+                this.systemConfigRepository = systemConfigRepository;
         }
 
         @PostMapping("/login")
@@ -71,8 +77,9 @@ public class AuthRestController {
                         int attempts = employee.getFailedLoginAttempts() + 1;
                         employee.setFailedLoginAttempts(attempts);
 
+                        int maxAttempts = getMaxLoginAttempts();
                         // 🔥 LOCK AFTER 3 ATTEMPTS
-                        if (attempts >= 3) {
+                        if (attempts >= maxAttempts) {
                                 employee.setAccountLockedUntil(LocalDateTime.now().plusMinutes(10));
                                 employee.setFailedLoginAttempts(0); // reset counter
                         }
@@ -201,5 +208,18 @@ public class AuthRestController {
                                 Map.of(
                                                 "message",
                                                 "Logout successful"));
+        }
+
+
+        //Helper method to get max login attempts
+        private int getMaxLoginAttempts() {
+            try {
+                SystemConfig config = systemConfigRepository.findById(1L)
+                        .orElseThrow(() -> new RuntimeException("System configuration not found"));
+                return config.getMaxLoginAttempts(); // Default to 5 if not set
+            } catch (Exception e) {
+                // Fallback to default value if config not available
+                return 5;
+            }
         }
 }
