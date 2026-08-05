@@ -120,54 +120,56 @@ public class EmployeeService {
                 .orElseThrow(() -> new RuntimeException("Deleted employee not found: " + id));
         return toDTO(e);
     }
-@Transactional(readOnly = true)
-public EmployeeWithSkillsResponseDTO getEmployeeProfile(String id) {
 
-    Employee employee = employeeRepository.findByIdAndIsDeletedFalse(id)
-            .orElseThrow(() -> new RuntimeException("Employee not found: " + id));
+    @Transactional(readOnly = true)
+    public EmployeeWithSkillsResponseDTO getEmployeeProfile(String id) {
 
-    // basic employee info
-    EmployeeWithSkillsResponseDTO dto = EmployeeWithSkillsResponseDTO.builder()
-            .id(employee.getId())
-            .name(employee.getName())
-            .email(employee.getEmail())
-            .doorlog(employee.getDoorlog())
-            .position(employee.getPosition())
-            .empStatus(employee.getEmpStatus())
-            .status(employee.getStatus())
-            .isCorePersonnel(employee.getIsCorePersonnel())
-            .hasJapanBusinessTrip(employee.getHasJapanBusinessTrip())
-            .notiSetting(employee.getNotiSetting())
-            .dob(employee.getDob())
-            .profilePhotoPath(employee.getProfilePhotoPath())
-            .createdAt(employee.getCreatedAt())
-            .updatedAt(employee.getUpdatedAt())
-            .role(employee.getRole() != null ? employee.getRole().getRoleName() : null)
-            .deptDir(employee.getDepartmentDir() != null
-                    ? employee.getDepartmentDir().getDeptName()
-                    : null)
-            .team(employee.getTeam() != null
-                    ? employee.getTeam().getTeamName()
-                    : null)
-            .deptDat(employee.getTeam() != null
-                    ? employee.getTeam().getDepartmentDat().getDeptName()
-                    : null)
-            .divName(employee.getTeam() != null
-                    ? employee.getTeam().getDepartmentDat().getDivision().getDivisionName()
-                    : null)
-            .build();
+        Employee employee = employeeRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + id));
 
-   EmployeeWithSkillsResponseDTO skillInfo =
-        skillSetService.getEmployeeWithAllSkills(employee.getId());
+        // basic employee info
+        EmployeeWithSkillsResponseDTO dto = EmployeeWithSkillsResponseDTO.builder()
+                .id(employee.getId())
+                .name(employee.getName())
+                .email(employee.getEmail())
+                .doorlog(employee.getDoorlog())
+                .position(employee.getPosition())
+                .empStatus(employee.getEmpStatus())
+                .status(employee.getStatus())
+                .isCorePersonnel(employee.getIsCorePersonnel())
+                .hasJapanBusinessTrip(employee.getHasJapanBusinessTrip())
+                .notiSetting(employee.getNotiSetting())
+                .dob(employee.getDob())
+                .profilePhotoPath(employee.getProfilePhotoPath())
+                .createdAt(employee.getCreatedAt())
+                .updatedAt(employee.getUpdatedAt())
+                .role(employee.getRole() != null ? employee.getRole().getRoleName() : null)
+                .deptDir(employee.getDepartmentDir() != null
+                        ? employee.getDepartmentDir().getDeptName()
+                        : null)
+                .team(employee.getTeam() != null
+                        ? employee.getTeam().getTeamName()
+                        : null)
+                .deptDat(employee.getTeam() != null
+                        ? employee.getTeam().getDepartmentDat().getDeptName()
+                        : null)
+                .divName(employee.getTeam() != null
+                        ? employee.getTeam().getDepartmentDat().getDivision().getDivisionName()
+                        : null)
+                .build();
 
-    dto.setLanguageSkill(skillInfo.getLanguageSkill());
-    dto.setManagementSkill(skillInfo.getManagementSkill());
-    dto.setDevelopmentSkills(skillInfo.getDevelopmentSkills());
-    dto.setTechnicalSkills(skillInfo.getTechnicalSkills());
-    dto.setJapaneseProfile(skillInfo.getJapaneseProfile());
+        EmployeeWithSkillsResponseDTO skillInfo =
+            skillSetService.getEmployeeWithAllSkills(employee.getId());
 
-    return dto;
-} 
+        dto.setLanguageSkill(skillInfo.getLanguageSkill());
+        dto.setManagementSkill(skillInfo.getManagementSkill());
+        dto.setDevelopmentSkills(skillInfo.getDevelopmentSkills());
+        dto.setTechnicalSkills(skillInfo.getTechnicalSkills());
+        dto.setJapaneseProfile(skillInfo.getJapaneseProfile());
+
+        return dto;
+    }
+
     // ── CREATE (single) ──────────────────────────────────────────────────────
 
     public EmployeeResponseDTO create(EmployeeRequestDTO dto) {

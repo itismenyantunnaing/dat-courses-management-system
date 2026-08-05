@@ -8,7 +8,11 @@ import { extractHolidayDataFromExcel } from "@/lib/Excel-extractor-Holiday"
 import { extractEmployeeDataFromExcel, validateEmployeeData, EmployeeExcelData } from "@/lib/Excel-extractor-Employee"
 import { extractCurrentTargetDataFromExcel, transformToApiFormat, validateCurrentTargetData, validateCurrentTargetDataWithEmployees, type CurrentTargetRow } from "@/lib/Excel-extractor-currentTarget";
 import { extractEmployeesFromExcel, parseTechnicalHeader, TECHNICAL_ABILITY_CONFIG, isYearsHeader, isExperienceHeader } from "@/lib/Excel-extractor-Skillset";
-import { exportEmployeesToExcel, exportEmployeesToCSV, exportEmployeesToPDF } from "@/lib/export/Export-employeesData";
+import {
+  exportEmployeesToExcel,
+  exportEmployeesToCSV,
+  exportEmployeesToPDF
+} from "@/lib/export/Export-employeesData";
 import { exportSkillsToCSV, exportSkillsToExcel, exportSkillsToPDF } from "@/lib/export/Export-skillsetData";
 import { exportHolidaysToExcel, exportHolidaysToCSV, exportHolidaysToPDF } from "@/lib/export/Export-holidayData";
 import { exportCurrentTargetToExcel, exportCurrentTargetToCSV, exportCurrentTargetToPDF } from "@/lib/export/Export-currentTargetData";
@@ -328,31 +332,31 @@ export const allTabs = [
       }
     },
     onExport: async (format: string) => {
-
-      // Get data from store
-      const store = (window as any).mainStore?.getState()
-      const { employee_data } = store || { employee_data: [] }
+      const store = (window as any).mainStore?.getState();
+      const { employee_data } = store || { employee_data: [] };
 
       if (!employee_data || employee_data.length === 0) {
-        alert("No employee data to export")
-        return
+        alert("No employee data to export");
+        return;
       }
 
       try {
         if (format === "excel" || format === "xlsx") {
-          await exportEmployeesToExcel(employee_data)
+          await exportEmployeesToExcel(employee_data, {
+            fileName: `Employees_${new Date().toISOString().split('T')[0]}.xlsx`
+          });
         } else if (format === "csv") {
-          await exportEmployeesToCSV(employee_data)
+          await exportEmployeesToCSV(employee_data);
         } else if (format === "pdf") {
-          await exportEmployeesToPDF(employee_data)
+          await exportEmployeesToPDF(employee_data);
         } else {
-          alert(`Export format "${format}" is not supported for employees.`)
+          alert(`Export format "${format}" is not supported for employees.`);
         }
       } catch (error) {
-        console.error("❌ Export failed:", error)
+        console.error("❌ Export failed:", error);
         alert(
           `Failed to export employees data: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
+        );
       }
     },
     onDelete: async (selectedItems: string[]) => {
@@ -1200,11 +1204,10 @@ export const allTabs = [
       }
     },
     onExport: async (format: string, language?: 'eng' | 'japan') => {
-      // Get data from store
-      const store = (window as any).mainStore?.getState()
+      const store = (window as any).mainStore?.getState();
       if (!store) {
-        alert("System store not initialized. Please refresh and try again.")
-        return
+        alert("System store not initialized. Please refresh and try again.");
+        return;
       }
 
       const {
@@ -1220,8 +1223,8 @@ export const allTabs = [
       } = store;
 
       if (!employee_data || employee_data.length === 0) {
-        alert("No employee data to export")
-        return
+        alert("No employee data to export");
+        return;
       }
 
       try {
@@ -1234,7 +1237,7 @@ export const allTabs = [
           languageSkill_data,
           managementScores_Data,
           employeeJapaneseLevel_Data,
-          dictionary // Pass dictionary for translations
+          dictionary
         };
 
         const options = {
@@ -1242,24 +1245,23 @@ export const allTabs = [
           showDeveloper: true,
           showTechnicalAbility: true,
           fileName: `Skills_Report_${new Date().toISOString().split("T")[0]}`,
-          language: language || 'eng' // Use the selected language
-        }
+          language: language || 'eng'
+        };
 
         if (format === "excel" || format === "xlsx") {
-          await exportSkillsToExcel(exportData, options)
+          await exportSkillsToExcel(exportData, options);
         } else if (format === "csv") {
-          await exportSkillsToCSV(exportData, options)
+          await exportSkillsToCSV(exportData, options);
         } else if (format === "pdf") {
-          await exportSkillsToPDF(exportData, options)
+          await exportSkillsToPDF(exportData, options);
         } else {
-          alert(`Export format "${format}" is not supported for skills data.`)
+          alert(`Export format "${format}" is not supported for skills data.`);
         }
-
       } catch (error) {
-        console.error("❌ Export failed:", error)
+        console.error("❌ Export failed:", error);
         alert(
           `Failed to export skills data: ${error instanceof Error ? error.message : "Unknown error"}`
-        )
+        );
       }
     },
   },
@@ -1693,7 +1695,10 @@ export const allTabs = [
           await exportCurrentTargetToExcel(
             employeeJapaneseLevel_Data,
             employee_data,
-            japaneseTargetDates_Data
+            japaneseTargetDates_Data,
+             {
+              templatePath: '/templates/current_target_template.xlsx', // 👈 Add this
+            }
           )
         } else if (format === "csv") {
           await exportCurrentTargetToCSV(

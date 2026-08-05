@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/preserve-manual-memoization */
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import {
   Table,
   TableBody,
@@ -290,26 +290,73 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     return result
   }
 
+  // Add this ref with the other state declarations
+  const hasLoadedRef = useRef(false)
+
+  // Replace the existing useEffect with this:
   useEffect(() => {
     const loadData = async () => {
+      // Skip if already loaded
+      if (hasLoadedRef.current) {
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
-      await Promise.all([
-        fetch_EmployeeData(),
-        fetch_EmployeeJapaneseLevel(),
-        fetch_SkillHeaders(),
-        fetch_SkillData(),
-        fetch_devCapHeaders(),
-        fetch_devCapData(),
-        fetch_languageSkillData(),
-        fetch_managementScoreData(),
-        fetch_dictionary()
-      ])
-      setIsLoading(false)
+
+      try {
+        const promises = []
+
+        if (!employee_data || employee_data.length === 0) {
+          promises.push(fetch_EmployeeData())
+        }
+
+        if (!employeeJapaneseLevel_Data || employeeJapaneseLevel_Data.length === 0) {
+          promises.push(fetch_EmployeeJapaneseLevel())
+        }
+
+        if (!skill_headers || skill_headers.length === 0) {
+          promises.push(fetch_SkillHeaders())
+        }
+
+        if (!skillData || skillData.length === 0) {
+          promises.push(fetch_SkillData())
+        }
+
+        if (!devCap_headers || devCap_headers.length === 0) {
+          promises.push(fetch_devCapHeaders())
+        }
+
+        if (!devCap_data || devCap_data.length === 0) {
+          promises.push(fetch_devCapData())
+        }
+
+        if (!languageSkill_data || languageSkill_data.length === 0) {
+          promises.push(fetch_languageSkillData())
+        }
+
+        if (!managementScores_Data || managementScores_Data.length === 0) {
+          promises.push(fetch_managementScoreData())
+        }
+
+        if (!dictionary || dictionary.length === 0) {
+          promises.push(fetch_dictionary())
+        }
+
+        if (promises.length > 0) {
+          await Promise.all(promises)
+        }
+
+        hasLoadedRef.current = true
+      } catch (error) {
+        console.error("❌ Error loading skills data:", error)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     loadData()
-  }, [fetch_EmployeeData, fetch_SkillHeaders, fetch_SkillData, fetch_devCapHeaders, fetch_devCapData, fetch_EmployeeJapaneseLevel, fetch_languageSkillData, fetch_managementScoreData, fetch_dictionary])
-
+  }, []) 
   // Employee data
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
@@ -369,7 +416,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       })
 
       setSkillMap(map)
-    } 
+    }
   }, [skillData])
 
   // Build devCap map for quick lookup: employee_id -> Map<developmentTypeName, { years, experience_process }>

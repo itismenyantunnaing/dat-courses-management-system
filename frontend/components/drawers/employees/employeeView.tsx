@@ -192,16 +192,20 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
     return skillData.filter((skill: any) => skill.employeeId === employee.id)
   }, [skillData, employee])
 
-  // Group skills by category
+  // Group skills by category or subcategory
   const groupedSkills = useMemo(() => {
     const grouped: Record<string, any[]> = {}
 
     employeeSkills.forEach((skill: any) => {
-      const category = skill.categoryName || "Uncategorized"
-      if (!grouped[category]) {
-        grouped[category] = []
+      // Use subCategoryName if category is empty, otherwise use category
+      const key = skill.categoryName?.includes("empty")
+        ? (skill.subCategoryName || "")
+        : skill.categoryName
+
+      if (!grouped[key]) {
+        grouped[key] = []
       }
-      grouped[category].push(skill)
+      grouped[key].push(skill)
     })
 
     return grouped

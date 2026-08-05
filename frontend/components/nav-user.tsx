@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/purity */
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -47,10 +47,10 @@ import { mainStore } from "@/store/mainStore"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const { 
-    profile, 
+  const {
+    profile,
     employeeProfile,
-    fetch_EmployeeProfile 
+    fetch_EmployeeProfile
   } = mainStore()
 
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
@@ -62,6 +62,10 @@ export function NavUser() {
     useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
+
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
 
   // Fetch employee profile when component mounts
   useEffect(() => {
@@ -130,13 +134,45 @@ export function NavUser() {
     }
   }
 
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent drawer from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when drawer closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    onOpenChange(newOpen)
+  }
+
+
   const handleSaveSettings = async (
     updatedConfig: any,
     updatedNotificationSettings: any
   ) => {
     setIsLoading(true)
     try {
-    
+
       setConfig(updatedConfig)
       setNotificationSettings(updatedNotificationSettings)
       setSettingsDialogOpen(false)
@@ -322,6 +358,7 @@ export function NavUser() {
         onOpenChange={setPersonalInfoDialogOpen}
         profile={displayProfile}
         onSave={handleSavePersonalInfo}
+        onDropdownOpenChange={handleDropdownOpenChange}
       />
 
       {/* Setting Dialog */}

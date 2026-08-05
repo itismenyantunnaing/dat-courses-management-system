@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -161,7 +160,7 @@ export function EditEmployeeDrawer({
         name: formData.name,
         email: formData.email,
         doorlog: formData.doorlog,
-        position: formData.role,
+        position:  "",
         emp_status: formData.emp_status,
         div_name: formData.div,
         dept_dat: formData.dept_dat,

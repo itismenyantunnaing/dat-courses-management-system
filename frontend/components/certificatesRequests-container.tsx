@@ -536,7 +536,6 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
     )
   }
 
-  console.log(selectedCertificateId)
 
   return (
     <>

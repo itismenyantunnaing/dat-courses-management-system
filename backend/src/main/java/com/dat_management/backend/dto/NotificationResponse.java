@@ -1,31 +1,40 @@
 package com.dat_management.backend.dto;
 
+import java.time.LocalDateTime;
+
 import com.dat_management.backend.entity.Notification;
+import com.dat_management.backend.entity.NotificationRecipient;
+
 import lombok.Builder;
 import lombok.Value;
-
-import java.time.LocalDateTime;
 
 @Value
 @Builder
 public class NotificationResponse {
+
     Integer id;
     Integer courseId;
     Integer certificateId;
+    String employeeId;
+    Boolean isRead;
     String type;
     String message;
-    boolean read;
     LocalDateTime createdAt;
 
-    public static NotificationResponse from(Notification n) {
+    public static NotificationResponse from(Notification notification , NotificationRecipient recipient) {
         return NotificationResponse.builder()
-                .id(n.getId())
-                .courseId(n.getCourse() != null ? n.getCourse().getId() : null)
-                .certificateId(n.getCertificate() != null ? n.getCertificate().getId() : null)
-                .type(n.getNotificationType() != null ? n.getNotificationType().name() : null)
-                .message(n.getMessage())
-                .read(Boolean.TRUE.equals(n.getIsRead()))
-                .createdAt(n.getCreatedAt())
+                .id(notification.getId())
+                .employeeId(recipient.getEmployee().getId())
+                .isRead(Boolean.TRUE.equals(recipient.getIsRead()))
+                .courseId(notification.getCourse() != null
+                        ? notification.getCourse().getId()
+                        : null)
+                .certificateId(notification.getCertificate() != null
+                        ? notification.getCertificate().getId()
+                        : null)
+                .type(notification.getNotificationType().name())
+                .message(notification.getMessage())
+                .createdAt(notification.getCreatedAt())
                 .build();
     }
 }

@@ -92,19 +92,21 @@ export function CertificateDetailDrawer({
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
-  const { update_CertificateData, fetch_CertificateData } = mainStore()
-
-  // Check if certificate is approved
-  const isApproved =
-    certificate?.verificationStatus?.toLowerCase() === "approved"
+  const { update_CertificateData, fetch_CertificateData, getUserId } = mainStore()
 
   // Reset edit mode when drawer closes
   useEffect(() => {
     if (!open) {
       setIsEditMode(false)
       setHasChanges(false)
+      setImageError(false)
     }
   }, [open])
+
+  // Reset image error when certificate changes
+  useEffect(() => {
+    setImageError(false)
+  }, [certificate?.id])
 
   if (!certificate) return null
 
@@ -156,9 +158,16 @@ export function CertificateDetailDrawer({
 
       if (result.includes("successfully")) {
         alert("✅ Certificate updated successfully!")
-        await fetch_CertificateData()
+        // Refresh data with the user ID
+        const userId = getUserId()
+        if (userId) {
+          await fetch_CertificateData(userId)
+        } else {
+          await fetch_CertificateData()
+        }
         onUpdateSuccess?.()
         setIsEditMode(false)
+        // Close the drawer after successful update
         onOpenChange(false)
       } else {
         alert("❌ " + result)
@@ -176,7 +185,8 @@ export function CertificateDetailDrawer({
   }
 
   const handleDeleteClick = () => {
-    if (isApproved) {
+    // Check if certificate is approved - don't allow deletion
+    if (status?.toLowerCase() === "approved") {
       alert("❌ Cannot delete an approved certificate")
       return
     }
@@ -225,6 +235,7 @@ export function CertificateDetailDrawer({
     }
     if (!newOpen) {
       setIsEditMode(false)
+      setHasChanges(false)
     }
     onOpenChange(newOpen)
   }
@@ -260,6 +271,7 @@ export function CertificateDetailDrawer({
                     variant="ghost"
                     size="icon"
                     onClick={handleCancelEdit}
+                    type="button"
                   >
                     <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
                   </Button>
@@ -267,12 +279,13 @@ export function CertificateDetailDrawer({
 
                 {isEditMode ? "Edit Certificate" : "Certificate Details"}
               </DrawerTitle>
-              {!isEditMode && !isApproved && (
+              {!isEditMode && status?.toLowerCase() !== "approved" && (
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={handleEditClick}
+                    type="button"
                   >
                     <HugeiconsIcon
                       icon={Edit03Icon}
@@ -284,6 +297,7 @@ export function CertificateDetailDrawer({
                     variant="destructive"
                     size="icon"
                     onClick={handleDeleteClick}
+                    type="button"
                   >
                     <HugeiconsIcon
                       icon={Delete02Icon}
@@ -291,6 +305,13 @@ export function CertificateDetailDrawer({
                       className="h-4 w-4"
                     />
                   </Button>
+                </div>
+              )}
+              {!isEditMode && status?.toLowerCase() === "approved" && (
+                <div className="text-sm text-muted-foreground">
+                  <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+                    Verified ✓
+                  </Badge>
                 </div>
               )}
             </div>
@@ -315,7 +336,7 @@ export function CertificateDetailDrawer({
                   isSubmitting={isSubmitting}
                   onChanges={handleChanges}
                   onDropdownOpenChange={handleDropdownOpenChange}
-                  disabled={isApproved}
+                  disabled={status?.toLowerCase() === "approved"}
                 />
               ) : (
                 // View Mode
@@ -370,6 +391,30 @@ export function CertificateDetailDrawer({
                     </span>
                   </div>
 
+                  {/* Employee Info */}
+                  <div className="rounded-lg border p-4">
+                    <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+                      Employee
+                    </h4>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage
+                          src={employeeAvatar}
+                          alt={employeeName}
+                        />
+                        <AvatarFallback>
+                          {getInitials(employeeName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{employeeName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {employeeEmail}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Remark */}
                   {certificate.remark && (
                     <>
@@ -384,7 +429,7 @@ export function CertificateDetailDrawer({
                   )}
 
                   {/* Verified By */}
-                  {isApproved && certificate.verifiedByEmployeeName && (
+                  {status?.toLowerCase() === "approved" && certificate.verifiedByEmployeeName && (
                     <>
                       <Separator />
                       <div>
@@ -436,6 +481,7 @@ export function CertificateDetailDrawer({
                   onClick={handleCancelEdit}
                   disabled={isSubmitting}
                   className="flex-1"
+                  type="button"
                 >
                   Cancel
                 </Button>
@@ -443,13 +489,14 @@ export function CertificateDetailDrawer({
                   className="flex-1"
                   onClick={handleFormSubmit}
                   disabled={isSubmitting || !hasChanges}
+                  type="button"
                 >
                   {isSubmitting ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             ) : (
               <DrawerClose asChild>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" type="button">
                   Close
                 </Button>
               </DrawerClose>
@@ -479,6 +526,7 @@ export function CertificateDetailDrawer({
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isDeleting}
               className="flex-1"
+              type="button"
             >
               Cancel
             </Button>
@@ -487,6 +535,7 @@ export function CertificateDetailDrawer({
               onClick={handleDeleteConfirm}
               disabled={isDeleting}
               className="flex-1"
+              type="button"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </Button>

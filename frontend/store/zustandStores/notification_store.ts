@@ -1,3 +1,4 @@
+// store/zustandStores/notification_store.ts
 import { NotificationSettings } from "@/types/notification";
 import { NotificationStoreType } from "../types";
 
@@ -8,13 +9,40 @@ type StoreGet = () => NotificationStoreType;
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-
 export const notificationStore = (set: StoreSet, get: StoreGet): NotificationStoreType => ({
   notifications: [],
   unreadCount: 0,
   notificationSettings: null,
   isLoading: false,
   isUpdating: false,
+
+  // ✅ NEW: Add WebSocket notification to mainStore
+  addWebSocketNotification: (wsNotification: any) => {
+    const { notifications, unreadCount } = get();
+    
+    // Convert to mainStore format
+    const dbNotification = {
+      id: wsNotification.notificationId || wsNotification.id || Date.now(),
+      message: wsNotification.message || 'New notification',
+      type: wsNotification.notificationType || wsNotification.type?.toUpperCase() || 'COURSE',
+      read: false,
+      createdAt: wsNotification.createdAt || new Date().toISOString(),
+      courseId: wsNotification.courseId || wsNotification.referenceId,
+      certificateId: wsNotification.certificateId,
+    };
+    
+    // Check if already exists (avoid duplicates)
+    const exists = notifications.some((n: any) => n.id === dbNotification.id);
+    if (!exists) {
+      set({
+        notifications: [dbNotification, ...notifications],
+        unreadCount: unreadCount + 1,
+      });
+      console.log('✅ Notification synced to mainStore');
+      return true;
+    }
+    return false;
+  },
 
   fetch_Notifications: async (employeeId: string, unreadOnly: boolean = false) => {
     if (!employeeId) {
@@ -162,7 +190,6 @@ export const notificationStore = (set: StoreSet, get: StoreGet): NotificationSto
       return `Failed to mark all notifications as read: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   },
-
 
   // Fetch notification notificationSettings for an employee
   fetch_NotificationSettings: async (employeeId: string) => {

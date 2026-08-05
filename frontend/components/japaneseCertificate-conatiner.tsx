@@ -48,7 +48,7 @@ const statusLabels = {
   rejected: "Rejected",
 }
 
-interface CertificatesRequestsContainerProps {
+interface JapaneseCertificateContainerProps {
   selectedCertificateId?: string | number | null
 }
 
@@ -75,7 +75,7 @@ const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
   )
 }
 
-export function JapaneseCertificateContainer({ selectedCertificateId }: CertificatesRequestsContainerProps) {
+export function JapaneseCertificateContainer({ selectedCertificateId }: JapaneseCertificateContainerProps) {
   const {
     certificateData,
     fetch_CertificateData,
@@ -93,6 +93,14 @@ export function JapaneseCertificateContainer({ selectedCertificateId }: Certific
 
   const searchPlaceholder = "Search certificates..."
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const hasProcessedSelectedIdRef = useRef(false)
+
+  // Reset processed flag when selectedCertificateId changes
+  useEffect(() => {
+    if (selectedCertificateId) {
+      hasProcessedSelectedIdRef.current = false
+    }
+  }, [selectedCertificateId])
 
   // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -114,6 +122,48 @@ export function JapaneseCertificateContainer({ selectedCertificateId }: Certific
       fetch_CertificateData(userId)
     }
   }, [fetch_CertificateData, getUserId])
+
+  // Effect to find and open the certificate when selectedCertificateId is provided
+  useEffect(() => {
+    // Only process if:
+    // 1. We have a selectedCertificateId
+    // 2. We're not loading
+    // 3. We haven't processed this ID yet
+    // 4. We have certificates loaded
+    if (!selectedCertificateId || isLoading || hasProcessedSelectedIdRef.current || certificateData.length === 0) {
+      return
+    }
+
+    // Find the certificate (convert ID to string for comparison)
+    const certIdStr = selectedCertificateId.toString()
+    const foundCertificate = certificateData.find(c => c.id === certIdStr)
+
+    if (foundCertificate) {
+      // Open the certificate detail drawer
+      handleCardClick(foundCertificate)
+      hasProcessedSelectedIdRef.current = true
+      return
+    }
+
+    // If certificate not found, try to refresh data
+    console.warn(`Certificate with ID ${selectedCertificateId} not found. Refreshing...`)
+    const userId = getUserId()
+    if (userId) {
+      fetch_CertificateData(userId).then(() => {
+        // After refresh, check again
+        const refreshedCertificate = certificateData.find(c => c.id === certIdStr)
+        if (refreshedCertificate) {
+          console.log("✅ Found certificate after refresh:", refreshedCertificate.id)
+          handleCardClick(refreshedCertificate)
+        } else {
+          console.error(`Certificate with ID ${selectedCertificateId} not found after refresh`)
+        }
+        hasProcessedSelectedIdRef.current = true
+      })
+    } else {
+      hasProcessedSelectedIdRef.current = true
+    }
+  }, [selectedCertificateId, certificateData, isLoading, fetch_CertificateData, getUserId])
 
   // Count certificates by status
   const statusCounts = useMemo(() => {

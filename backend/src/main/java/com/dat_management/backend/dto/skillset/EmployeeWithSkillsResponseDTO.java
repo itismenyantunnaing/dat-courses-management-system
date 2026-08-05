@@ -107,6 +107,7 @@ public class EmployeeWithSkillsResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class TechnicalSkillInfo {
+        private Integer id;  
         private String skillName;
         private BigDecimal yearsOfExperience;
         private String experienceLevel;

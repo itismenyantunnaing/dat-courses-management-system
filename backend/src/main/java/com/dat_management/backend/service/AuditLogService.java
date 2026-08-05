@@ -16,8 +16,9 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,8 +47,8 @@ public class AuditLogService {
                     .action(action)
                     .module(module)
                     .description(description)
-                    .oldValue(oldValue != null ? String.valueOf(oldValue) : null)
-                    .newValue(newValue != null ? String.valueOf(newValue) : null)
+                    .oldValue(toJson(oldValue))
+                    .newValue(toJson(newValue))
                     .ipAddress(extractIp(request))
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -58,18 +59,18 @@ public class AuditLogService {
     }
 
     private String currentEmployeeId() {
-    try {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()
-                || auth instanceof AnonymousAuthenticationToken
-                || "anonymousUser".equals(auth.getName())) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated()
+                    || auth instanceof AnonymousAuthenticationToken
+                    || "anonymousUser".equals(auth.getName())) {
+                return "SYSTEM";
+            }
+            return auth.getName();
+        } catch (Exception e) {
             return "SYSTEM";
         }
-        return auth.getName();
-    } catch (Exception e) {
-        return "SYSTEM";
     }
-}
 
     // ==================== CRUD API ====================
 
@@ -78,8 +79,8 @@ public class AuditLogService {
                 .employeeId(dto.getEmployeeId())
                 .action(dto.getAction())
                 .module(dto.getModule())
-                .oldValue(dto.getOldValue())
-                .newValue(dto.getNewValue())
+                .oldValue(toJson(dto.getOldValue()))
+                .newValue(toJson(dto.getNewValue()))
                 .description(dto.getDescription())
                 .ipAddress(extractIp(request))
                 .createdAt(LocalDateTime.now())
@@ -92,8 +93,8 @@ public class AuditLogService {
                 .employeeId(dto.getEmployeeId())
                 .action(dto.getAction())
                 .module(dto.getModule())
-                .oldValue(dto.getOldValue())
-                .newValue(dto.getNewValue())
+                .oldValue(toJson(dto.getOldValue()))
+                .newValue(toJson(dto.getNewValue()))
                 .description(dto.getDescription())
                 .ipAddress(dto.getIpAddress())
                 .createdAt(LocalDateTime.now())
@@ -114,33 +115,29 @@ public class AuditLogService {
     }
 
     public AuditLogResponseDTO update(Integer id, AuditLogRequestDTO dto) {
-    AuditLog entry = auditLogRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Audit log not found with id: " + id));
+        AuditLog entry = auditLogRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Audit log not found with id: " + id));
 
-    String beforeSnapshot = snapshot(entry);
+        // Store the current state as old value
+        String beforeSnapshot = toJson(entry);
+        
+        // Update the entry with new values
+        entry.setEmployeeId(dto.getEmployeeId());
+        entry.setAction(dto.getAction());
+        entry.setModule(dto.getModule());
+        entry.setDescription(dto.getDescription());
+        if (dto.getIpAddress() != null) {
+            entry.setIpAddress(dto.getIpAddress());
+        }
 
-    entry.setEmployeeId(dto.getEmployeeId());
-    entry.setAction(dto.getAction());
-    entry.setModule(dto.getModule());
-    entry.setDescription(dto.getDescription());
-    if (dto.getIpAddress() != null) {
-        entry.setIpAddress(dto.getIpAddress());
+        // Store the new state as new value
+        String afterSnapshot = toJson(entry);
+
+        entry.setOldValue(beforeSnapshot);
+        entry.setNewValue(afterSnapshot);
+
+        return toDTO(auditLogRepository.save(entry));
     }
-
-    String afterSnapshot = snapshot(entry);
-
-    entry.setOldValue(beforeSnapshot);
-    entry.setNewValue(afterSnapshot);
-
-    return toDTO(auditLogRepository.save(entry));
-}
-
-private String snapshot(AuditLog entry) {
-    return String.format(
-            "{employeeId=%s, action=%s, module=%s, description=%s, ipAddress=%s}",
-            entry.getEmployeeId(), entry.getAction(), entry.getModule(),
-            entry.getDescription(), entry.getIpAddress());
-}
 
     public void delete(Integer id) {
         if (!auditLogRepository.existsById(id)) {
@@ -227,5 +224,205 @@ private String snapshot(AuditLog entry) {
                 .ipAddress(entry.getIpAddress())
                 .createdAt(entry.getCreatedAt())
                 .build();
+    }
+
+    // ==================== JSON Serialization Methods ====================
+
+    /**
+     * Convert any object to JSON string without external libraries
+     */
+    private String toJson(Object value) {
+        if (value == null) {
+            return "null";
+        }
+
+        // Handle String
+        if (value instanceof String) {
+            return "\"" + escapeJson((String) value) + "\"";
+        }
+
+        // Handle primitive wrappers
+        if (value instanceof Number || value instanceof Boolean) {
+            return String.valueOf(value);
+        }
+
+        // Handle Enum
+        if (value instanceof Enum<?>) {
+            return "\"" + escapeJson(((Enum<?>) value).name()) + "\"";
+        }
+
+        // Handle Map
+        if (value instanceof Map) {
+            return mapToJson((Map<?, ?>) value);
+        }
+
+        // Handle List
+        if (value instanceof List) {
+            return listToJson((List<?>) value);
+        }
+
+        // Handle Array
+        if (value.getClass().isArray()) {
+            return arrayToJson(value);
+        }
+
+        // Handle LocalDateTime and other date types
+        if (value instanceof LocalDateTime) {
+            return "\"" + escapeJson(((LocalDateTime) value).toString()) + "\"";
+        }
+
+        // For other objects, use reflection to create JSON
+        try {
+            return objectToJson(value);
+        } catch (Exception e) {
+            // Fallback to toString with escaping
+            return "\"" + escapeJson(value.toString()) + "\"";
+        }
+    }
+
+    /**
+     * Convert Map to JSON
+     */
+    private String mapToJson(Map<?, ?> map) {
+        if (map == null) {
+            return "null";
+        }
+
+        StringBuilder json = new StringBuilder("{");
+        int count = 0;
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (count > 0) {
+                json.append(",");
+            }
+            String key = entry.getKey() != null ? escapeJson(entry.getKey().toString()) : "null";
+            json.append("\"").append(key).append("\":").append(toJson(entry.getValue()));
+            count++;
+        }
+        json.append("}");
+        return json.toString();
+    }
+
+    /**
+     * Convert List to JSON
+     */
+    private String listToJson(List<?> list) {
+        if (list == null) {
+            return "null";
+        }
+
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) {
+                json.append(",");
+            }
+            json.append(toJson(list.get(i)));
+        }
+        json.append("]");
+        return json.toString();
+    }
+
+    /**
+     * Convert Array to JSON
+     */
+    private String arrayToJson(Object array) {
+        if (array == null) {
+            return "null";
+        }
+
+        int length = java.lang.reflect.Array.getLength(array);
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < length; i++) {
+            if (i > 0) {
+                json.append(",");
+            }
+            Object element = java.lang.reflect.Array.get(array, i);
+            json.append(toJson(element));
+        }
+        json.append("]");
+        return json.toString();
+    }
+
+    /**
+     * Convert any object to JSON using reflection
+     */
+    private String objectToJson(Object obj) throws IllegalAccessException {
+        if (obj == null) {
+            return "null";
+        }
+
+        Class<?> clazz = obj.getClass();
+        Field[] fields = clazz.getDeclaredFields();
+
+        StringBuilder json = new StringBuilder("{");
+        int count = 0;
+
+        for (Field field : fields) {
+            // Skip synthetic and static fields
+            if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+
+            field.setAccessible(true);
+            Object value = field.get(obj);
+
+            if (count > 0) {
+                json.append(",");
+            }
+
+            String fieldName = escapeJson(field.getName());
+            json.append("\"").append(fieldName).append("\":").append(toJson(value));
+            count++;
+        }
+
+        json.append("}");
+        return json.toString();
+    }
+
+    /**
+     * Escape special characters for JSON
+     */
+    private String escapeJson(String input) {
+        if (input == null) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (char c : input.toCharArray()) {
+            switch (c) {
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '/':
+                    sb.append("\\/");
+                    break;
+                case '\b':
+                    sb.append("\\b");
+                    break;
+                case '\f':
+                    sb.append("\\f");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                default:
+                    // Handle other control characters
+                    if (c < 32 || c == 127) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+                    break;
+            }
+        }
+        return sb.toString();
     }
 }

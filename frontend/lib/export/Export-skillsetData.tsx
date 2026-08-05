@@ -1,6 +1,5 @@
-// lib/export/Export-skillset.ts
-
-import * as XLSX from 'xlsx';
+// lib/export/Export-skillsetData.ts
+import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
 export interface ExportSkillData {
@@ -12,7 +11,7 @@ export interface ExportSkillData {
   languageSkill_data: any[];
   managementScores_Data: any[];
   employeeJapaneseLevel_Data?: any[];
-  dictionary?: any[]; // Add dictionary for translations
+  dictionary?: any[];
 }
 
 export interface ExportSkillOptions {
@@ -20,7 +19,7 @@ export interface ExportSkillOptions {
   showDeveloper?: boolean;
   showTechnicalAbility?: boolean;
   fileName?: string;
-  language?: 'eng' | 'japan'; // Add language option
+  language?: 'eng' | 'japan';
 }
 
 type GroupedSkill = {
@@ -32,22 +31,19 @@ type GroupedSkill = {
 // Helper function to translate text
 function translateText(text: string, language: 'eng' | 'japan', dictionary: any[]): string {
   if (language === 'eng' || !text) return text;
-  
-  // Create translation map
+
   const translationMap = new Map<string, string>();
   if (dictionary && Array.isArray(dictionary)) {
     dictionary.forEach((entry: any) => {
-      translationMap.set(entry.englishText.toLowerCase(), entry.japaneseText);
+      translationMap.set(entry.englishText?.toLowerCase() || '', entry.japaneseText || '');
     });
   }
-  
-  // Try exact match first
+
   const lowerText = text.toLowerCase();
   if (translationMap.has(lowerText)) {
     return translationMap.get(lowerText)!;
   }
-  
-  // Try word by word
+
   const words = text.split(/\b/);
   const translatedWords = words.map((word) => {
     const trimmed = word.trim();
@@ -55,12 +51,12 @@ function translateText(text: string, language: 'eng' | 'japan', dictionary: any[
     const translated = translationMap.get(trimmed.toLowerCase());
     return translated || word;
   });
-  
+
   return translatedWords.join('');
 }
 
 /**
- * Build the data structure for export - mirrors the UI table exactly
+ * Build the data structure for export
  */
 function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
   const {
@@ -82,7 +78,6 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     dictionary = []
   } = data;
 
-  // Helper to translate text based on language
   const t = (text: string) => translateText(text, language, dictionary);
 
   // Build Japanese level map
@@ -99,7 +94,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     skillData.forEach((skill: any) => {
       const employeeId = skill.employee_id || skill.employeeId;
       if (!employeeId) return;
-      
+
       if (!skillMap.has(employeeId)) {
         skillMap.set(employeeId, new Map());
       }
@@ -117,7 +112,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     devCap_data.forEach((devCap: any) => {
       const employeeId = devCap.employee_id || devCap.employeeId;
       if (!employeeId) return;
-      
+
       if (!devCapMap.has(employeeId)) {
         devCapMap.set(employeeId, new Map());
       }
@@ -135,7 +130,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     languageSkill_data.forEach((skill: any) => {
       const employeeId = skill.employee_id || skill.employeeId;
       if (!employeeId) return;
-      
+
       languageSkillMap.set(employeeId, {
         language_skill_level: skill.language_skill_level || skill.languageSkillLevel || null,
         jlpt_highest_level: skill.jlpt_highest_level || null
@@ -153,7 +148,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     });
   }
 
-  // Build dynamic skills list from skill_headers (same as UI)
+  // Build dynamic skills list
   const dynamicSkillsList: { id: number; name: string; category: string; sub_category: string }[] = [];
   if (skill_headers && skill_headers.length > 0) {
     skill_headers.forEach((category: any) => {
@@ -177,7 +172,7 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     });
   }
 
-  // Group skills by category (same as UI's dynamicSkillsByCategory)
+  // Group skills by category
   const dynamicSkillsByCategory: Record<string, GroupedSkill[]> = {};
   if (skill_headers && skill_headers.length > 0) {
     skill_headers.forEach((category: any) => {
@@ -201,12 +196,13 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     });
   }
 
-  // Define headers with translation
+  // Define headers
   const employeeHeaders = [
     { field: "team", header_name: t("Team") },
     { field: "staff_id", header_name: t("ID") },
     { field: "name", header_name: t("Name") },
     { field: "dept", header_name: t("Name of the commissioning department *Select from the dropdown menu") },
+    { field: "rank", header_name: t("Rank *Select from the dropdown menu") },
     { field: "is_core_personnel", header_name: t("Core personnel *FPT only") },
     { field: "has_japan_business_trip", header_name: t("Whether or not you have a business trip to Japan") },
   ];
@@ -224,18 +220,15 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     { field: "jlpt_nat_score", header_name: t("JLPT/NAT (N1~N5)") },
   ];
 
-  // ============================================================
-  // CALCULATE TOTAL COLUMNS - must match UI exactly
-  // ============================================================
-  const empColCount = employeeHeaders.length; // 6
-  const adminColCount = showAdministrator ? administratorHeaders.length : 0; // 5
-  const devCapHeadersList = devCap_headers || [];
-  const langColCount = showDeveloper ? languageSkillHeaders.length : 0; // 2
-  const devCapColCount = showDeveloper ? devCapHeadersList.length * 2 : 0;
+  // Calculate total columns
+  const empColCount = employeeHeaders.length;
+  const adminColCount = showAdministrator ? administratorHeaders.length : 0;
+  const langColCount = showDeveloper ? languageSkillHeaders.length : 0;
+  const devCapColCount = showDeveloper ? devCap_headers.length * 2 : 0;
   const techColCount = showTechnicalAbility ? dynamicSkillsList.length * 2 : 0;
   const totalCols = empColCount + adminColCount + langColCount + devCapColCount + techColCount;
 
-  // Sort categories by minimum skill_id (same as UI)
+  // Sort categories
   const sortedCategories = Object.entries(dynamicSkillsByCategory)
     .sort((a, b) => {
       const aMinId = Math.min(...a[1].map((s) => s.skill_id));
@@ -243,83 +236,87 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
       return aMinId - bMinId;
     });
 
-  // ============================================================
-  // BUILD HEADER ROWS - Each row is totalCols wide, one cell per column
-  // ============================================================
+  // Build header rows
   const row1: any[] = new Array(totalCols).fill('');
   const row2: any[] = new Array(totalCols).fill('');
   const row3: any[] = new Array(totalCols).fill('');
   const row4: any[] = new Array(totalCols).fill('');
   const row5: any[] = new Array(totalCols).fill('');
-  const merges: XLSX.Range[] = [];
+  const merges: { top: number; left: number; bottom: number; right: number }[] = [];
 
-  // --- Employee headers: rowSpan=5 (rows 0-4) ---
+  // Track section boundaries for coloring
+  const sectionBoundaries: { start: number; end: number; section: string }[] = [];
+
+  // --- Employee headers ---
+  const empStart = 0;
+  const empEnd = empColCount - 1;
+  sectionBoundaries.push({ start: empStart, end: empEnd, section: 'employee' });
+
   for (let i = 0; i < empColCount; i++) {
     row1[i] = employeeHeaders[i].header_name;
-    merges.push({ s: { r: 0, c: i }, e: { r: 4, c: i } });
+    merges.push({ top: 0, left: i, bottom: 4, right: i });
   }
 
   let col = empColCount;
 
   // --- Administrator section ---
+  let adminStart = -1;
+  let adminEnd = -1;
   if (showAdministrator) {
-    const adminStart = col;
-    // ROW 1: "Administrator" spans 5 columns
+    adminStart = col;
+    adminEnd = col + adminColCount - 1;
+    sectionBoundaries.push({ start: adminStart, end: adminEnd, section: 'administrator' });
+
     row1[adminStart] = t("Administrator");
-    merges.push({ s: { r: 0, c: adminStart }, e: { r: 0, c: adminStart + 4 } });
+    merges.push({ top: 0, left: adminStart, bottom: 0, right: adminStart + 4 });
 
-    // ROW 2: "Management experience (Levels 1-5)" with rowSpan=4 (rows 1-4)
     row2[adminStart] = administratorHeaders[0].header_name;
-    merges.push({ s: { r: 1, c: adminStart }, e: { r: 4, c: adminStart } });
+    merges.push({ top: 1, left: adminStart, bottom: 4, right: adminStart });
 
-    // ROW 2: "management ability" spans 4 columns (adminStart+1 to adminStart+4)
     row2[adminStart + 1] = t("management ability");
-    merges.push({ s: { r: 1, c: adminStart + 1 }, e: { r: 1, c: adminStart + 4 } });
+    merges.push({ top: 1, left: adminStart + 1, bottom: 1, right: adminStart + 4 });
 
-    // ROW 3: Individual management ability headers with rowSpan=3 (rows 2-4)
     for (let i = 1; i < administratorHeaders.length; i++) {
       row3[adminStart + i] = administratorHeaders[i].header_name;
-      merges.push({ s: { r: 2, c: adminStart + i }, e: { r: 4, c: adminStart + i } });
+      merges.push({ top: 2, left: adminStart + i, bottom: 4, right: adminStart + i });
     }
 
     col += adminColCount;
   }
 
   // --- Developer section ---
+  let devStart = -1;
+  let devEnd = -1;
   if (showDeveloper) {
-    const devStart = col;
+    devStart = col;
     const devTotalCols = langColCount + devCapColCount;
+    devEnd = col + devTotalCols - 1;
+    sectionBoundaries.push({ start: devStart, end: devEnd, section: 'developer' });
 
-    // ROW 1: "Developer (DIR and YSX tasks only)" spans all developer columns
     row1[devStart] = t("Developer (DIR and YSX tasks only)");
-    merges.push({ s: { r: 0, c: devStart }, e: { r: 0, c: devStart + devTotalCols - 1 } });
+    merges.push({ top: 0, left: devStart, bottom: 0, right: devStart + devTotalCols - 1 });
 
-    // ROW 2: "language skills" spans 2 columns
     row2[devStart] = t("language skills");
-    merges.push({ s: { r: 1, c: devStart }, e: { r: 1, c: devStart + 1 } });
+    merges.push({ top: 1, left: devStart, bottom: 1, right: devStart + 1 });
 
-    // ROW 3: language skill sub-headers with rowSpan=3 (rows 2-4)
     for (let i = 0; i < languageSkillHeaders.length; i++) {
       row3[devStart + i] = languageSkillHeaders[i].header_name;
-      merges.push({ s: { r: 2, c: devStart + i }, e: { r: 4, c: devStart + i } });
+      merges.push({ top: 2, left: devStart + i, bottom: 4, right: devStart + i });
     }
 
-    // ROW 2: "Development capabilities" if devCap headers exist
-    if (devCapHeadersList.length > 0) {
+    if (devCap_headers.length > 0) {
       const devCapStart = devStart + langColCount;
       row2[devCapStart] = t("Development capabilities");
-      merges.push({ s: { r: 1, c: devCapStart }, e: { r: 1, c: devCapStart + devCapColCount - 1 } });
+      merges.push({ top: 1, left: devCapStart, bottom: 1, right: devCapStart + devCapColCount - 1 });
 
-      // ROW 3: Individual devCap type names with rowSpan=2, colSpan=2 (rows 2-3)
-      devCapHeadersList.forEach((header: any, index: number) => {
+      devCap_headers.forEach((header: any, index: number) => {
         const headerCol = devCapStart + index * 2;
         const typeName = header.developmentTypeName || header.development_type_name || '';
         row3[headerCol] = t(typeName);
-        merges.push({ s: { r: 2, c: headerCol }, e: { r: 3, c: headerCol + 1 } });
+        merges.push({ top: 2, left: headerCol, bottom: 3, right: headerCol + 1 });
       });
 
-      // ROW 5: Years/Experience sub-headers for each devCap
-      devCapHeadersList.forEach((_: any, index: number) => {
+      devCap_headers.forEach((_: any, index: number) => {
         const headerCol = devCapStart + index * 2;
         row5[headerCol] = t("Years");
         row5[headerCol + 1] = t("Experience");
@@ -330,22 +327,22 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
   }
 
   // --- Technical Ability section ---
+  let techStart = -1;
+  let techEnd = -1;
   if (showTechnicalAbility) {
-    const techStart = col;
+    techStart = col;
+    techEnd = col + techColCount - 1;
+    if (techColCount > 0) {
+      sectionBoundaries.push({ start: techStart, end: techEnd, section: 'technical' });
+    }
 
-    // ROW 1: "Technical Ability" spans all technical columns
     if (techColCount > 0) {
       row1[techStart] = t("Technical Ability");
-      if (skill_headers?.length === 0) {
-        merges.push({ s: { r: 0, c: techStart }, e: { r: 4, c: techStart } });
-      } else {
-        merges.push({ s: { r: 0, c: techStart }, e: { r: 0, c: techStart + techColCount - 1 } });
-      }
+      merges.push({ top: 0, left: techStart, bottom: 0, right: techStart + techColCount - 1 });
     } else {
       row1[techStart] = t("Technical Ability");
     }
 
-    // Now build ROW 2, ROW 3, ROW 4 for technical skills
     let techCol = techStart;
 
     sortedCategories.forEach(([categoryName, skills]) => {
@@ -365,8 +362,8 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
 
         const sortedSubs = Object.entries(subCategoryMap)
           .sort((a, b) => {
-            const aMinId = Math.min(...a[1].skills.map(s => s.skill_id));
-            const bMinId = Math.min(...b[1].skills.map(s => s.skill_id));
+            const aMinId = Math.min(...a[1].skills.map((s: GroupedSkill) => s.skill_id));
+            const bMinId = Math.min(...b[1].skills.map((s: GroupedSkill) => s.skill_id));
             return aMinId - bMinId;
           });
 
@@ -376,17 +373,17 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
           if (isCategoryEmpty && subCategoryName === '') {
             sortedSubSkills.forEach((skill) => {
               row2[techCol] = skill.skill_name;
-              merges.push({ s: { r: 1, c: techCol }, e: { r: 3, c: techCol + 1 } });
+              merges.push({ top: 1, left: techCol, bottom: 3, right: techCol + 1 });
               row5[techCol] = t("Years");
               row5[techCol + 1] = t("Experience");
               techCol += 2;
             });
           } else {
             row2[techCol] = subCategoryName || t("Uncategorized");
-            merges.push({ s: { r: 1, c: techCol }, e: { r: 2, c: techCol + count - 1 } });
+            merges.push({ top: 1, left: techCol, bottom: 2, right: techCol + count - 1 });
             sortedSubSkills.forEach((skill) => {
               row4[techCol] = skill.skill_name;
-              merges.push({ s: { r: 3, c: techCol }, e: { r: 3, c: techCol + 1 } });
+              merges.push({ top: 3, left: techCol, bottom: 3, right: techCol + 1 });
               row5[techCol] = t("Years");
               row5[techCol + 1] = t("Experience");
               techCol += 2;
@@ -401,14 +398,14 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
         if (hasOnlyEmptySubCategories) {
           sortedSkills.forEach((skill) => {
             row2[techCol] = skill.skill_name;
-            merges.push({ s: { r: 1, c: techCol }, e: { r: 3, c: techCol + 1 } });
+            merges.push({ top: 1, left: techCol, bottom: 3, right: techCol + 1 });
             row5[techCol] = t("Years");
             row5[techCol + 1] = t("Experience");
             techCol += 2;
           });
         } else {
           row2[techCol] = categoryName;
-          merges.push({ s: { r: 1, c: techCol }, e: { r: 1, c: techCol + sortedSkills.length * 2 - 1 } });
+          merges.push({ top: 1, left: techCol, bottom: 1, right: techCol + sortedSkills.length * 2 - 1 });
 
           const subCategoryMap: Record<string, { count: number; skills: GroupedSkill[] }> = {};
           sortedSkills.forEach((skill) => {
@@ -423,19 +420,19 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
           let subCol = techCol;
           Object.entries(subCategoryMap)
             .sort((a, b) => {
-              const aMinId = Math.min(...a[1].skills.map(s => s.skill_id));
-              const bMinId = Math.min(...b[1].skills.map(s => s.skill_id));
+              const aMinId = Math.min(...a[1].skills.map((s: GroupedSkill) => s.skill_id));
+              const bMinId = Math.min(...b[1].skills.map((s: GroupedSkill) => s.skill_id));
               return aMinId - bMinId;
             })
             .forEach(([subCategoryName, { count }]) => {
               row3[subCol] = subCategoryName;
-              merges.push({ s: { r: 2, c: subCol }, e: { r: 2, c: subCol + count - 1 } });
+              merges.push({ top: 2, left: subCol, bottom: 2, right: subCol + count - 1 });
               subCol += count;
             });
 
           sortedSkills.forEach((skill) => {
             row4[techCol] = skill.skill_name;
-            merges.push({ s: { r: 3, c: techCol }, e: { r: 3, c: techCol + 1 } });
+            merges.push({ top: 3, left: techCol, bottom: 3, right: techCol + 1 });
             row5[techCol] = t("Years");
             row5[techCol + 1] = t("Experience");
             techCol += 2;
@@ -447,22 +444,21 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
 
   const headerRows = [row1, row2, row3, row4, row5];
 
-  // ============================================================
-  // DATA ROWS - Translate data values
-  // ============================================================
+  // Build data rows
   const dataRows: any[][] = [];
   employee_data.forEach((employee: any) => {
     const row: any[] = [];
-    
-    // Employee data (6 columns) - translate values
-    row.push(t(employee.team || '-'));
+
+    // Employee data
+    row.push(employee.team || '-');
     row.push(employee.id || '-');
     row.push(employee.name || '-');
-    row.push(t(employee.dept_dir || '-'));
-    row.push(t(employee.is_core_personnel ? 'Yes' : 'No'));
-    row.push(t(employee.has_japan_business_trip ? 'Yes' : 'No'));
-    
-    // Administrator data (5 columns)
+    row.push(employee.dept_dir || '-');
+    row.push(employee.rank || '-');
+    row.push(employee.is_core_personnel ? 'Yes' : 'No');
+    row.push(employee.has_japan_business_trip ? 'Yes' : 'No');
+
+    // Administrator data
     if (showAdministrator) {
       const score = managementScoresMap.get(employee.id);
       administratorHeaders.forEach((header) => {
@@ -470,42 +466,43 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
         row.push(value !== undefined && value !== null ? value : '-');
       });
     }
-    
+
     // Developer data
     if (showDeveloper) {
       const langSkill = languageSkillMap.get(employee.id);
       const langLevel = langSkill?.language_skill_level;
-      row.push(langLevel ? `${langLevel}` : '-');
+      row.push(langLevel !== null && langLevel !== undefined ? `${langLevel}` : '-');
       const jlptLevel = japaneseLevelMap.get(employee.id) || langSkill?.jlpt_highest_level;
-      row.push(t(jlptLevel || '-'));
-      
-      (devCapHeadersList).forEach((header: any) => {
+      row.push(jlptLevel || '-');
+
+      devCap_headers.forEach((header: any) => {
         const typeName = header.developmentTypeName || header.development_type_name;
         const devCapData = devCapMap.get(employee.id)?.get(typeName);
         row.push(devCapData?.years || '-');
-        row.push(t(devCapData?.experience_process || '-'));
+        row.push(devCapData?.experience_process || '-');
       });
     }
-    
-    // Technical Skills data - translate levels
+
+    // Technical Skills data
     if (showTechnicalAbility) {
       const employeeSkills = skillMap.get(employee.id) || new Map();
       const sortedSkills = [...dynamicSkillsList].sort((a, b) => a.id - b.id);
       sortedSkills.forEach((skill) => {
         const sd = employeeSkills.get(skill.name);
         row.push(sd?.years || '-');
-        row.push(t(sd?.level || '-'));
+        row.push(sd?.level || '-');
       });
     }
-    
+
     dataRows.push(row);
   });
-  
+
   return {
     headerRows,
     dataRows,
     merges,
     totalCols,
+    sectionBoundaries,
     employeeHeaders,
     administratorHeaders,
     languageSkillHeaders,
@@ -518,58 +515,279 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
   };
 }
 
+// =======================================================
+// 🎨 UPDATED COLOR DEFINITIONS BASED ON YOUR IMAGE
+// =======================================================
+const SECTION_COLORS = {
+  employee: {
+    // Colors for HEADER ROWS only
+    header: {
+      row1: 'FF4179e8', // Dark Blue
+      row2: 'FF4179e8',
+      row3: 'FF4179e8',
+      row4: 'FF4179e8',
+      row5: 'FF4179e8',
+    },
+    // Colors for DATA ROWS (Keep your original alternating colors)
+    data: {
+      even: 'FFEFF6FB', // Original Almost White Blue
+      odd: 'FFFFFFFF',  // White
+    },
+    totalColumn: null // No yellow in employee
+  },
+  administrator: {
+    header: {
+      row1: 'FF9df2f1', // Cyan
+      row2: 'FF9df2f1',
+      row3: 'FF9df2f1',
+      row4: 'FF9df2f1',
+      row5: 'FF9df2f1',
+    },
+    data: {
+      even: 'FFF2F6EE', // Original Almost White Green
+      odd: 'FFFFFFFF',  // White
+    },
+    totalColumn: 'FFFFEB9C' // 👈 Yellow for the Total column
+  },
+  developer: {
+    header: {
+      row1: 'FF9df2f1', // Cyan
+      row2: 'FF9df2f1',
+      row3: 'FF9df2f1',
+      row4: 'FF9df2f1',
+      row5: 'FF9df2f1',
+    },
+    data: {
+      even: 'FFEAF5F7', // Original Almost White Teal
+      odd: 'FFFFFFFF',  // White
+    },
+    totalColumn: null
+  },
+  technical: {
+    header: {
+      row1: 'FFf6fccf', // Pale Yellow/Cream
+      row2: 'FFf6fccf',
+      row3: 'FFf6fccf',
+      row4: 'FFf6fccf',
+      row5: 'FFf6fccf',
+    },
+    data: {
+      even: 'FFFCE8EA', // Original Pale Pink (or leave this as FFFFFF if you want pure white)
+      odd: 'FFFFFFFF',  // White
+    },
+    totalColumn: null
+  }
+};
+// =======================================================
+
 /**
- * Export skills data to Excel format
+ * Get the appropriate color for a cell based on its section and row
+ */
+function getCellColor(section: string, rowIndex: number, colIdx: number, isDataRow: boolean = false): string {
+  const colors = SECTION_COLORS[section as keyof typeof SECTION_COLORS] || SECTION_COLORS.employee;
+
+  // 👇 HANDLE DATA ROWS (Keep original alternating colors here)
+  if (isDataRow) {
+    return colors.data.even; // Since 'isEven' logic is handled in the main function, this returns the base even color.
+  }
+
+  // 👇 HANDLE HEADER ROWS
+  // Special Rule: Yellow "Total" column in Administrator headers
+  if (section === 'administrator' && rowIndex === 2 && colIdx === 4) {
+    return colors.totalColumn || colors.header.row3;
+  }
+
+  switch (rowIndex) {
+    case 0: return colors.header.row1;
+    case 1: return colors.header.row2;
+    case 2: return colors.header.row3;
+    case 3: return colors.header.row4;
+    case 4: return colors.header.row5;
+    default: return colors.header.row1;
+  }
+}
+/**
+ * Get the text color (white for dark backgrounds, black for light backgrounds)
+ */
+function getTextColor(section: string, rowIndex: number): string {
+  // Handle heavy blue, green, and teal top rows (white text)
+  if (rowIndex === 0) {
+    return 'FFFFFFFF'; // White
+  }
+
+  // Handle deep teal main developer header
+  if (section === 'developer' && rowIndex === 0) {
+    return 'FFFFFFFF'; // White
+  }
+
+  // All other rows are light/pastel, use black text
+  return 'FF000000'; // Black
+}
+
+/**
+ * Export skills data to Excel format with section-specific coloring
  */
 export async function exportSkillsToExcel(
   data: ExportSkillData,
   options?: ExportSkillOptions
-) {
+): Promise<void> {
   const {
     fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`,
     language = 'eng'
   } = options || {};
 
-  const { headerRows, dataRows, merges, totalCols } = buildExportData(data, { ...options, language });
+  const { headerRows, dataRows, merges, totalCols, sectionBoundaries } = buildExportData(data, { ...options, language });
   const allRows = [...headerRows, ...dataRows];
-  
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(allRows);
-  
+  const headerRowsCount = headerRows.length;
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Employee Management System';
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet('Skills Report', {
+    properties: { tabColor: { argb: 'FF4472C4' } }
+  });
+
+  // Add header rows with section-specific styling
+  headerRows.forEach((rowData, rowIndex) => {
+    const row = worksheet.addRow(rowData);
+    row.height = rowIndex === 0 ? 32 : rowIndex < 4 ? 28 : 24;
+
+    row.eachCell((cell, colNumber) => {
+      const colIdx = colNumber - 1;
+
+      // Determine which section this cell belongs to
+      let section = 'employee';
+      for (const boundary of sectionBoundaries) {
+        if (colIdx >= boundary.start && colIdx <= boundary.end) {
+          section = boundary.section;
+          break;
+        }
+      }
+
+      const bgColor = getCellColor(section, rowIndex, colIdx, false);
+      const textColor = getTextColor(section, rowIndex);
+      const isMainHeader = rowIndex === 0;
+      const isSubHeader = rowIndex === 1 || rowIndex === 2;
+
+      cell.font = {
+        name: 'Arial',
+        size: isMainHeader ? 11 : isSubHeader ? 10 : 9,
+        bold: true,
+        color: { argb: textColor }
+      };
+
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: bgColor }
+      };
+
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true
+      };
+
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+    });
+  });
+
+    // Add data rows (Pure White for all rows)
+  dataRows.forEach((rowData, rowIndex) => {
+    const row = worksheet.addRow(rowData);
+    row.height = 20;
+
+    row.eachCell((cell, colNumber) => {
+      const colIdx = colNumber - 1;
+
+      // Determine which section this cell belongs to
+      let section = 'employee';
+      for (const boundary of sectionBoundaries) {
+        if (colIdx >= boundary.start && colIdx <= boundary.end) {
+          section = boundary.section;
+          break;
+        }
+      }
+      
+      // 👈 FORCE PURE WHITE FOR ALL DATA ROWS
+      const bgColor = 'FFFFFFFF'; 
+
+      cell.font = { name: 'Arial', size: 9, color: { argb: 'FF000000' } };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: typeof cell.value === 'number' ? 'center' : 'left',
+        wrapText: true
+      };
+
+      // Always apply the white fill
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: bgColor }
+      };
+
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+        left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+        bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+        right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+      };
+    });
+  });
+
+  // Apply merges
+  merges.forEach((merge) => {
+    try {
+      worksheet.mergeCells(
+        merge.top + 1,
+        merge.left + 1,
+        merge.bottom + 1,
+        merge.right + 1
+      );
+    } catch (e) {
+      // Skip if merge fails
+    }
+  });
+
   // Set column widths
-  const colWidths = [];
   for (let i = 0; i < totalCols; i++) {
-    let maxLength = 10;
-    for (let j = 0; j < allRows.length && j < 50; j++) {
+    let maxLength = 12;
+    for (let j = 0; j < Math.min(allRows.length, 100); j++) {
       const cell = allRows[j]?.[i];
-      if (cell) {
+      if (cell !== undefined && cell !== null) {
         const cellLength = String(cell).length;
         if (cellLength > maxLength) {
-          maxLength = cellLength;
+          maxLength = Math.min(cellLength, 60);
         }
       }
     }
-    colWidths.push({ wch: Math.min(Math.max(maxLength + 5, 15), 50) });
+    worksheet.getColumn(i + 1).width = Math.max(maxLength + 3, 12);
   }
-  ws['!cols'] = colWidths;
-  
-  ws['!merges'] = merges;
-  ws['!rows'] = allRows.map(() => ({ hpx: 25 }));
-  
-  XLSX.utils.book_append_sheet(wb, ws, 'Skills Report');
-  
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([wbout], { type: 'application/octet-stream' });
+
+  // Freeze header rows
+  worksheet.views = [{ state: 'frozen', ySplit: headerRowsCount }];
+
+  // Generate file
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
   saveAs(blob, `${fileName}${language === 'japan' ? '_JP' : '_EN'}.xlsx`);
+
+  console.log(`✅ Skills exported successfully with ${dataRows.length} employees`);
 }
 
-/**
- * Export skills data to CSV format
- */
+// ===== CSV EXPORT =====
 export async function exportSkillsToCSV(
   data: ExportSkillData,
   options?: ExportSkillOptions
-) {
+): Promise<void> {
   const {
     fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`,
     language = 'eng'
@@ -577,30 +795,36 @@ export async function exportSkillsToCSV(
 
   const { headerRows, dataRows } = buildExportData(data, { ...options, language });
   const allRows = [...headerRows, ...dataRows];
-  
-  const worksheet = XLSX.utils.aoa_to_sheet(allRows);
-  const csvContent = XLSX.utils.sheet_to_csv(worksheet);
+
+  let csvContent = '';
+  allRows.forEach((row) => {
+    const escapedRow = row.map(cell => {
+      if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
+        return `"${cell.replace(/"/g, '""')}"`;
+      }
+      return cell;
+    });
+    csvContent += escapedRow.join(',') + '\n';
+  });
+
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   saveAs(blob, `${fileName}${language === 'japan' ? '_JP' : '_EN'}.csv`);
 }
 
-/**
- * Export skills data to PDF format
- */
+// ===== PDF EXPORT =====
 export async function exportSkillsToPDF(
   data: ExportSkillData,
   options?: ExportSkillOptions
-) {
+): Promise<void> {
   const {
     fileName = `Skills_Report_${new Date().toISOString().split('T')[0]}`,
     language = 'eng'
   } = options || {};
 
   const { headerRows, dataRows, dynamicSkillsList, totalCols } = buildExportData(data, { ...options, language });
-  
+
   // Build flat headers for PDF
   const flatHeaders: string[] = [];
-  
   for (let i = 0; i < totalCols; i++) {
     let headerParts: string[] = [];
     for (let rowIdx = 0; rowIdx < headerRows.length; rowIdx++) {
@@ -610,7 +834,7 @@ export async function exportSkillsToPDF(
       }
     }
     if (headerParts.length > 0) {
-      const uniqueParts = headerParts.filter((part, index) => 
+      const uniqueParts = headerParts.filter((part, index) =>
         headerParts.indexOf(part) === index
       );
       flatHeaders.push(uniqueParts.join(' - '));
@@ -618,9 +842,9 @@ export async function exportSkillsToPDF(
       flatHeaders.push(`Column ${i + 1}`);
     }
   }
-  
+
   const totalColumns = flatHeaders.length;
-  
+
   if (totalColumns > 15) {
     const shouldContinue = confirm(
       `⚠️ The skills report has ${totalColumns} columns, which may be too wide for PDF.\n\n` +
@@ -632,7 +856,7 @@ export async function exportSkillsToPDF(
       throw new Error('PDF export cancelled by user');
     }
   }
-  
+
   const [jsPDFModule, autoTableModule] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable')
@@ -657,13 +881,13 @@ export async function exportSkillsToPDF(
     body: dataRows,
     startY: 70,
     theme: 'striped',
-    headStyles: { 
-      fillColor: [41, 128, 185], 
+    headStyles: {
+      fillColor: [41, 128, 185],
       textColor: [255, 255, 255],
       fontSize: Math.min(8, Math.max(5, 12 - Math.floor(totalColumns / 5))),
       halign: 'center'
     },
-    styles: { 
+    styles: {
       fontSize: Math.min(7, Math.max(5, 11 - Math.floor(totalColumns / 5))),
       cellPadding: 1.5,
       overflow: 'linebreak'

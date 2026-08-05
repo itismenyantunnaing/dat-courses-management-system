@@ -24,6 +24,8 @@ type StoreSet = (
 ) => void
 type StoreGet = () => any
 
+
+
 // Create session store
 const sessionStore = (set: StoreSet, get: StoreGet) => ({
   session: null,

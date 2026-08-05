@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -34,6 +33,10 @@ import LearnerDashboardContainer from "@/components/Dashboard/learnerDashboard-c
 import { FeedbackContainer } from "@/components/feedback-container"
 import SelfStudyProgessReportContainer from "@/components/selfStudyProgess-report-container"
 import { AuditLogsContainer } from "@/components/auditLogs-container"
+import { webScoketStore } from "@/store/websocketStore"
+
+// ✅ Import Badge component
+import { Badge } from "@/components/ui/badge"
 
 interface DashboardClientProps {
   userData: {
@@ -53,15 +56,23 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const [mounted, setMounted] = useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
-  const [isProfileLoaded, setIsProfileLoaded] = useState(false) // Add this state
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false)
   const [sendMailOpen, setSendMailOpen] = useState(false)
 
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
   const [selectedCertificateId, setSelectedCertificateId] = useState<number | null>(null)
+  const [pendingCertificateId, setPendingCertificateId] = useState<number | null>(null)
 
   // Get session store actions
-  const { setSession, fetch_profile, profile } = mainStore()
+  const { setSession, fetch_profile, profile, unreadCount: dbUnreadCount, fetch_UnreadCount } = mainStore()
+  const { connect } = webScoketStore()
+  
+  // ✅ Subscribe to WebSocket store for real-time updates (only for connection status and notifications list)
+  const isConnected = webScoketStore((state) => state.isConnected)
+  const notifications = webScoketStore((state) => state.notifications)
+  
   const initialized = useRef(false)
+  const previousNotificationsLength = useRef(0)
 
   // Initialize session in Zustand store when component mounts
   useEffect(() => {
@@ -70,21 +81,57 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         setSession(userData)
         await fetch_profile(userData.userId)
         initialized.current = true
-        setIsProfileLoaded(true) // Mark profile as loaded
+        setIsProfileLoaded(true)
       })()
     }
   }, [userData, setSession, fetch_profile])
 
+  // Connect to WebSocket when profile is loaded and user is authenticated
+  useEffect(() => {
+    if (isProfileLoaded && profile?.id) {
+      console.log('🔄 User profile loaded, establishing WebSocket connection...');
+      connect();
+      // Fetch unread count from database
+      fetch_UnreadCount(profile.id);
+    }
+  }, [isProfileLoaded, profile?.id, connect, fetch_UnreadCount]);
+
+  // ✅ Refetch database unread count ONLY when a NEW WebSocket notification arrives
+  useEffect(() => {
+    if (profile?.id && notifications.length > previousNotificationsLength.current) {
+      console.log('🔄 New WebSocket notification detected, refreshing database unread count...');
+      fetch_UnreadCount(profile.id);
+    }
+    previousNotificationsLength.current = notifications.length;
+  }, [notifications, profile?.id, fetch_UnreadCount]);
+
+  // Clean up WebSocket connection when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log('🧹 Cleaning up WebSocket connection...');
+      const { disconnect } = webScoketStore.getState();
+      disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     setMounted(true)
-    // Attach store to window for global access in non-hook files
     if (typeof window !== "undefined") {
       ; (window as any).mainStore = mainStore
     }
   }, [])
 
+  // ✅ Show alert when new notification arrives (for testing)
   useEffect(() => {
-    // Automatically open change password dialog if user status is "default"
+    if (notifications.length > 0) {
+      const latest = notifications[0]
+      if (latest && !latest.read) {
+        console.log('🔔 New notification in dashboard:', latest.message)
+      }
+    }
+  }, [notifications])
+
+  useEffect(() => {
     if (profile.status === "default") {
       setIsChangePasswordOpen(true)
     }
@@ -96,9 +143,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
   const user_role = profile?.role ? userRole : "learner"
 
-  // Only set active tab when profile is loaded and user_role is not empty
   useEffect(() => {
-    if (!isProfileLoaded || !user_role) return // Wait for profile to load
+    if (!isProfileLoaded || !user_role) return
 
     setActiveTab(
       user_role === "admin"
@@ -108,6 +154,55 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           : "learner-dashboard"
     )
   }, [user_role, isProfileLoaded])
+
+  // ✅ Use database unread count
+  const totalUnreadCount = dbUnreadCount || 0;
+
+  // ✅ FIX: Only clear selected IDs when changing tabs, but preserve them when switching to the relevant tab
+  useEffect(() => {
+    // When switching to courses tab, use the pending course ID if it exists
+    if (activeTab === 'courses' && pendingCertificateId) {
+      // This is for courses, we don't have pending course ID in this example
+      // But keep the pattern consistent
+    }
+    
+    // When switching to certificate tabs, use the pending certificate ID
+    if ((activeTab === 'japanese-certificates' || activeTab === 'certificates-requests') && pendingCertificateId) {
+      setSelectedCertificateId(pendingCertificateId)
+      setPendingCertificateId(null) // Clear after setting
+    }
+  }, [activeTab, pendingCertificateId])
+
+  // ✅ UPDATED: Handle notification actions
+  const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
+    if (action === 'view-course') {
+      setSelectedCourseId(id)
+      setActiveTab('courses')
+    } else if (action === 'view-certificate') {
+      // Store the certificate ID and switch to the appropriate tab
+      const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests'
+      
+      // Set the pending ID first
+      setPendingCertificateId(id)
+      // Clear any existing selected ID to force a refresh
+      setSelectedCertificateId(null)
+      // Switch to the tab
+      setActiveTab(targetTab)
+      
+      console.log(`🔔 Navigating to ${targetTab} with certificate ID:`, id)
+    }
+  }
+
+  // ✅ UPDATED: Handle tab change for certificates
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    
+    // If switching away from certificate tabs, clear the selection
+    if (tab !== 'japanese-certificates' && tab !== 'certificates-requests') {
+      setSelectedCertificateId(null)
+      setPendingCertificateId(null)
+    }
+  }
 
   const getCurrentLabel = () => {
     switch (activeTab) {
@@ -141,45 +236,12 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         return "Exam Progress Report"
       case "self_study_progress":
         return "Self Study Progress Report"
-      case "feedback":
-        return "Learners' feedback"
       case "audit_logs":
         return "Audit logs"
       default:
         return "Dashboard"
     }
   }
-
-  // Handle notification actions
-  const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
-    if (action === 'view-course') {
-      setSelectedCourseId(id)
-      setActiveTab('courses')
-    } else if (action === 'view-certificate') {
-      setSelectedCertificateId(id)
-      // Navigate to the appropriate certificate tab based on user role
-      if (user_role === 'learner') {
-        setActiveTab('japanese-certificates')
-        // Just navigate to the tab, don't open drawer for learners
-      } else {
-        setActiveTab('certificates-requests')
-        // For admin/approver, we might want to open the detail
-      }
-    }
-  }
-
-  // Reset selected course ID when switching away from courses tab
-  useEffect(() => {
-    if (activeTab !== 'courses') {
-      setSelectedCourseId(null)
-    }
-  }, [activeTab])
-
-  useEffect(() => {
-    if (activeTab !== 'certificates-requests') {
-      setSelectedCertificateId(null)
-    }
-  }, [activeTab])
 
   const tabConfigs = [
     { value: "admin-dashboard", component: AdminDashboardContainer },
@@ -253,7 +315,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       <SidebarProvider className="w-full overflow-hidden">
         <AppSidebar
           userRole={user_role}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           activeTab={activeTab}
         />
         <SidebarInset className="overflow-x-auto">
@@ -270,18 +332,36 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setNotificationDrawerOpen(true)}
-                  className="relative"
-                >
-                  <HugeiconsIcon
-                    icon={NotificationIcon}
-                    strokeWidth={2}
-                    className="h-5 w-5"
-                  />
-                </Button>
+                {/* ✅ Notification Bell with Database Unread Count */}
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setNotificationDrawerOpen(true)}
+                    className="relative"
+                  >
+                    <HugeiconsIcon
+                      icon={NotificationIcon}
+                      strokeWidth={2}
+                      className="h-5 w-5"
+                    />
+                    {/* ✅ Unread count badge from database only */}
+                    {totalUnreadCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px] animate-pulse"
+                      >
+                        {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                  
+                  {/* ✅ Connection status indicator */}
+                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
+                    isConnected ? 'bg-green-500' : 'bg-red-500'
+                  }`} />
+                </div>
+
                 {user_role !== "learner" &&
                   <Button
                     variant="outline"
@@ -296,11 +376,10 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                     />
                   </Button>
                 }
-
               </div>
             </div>
           </header>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
             {tabConfigs.map(({ value, component: Component, props }) => (
               <TabsContent key={value} value={value} className="m-0">
                 <Component {...props} />
@@ -310,7 +389,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         </SidebarInset>
       </SidebarProvider>
 
-      {/* Notifications Drawer */}
+      {/* Notifications Drawer - Pass WebSocket notifications */}
       <NotificationsDrawer
         open={notificationDrawerOpen}
         onOpenChange={setNotificationDrawerOpen}
@@ -323,32 +402,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         onOpenChange={setSendMailOpen}
         defaultEmail={profile?.email || ""}
       />
-
-      {/* Forced Password Change Dialog for New Users */}
-      {/* <Dialog
-        open={isChangePasswordOpen}
-        onOpenChange={(open) => {
-          if (profile.status === "default" && !open) return
-          setIsChangePasswordOpen(open)
-        }}
-      >
-        <DialogContent
-          className="sm:max-w-[425px]"
-          onPointerDownOutside={(e) => {
-            if (profile.status === "default") e.preventDefault()
-          }}
-          onEscapeKeyDown={(e) => {
-            if (profile.status === "default") e.preventDefault()
-          }}
-        >
-          <ChangePassword
-            flow="change"
-            step="old-password"
-            force={true}
-            onClose={() => setIsChangePasswordOpen(false)}
-          />
-        </DialogContent>
-      </Dialog> */}
     </>
   )
 }
