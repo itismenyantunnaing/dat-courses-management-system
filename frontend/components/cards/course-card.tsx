@@ -158,18 +158,18 @@ export function CourseCard({
 
     if (isRegistrationClosed) {
       return {
-        text: "Registration Closed",
-        className: "text-red-500",
-        icon: AlertCircleIcon,
-      }
-    }
-    if (isDeadlineToday) {
-      return {
-        text: "Last day to register",
+        text: "Late Registration Available",
         className: "text-orange-500",
         icon: AlertCircleIcon,
       }
     }
+    // if (isDeadlineToday) {
+    //   return {
+    //     text: "Last day to register",
+    //     className: "text-orange-500",
+    //     icon: AlertCircleIcon,
+    //   }
+    // }
     if (daysUntilClose === 1) {
       return {
         text: "Registration will close tomorrow",

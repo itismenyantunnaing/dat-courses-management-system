@@ -878,7 +878,6 @@ export function CourseDetail({
                       disabled={
                         course.status === "completed" ||
                         isEnrolling ||
-                        isRegistrationDeadlinePassed ||
                         (course.groups &&
                           course.groups.length > 1 &&
                           !selectedGroupId)
@@ -892,8 +891,6 @@ export function CourseDetail({
                         </>
                       ) : course.status === "completed" ? (
                         "Course Completed"
-                      ) : isRegistrationDeadlinePassed ? (
-                        "Registration Closed"
                       ) : (
                         "Enroll Course"
                       )}

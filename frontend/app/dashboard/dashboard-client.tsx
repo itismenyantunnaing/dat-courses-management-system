@@ -34,8 +34,9 @@ import { FeedbackContainer } from "@/components/feedback-container"
 import SelfStudyProgessReportContainer from "@/components/selfStudyProgess-report-container"
 import { AuditLogsContainer } from "@/components/auditLogs-container"
 import { webScoketStore } from "@/store/websocketStore"
+import { toast } from "sonner"
 
-// ✅ Import Badge component
+//  Import Badge component
 import { Badge } from "@/components/ui/badge"
 
 interface DashboardClientProps {
@@ -66,11 +67,11 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Get session store actions
   const { setSession, fetch_profile, profile, unreadCount: dbUnreadCount, fetch_UnreadCount } = mainStore()
   const { connect } = webScoketStore()
-  
-  // ✅ Subscribe to WebSocket store for real-time updates (only for connection status and notifications list)
+
+  //  Subscribe to WebSocket store for real-time updates (only for connection status and notifications list)
   const isConnected = webScoketStore((state) => state.isConnected)
   const notifications = webScoketStore((state) => state.notifications)
-  
+
   const initialized = useRef(false)
   const previousNotificationsLength = useRef(0)
 
@@ -89,17 +90,15 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Connect to WebSocket when profile is loaded and user is authenticated
   useEffect(() => {
     if (isProfileLoaded && profile?.id) {
-      console.log('🔄 User profile loaded, establishing WebSocket connection...');
       connect();
       // Fetch unread count from database
       fetch_UnreadCount(profile.id);
     }
   }, [isProfileLoaded, profile?.id, connect, fetch_UnreadCount]);
 
-  // ✅ Refetch database unread count ONLY when a NEW WebSocket notification arrives
+  //  Refetch database unread count ONLY when a NEW WebSocket notification arrives
   useEffect(() => {
     if (profile?.id && notifications.length > previousNotificationsLength.current) {
-      console.log('🔄 New WebSocket notification detected, refreshing database unread count...');
       fetch_UnreadCount(profile.id);
     }
     previousNotificationsLength.current = notifications.length;
@@ -108,7 +107,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Clean up WebSocket connection when component unmounts
   useEffect(() => {
     return () => {
-      console.log('🧹 Cleaning up WebSocket connection...');
       const { disconnect } = webScoketStore.getState();
       disconnect();
     };
@@ -121,15 +119,61 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     }
   }, [])
 
-  // ✅ Show alert when new notification arrives (for testing)
+  // Show alert when new notification arrives (for testing)
   useEffect(() => {
     if (notifications.length > 0) {
       const latest = notifications[0]
       if (latest && !latest.read) {
-        console.log('🔔 New notification in dashboard:', latest.message)
+
+        //  Show toast with the message
+        toast[latest.type === 'error' ? 'error' :
+          latest.type === 'success' ? 'success' :
+            latest.type === 'warning' ? 'warning' : 'info'](
+              latest.title || 'Notification',
+              {
+                description: latest.message,
+                duration: 5000,
+                position: 'top-center',
+
+                style: {
+                  background: '#1a1a2e',
+                  color: '#ffffff',
+                  border: '1px solid #e94560',
+                  borderRadius: '12px',
+                  padding: '16px',
+                },
+
+                action: {
+                  label: 'View',
+                  onClick: () => {
+                    // Mark as read
+                    webScoketStore.getState().markAsRead(latest.id);
+
+                    // Navigate
+                    if (latest.courseId) {
+                      setSelectedCourseId(latest.courseId);
+                      setActiveTab('courses');
+                    } else if (latest.certificateId) {
+                      const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests';
+                      setPendingCertificateId(latest.certificateId);
+                      setSelectedCertificateId(null);
+                      setActiveTab(targetTab);
+                    }
+                  }
+                },
+
+                cancel: {
+                  label: 'Dismiss',
+                  onClick: () => {
+                    webScoketStore.getState().markAsRead(latest.id);
+                  }
+                }
+              }
+            );
       }
     }
-  }, [notifications])
+  }, [notifications]);
+
 
   useEffect(() => {
     if (profile.status === "default") {
@@ -155,17 +199,17 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     )
   }, [user_role, isProfileLoaded])
 
-  // ✅ Use database unread count
+  //  Use database unread count
   const totalUnreadCount = dbUnreadCount || 0;
 
-  // ✅ FIX: Only clear selected IDs when changing tabs, but preserve them when switching to the relevant tab
+  //  Only clear selected IDs when changing tabs, but preserve them when switching to the relevant tab
   useEffect(() => {
     // When switching to courses tab, use the pending course ID if it exists
     if (activeTab === 'courses' && pendingCertificateId) {
       // This is for courses, we don't have pending course ID in this example
       // But keep the pattern consistent
     }
-    
+
     // When switching to certificate tabs, use the pending certificate ID
     if ((activeTab === 'japanese-certificates' || activeTab === 'certificates-requests') && pendingCertificateId) {
       setSelectedCertificateId(pendingCertificateId)
@@ -173,7 +217,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     }
   }, [activeTab, pendingCertificateId])
 
-  // ✅ UPDATED: Handle notification actions
+  // Handle notification actions
   const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
     if (action === 'view-course') {
       setSelectedCourseId(id)
@@ -181,22 +225,22 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     } else if (action === 'view-certificate') {
       // Store the certificate ID and switch to the appropriate tab
       const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests'
-      
+
       // Set the pending ID first
       setPendingCertificateId(id)
       // Clear any existing selected ID to force a refresh
       setSelectedCertificateId(null)
       // Switch to the tab
       setActiveTab(targetTab)
-      
+
       console.log(`🔔 Navigating to ${targetTab} with certificate ID:`, id)
     }
   }
 
-  // ✅ UPDATED: Handle tab change for certificates
+  // Handle tab change for certificates
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
-    
+
     // If switching away from certificate tabs, clear the selection
     if (tab !== 'japanese-certificates' && tab !== 'certificates-requests') {
       setSelectedCertificateId(null)
@@ -332,7 +376,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                {/* ✅ Notification Bell with Database Unread Count */}
+                {/*  Notification Bell with Database Unread Count */}
                 <div className="relative">
                   <Button
                     variant="outline"
@@ -345,21 +389,20 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                       strokeWidth={2}
                       className="h-5 w-5"
                     />
-                    {/* ✅ Unread count badge from database only */}
+                    {/*  Unread count badge from database only */}
                     {totalUnreadCount > 0 && (
-                      <Badge 
-                        variant="destructive" 
+                      <Badge
+                        variant="destructive"
                         className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px] animate-pulse"
                       >
                         {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
                       </Badge>
                     )}
                   </Button>
-                  
-                  {/* ✅ Connection status indicator */}
-                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
-                    isConnected ? 'bg-green-500' : 'bg-red-500'
-                  }`} />
+
+                  {/*  Connection status indicator */}
+                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${isConnected ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
                 </div>
 
                 {user_role !== "learner" &&

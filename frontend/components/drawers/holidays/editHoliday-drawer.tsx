@@ -108,7 +108,12 @@ export function EditHolidayDrawer({
 
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 py-4">
-            <HolidayForm data={formData} onChange={setFormData} isEdit />
+            <HolidayForm 
+              data={formData} 
+              onChange={setFormData} 
+              isEdit={true}
+              editId={holiday?.id}
+            />
           </div>
         </div>
 

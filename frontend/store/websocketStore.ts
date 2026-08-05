@@ -25,7 +25,7 @@ interface NotificationState {
   unreadCount: number;
 
   // Actions
-  connect: () => void;
+  connect: () => Promise<void>;
   disconnect: () => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
@@ -43,10 +43,9 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
   unreadCount: 0,
 
   // CONNECT - This is the main connection function
-  connect: () => {
+  connect: async () => {
     // Prevent SSR issues - only run in browser
     if (!isBrowser) {
-      console.log('Skipping connection - not in browser');
       return;
     }
 
@@ -54,16 +53,12 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
     const { stompClient, isConnected } = get();
 
     if (stompClient?.connected || isConnected) {
-      console.log('Already connected');
       return;
     }
-
-    console.log('🔌 Connecting to notification service...');
 
     // Create SockJS instance (the transport layer)
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8080/ws';
     const socket = new SockJS(wsUrl);
-    console.log('✓ SockJS instance created');
 
     // Create STOMP client
     const client = new Client({
@@ -76,13 +71,10 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
       },
 
       // Debug logging
-      debug: (str) => {
-        console.log('📡 STOMP Debug:', str);
-      },
+      // debug: (str) => { console.log('📡 STOMP Debug:', str);},
 
       // This runs when connection is SUCCESSFUL
       onConnect: () => {
-        console.log('✅ STOMP connection established!');
         set({ isConnected: true });
 
         // Get current user ID from mainStore
@@ -90,7 +82,6 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
         const profile = mainStoreState.profile;
         const employeeId = profile?.id;
 
-        console.log('👤 Current user ID:', employeeId);
 
         // ✅ Subscribe to user-specific topic (where backend sends notifications)
         if (employeeId) {
@@ -102,7 +93,7 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
             try {
               // Parse the notification data
               const data = JSON.parse(message.body);
-              alert(`📢 ${data.message}`);
+              
               // Create notification object for websocket store
               const notification: Notification = {
                 id: data.notificationId?.toString() || data.id || Date.now().toString(),
@@ -147,7 +138,6 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
                     notifications: [mainStoreNotification, ...currentNotifications],
                     unreadCount: (mainStoreState.unreadCount || 0) + 1,
                   });
-                  console.log('✅ Notification added to mainStore');
                 }
               } catch (error) {
                 console.error('Error updating mainStore:', error);
@@ -167,20 +157,9 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
               console.error('Error parsing notification:', error);
             }
           });
-
-          console.log(`✅ Subscribed to ${userTopic}`);
         } else {
           console.warn('⚠️ No employee ID found, cannot subscribe to user topic');
         }
-
-        // ✅ Also subscribe to generic topic as fallback (for testing)
-        console.log('📡 Also subscribing to generic topic: /topic/notifications');
-        client.subscribe('/topic/notifications', (message: IMessage) => {
-          console.log('🔔 Generic topic message received:', message.body);
-          // Handle generic messages here too
-        });
-
-        console.log('✅ All subscriptions complete!');
       },
 
       // Handle disconnection
@@ -201,7 +180,7 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
       },
 
       // Auto-reconnect settings
-      reconnectDelay: 5000,      // Try to reconnect every 5 seconds
+      reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });
@@ -209,8 +188,6 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
     // Save client reference
     set({ stompClient: client });
 
-    // ACTIVATE THE CONNECTION - THIS IS WHERE IT ACTUALLY CONNECTS
-    console.log('🚀 Activating connection...');
     client.activate();
   },
 
@@ -218,7 +195,6 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
   disconnect: () => {
     const { stompClient } = get();
     if (stompClient) {
-      console.log('🔌 Disconnecting...');
       stompClient.deactivate();
       set({
         stompClient: null,

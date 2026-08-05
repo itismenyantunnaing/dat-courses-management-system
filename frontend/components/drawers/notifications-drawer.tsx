@@ -99,7 +99,6 @@ export function NotificationsDrawer({
         // After marking as read, refresh the list to ensure consistency
         await fetch_Notifications(employeeId, false)
         await fetch_UnreadCount(employeeId)
-        console.log(`✅ Notification ${notificationId} marked as read`)
       } catch (error) {
         console.error("Failed to mark notification as read:", error)
       }
@@ -195,7 +194,7 @@ export function NotificationsDrawer({
       </Drawer>
     )
   }
-  console.log(dbNotifications)
+  
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent className="right-0 left-auto h-full w-[500px] rounded-l-2xl border-l border-gray-100 bg-white shadow-2xl">

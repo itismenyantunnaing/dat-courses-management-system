@@ -16,7 +16,8 @@ import {
 } from "@/components/drawers/holidays/holidayForm"
 import { mainStore } from "@/store/mainStore"
 import { Holiday } from "@/types/holiday"
-import { HugeiconsIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {  Cancel01Icon } from "@hugeicons/core-free-icons"
 
 interface CreateHolidayDrawerProps {
   open: boolean
@@ -104,7 +105,7 @@ export function CreateHolidayDrawer({
                 variant="outline"
                 disabled={isSubmitting}
               >
-                <HugeiconsIcon icon={Cancel01Icon} stroe />
+                <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
               </Button>
             </DrawerClose>
             <Button

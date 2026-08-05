@@ -824,6 +824,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                           }
                         }}
                         defaultMonth={formData.registrationDeadline || new Date()}
+                        disabled={{ before: new Date() }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -881,6 +882,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               groupChangeSuccess={groupChangeSuccess}
               onGroupAdded={handleGroupAdded}
               onGroupRemoved={handleGroupRemoved}
+              registrationDeadline={formData.registrationDeadline}
             />
           )}
 

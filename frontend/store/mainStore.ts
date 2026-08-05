@@ -71,7 +71,7 @@ export const mainStore = create<combineTypes>((set, get) => ({
   ...auditLogStore(set, get),
   ...systemConfigStore(set, get),
   ...notificationStore(set, get),
-  ...employeeProfileStore(set, get),
+  ...employeeProfileStore(set, get)
 }))
 
 // Helper function to get token from store (can be used outside React components)

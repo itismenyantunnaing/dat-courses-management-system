@@ -712,7 +712,7 @@ export function AuditLogsContainer() {
                     />
                   </BorderedTableHead>
                   <BorderedTableHead className="align-middle whitespace-nowrap">
-                    ID
+                    No
                   </BorderedTableHead>
                   <BorderedTableHead className="align-middle whitespace-nowrap">
                     Employee
@@ -764,7 +764,7 @@ export function AuditLogsContainer() {
                     </BorderedTableCell>
                   </TableRow>
                 ) : (
-                  paginatedData.map((log) => {
+                  paginatedData.map((log, index) => {
                     const isSelected = !!rowSelection[log.id.toString()]
                     return (
                       <TableRow
@@ -792,7 +792,7 @@ export function AuditLogsContainer() {
                           className="font-mono text-sm"
                           selected={isSelected}
                         >
-                          {log.id}
+                          {startIndex + index + 1}
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
                           <div className="flex items-center gap-2">

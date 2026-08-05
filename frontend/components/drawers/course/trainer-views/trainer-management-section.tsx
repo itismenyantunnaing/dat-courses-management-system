@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useCallback, useRef } from "react"
+import React, { useEffect, useCallback, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -99,6 +99,13 @@ interface TrainerSectionProps {
   isChangingGroup?: boolean
   groupChangeError?: string | null
   groupChangeSuccess?: string | null
+  registrationDeadline?: Date | string | null
+  learnersPage?: number
+  onSetLearnersPage?: (page: number) => void
+  learnersItemsPerPage?: number
+  onSetLearnersItemsPerPage?: (items: number) => void
+  learnersCommandOpen?: boolean
+  onSetLearnersCommandOpen?: (open: boolean) => void
 }
 
 export const TrainerSection: React.FC<TrainerSectionProps> = ({
@@ -115,9 +122,78 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
   courseId,
   onGroupAdded,
   onGroupRemoved,
+  registrationDeadline,
 }) => {
   const previousTotalSessionsRef = useRef<{ [key: string]: number }>({})
   const { enrollments } = mainStore()
+
+  // State for minimum start date
+  const [minStartDate, setMinStartDate] = useState<Date>(() => {
+    const defaultDate = new Date()
+    defaultDate.setDate(defaultDate.getDate() + 1)
+    defaultDate.setHours(0, 0, 0, 0)
+    return defaultDate
+  })
+
+  // Update minStartDate when registrationDeadline changes
+  useEffect(() => {
+    const defaultDate = new Date()
+    defaultDate.setDate(defaultDate.getDate() + 1)
+    defaultDate.setHours(0, 0, 0, 0)
+
+    if (!registrationDeadline) {
+      setMinStartDate(defaultDate)
+      return
+    }
+
+    const deadline = typeof registrationDeadline === 'string'
+      ? new Date(registrationDeadline)
+      : registrationDeadline
+
+    if (!deadline || isNaN(deadline.getTime())) {
+      setMinStartDate(defaultDate)
+      return
+    }
+
+    const minDate = new Date(deadline)
+    minDate.setDate(minDate.getDate() + 1)
+    minDate.setHours(0, 0, 0, 0)
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    setMinStartDate(minDate < today ? defaultDate : minDate)
+  }, [registrationDeadline])
+
+  // Update group start dates when minStartDate changes
+  useEffect(() => {
+    if (groups.length === 0) return
+    
+    // Check if any group has a start date before the minStartDate
+    const needsUpdate = groups.some(group => {
+      if (!group.startDate) return true
+      const startDate = new Date(group.startDate)
+      startDate.setHours(0, 0, 0, 0)
+      const minDate = new Date(minStartDate)
+      minDate.setHours(0, 0, 0, 0)
+      return startDate < minDate
+    })
+    
+    if (needsUpdate) {
+      const updatedGroups = groups.map(group => {
+        const startDate = group.startDate ? new Date(group.startDate) : new Date(minStartDate)
+        startDate.setHours(0, 0, 0, 0)
+        const minDate = new Date(minStartDate)
+        minDate.setHours(0, 0, 0, 0)
+        
+        if (startDate < minDate) {
+          return { ...group, startDate: new Date(minStartDate) }
+        }
+        return group
+      })
+      onUpdateGroups(updatedGroups)
+    }
+  }, [minStartDate, groups, onUpdateGroups])
 
   // Helper function to distribute capacity evenly
   const distributeCapacity = useCallback(
@@ -239,7 +315,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         id: `g${Date.now()}`,
         name: `Group 1`,
         capacity: undefined,
-        startDate: new Date(),
+        startDate: new Date(minStartDate),
         sessionsPerWeek: DEFAULT_SESSION_DAYS,
         startTime: "09:00",
         endTime: "10:00",
@@ -251,11 +327,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       onUpdateGroups([newGroup])
       onSetActiveGroupTab(newGroup.id)
       onSetTrainerSessionPage(1)
-      // Call the callback with the new group
       if (onGroupAdded) {
         onGroupAdded(newGroup, [newGroup])
       }
-
       return
     }
 
@@ -277,7 +351,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         capacity: undefined,
         startDate: lastGroup?.startDate
           ? new Date(lastGroup.startDate)
-          : new Date(),
+          : new Date(minStartDate),
         sessionsPerWeek: lastGroup?.sessionsPerWeek
           ? [...lastGroup.sessionsPerWeek]
           : DEFAULT_SESSION_DAYS,
@@ -287,9 +361,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
           copiedSessionsWithAdjustedDates.length > 0
             ? copiedSessionsWithAdjustedDates
             : lastGroup?.sessions?.map((session) => ({
-                ...session,
-                id: `s${Date.now()}-${Math.random()}`,
-              })) || [],
+              ...session,
+              id: `s${Date.now()}-${Math.random()}`,
+            })) || [],
         registeredCount: 0,
         status: lastGroup?.status,
         endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
@@ -297,7 +371,6 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       onUpdateGroups([...groups, newGroup])
       onSetActiveGroupTab(newGroup.id)
       onSetTrainerSessionPage(1)
-      // Call the callback with the new group
       if (onGroupAdded) {
         onGroupAdded(newGroup, [...groups, newGroup])
       }
@@ -328,7 +401,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
           capacity: undefined,
           startDate: lastGroup?.startDate
             ? new Date(lastGroup.startDate)
-            : new Date(),
+            : new Date(minStartDate),
           sessionsPerWeek: lastGroup?.sessionsPerWeek
             ? [...lastGroup.sessionsPerWeek]
             : DEFAULT_SESSION_DAYS,
@@ -338,9 +411,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             copiedSessionsWithAdjustedDates.length > 0
               ? copiedSessionsWithAdjustedDates
               : lastGroup?.sessions?.map((session) => ({
-                  ...session,
-                  id: `s${Date.now()}-${Math.random()}`,
-                })) || [],
+                ...session,
+                id: `s${Date.now()}-${Math.random()}`,
+              })) || [],
           registeredCount: 0,
           status: lastGroup?.status,
           endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
@@ -371,7 +444,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         capacity: getCapacityForGroup(groups.length),
         startDate: lastGroup?.startDate
           ? new Date(lastGroup.startDate)
-          : new Date(),
+          : new Date(minStartDate),
         sessionsPerWeek: lastGroup?.sessionsPerWeek
           ? [...lastGroup.sessionsPerWeek]
           : DEFAULT_SESSION_DAYS,
@@ -381,9 +454,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
           copiedSessionsWithAdjustedDates.length > 0
             ? copiedSessionsWithAdjustedDates
             : lastGroup?.sessions?.map((session) => ({
-                ...session,
-                id: `s${Date.now()}-${Math.random()}`,
-              })) || [],
+              ...session,
+              id: `s${Date.now()}-${Math.random()}`,
+            })) || [],
         registeredCount: 0,
         status: lastGroup?.status,
         endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
@@ -407,7 +480,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         capacity: undefined,
         startDate: lastGroup?.startDate
           ? new Date(lastGroup.startDate)
-          : new Date(),
+          : new Date(minStartDate),
         sessionsPerWeek: lastGroup?.sessionsPerWeek
           ? [...lastGroup.sessionsPerWeek]
           : DEFAULT_SESSION_DAYS,
@@ -417,9 +490,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
           copiedSessionsWithAdjustedDates.length > 0
             ? copiedSessionsWithAdjustedDates
             : lastGroup?.sessions?.map((session) => ({
-                ...session,
-                id: `s${Date.now()}-${Math.random()}`,
-              })) || [],
+              ...session,
+              id: `s${Date.now()}-${Math.random()}`,
+            })) || [],
         registeredCount: 0,
         status: lastGroup?.status,
         endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
@@ -450,7 +523,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       capacity: getCapacityForGroup(groups.length),
       startDate: lastGroup?.startDate
         ? new Date(lastGroup.startDate)
-        : new Date(),
+        : new Date(minStartDate),
       sessionsPerWeek: lastGroup?.sessionsPerWeek
         ? [...lastGroup.sessionsPerWeek]
         : DEFAULT_SESSION_DAYS,
@@ -460,9 +533,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         copiedSessionsWithAdjustedDates.length > 0
           ? copiedSessionsWithAdjustedDates
           : lastGroup?.sessions?.map((session) => ({
-              ...session,
-              id: `s${Date.now()}-${Math.random()}`,
-            })) || [],
+            ...session,
+            id: `s${Date.now()}-${Math.random()}`,
+          })) || [],
       registeredCount: 0,
       status: lastGroup?.status,
       endDate: lastGroup?.endDate ? new Date(lastGroup.endDate) : undefined,
@@ -471,17 +544,18 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     onUpdateGroups([...existingGroupsWithCapacity, newGroup])
     onSetActiveGroupTab(newGroup.id)
     onSetTrainerSessionPage(1)
-    // Call the callback with the new group
     if (onGroupAdded) {
       onGroupAdded(newGroup, [...existingGroupsWithCapacity, newGroup])
     }
   }, [
     groups,
     courseId,
+    minStartDate,
     getTotalEnrolledForCourse,
     onUpdateGroups,
     onSetActiveGroupTab,
     onSetTrainerSessionPage,
+    onGroupAdded,
   ])
 
   const removeGroup = useCallback(
@@ -507,7 +581,6 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
             onSetActiveGroupTab(newActiveTab)
           }
         }
-        // Call the callback after removal
         if (onGroupRemoved) {
           onGroupRemoved(groupId, updatedGroups)
         }
@@ -556,12 +629,11 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
           onSetActiveGroupTab(newActiveTab)
         }
       }
-      // Call the callback after removal
       if (onGroupRemoved) {
         onGroupRemoved(groupId, recalculatedGroups)
       }
     },
-    [groups, activeGroupTab, onUpdateGroups, onSetActiveGroupTab]
+    [groups, activeGroupTab, onUpdateGroups, onSetActiveGroupTab, getNewActiveTabAfterRemoval, onGroupRemoved]
   )
 
   const updateGroup = useCallback(
@@ -636,11 +708,11 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       const updatedGroups = groups.map((group) =>
         group.id === groupId
           ? {
-              ...group,
-              sessions: group.sessions.map((s) =>
-                s.id === sessionId ? { ...s, [field]: value } : s
-              ),
-            }
+            ...group,
+            sessions: group.sessions.map((s) =>
+              s.id === sessionId ? { ...s, [field]: value } : s
+            ),
+          }
           : group
       )
 
@@ -731,7 +803,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       onUpdateGroups(updatedGroups)
       const totalPages = Math.ceil(
         (updatedGroups.find((g) => g.id === groupId)?.sessions.length || 0) /
-          trainerItemsPerPage
+        trainerItemsPerPage
       )
       onSetTrainerSessionPage(totalPages > 0 ? totalPages : 1)
     },
@@ -743,9 +815,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       const updatedGroups = groups.map((group) =>
         group.id === groupId
           ? {
-              ...group,
-              sessions: group.sessions.filter((s) => s.id !== sessionId),
-            }
+            ...group,
+            sessions: group.sessions.filter((s) => s.id !== sessionId),
+          }
           : group
       )
       onUpdateGroups(updatedGroups)
@@ -962,17 +1034,13 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                         ? parseInt(e.target.value)
                         : undefined
 
-                      // Get current enrolled count for this group
                       const enrolledCount = getGroupEnrolledCount(group.id)
 
                       if (value !== undefined && value > 0) {
-                        //  Check if capacity is less than enrolled count
                         if (value < enrolledCount) {
-                          // Revert to previous valid value or show error
                           return
                         }
 
-                        // Clear any previous errors for this group
                         const newErrors = { ...groupErrors }
                         delete newErrors[group.id]
                         onSetGroupErrors(newErrors)
@@ -1025,7 +1093,6 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                           onUpdateGroups(updatedGroups)
                         }
                       } else {
-                        // Only allow undefined if there's only one group OR enrolled count is 0
                         if (groups.length === 1 || enrolledCount === 0) {
                           updateGroup(group.id, "capacity", undefined)
                         }
@@ -1100,6 +1167,13 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                       handleStartDateChange(group.id, date || undefined)
                     }
                     defaultMonth={group.startDate}
+                    disabled={(date) => {
+                      const compareDate = new Date(date)
+                      compareDate.setHours(0, 0, 0, 0)
+                      const minDate = new Date(minStartDate)
+                      minDate.setHours(0, 0, 0, 0)
+                      return compareDate < minDate
+                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -1235,7 +1309,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                     className={cn(
                       "h-8 flex-1 px-3",
                       group.sessionsPerWeek?.includes(day.value) &&
-                        "bg-primary text-primary-foreground hover:bg-primary/85 hover:text-white"
+                      "bg-primary text-primary-foreground hover:bg-primary/85 hover:text-white"
                     )}
                     onClick={() => handleGroupDayToggle(group.id, day.value)}
                   >
@@ -1548,6 +1622,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       groups,
       trainerItemsPerPage,
       trainerSessionPage,
+      minStartDate,
       updateGroup,
       distributeCapacity,
       getTotalEnrolledForCourse,
@@ -1560,6 +1635,8 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       handleTrainerItemsPerPageChange,
       onSetTrainerSessionPage,
       updateGroupSession,
+      getGroupEnrolledCount,
+      onSetGroupErrors,
     ]
   )
 
