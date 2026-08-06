@@ -1,0 +1,26 @@
+INSERT INTO system_configuration
+(
+    id,
+    active_smtp_provider,
+    file_upload_size_mb,
+    gmail_host,
+    gmail_port,
+    gmail_username,
+    gmail_password,
+    jwt_expiry_hours,
+    max_login_attempts,
+    session_timeout_minutes
+)
+VALUES
+    (
+        1,
+        'GMAIL',
+        5,
+        'smtp.gmail.com',
+        587,
+        'test@test.com',
+        'password',
+        24,
+        5,
+        30
+    );

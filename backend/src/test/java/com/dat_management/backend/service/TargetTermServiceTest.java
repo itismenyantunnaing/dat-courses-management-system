@@ -26,6 +26,9 @@ class TargetTermServiceTest {
     @Mock
     private TargetTermRepository targetTermRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private TargetTermService targetTermService;
 

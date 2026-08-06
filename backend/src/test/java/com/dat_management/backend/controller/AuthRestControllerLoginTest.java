@@ -7,6 +7,7 @@ import com.dat_management.backend.dto.ChangePasswordRequest;
 import com.dat_management.backend.entity.Role;
 import com.dat_management.backend.entity.Employee;
 import com.dat_management.backend.repository.EmployeeRepository;
+import com.dat_management.backend.repository.SystemConfigRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +44,9 @@ class AuthRestControllerLoginTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private SystemConfigRepository systemConfigRepository;
 
     @Test
     void loginReturnsSuccessResponseAndResetsSecurityFields() {
@@ -254,7 +258,8 @@ class AuthRestControllerLoginTest {
                 authenticationManager,
                 jwtService,
                 employeeRepository,
-                passwordEncoder);
+                passwordEncoder,
+                systemConfigRepository);
     }
 
     private static LoginRequest loginRequest(String userId, String password) {

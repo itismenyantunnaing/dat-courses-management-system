@@ -39,6 +39,9 @@ class CertificateServiceTest {
     @Mock
     private CertificateFileStorageService fileStorageService;
 
+    @Mock
+    private NotificationService notificationService;
+
     @Test
     void uploadCertificate_validImage_savesPendingCertificateAndReturnsDto() throws IOException {
         CertificateService service = service();
@@ -255,7 +258,7 @@ class CertificateServiceTest {
     }
 
     private CertificateService service() {
-        return new CertificateService(certificateRepository, japaneseProfileRepository, fileStorageService);
+        return new CertificateService(certificateRepository, japaneseProfileRepository, fileStorageService, notificationService);
     }
 
     private static MockMultipartFile imageFile() {

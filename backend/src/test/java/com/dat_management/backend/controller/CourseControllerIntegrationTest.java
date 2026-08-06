@@ -15,6 +15,7 @@ import com.dat_management.backend.entity.CourseGroup.GroupStatus;
 import com.dat_management.backend.entity.CourseSession;
 import com.dat_management.backend.entity.CourseSession.SessionStatus;
 import com.dat_management.backend.entity.Employee;
+import com.dat_management.backend.entity.SystemConfig;
 import com.dat_management.backend.entity.SelfStudySession;
 import com.dat_management.backend.repository.AttendanceRecordRepository;
 import com.dat_management.backend.repository.CourseCategoryRepository;
@@ -23,6 +24,7 @@ import com.dat_management.backend.repository.CourseGroupRepository;
 import com.dat_management.backend.repository.CourseRepository;
 import com.dat_management.backend.repository.CourseSessionRepository;
 import com.dat_management.backend.repository.EmployeeRepository;
+import com.dat_management.backend.repository.SystemConfigRepository;
 import com.dat_management.backend.repository.SelfStudySessionProgressRepository;
 import com.dat_management.backend.repository.SelfStudySessionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -92,8 +94,29 @@ class CourseControllerIntegrationTest {
     @Autowired
     private EmployeeRepository employeeRepository;
 
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
+
     @BeforeEach
     void setUp() {
+        systemConfigRepository.deleteAll();
+
+        SystemConfig config = new SystemConfig();
+        config.setId(1L);
+        config.setActiveSmtpProvider(SystemConfig.SmtpProvider.GMAIL);
+
+        config.setGmailHost("smtp.gmail.com");
+        config.setGmailPort(587);
+        config.setGmailUsername("test@gmail.com");
+        config.setGmailPassword("password");
+
+        config.setFileUploadSizeMb(5);
+        config.setSessionTimeoutMinutes(30);
+        config.setJwtExpiryHours(24);
+        config.setMaxLoginAttempts(5);
+
+        systemConfigRepository.save(config);
+
         attendanceRepository.deleteAll();
         progressRepository.deleteAll();
         enrollmentRepository.deleteAll();

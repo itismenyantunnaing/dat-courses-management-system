@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -59,6 +61,10 @@ class CourseServiceTest {
     @Mock
     private CourseImageStorageService imageStorageService;
 
+    @Mock
+    private NotificationService notificationService;
+
+
     @Test
     void createCategory_validTrainerCategory_savesActiveCategory() {
         CourseService service = service();
@@ -76,6 +82,7 @@ class CourseServiceTest {
 
     @Test
     void createCourse_trainerCourse_savesGroupAndSessions() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
         CourseService service = service();
         CourseCategory category = category(1, "Trainer Course", CourseType.TRAINER_PROVIDED);
         List<CourseGroup> savedGroups = new ArrayList<>();
@@ -104,8 +111,7 @@ class CourseServiceTest {
         when(sessionRepo.findByCourseGroupIdOrderBySessionNoAsc(10)).thenReturn(savedSessions);
         when(groupRepo.countEnrollmentsByGroupId(10)).thenReturn(0L);
         when(selfStudyRepo.findByCourseIdOrderBySessionNoAsc(100)).thenReturn(List.of());
-
-        CourseDto result = service.createCourse(trainerCourseRequest(), null);
+        CourseDto result = service.createCourse(trainerCourseRequest(), null, request);
 
         Assertions.assertEquals(100, result.getId());
         Assertions.assertEquals("JLPT N2 Trainer", result.getCourseName());
@@ -157,7 +163,8 @@ class CourseServiceTest {
                 sessionRepo,
                 enrollmentRepo,
                 selfStudyRepo,
-                imageStorageService);
+                imageStorageService,
+                notificationService);
     }
 
     private static CourseRequestDto trainerCourseRequest() {
