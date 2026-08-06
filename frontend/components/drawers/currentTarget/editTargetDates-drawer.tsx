@@ -149,7 +149,7 @@ export function EditTargetDatesDrawer({
         resetForm()
         onOpenChange(false)
         onSuccess?.()
-      }, 1500)
+      }, 1000)
     } catch (error) {
       console.error(
         `Failed to ${mode === "create" ? "create" : "update"} target dates:`,

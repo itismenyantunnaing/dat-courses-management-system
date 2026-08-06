@@ -36,8 +36,7 @@ import { AuditLogsContainer } from "@/components/auditLogs-container"
 import { webScoketStore } from "@/store/websocketStore"
 import { toast } from "sonner"
 
-//  Import Badge component
-import { Badge } from "@/components/ui/badge"
+  import { Badge } from "@/components/ui/badge"
 
 interface DashboardClientProps {
   userData: {
@@ -119,60 +118,68 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     }
   }, [])
 
-  // Show alert when new notification arrives (for testing)
-  useEffect(() => {
-    if (notifications.length > 0) {
-      const latest = notifications[0]
-      if (latest && !latest.read) {
+  // Show alert when new notification arrives 
+useEffect(() => {
+  if (notifications.length > 0) {
+    const latest = notifications[0]
+    if (latest && !latest.read) {
+      // Check if there's a navigation target
+      const hasNavigationTarget = latest.courseId || latest.certificateId;
 
-        //  Show toast with the message
-        toast[latest.type === 'error' ? 'error' :
-          latest.type === 'success' ? 'success' :
-            latest.type === 'warning' ? 'warning' : 'info'](
-              latest.title || 'Notification',
-              {
-                description: latest.message,
-                duration: 5000,
-                position: 'top-center',
+      // Base toast options
+      const toastOptions: any = {
+        description: latest.message,
+        duration: 5000,
+        position: 'top-center',
+        style: {
+          background: '#1a1a2e',
+          color: '#ffffff',
+          border: '1px solid #e94560',
+          borderRadius: '12px',
+          padding: '16px',
+          width: '480px', // Increased width
+          maxWidth: '90vw', // Responsive max width
+        },
+        cancel: {
+          label: 'Dismiss',
+          onClick: () => {
+            webScoketStore.getState().markAsRead(latest.id);
+          }
+        }
+      };
 
-                style: {
-                  background: '#1a1a2e',
-                  color: '#ffffff',
-                  border: '1px solid #e94560',
-                  borderRadius: '12px',
-                  padding: '16px',
-                },
+      // Only add action (View button) if there's a navigation target
+      if (hasNavigationTarget) {
+        toastOptions.action = {
+          label: 'View',
+          onClick: () => {
+            // Mark as read
+            webScoketStore.getState().markAsRead(latest.id);
 
-                action: {
-                  label: 'View',
-                  onClick: () => {
-                    // Mark as read
-                    webScoketStore.getState().markAsRead(latest.id);
-
-                    // Navigate
-                    if (latest.courseId) {
-                      setSelectedCourseId(latest.courseId);
-                      setActiveTab('courses');
-                    } else if (latest.certificateId) {
-                      const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests';
-                      setPendingCertificateId(latest.certificateId);
-                      setSelectedCertificateId(null);
-                      setActiveTab(targetTab);
-                    }
-                  }
-                },
-
-                cancel: {
-                  label: 'Dismiss',
-                  onClick: () => {
-                    webScoketStore.getState().markAsRead(latest.id);
-                  }
-                }
-              }
-            );
+            // Navigate
+            if (latest.courseId) {
+              setSelectedCourseId(latest.courseId);
+              setActiveTab('courses');
+            } else if (latest.certificateId) {
+              const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests';
+              setPendingCertificateId(latest.certificateId);
+              setSelectedCertificateId(null);
+              setActiveTab(targetTab);
+            }
+          }
+        };
       }
+
+      // Show toast with the message
+      toast[latest.type === 'error' ? 'error' :
+        latest.type === 'success' ? 'success' :
+          latest.type === 'warning' ? 'warning' : 'info'](
+            latest.title || 'Notification',
+            toastOptions
+          );
     }
-  }, [notifications]);
+  }
+}, [notifications]);
 
 
   useEffect(() => {
@@ -403,7 +410,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                   {/*  Connection status indicator */}
                   <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${isConnected ? 'bg-green-500' : 'bg-red-500'
                     }`} />
-                </div>
+                </div>   
 
                 {user_role !== "learner" &&
                   <Button

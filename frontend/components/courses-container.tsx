@@ -187,9 +187,7 @@ export function CoursesContainer({
       const refreshedCourse = courses.find(c => c.id === courseIdStr)
       if (refreshedCourse) {
         setSelectedCourse(refreshedCourse)
-      } else {
-        console.error(`Course with ID ${selectedCourseId} not found after refresh`)
-      }
+      } 
       setHasProcessedSelectedId(true)
     })
   }, [selectedCourseId, courses, isLoadingCourses, hasProcessedSelectedId, activeTab, fetchAll_CourseData])

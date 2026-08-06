@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ import com.dat_management.backend.repository.EmployeeRepository;
 import com.dat_management.backend.repository.NotificationRecipientRepository;
 import com.dat_management.backend.repository.NotificationRepository;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,63 +44,76 @@ public class NotificationService {
     // ORIGINAL METHOD - Send notification with reference
     // ================================================================
     @Transactional
-    public Notification send(NotificationType type,
-                             String message,
-                             Object referenceId) {
+public Notification send(NotificationType type,
+                         String message,
+                         Object referenceId,
+                         HttpServletRequest request) {
 
-        Notification.NotificationBuilder builder = Notification.builder()
-                .notificationType(type)
-                .message(message);
+    Notification.NotificationBuilder builder = Notification.builder()
+            .notificationType(type)
+            .message(message);
 
-        if (type == NotificationType.COURSE && referenceId instanceof Integer courseId) {
-            Course course = courseRepository.findById(courseId).orElse(null);
-            builder.course(course);
-        }
-
-        if (type == NotificationType.CERTIFICATE && referenceId instanceof Integer certificateId) {
-            EmployeeCertificate certificate =
-                    certificateRepository.findById(certificateId).orElse(null);
-            builder.certificate(certificate);
-        }
-
-        Notification notification = notificationRepository.save(builder.build());
-        log.info("✅ Notification saved with ID: {}", notification.getId());
-
-        List<Employee> employees = employeeRepository.findAllByIsDeletedFalse();
-        log.info("📋 Found {} active employees", employees.size());
-
-        int recipientCount = 0;
-        for (Employee employee : employees) {
-
-            if (!shouldSendTo(employee, type)) {
-                log.debug("⏭️ Skipping employee: {} (preferences disabled)", employee.getId());
-                continue;
-            }
-
-            log.debug("✅ Creating recipient for employee: {}", employee.getId());
-            
-            // Create recipient record
-            NotificationRecipient recipient = new NotificationRecipient();
-            recipient.setNotification(notification);
-            recipient.setEmployee(employee);
-            recipient.setIsRead(false);
-            recipient.setReadAt(null);
-            recipientRepository.save(recipient);
-            recipientCount++;
-
-            // Create response with recipient
-            NotificationResponse response = NotificationResponse.from(notification, recipient);
-
-            // Send via WebSocket
-            messagingTemplate.convertAndSend(
-                    "/topic/notifications/" + employee.getId(),
-                    response
-            );
-        }
-
-        log.info("📨 Created {} notification recipients", recipientCount);
-        return notification;
+    if (type == NotificationType.COURSE && referenceId instanceof Integer courseId) {
+        Course course = courseRepository.findById(courseId).orElse(null);
+        builder.course(course);
     }
+
+    if (type == NotificationType.CERTIFICATE && referenceId instanceof Integer certificateId) {
+        EmployeeCertificate certificate =
+                certificateRepository.findById(certificateId).orElse(null);
+        builder.certificate(certificate);
+    }
+
+    Notification notification = notificationRepository.save(builder.build());
+    log.info("✅ Notification saved with ID: {}", notification.getId());
+
+    List<Employee> employees = employeeRepository.findAllByIsDeletedFalse();
+    log.info("📋 Found {} active employees", employees.size());
+
+    // Get the current employee ID from the request/authentication
+    String currentEmployeeId = getCurrentEmployeeId();
+    log.info("🔑 Current employee ID: {}", currentEmployeeId);
+
+    int recipientCount = 0;
+    int skippedCount = 0;
+    
+    for (Employee employee : employees) {
+        // Skip the employee who created the course (the one from the token)
+        if (currentEmployeeId != null && currentEmployeeId.equals(employee.getId())) {
+            log.debug("⏭️ Skipping notification for creator: {}", employee.getId());
+            skippedCount++;
+            continue;
+        }
+
+        if (!shouldSendTo(employee, type)) {
+            log.debug("⏭️ Skipping employee: {} (preferences disabled)", employee.getId());
+            continue;
+        }
+
+        log.debug("✅ Creating recipient for employee: {}", employee.getId());
+        
+        // Create recipient record
+        NotificationRecipient recipient = new NotificationRecipient();
+        recipient.setNotification(notification);
+        recipient.setEmployee(employee);
+        recipient.setIsRead(false);
+        recipient.setReadAt(null);
+        recipientRepository.save(recipient);
+        recipientCount++;
+
+        // Create response with recipient
+        NotificationResponse response = NotificationResponse.from(notification, recipient);
+
+        // Send via WebSocket
+        messagingTemplate.convertAndSend(
+                "/topic/notifications/" + employee.getId(),
+                response
+        );
+    }
+
+    log.info("📨 Created {} notification recipients, skipped {} (creator)", recipientCount, skippedCount);
+    return notification;
+}
 
     // ================================================================
     // METHOD 1: Send to all active employees (with title)
@@ -106,9 +123,10 @@ public class NotificationService {
     public Notification sendToAllActive(NotificationType type, 
                                         String title, 
                                         String message, 
-                                        Object referenceId) {
+                                        Object referenceId,
+                                    HttpServletRequest request) {
         String fullMessage = title + ": " + message;
-        return send(type, fullMessage, referenceId);
+        return send(type, fullMessage, referenceId,request);
     }
 
     // ================================================================
@@ -317,5 +335,19 @@ public class NotificationService {
                    "ROLE_ADMIN".equalsIgnoreCase(roleName);
         }
         return false;
+    }
+
+     private String getCurrentEmployeeId() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated()
+                    || auth instanceof AnonymousAuthenticationToken
+                    || "anonymousUser".equals(auth.getName())) {
+                return null;
+            }
+            return auth.getName();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

@@ -61,7 +61,7 @@ public class CourseController {
             @RequestPart("data") @Valid CourseRequestDto req,
             @RequestPart(value = "image", required = false) MultipartFile image) {
         try {
-            CourseDto created = courseService.createCourse(req, image);
+            CourseDto created = courseService.createCourse(req, image, httpServletRequest);
 
             auditLogService.log("Create", MODULE,
                     "Created new course - " + created.getCourseName(),
@@ -95,7 +95,7 @@ public class CourseController {
             @RequestBody CourseUpdateDto req) {
         try {
             CourseDto oldValue = courseService.getCourseById(id);
-            CourseDto updated = courseService.updateCourse(id, req);
+            CourseDto updated = courseService.updateCourse(id, req, httpServletRequest);
 
             auditLogService.log("Update", MODULE,
                     "Course status updated from " + oldValue.getStatus() + " to " + updated.getStatus()

@@ -54,6 +54,18 @@ const getCourseEndDate = (course: Course): Date | null => {
     return new Date(Math.max(...dates.map((d) => d.getTime())))
   }
   return null
+  
+}
+// Helper function to format time (remove seconds)
+const formatTime = (time: string | null): string | null => {
+  if (!time) return null;
+
+  // If time is in HH:mm:ss format, remove seconds
+  const parts = time.split(':');
+  if (parts.length === 3) {
+    return `${parts[0]}:${parts[1]}`;
+  }
+  return time; // Return as-is if not in expected format
 }
 
 // Helper function to get course start time (from first group's first session)
@@ -61,7 +73,8 @@ const getCourseStartTime = (course: Course): string | null => {
   if (course.courseType === "trainer") {
     const firstGroup = course.groups?.[0]
     const firstSession = firstGroup?.sessions?.[0]
-    return firstSession?.startTime || firstGroup?.startTime || null
+    const time = firstSession?.startTime || firstGroup?.startTime || null
+    return formatTime(time)
   }
   return null
 }
@@ -71,7 +84,8 @@ const getCourseEndTime = (course: Course): string | null => {
   if (course.courseType === "trainer") {
     const firstGroup = course.groups?.[0]
     const firstSession = firstGroup?.sessions?.[0]
-    return firstSession?.endTime || firstGroup?.endTime || null
+    const time = firstSession?.endTime || firstGroup?.endTime || null
+    return formatTime(time)
   }
   return null
 }
@@ -133,7 +147,7 @@ export function CourseCard({
   // Registration deadline info
   const daysUntilClose = getDaysUntilClose(course.registrationDeadline)
   const isRegistrationClosingSoon =
-    daysUntilClose !== null && daysUntilClose <= 7 && daysUntilClose > 0
+    daysUntilClose !== null && daysUntilClose <= 3 && daysUntilClose > 0
   const isRegistrationClosed = daysUntilClose !== null && daysUntilClose < 0
   const isDeadlineToday = daysUntilClose !== null && daysUntilClose === 0
 

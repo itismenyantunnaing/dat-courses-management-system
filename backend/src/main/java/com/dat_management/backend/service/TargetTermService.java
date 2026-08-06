@@ -10,6 +10,7 @@ import com.dat_management.backend.entity.Notification.NotificationType;
 import com.dat_management.backend.entity.TargetTerm;
 import com.dat_management.backend.repository.TargetTermRepository;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -18,6 +19,7 @@ public class TargetTermService {
 
     private final TargetTermRepository targetTermRepository;
     private final NotificationService notificationService;
+    private final HttpServletRequest httpServletRequest;
 
     public List<TargetTermResponse> getAll() {
         return targetTermRepository.findAll()
@@ -64,7 +66,8 @@ public class TargetTermService {
                     NotificationType.JLPT_EXAM,
                     "Exam date updated",
                     "The exam date has been changed from " + oldExamDate + " to " + saved.getExamDate() + ".",
-                    saved.getId());
+                    saved.getId(),
+                    httpServletRequest);
         }
 
         return toResponse(saved);

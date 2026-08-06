@@ -8,6 +8,8 @@ import com.dat_management.backend.entity.CourseGroup.GroupStatus;
 import com.dat_management.backend.entity.CourseSession.SessionStatus;
 import com.dat_management.backend.entity.Notification.NotificationType;
 import com.dat_management.backend.repository.*;
+
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +57,7 @@ public class CourseService {
     // =========================================================
     // API 3 — POST /api/courses (with optional image)
     // =========================================================
-    public CourseDto createCourse(CourseRequestDto req, MultipartFile image) {
+    public CourseDto createCourse(CourseRequestDto req, MultipartFile image,HttpServletRequest request) {
         CourseCategory category = findCategoryOrThrow(req.getCourseCategoryId());
 
         Course course = new Course();
@@ -100,57 +102,81 @@ public class CourseService {
 
         
         CourseDto result = toCourseDto(courseRepo.findById(course.getId()).get(), false);
+
+        if (result.getStatus() != null && CourseStatus.OPEN.name().equalsIgnoreCase(result.getStatus())) {
         notificationService.sendToAllActive(
                 NotificationType.COURSE,
                 "New course available",
                 "A new course \"" + course.getCourseName() + "\" has been created. Please check the course details and enrollment deadline.",
-                course.getId());
-
+                course.getId(),
+                request);
+    }
         return result;
     }
 
     // =========================================================
     // API 4 — PUT /api/courses/:id
     // =========================================================
-    public CourseDto updateCourse(Integer id, CourseUpdateDto req) {
-        Course course = findCourseOrThrow(id);
+    public CourseDto updateCourse(Integer id, CourseUpdateDto req, HttpServletRequest request) {
+    Course course = findCourseOrThrow(id);
+    
+    // Store the old status before updating
+    CourseStatus oldStatus = course.getStatus();
+    boolean statusChangedToOpen = false;
 
-        // Update basic fields
-        if (req.getCourseName() != null)
-            course.setCourseName(req.getCourseName());
-        if (req.getTrainerName() != null)
-            course.setTrainerName(req.getTrainerName());
-        if (req.getSelfStudyType() != null)
-            course.setSelfStudyType(req.getSelfStudyType());
-        if (req.getTargetLevel() != null)
-            course.setTargetLevel(req.getTargetLevel());
-        if (req.getTotalSessions() != null)
-            course.setTotalSessions(req.getTotalSessions());
-        if (req.getStartDate() != null)
-            course.setStartDate(req.getStartDate());
-        if (req.getEndDate() != null)
-            course.setEndDate(req.getEndDate());
-        if (req.getRegistrationDeadline() != null)
-            course.setRegistrationDeadline(req.getRegistrationDeadline());
-        if (req.getStatus() != null)
-            course.setStatus(CourseStatus.valueOf(req.getStatus()));
-        if (req.getCourseCategoryId() != null)
-            course.setCourseCategory(findCategoryOrThrow(req.getCourseCategoryId()));
-
-        course = courseRepo.save(course);
-
-        // Handle groups update
-        if (req.getGroups() != null && !req.getGroups().isEmpty()) {
-            updateGroups(course, req.getGroups());
+    // Update basic fields
+    if (req.getCourseName() != null)
+        course.setCourseName(req.getCourseName());
+    if (req.getTrainerName() != null)
+        course.setTrainerName(req.getTrainerName());
+    if (req.getSelfStudyType() != null)
+        course.setSelfStudyType(req.getSelfStudyType());
+    if (req.getTargetLevel() != null)
+        course.setTargetLevel(req.getTargetLevel());
+    if (req.getTotalSessions() != null)
+        course.setTotalSessions(req.getTotalSessions());
+    if (req.getStartDate() != null)
+        course.setStartDate(req.getStartDate());
+    if (req.getEndDate() != null)
+        course.setEndDate(req.getEndDate());
+    if (req.getRegistrationDeadline() != null)
+        course.setRegistrationDeadline(req.getRegistrationDeadline());
+    if (req.getStatus() != null) {
+        CourseStatus newStatus = CourseStatus.valueOf(req.getStatus());
+        course.setStatus(newStatus);
+        
+        // Check if status changed to OPEN
+        if (CourseStatus.OPEN.equals(newStatus) && !CourseStatus.OPEN.equals(oldStatus)) {
+            statusChangedToOpen = true;
         }
-
-        // Handle self-study sessions update
-        if (req.getSelfStudySessions() != null) {
-            updateSelfStudySessions(course, req.getSelfStudySessions());
-        }
-
-        return toCourseDto(courseRepo.findById(course.getId()).get(), false);
     }
+    if (req.getCourseCategoryId() != null)
+        course.setCourseCategory(findCategoryOrThrow(req.getCourseCategoryId()));
+
+    course = courseRepo.save(course);
+
+    // Handle groups update
+    if (req.getGroups() != null && !req.getGroups().isEmpty()) {
+        updateGroups(course, req.getGroups());
+    }
+
+    // Handle self-study sessions update
+    if (req.getSelfStudySessions() != null) {
+        updateSelfStudySessions(course, req.getSelfStudySessions());
+    }
+
+    // ✅ Send notification if status changed to OPEN
+    if (statusChangedToOpen) {
+        notificationService.sendToAllActive(
+            NotificationType.COURSE,
+            "New course available",
+            "Course \"" + course.getCourseName() + "\" is now open for registration! Please check the course details and enrollment deadline.",
+            course.getId(),
+            request
+        );
+    }
+    return toCourseDto(courseRepo.findById(course.getId()).get(), false);
+}
 
     // =========================================================
     // API 5 — DELETE /api/courses/:id
