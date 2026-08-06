@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useCallback, useRef, useState } from "react"
+import React, { useEffect, useCallback, useRef, useState, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -123,6 +123,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
   onGroupAdded,
   onGroupRemoved,
   registrationDeadline,
+  holidays,
 }) => {
   const previousTotalSessionsRef = useRef<{ [key: string]: number }>({})
   const { enrollments } = mainStore()
@@ -134,6 +135,27 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     defaultDate.setHours(0, 0, 0, 0)
     return defaultDate
   })
+
+
+  // Get holiday dates as Date objects
+  const holidayDates = useMemo(() => {
+    if (!holidays || holidays.length === 0) return []
+    return holidays
+      .filter(h => !h.deleted)
+      .map(h => {
+        const date = new Date(h.holidayDate)
+        date.setHours(0, 0, 0, 0)
+        return date
+      })
+  }, [holidays])
+
+  // Check if a date is a holiday
+  const isHoliday = useCallback((date: Date) => {
+    const compareDate = new Date(date)
+    compareDate.setHours(0, 0, 0, 0)
+    return holidayDates.some(h => h.getTime() === compareDate.getTime())
+  }, [holidayDates])
+
 
   // Update minStartDate when registrationDeadline changes
   useEffect(() => {
@@ -168,7 +190,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
   // Update group start dates when minStartDate changes
   useEffect(() => {
     if (groups.length === 0) return
-    
+
     // Check if any group has a start date before the minStartDate
     const needsUpdate = groups.some(group => {
       if (!group.startDate) return true
@@ -178,14 +200,14 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       minDate.setHours(0, 0, 0, 0)
       return startDate < minDate
     })
-    
+
     if (needsUpdate) {
       const updatedGroups = groups.map(group => {
         const startDate = group.startDate ? new Date(group.startDate) : new Date(minStartDate)
         startDate.setHours(0, 0, 0, 0)
         const minDate = new Date(minStartDate)
         minDate.setHours(0, 0, 0, 0)
-        
+
         if (startDate < minDate) {
           return { ...group, startDate: new Date(minStartDate) }
         }
@@ -1172,7 +1194,20 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                       compareDate.setHours(0, 0, 0, 0)
                       const minDate = new Date(minStartDate)
                       minDate.setHours(0, 0, 0, 0)
-                      return compareDate < minDate
+                      // Check if date is a holiday
+                      const isHolidayDate = holidayDates.some(h => h.getTime() === compareDate.getTime())
+                      // Disable if before minStartDate OR is a holiday
+                      return compareDate < minDate || isHolidayDate
+                    }}
+                    modifiers={{
+                      holiday: (date) => {
+                        const compareDate = new Date(date)
+                        compareDate.setHours(0, 0, 0, 0)
+                        return holidayDates.some(h => h.getTime() === compareDate.getTime())
+                      },
+                    }}
+                    modifiersClassNames={{
+                      holiday: "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 rounded-md",
                     }}
                   />
                 </PopoverContent>
@@ -1208,7 +1243,21 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                     defaultMonth={group.endDate || group.startDate}
                     disabled={(date) => {
                       if (group.startDate && date < group.startDate) return true
-                      return false
+                      const compareDate = new Date(date)
+                      compareDate.setHours(0, 0, 0, 0)
+                      // Check if date is a holiday
+                      const isHolidayDate = holidayDates.some(h => h.getTime() === compareDate.getTime())
+                      return isHolidayDate
+                    }}
+                    modifiers={{
+                      holiday: (date) => {
+                        const compareDate = new Date(date)
+                        compareDate.setHours(0, 0, 0, 0)
+                        return holidayDates.some(h => h.getTime() === compareDate.getTime())
+                      },
+                    }}
+                    modifiersClassNames={{
+                      holiday: "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 rounded-md",
                     }}
                   />
                 </PopoverContent>
@@ -1463,9 +1512,22 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                 defaultMonth={session.date || group.startDate}
                                 disabled={(date) => {
                                   if (date < group.startDate) return true
-                                  if (group.endDate && date > group.endDate)
-                                    return true
-                                  return false
+                                  if (group.endDate && date > group.endDate) return true
+                                  const compareDate = new Date(date)
+                                  compareDate.setHours(0, 0, 0, 0)
+                                  // Check if date is a holiday
+                                  const isHolidayDate = holidayDates.some(h => h.getTime() === compareDate.getTime())
+                                  return isHolidayDate
+                                }}
+                                modifiers={{
+                                  holiday: (date) => {
+                                    const compareDate = new Date(date)
+                                    compareDate.setHours(0, 0, 0, 0)
+                                    return holidayDates.some(h => h.getTime() === compareDate.getTime())
+                                  },
+                                }}
+                                modifiersClassNames={{
+                                  holiday: "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 rounded-md",
                                 }}
                               />
                             </PopoverContent>

@@ -114,12 +114,17 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       groupChangeError,
       groupChangeSuccess,
       clearGroupChangeState,
+      fetch_HolidayData,
+      holiday_data
     } = mainStore()
 
     // Fetch employees on mount if not already loaded
     useEffect(() => {
       if (employee_data.length === 0) {
         fetch_EmployeeData()
+      }
+      if (holiday_data.length === 0) {
+        fetch_HolidayData()
       }
     }, [employee_data.length, fetch_EmployeeData])
 
@@ -137,6 +142,8 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         clearGroupChangeState?.()
       }
     }, [clearGroupChangeState])
+
+
 
     const defaultGroup = useMemo(
       () => ({
@@ -883,6 +890,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               onGroupAdded={handleGroupAdded}
               onGroupRemoved={handleGroupRemoved}
               registrationDeadline={formData.registrationDeadline}
+              holidays={holiday_data}
             />
           )}
 
