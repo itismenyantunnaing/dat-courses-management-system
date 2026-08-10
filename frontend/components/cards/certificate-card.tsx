@@ -121,10 +121,10 @@ export function CertificateCard({
 
         {/* Remark Section - Show if remark exists */}
         {certificate.remark && (
-          <div className="px-4">
+          <div className="px-4 pt-4">
             <div className="rounded-md bg-muted/50 px-3 py-2">
               <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Remark:</span>{" "}
+                <span className="font-medium text-foreground">Remark: </span>{" "}
                 {certificate.remark}
               </p>
             </div>

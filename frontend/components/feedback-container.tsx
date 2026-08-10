@@ -21,12 +21,12 @@ import { Kbd } from "@/components/ui/kbd"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  PlusSignIcon,
   ClockIcon,
   SortByDown01Icon,
   SortByUp01Icon,
   FilterMailIcon,
   Delete02Icon,
+  CommentAdd01Icon,
 } from "@hugeicons/core-free-icons"
 import { FeedbackCard } from "./cards/feedback-card"
 import { NewFeedbackDialog } from "./dialogs/newFeedback-dialog"
@@ -526,7 +526,7 @@ export function FeedbackContainer() {
                   disabled={isLoading}
                   title={!canCreateFeedback ? "Only learners can create feedback" : ""}
                 >
-                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+                  <HugeiconsIcon icon={CommentAdd01Icon} strokeWidth={2} />
                   New Feedback
                 </Button>
               )}
@@ -534,13 +534,13 @@ export function FeedbackContainer() {
           </div>
 
           {/* Role Indicator */}
-          <div className="mx-4 mb-4">
+          {/* <div className="mx-4 mb-4">
             <span className="text-sm text-muted-foreground">
               {isLearner ? 'Showing your feedback' :
                 isAdminOrApprover ? 'Showing all feedback' :
                   'Showing feedback'}
             </span>
-          </div>
+          </div> */}
 
           {/* Message Display */}
           {message && (

@@ -24,6 +24,7 @@ import {
   CalendarIcon,
   MonitorDotIcon,
   Certificate01Icon,
+  Comment01Icon,
 } from "@hugeicons/core-free-icons"
 
 const STROKE_WIDTH = 2
@@ -212,7 +213,7 @@ export const adminData: SidebarConfig = {
           ],
         },
         {
-          title: "Certificates Requests",
+          title: "Requested Certificates",
           tabId: "certificates-requests",
           type: "primary",
           icon: (
@@ -239,7 +240,7 @@ export const adminData: SidebarConfig = {
       groupLabel: "Reports",
       items: [
         {
-          title: "Exam progress",
+          title: "Exam Progress",
           tabId: "exam_progress_report",
           type: "primary-action",
           icon: (
@@ -366,7 +367,7 @@ export const learnerData: SidebarConfig = {
           type: "primary",
           icon: (
             <HugeiconsIcon
-              icon={ChatFeedback01Icon}
+              icon={Comment01Icon}
               strokeWidth={STROKE_WIDTH}
             />
           ),
@@ -433,7 +434,7 @@ export const approverData: SidebarConfig = {
           icon: <HugeiconsIcon icon={TrendingUp} strokeWidth={STROKE_WIDTH} />,
         },
         {
-          title: "Certificates Requests",
+          title: "Requested Certificates",
           tabId: "certificates-requests",
           type: "primary",
           icon: (
@@ -445,30 +446,30 @@ export const approverData: SidebarConfig = {
         },
       ],
     },
-    {
-      groupLabel: "Reports",
-      items: [
-        {
-          title: "Approval Reports",
-          tabId: "approval-reports",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon icon={GoogleDocIcon} strokeWidth={STROKE_WIDTH} />
-          ),
-        },
-        {
-          title: "Learner Progress Reports",
-          tabId: "learner-progress-reports",
-          type: "primary",
-          icon: (
-            <HugeiconsIcon
-              icon={CalendarAnalysisIcon}
-              strokeWidth={STROKE_WIDTH}
-            />
-          ),
-        },
-      ],
-    },
+    // {
+    //   groupLabel: "Reports",
+    //   items: [
+    //     {
+    //       title: "Approval Reports",
+    //       tabId: "approval-reports",
+    //       type: "primary",
+    //       icon: (
+    //         <HugeiconsIcon icon={GoogleDocIcon} strokeWidth={STROKE_WIDTH} />
+    //       ),
+    //     },
+    //     {
+    //       title: "Learner Progress Reports",
+    //       tabId: "learner-progress-reports",
+    //       type: "primary",
+    //       icon: (
+    //         <HugeiconsIcon
+    //           icon={CalendarAnalysisIcon}
+    //           strokeWidth={STROKE_WIDTH}
+    //         />
+    //       ),
+    //     },
+    //   ],
+    // },
     {
       groupLabel: "Support",
       items: [

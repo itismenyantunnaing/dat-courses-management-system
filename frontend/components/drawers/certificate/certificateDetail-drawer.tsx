@@ -92,7 +92,8 @@ export function CertificateDetailDrawer({
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
-  const { update_CertificateData, fetch_CertificateData, getUserId } = mainStore()
+  const { update_CertificateData, fetch_CertificateData, getUserId } =
+    mainStore()
 
   // Reset edit mode when drawer closes
   useEffect(() => {
@@ -279,41 +280,41 @@ export function CertificateDetailDrawer({
 
                 {isEditMode ? "Edit Certificate" : "Certificate Details"}
               </DrawerTitle>
-              {!isEditMode && status?.toLowerCase() !== "approved" && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleEditClick}
-                    type="button"
-                  >
-                    <HugeiconsIcon
-                      icon={Edit03Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={handleDeleteClick}
-                    type="button"
-                  >
-                    <HugeiconsIcon
-                      icon={Delete02Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                  </Button>
-                </div>
-              )}
-              {!isEditMode && status?.toLowerCase() === "approved" && (
-                <div className="text-sm text-muted-foreground">
-                  <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
-                    Verified ✓
-                  </Badge>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <Badge
+                  className={`${getStatusBadge(status)} px-3 py-1 text-xs font-medium`}
+                >
+                  {statusLabels[status as keyof typeof statusLabels] || status}
+                </Badge>
+                {!isEditMode && status?.toLowerCase() !== "approved" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleEditClick}
+                      type="button"
+                    >
+                      <HugeiconsIcon
+                        icon={Edit03Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={handleDeleteClick}
+                      type="button"
+                    >
+                      <HugeiconsIcon
+                        icon={Delete02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </DrawerHeader>
 
@@ -363,16 +364,6 @@ export function CertificateDetailDrawer({
                         </div>
                       </div>
                     )}
-
-                    {/* Status Badge - Top Right */}
-                    <div className="absolute top-3 right-3">
-                      <Badge
-                        className={`${getStatusBadge(status)} px-3 py-1 text-xs font-medium`}
-                      >
-                        {statusLabels[status as keyof typeof statusLabels] ||
-                          status}
-                      </Badge>
-                    </div>
                   </div>
 
                   {/* Certificate Details with Submitted Date */}
@@ -391,83 +382,63 @@ export function CertificateDetailDrawer({
                     </span>
                   </div>
 
-                  {/* Employee Info */}
-                  <div className="rounded-lg border p-4">
-                    <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-                      Employee
-                    </h4>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage
-                          src={employeeAvatar}
-                          alt={employeeName}
-                        />
-                        <AvatarFallback>
-                          {getInitials(employeeName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{employeeName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {employeeEmail}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Remark */}
                   {certificate.remark && (
                     <>
                       <Separator />
-                      <div className="rounded-lg border p-4">
-                        <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-                          Remark
-                        </h4>
-                        <p className="text-sm">{certificate.remark}</p>
+                      <div className="rounded-lg pb-4">
+                        <p className="text-sm">
+                          Remark:{" "}
+                          <span className="text-medium text-muted-foreground">
+                            {certificate.remark}
+                          </span>
+                        </p>
                       </div>
                     </>
                   )}
 
                   {/* Verified By */}
-                  {status?.toLowerCase() === "approved" && certificate.verifiedByEmployeeName && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h4 className="mt-2 text-sm font-medium text-muted-foreground">
-                          Verified By
-                        </h4>
-                        <div className="flex items-center gap-2 rounded-lg py-3">
-                          <Avatar className="h-10 w-10 overflow-hidden rounded-full">
-                            <AvatarImage
-                              className="h-10 w-10 overflow-hidden rounded-full"
-                              src=""
-                              alt={certificate.verifiedByEmployeeName}
-                            />
-                            <AvatarFallback className="overflow-hidden rounded-full">
-                              {getInitials(certificate.verifiedByEmployeeName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">
-                              {certificate.verifiedByEmployeeName}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Verifier
-                            </p>
-                          </div>
-                          {certificate.verifiedAt && (
-                            <div className="ml-auto text-sm text-muted-foreground">
-                              Verified on:{" "}
-                              {format(
-                                new Date(certificate.verifiedAt),
-                                "MMM d, yyyy h:mm a"
-                              )}
+                  {status?.toLowerCase() === "approved" &&
+                    certificate.verifiedByEmployeeName && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="mt-2 text-sm font-medium text-muted-foreground">
+                            Approved By
+                          </h4>
+                          <div className="flex items-center gap-2 rounded-lg py-3">
+                            <Avatar className="h-10 w-10 overflow-hidden rounded-full">
+                              <AvatarImage
+                                className="h-10 w-10 overflow-hidden rounded-full"
+                                src=""
+                                alt={certificate.verifiedByEmployeeName}
+                              />
+                              <AvatarFallback className="overflow-hidden rounded-full">
+                                {getInitials(
+                                  certificate.verifiedByEmployeeName
+                                )}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">
+                                {certificate.verifiedByEmployeeName}
+                              </p>
                             </div>
-                          )}
+                            {certificate.verifiedAt && (
+                              <div className="ml-auto text-sm text-muted-foreground">
+                                Approved on:{" "}
+                                <span className="font-medium text-primary">
+                                  {format(
+                                    new Date(certificate.verifiedAt),
+                                    "MMM d, yyyy h:mm a"
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  )}
+                      </>
+                    )}
                 </div>
               )}
             </div>

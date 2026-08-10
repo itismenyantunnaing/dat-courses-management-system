@@ -172,10 +172,16 @@ export function ImportDialog({
             />
           </div>
           <div className="space-y-2 text-center">
-            <p className="text-sm font-medium">
-              {selectedFile
-                ? selectedFile.name
-                : "Choose a file or drag & drop it here"}
+            <p className="text-sm">
+              {selectedFile ? (
+                selectedFile.name
+              ) : (
+                <>
+                  Choose a file or drag & drop it here.
+                  <br />
+                  Your Excel file tab name has to be <span className="font-bold text-blue-600">{currentTabData?.label}</span>.
+                </>
+              )}
             </p>
             <p className="text-xs text-muted-foreground">
               Maximum {currentTabData?.maxSize || 10} MB file size

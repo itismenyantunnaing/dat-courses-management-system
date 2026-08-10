@@ -75,7 +75,9 @@ const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
   )
 }
 
-export function JapaneseCertificateContainer({ selectedCertificateId }: JapaneseCertificateContainerProps) {
+export function JapaneseCertificateContainer({
+  selectedCertificateId,
+}: JapaneseCertificateContainerProps) {
   const {
     certificateData,
     fetch_CertificateData,
@@ -130,13 +132,18 @@ export function JapaneseCertificateContainer({ selectedCertificateId }: Japanese
     // 2. We're not loading
     // 3. We haven't processed this ID yet
     // 4. We have certificates loaded
-    if (!selectedCertificateId || isLoading || hasProcessedSelectedIdRef.current || certificateData.length === 0) {
+    if (
+      !selectedCertificateId ||
+      isLoading ||
+      hasProcessedSelectedIdRef.current ||
+      certificateData.length === 0
+    ) {
       return
     }
 
     // Find the certificate (convert ID to string for comparison)
     const certIdStr = selectedCertificateId.toString()
-    const foundCertificate = certificateData.find(c => c.id === certIdStr)
+    const foundCertificate = certificateData.find((c) => c.id === certIdStr)
 
     if (foundCertificate) {
       // Open the certificate detail drawer
@@ -146,24 +153,39 @@ export function JapaneseCertificateContainer({ selectedCertificateId }: Japanese
     }
 
     // If certificate not found, try to refresh data
-    console.warn(`Certificate with ID ${selectedCertificateId} not found. Refreshing...`)
+    console.warn(
+      `Certificate with ID ${selectedCertificateId} not found. Refreshing...`
+    )
     const userId = getUserId()
     if (userId) {
       fetch_CertificateData(userId).then(() => {
         // After refresh, check again
-        const refreshedCertificate = certificateData.find(c => c.id === certIdStr)
+        const refreshedCertificate = certificateData.find(
+          (c) => c.id === certIdStr
+        )
         if (refreshedCertificate) {
-          console.log("✅ Found certificate after refresh:", refreshedCertificate.id)
+          console.log(
+            "✅ Found certificate after refresh:",
+            refreshedCertificate.id
+          )
           handleCardClick(refreshedCertificate)
         } else {
-          console.error(`Certificate with ID ${selectedCertificateId} not found after refresh`)
+          console.error(
+            `Certificate with ID ${selectedCertificateId} not found after refresh`
+          )
         }
         hasProcessedSelectedIdRef.current = true
       })
     } else {
       hasProcessedSelectedIdRef.current = true
     }
-  }, [selectedCertificateId, certificateData, isLoading, fetch_CertificateData, getUserId])
+  }, [
+    selectedCertificateId,
+    certificateData,
+    isLoading,
+    fetch_CertificateData,
+    getUserId,
+  ])
 
   // Count certificates by status
   const statusCounts = useMemo(() => {
@@ -330,7 +352,7 @@ export function JapaneseCertificateContainer({ selectedCertificateId }: Japanese
                 onClick={() => setIsNewDrawerOpen(true)}
                 className="bg-primary hover:bg-primary/90"
               >
-                <HugeiconsIcon icon={Certificate01Icon} strokeWidth={2} />
+                <HugeiconsIcon icon={Upload05Icon} strokeWidth={2} />
                 Upload Certificate
               </Button>
             </div>
@@ -350,7 +372,7 @@ export function JapaneseCertificateContainer({ selectedCertificateId }: Japanese
         </div>
       ) : (
         // Empty state
-        <Empty className="m-auto min-h-[300px] w-[400px] rounded-lg">
+        <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <HugeiconsIcon
@@ -362,7 +384,7 @@ export function JapaneseCertificateContainer({ selectedCertificateId }: Japanese
             <EmptyTitle>
               {hasCertificates ? "No Matching Certificates" : "No Certificates"}
             </EmptyTitle>
-            <EmptyDescription className="max-w-sm text-center text-pretty">
+            <EmptyDescription className="text-center text-pretty">
               {hasCertificates ? (
                 <>
                   {getEmptyStateMessage()}

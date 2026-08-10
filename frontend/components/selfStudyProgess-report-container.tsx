@@ -58,20 +58,20 @@ const STROKE_WIDTH = 2
 
 // Column configuration - Single source of truth
 const STUDY_COLUMNS = [
-  { key: 'grammar', label: 'Grammar Count' },
-  { key: 'vocabulary', label: 'Vocabulary Count' },
-  { key: 'kanji', label: 'Kanji Count' },
-  { key: 'reading', label: 'Reading (min)' },
-  { key: 'listening', label: 'Listening (min)' }
-];
+  { key: "grammar", label: "Grammar Count" },
+  { key: "vocabulary", label: "Vocabulary Count" },
+  { key: "kanji", label: "Kanji Count" },
+  { key: "reading", label: "Reading (min)" },
+  { key: "listening", label: "Listening (min)" },
+]
 
 // View modes
 const VIEW_MODES = {
-  SESSION: 'session',           // Session Breakdown - each session's numbers
-  OVERALL: 'overall'            // Overall Progress - cumulative totals
-} as const;
+  SESSION: "session", // Session Breakdown - each session's numbers
+  OVERALL: "overall", // Overall Progress - cumulative totals
+} as const
 
-type ViewMode = typeof VIEW_MODES[keyof typeof VIEW_MODES];
+type ViewMode = (typeof VIEW_MODES)[keyof typeof VIEW_MODES]
 
 // Spinner component
 const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
@@ -108,60 +108,60 @@ const getInitials = (name: string) => {
 
 // Helper function to format date
 const formatDate = (dateString: string) => {
-  if (!dateString) return '';
+  if (!dateString) return ""
   try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
   } catch {
-    return '';
+    return ""
   }
 }
 
 // Helper function to get session status based on deadline and completion
 const getSessionStatus = (deadline: string, completionStatus: string) => {
-  if (!deadline) return { label: 'Unknown', variant: 'outline' };
+  if (!deadline) return { label: "Unknown", variant: "outline" }
 
-  const now = new Date();
-  const deadlineDate = new Date(deadline);
+  const now = new Date()
+  const deadlineDate = new Date(deadline)
 
   // If completed
-  if (completionStatus === 'COMPLETED') {
-    return { label: 'Completed', variant: 'success' };
+  if (completionStatus === "COMPLETED") {
+    return { label: "Completed", variant: "success" }
   }
 
   // If in progress
-  if (completionStatus === 'IN_PROGRESS') {
-    return { label: 'In Progress', variant: 'warning' };
+  if (completionStatus === "IN_PROGRESS") {
+    return { label: "In Progress", variant: "warning" }
   }
 
   // Check if overdue (deadline is in the past)
   if (deadlineDate < now) {
-    return { label: 'Overdue', variant: 'destructive' };
+    return { label: "Overdue", variant: "destructive" }
   }
 
   // Any deadline in the future → Upcoming
-  return { label: 'Upcoming', variant: 'default' };
+  return { label: "Upcoming", variant: "default" }
 }
 
 // Status badge styling
 const getStatusBadgeClass = (status: string) => {
   switch (status) {
-    case 'Completed':
-      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950 border-green-200";
-    case 'In Progress':
-      return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950 border-blue-200";
-    case 'Overdue':
-      return "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 border-red-200";
-    case 'Upcoming':
-      return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-950 border-yellow-200";
-    case 'Active':
-      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950 border-gray-200";
+    case "Completed":
+      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950 border-green-200"
+    case "In Progress":
+      return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950 border-blue-200"
+    case "Overdue":
+      return "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 border-red-200"
+    case "Upcoming":
+      return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-950 border-yellow-200"
+    case "Active":
+      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950 border-gray-200"
     default:
-      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950";
+      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
   }
 }
 
@@ -171,10 +171,7 @@ const BorderedTableCell = ({
   className = "",
   ...props
 }: React.ComponentProps<typeof TableCell>) => (
-  <TableCell
-    className={cn("border-r border-l", className)}
-    {...props}
-  >
+  <TableCell className={cn("border-r border-l", className)} {...props}>
     {children}
   </TableCell>
 )
@@ -245,7 +242,13 @@ export default function SelfStudyProgressReportContainer() {
   // View mode filter - only one at a time
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODES.SESSION)
 
-  const { courses, fetchAll_CourseData, fetch_studyProgress, studyProgress, fetchEmployeeTargetLevel } = mainStore()
+  const {
+    courses,
+    fetchAll_CourseData,
+    fetch_studyProgress,
+    studyProgress,
+    fetchEmployeeTargetLevel,
+  } = mainStore()
 
   // Load courses on mount
   useEffect(() => {
@@ -272,8 +275,12 @@ export default function SelfStudyProgressReportContainer() {
   // Filter self-study courses
   const selfStudyCourses = useMemo(() => {
     return courses.filter((course: Course) => {
-      const hasSelfStudySessions = course.self_study_sessions && course.self_study_sessions.length > 0
-      const isSelfStudy = course.courseType === 'self-study' || course.selfStudyType === 'jlpt' || course.selfStudyType === 'other'
+      const hasSelfStudySessions =
+        course.self_study_sessions && course.self_study_sessions.length > 0
+      const isSelfStudy =
+        course.courseType === "self-study" ||
+        course.selfStudyType === "jlpt" ||
+        course.selfStudyType === "other"
       return hasSelfStudySessions && isSelfStudy
     })
   }, [courses])
@@ -307,167 +314,317 @@ export default function SelfStudyProgressReportContainer() {
 
   // Transform progress data into report rows
   useEffect(() => {
-    let progressArray = [];
+    let progressArray = []
 
     if (studyProgress) {
       if (studyProgress.progress && Array.isArray(studyProgress.progress)) {
-        progressArray = studyProgress.progress;
+        progressArray = studyProgress.progress
       } else if (Array.isArray(studyProgress)) {
-        progressArray = studyProgress;
+        progressArray = studyProgress
       } else if (studyProgress.data && Array.isArray(studyProgress.data)) {
-        progressArray = studyProgress.data;
-      } else if (typeof studyProgress === 'object') {
-        const values = Object.values(studyProgress);
-        if (values.length > 0 && values.some(v => typeof v === 'object' && v !== null && (v.employee_id || v.employee_name))) {
-          progressArray = values;
+        progressArray = studyProgress.data
+      } else if (typeof studyProgress === "object") {
+        const values = Object.values(studyProgress)
+        if (
+          values.length > 0 &&
+          values.some(
+            (v) =>
+              typeof v === "object" &&
+              v !== null &&
+              (v.employee_id || v.employee_name)
+          )
+        ) {
+          progressArray = values
         }
       }
     }
 
     if (progressArray.length === 0) {
-      setReportData([]);
-      setFilteredData([]);
-      return;
+      setReportData([])
+      setFilteredData([])
+      return
     }
 
-    const selectedCourse = selfStudyCourses.find((c: Course) => c.id === selectedCourseId);
-    const sessions = selectedCourse?.self_study_sessions || [];
+    const selectedCourse = selfStudyCourses.find(
+      (c: Course) => c.id === selectedCourseId
+    )
+    const sessions = selectedCourse?.self_study_sessions || []
 
     // Calculate total targets for the entire course
-    const totalGrammarTarget = sessions.reduce((sum: number, s: any) => sum + (s.grammarCount || s.grammar_target || 0), 0);
-    const totalVocabularyTarget = sessions.reduce((sum: number, s: any) => sum + (s.vocabularyCount || s.vocabulary_target || 0), 0);
-    const totalKanjiTarget = sessions.reduce((sum: number, s: any) => sum + (s.kanjiCount || s.kanji_target || 0), 0);
-    const totalReadingTarget = sessions.reduce((sum: number, s: any) => sum + (s.readingMinutes || s.reading_target_minutes || 0), 0);
-    const totalListeningTarget = sessions.reduce((sum: number, s: any) => sum + (s.listeningMinutes || s.listening_target_minutes || 0), 0);
+    const totalGrammarTarget = sessions.reduce(
+      (sum: number, s: any) => sum + (s.grammarCount || s.grammar_target || 0),
+      0
+    )
+    const totalVocabularyTarget = sessions.reduce(
+      (sum: number, s: any) =>
+        sum + (s.vocabularyCount || s.vocabulary_target || 0),
+      0
+    )
+    const totalKanjiTarget = sessions.reduce(
+      (sum: number, s: any) => sum + (s.kanjiCount || s.kanji_target || 0),
+      0
+    )
+    const totalReadingTarget = sessions.reduce(
+      (sum: number, s: any) =>
+        sum + (s.readingMinutes || s.reading_target_minutes || 0),
+      0
+    )
+    const totalListeningTarget = sessions.reduce(
+      (sum: number, s: any) =>
+        sum + (s.listeningMinutes || s.listening_target_minutes || 0),
+      0
+    )
 
     // Group progress by employee
-    const groupedByEmployee = new Map();
+    const groupedByEmployee = new Map()
 
     progressArray.forEach((progress: any) => {
-      const employeeKey = progress.employee_id || progress.employeeId || progress.memberId;
+      const employeeKey =
+        progress.employee_id || progress.employeeId || progress.memberId
 
       if (!groupedByEmployee.has(employeeKey)) {
         groupedByEmployee.set(employeeKey, {
           employee_id: employeeKey,
-          employee_name: progress.employee_name || progress.employeeName || progress.memberName || 'Unknown',
-          progressEntries: []
-        });
+          employee_name:
+            progress.employee_name ||
+            progress.employeeName ||
+            progress.memberName ||
+            "Unknown",
+          progressEntries: [],
+        })
       }
 
-      groupedByEmployee.get(employeeKey).progressEntries.push(progress);
-    });
+      groupedByEmployee.get(employeeKey).progressEntries.push(progress)
+    })
 
     // Sort each employee's progress entries by session number
     groupedByEmployee.forEach((employee: any) => {
-      employee.progressEntries.sort((a: any, b: any) => (a.session_no || 0) - (b.session_no || 0));
-    });
+      employee.progressEntries.sort(
+        (a: any, b: any) => (a.session_no || 0) - (b.session_no || 0)
+      )
+    })
 
     // Create rows
-    const rows: ProgressReportRow[] = [];
+    const rows: ProgressReportRow[] = []
 
     groupedByEmployee.forEach((employee: any) => {
       // Initialize cumulative totals
-      let cumulativeGrammarActual = 0;
-      let cumulativeVocabularyActual = 0;
-      let cumulativeKanjiActual = 0;
-      let cumulativeReadingActual = 0;
-      let cumulativeListeningActual = 0;
+      let cumulativeGrammarActual = 0
+      let cumulativeVocabularyActual = 0
+      let cumulativeKanjiActual = 0
+      let cumulativeReadingActual = 0
+      let cumulativeListeningActual = 0
 
-      let cumulativeGrammarTarget = 0;
-      let cumulativeVocabularyTarget = 0;
-      let cumulativeKanjiTarget = 0;
-      let cumulativeReadingTarget = 0;
-      let cumulativeListeningTarget = 0;
+      let cumulativeGrammarTarget = 0
+      let cumulativeVocabularyTarget = 0
+      let cumulativeKanjiTarget = 0
+      let cumulativeReadingTarget = 0
+      let cumulativeListeningTarget = 0
 
       employee.progressEntries.forEach((progress: any, index: number) => {
-        const sessionNo = progress.session_no || index + 1;
-        const sessionDate = progress.session_deadline || progress.session_date || '';
+        const sessionNo = progress.session_no || index + 1
+        const sessionDate =
+          progress.session_deadline || progress.session_date || ""
 
         // Find matching session for individual targets
         const matchingSession = sessions.find((s: any) => {
-          const sessionId = s.id?.toString();
-          const progressSessionId = progress.self_study_session_id?.toString();
-          return sessionId === progressSessionId || s.session_no === progress.session_no;
-        });
+          const sessionId = s.id?.toString()
+          const progressSessionId = progress.self_study_session_id?.toString()
+          return (
+            sessionId === progressSessionId ||
+            s.session_no === progress.session_no
+          )
+        })
 
         // Get individual session targets
-        const sessionGrammarTarget = matchingSession?.grammarCount || matchingSession?.grammar_target || 0;
-        const sessionVocabularyTarget = matchingSession?.vocabularyCount || matchingSession?.vocabulary_target || 0;
-        const sessionKanjiTarget = matchingSession?.kanjiCount || matchingSession?.kanji_target || 0;
-        const sessionReadingTarget = matchingSession?.readingMinutes || matchingSession?.reading_target_minutes || 0;
-        const sessionListeningTarget = matchingSession?.listeningMinutes || matchingSession?.listening_target_minutes || 0;
+        const sessionGrammarTarget =
+          matchingSession?.grammarCount || matchingSession?.grammar_target || 0
+        const sessionVocabularyTarget =
+          matchingSession?.vocabularyCount ||
+          matchingSession?.vocabulary_target ||
+          0
+        const sessionKanjiTarget =
+          matchingSession?.kanjiCount || matchingSession?.kanji_target || 0
+        const sessionReadingTarget =
+          matchingSession?.readingMinutes ||
+          matchingSession?.reading_target_minutes ||
+          0
+        const sessionListeningTarget =
+          matchingSession?.listeningMinutes ||
+          matchingSession?.listening_target_minutes ||
+          0
 
         // Current values - individual session progress
-        const currentGrammar = progress.grammar_count || 0;
-        const currentVocabulary = progress.vocabulary_count || 0;
-        const currentKanji = progress.kanji_count || 0;
-        const currentReading = progress.reading_minutes || 0;
-        const currentListening = progress.listening_minutes || 0;
+        const currentGrammar = progress.grammar_count || 0
+        const currentVocabulary = progress.vocabulary_count || 0
+        const currentKanji = progress.kanji_count || 0
+        const currentReading = progress.reading_minutes || 0
+        const currentListening = progress.listening_minutes || 0
 
         // Update cumulative totals
-        cumulativeGrammarActual += currentGrammar;
-        cumulativeVocabularyActual += currentVocabulary;
-        cumulativeKanjiActual += currentKanji;
-        cumulativeReadingActual += currentReading;
-        cumulativeListeningActual += currentListening;
+        cumulativeGrammarActual += currentGrammar
+        cumulativeVocabularyActual += currentVocabulary
+        cumulativeKanjiActual += currentKanji
+        cumulativeReadingActual += currentReading
+        cumulativeListeningActual += currentListening
 
-        cumulativeGrammarTarget += sessionGrammarTarget;
-        cumulativeVocabularyTarget += sessionVocabularyTarget;
-        cumulativeKanjiTarget += sessionKanjiTarget;
-        cumulativeReadingTarget += sessionReadingTarget;
-        cumulativeListeningTarget += sessionListeningTarget;
+        cumulativeGrammarTarget += sessionGrammarTarget
+        cumulativeVocabularyTarget += sessionVocabularyTarget
+        cumulativeKanjiTarget += sessionKanjiTarget
+        cumulativeReadingTarget += sessionReadingTarget
+        cumulativeListeningTarget += sessionListeningTarget
 
         // Calculate % Complete Actual (cumulative actual / total target)
-        const grammarPercentActual = totalGrammarTarget > 0 ? Math.round((cumulativeGrammarActual / totalGrammarTarget) * 100) : 0;
-        const vocabularyPercentActual = totalVocabularyTarget > 0 ? Math.round((cumulativeVocabularyActual / totalVocabularyTarget) * 100) : 0;
-        const kanjiPercentActual = totalKanjiTarget > 0 ? Math.round((cumulativeKanjiActual / totalKanjiTarget) * 100) : 0;
-        const readingPercentActual = totalReadingTarget > 0 ? Math.round((cumulativeReadingActual / totalReadingTarget) * 100) : 0;
-        const listeningPercentActual = totalListeningTarget > 0 ? Math.round((cumulativeListeningActual / totalListeningTarget) * 100) : 0;
+        const grammarPercentActual =
+          totalGrammarTarget > 0
+            ? Math.round((cumulativeGrammarActual / totalGrammarTarget) * 100)
+            : 0
+        const vocabularyPercentActual =
+          totalVocabularyTarget > 0
+            ? Math.round(
+                (cumulativeVocabularyActual / totalVocabularyTarget) * 100
+              )
+            : 0
+        const kanjiPercentActual =
+          totalKanjiTarget > 0
+            ? Math.round((cumulativeKanjiActual / totalKanjiTarget) * 100)
+            : 0
+        const readingPercentActual =
+          totalReadingTarget > 0
+            ? Math.round((cumulativeReadingActual / totalReadingTarget) * 100)
+            : 0
+        const listeningPercentActual =
+          totalListeningTarget > 0
+            ? Math.round(
+                (cumulativeListeningActual / totalListeningTarget) * 100
+              )
+            : 0
 
         // Calculate % Complete Target (cumulative target / total target)
-        const grammarPercentTarget = totalGrammarTarget > 0 ? Math.round((cumulativeGrammarTarget / totalGrammarTarget) * 100) : 0;
-        const vocabularyPercentTarget = totalVocabularyTarget > 0 ? Math.round((cumulativeVocabularyTarget / totalVocabularyTarget) * 100) : 0;
-        const kanjiPercentTarget = totalKanjiTarget > 0 ? Math.round((cumulativeKanjiTarget / totalKanjiTarget) * 100) : 0;
-        const readingPercentTarget = totalReadingTarget > 0 ? Math.round((cumulativeReadingTarget / totalReadingTarget) * 100) : 0;
-        const listeningPercentTarget = totalListeningTarget > 0 ? Math.round((cumulativeListeningTarget / totalListeningTarget) * 100) : 0;
+        const grammarPercentTarget =
+          totalGrammarTarget > 0
+            ? Math.round((cumulativeGrammarTarget / totalGrammarTarget) * 100)
+            : 0
+        const vocabularyPercentTarget =
+          totalVocabularyTarget > 0
+            ? Math.round(
+                (cumulativeVocabularyTarget / totalVocabularyTarget) * 100
+              )
+            : 0
+        const kanjiPercentTarget =
+          totalKanjiTarget > 0
+            ? Math.round((cumulativeKanjiTarget / totalKanjiTarget) * 100)
+            : 0
+        const readingPercentTarget =
+          totalReadingTarget > 0
+            ? Math.round((cumulativeReadingTarget / totalReadingTarget) * 100)
+            : 0
+        const listeningPercentTarget =
+          totalListeningTarget > 0
+            ? Math.round(
+                (cumulativeListeningTarget / totalListeningTarget) * 100
+              )
+            : 0
 
         // Calculate % Complete Progress (cumulative actual / cumulative target)
-        const grammarPercentProgress = cumulativeGrammarTarget > 0 ? Math.round((cumulativeGrammarActual / cumulativeGrammarTarget) * 100) : 0;
-        const vocabularyPercentProgress = cumulativeVocabularyTarget > 0 ? Math.round((cumulativeVocabularyActual / cumulativeVocabularyTarget) * 100) : 0;
-        const kanjiPercentProgress = cumulativeKanjiTarget > 0 ? Math.round((cumulativeKanjiActual / cumulativeKanjiTarget) * 100) : 0;
-        const readingPercentProgress = cumulativeReadingTarget > 0 ? Math.round((cumulativeReadingActual / cumulativeReadingTarget) * 100) : 0;
-        const listeningPercentProgress = cumulativeListeningTarget > 0 ? Math.round((cumulativeListeningActual / cumulativeListeningTarget) * 100) : 0;
+        const grammarPercentProgress =
+          cumulativeGrammarTarget > 0
+            ? Math.round(
+                (cumulativeGrammarActual / cumulativeGrammarTarget) * 100
+              )
+            : 0
+        const vocabularyPercentProgress =
+          cumulativeVocabularyTarget > 0
+            ? Math.round(
+                (cumulativeVocabularyActual / cumulativeVocabularyTarget) * 100
+              )
+            : 0
+        const kanjiPercentProgress =
+          cumulativeKanjiTarget > 0
+            ? Math.round((cumulativeKanjiActual / cumulativeKanjiTarget) * 100)
+            : 0
+        const readingPercentProgress =
+          cumulativeReadingTarget > 0
+            ? Math.round(
+                (cumulativeReadingActual / cumulativeReadingTarget) * 100
+              )
+            : 0
+        const listeningPercentProgress =
+          cumulativeListeningTarget > 0
+            ? Math.round(
+                (cumulativeListeningActual / cumulativeListeningTarget) * 100
+              )
+            : 0
 
         // Overall percentages (average of all 5 categories)
-        const overallPercentActual = Math.round((grammarPercentActual + vocabularyPercentActual + kanjiPercentActual + readingPercentActual + listeningPercentActual) / 5);
-        const overallPercentTarget = Math.round((grammarPercentTarget + vocabularyPercentTarget + kanjiPercentTarget + readingPercentTarget + listeningPercentTarget) / 5);
+        const overallPercentActual = Math.round(
+          (grammarPercentActual +
+            vocabularyPercentActual +
+            kanjiPercentActual +
+            readingPercentActual +
+            listeningPercentActual) /
+            5
+        )
+        const overallPercentTarget = Math.round(
+          (grammarPercentTarget +
+            vocabularyPercentTarget +
+            kanjiPercentTarget +
+            readingPercentTarget +
+            listeningPercentTarget) /
+            5
+        )
 
         // Calculate Current (individual session completion)
-        const grammarCurrentPercent = sessionGrammarTarget > 0 ? Math.round((currentGrammar / sessionGrammarTarget) * 100) : 0;
-        const vocabularyCurrentPercent = sessionVocabularyTarget > 0 ? Math.round((currentVocabulary / sessionVocabularyTarget) * 100) : 0;
-        const kanjiCurrentPercent = sessionKanjiTarget > 0 ? Math.round((currentKanji / sessionKanjiTarget) * 100) : 0;
-        const readingCurrentPercent = sessionReadingTarget > 0 ? Math.round((currentReading / sessionReadingTarget) * 100) : 0;
-        const listeningCurrentPercent = sessionListeningTarget > 0 ? Math.round((currentListening / sessionListeningTarget) * 100) : 0;
+        const grammarCurrentPercent =
+          sessionGrammarTarget > 0
+            ? Math.round((currentGrammar / sessionGrammarTarget) * 100)
+            : 0
+        const vocabularyCurrentPercent =
+          sessionVocabularyTarget > 0
+            ? Math.round((currentVocabulary / sessionVocabularyTarget) * 100)
+            : 0
+        const kanjiCurrentPercent =
+          sessionKanjiTarget > 0
+            ? Math.round((currentKanji / sessionKanjiTarget) * 100)
+            : 0
+        const readingCurrentPercent =
+          sessionReadingTarget > 0
+            ? Math.round((currentReading / sessionReadingTarget) * 100)
+            : 0
+        const listeningCurrentPercent =
+          sessionListeningTarget > 0
+            ? Math.round((currentListening / sessionListeningTarget) * 100)
+            : 0
 
-        const overallPercentCurrent = Math.round((grammarCurrentPercent + vocabularyCurrentPercent + kanjiCurrentPercent + readingCurrentPercent + listeningCurrentPercent) / 5);
+        const overallPercentCurrent = Math.round(
+          (grammarCurrentPercent +
+            vocabularyCurrentPercent +
+            kanjiCurrentPercent +
+            readingCurrentPercent +
+            listeningCurrentPercent) /
+            5
+        )
 
         // Get session status
-        const statusInfo = getSessionStatus(sessionDate, progress.completion_status);
+        const statusInfo = getSessionStatus(
+          sessionDate,
+          progress.completion_status
+        )
 
         // Format section with date
-        const formattedDate = formatDate(sessionDate);
+        const formattedDate = formatDate(sessionDate)
         const sectionDisplay = formattedDate
           ? `Section ${sessionNo} (${formattedDate})`
-          : `Section ${sessionNo}`;
+          : `Section ${sessionNo}`
 
         rows.push({
           id: progress.id || `row-${rows.length}`,
           sr: rows.length + 1,
           section: sectionDisplay,
           memberName: employee.employee_name,
-          jlptLevel: '',
-          certified: 'No',
-          examTarget: '',
+          jlptLevel: "",
+          certified: "No",
+          examTarget: "",
           status: statusInfo.label,
           // Current session values - INDIVIDUAL session progress
           grammarCurrent: currentGrammar,
@@ -495,14 +652,14 @@ export default function SelfStudyProgressReportContainer() {
           percentCompleteCurrent: overallPercentCurrent,
           percentCompleteActual: overallPercentActual,
           percentCompleteTarget: overallPercentTarget,
-        });
-      });
-    });
+        })
+      })
+    })
 
-    setReportData(rows);
-    setFilteredData(rows);
-    setCurrentPage(1);
-  }, [studyProgress, selectedCourseId, selfStudyCourses]);
+    setReportData(rows)
+    setFilteredData(rows)
+    setCurrentPage(1)
+  }, [studyProgress, selectedCourseId, selfStudyCourses])
 
   // Filter data based on search term
   useEffect(() => {
@@ -516,9 +673,11 @@ export default function SelfStudyProgressReportContainer() {
         const memberName = (item.memberName || "").toLowerCase()
         const section = (item.section || "").toLowerCase()
         const status = (item.status || "").toLowerCase()
-        return memberName.includes(searchLower) ||
+        return (
+          memberName.includes(searchLower) ||
           section.includes(searchLower) ||
           status.includes(searchLower)
+        )
       })
     }
 
@@ -542,7 +701,10 @@ export default function SelfStudyProgressReportContainer() {
   // Pagination calculations
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage)
+  const paginatedData = filteredData.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  )
 
   const getPageNumbers = (totalPages: number, currentPage: number) => {
     const pages: (number | string)[] = []
@@ -598,30 +760,30 @@ export default function SelfStudyProgressReportContainer() {
       <CardContent className="px-0">
         {/* Header with Title, Search and Course Filter */}
         <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-md bg-primary/10 p-2">
-              <HugeiconsIcon
-                icon={GraduationCapIcon}
-                strokeWidth={2}
-                className="h-5 w-5 text-primary"
+          <div className="flex flex-1 items-center gap-3">
+            <InputGroup className="max-w-[400px] flex-1">
+              <InputGroupInput
+                ref={searchInputRef}
+                placeholder="Search by member, section, or status..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">
-                Self-Study Progress Report
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Track study progress across all members
-              </p>
-            </div>
+              <InputGroupAddon>
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  strokeWidth={2}
+                  className="h-4 w-4 text-muted-foreground"
+                />
+              </InputGroupAddon>
+              <InputGroupAddon align="inline-end">
+                <Kbd>Ctrl + K</Kbd>
+              </InputGroupAddon>
+            </InputGroup>
           </div>
 
           <div className="flex items-center gap-4">
             {/* View Mode Filter - Select */}
             <div className="flex items-center gap-2">
-              <Label htmlFor="view-mode" className="text-sm whitespace-nowrap">
-                View:
-              </Label>
               <Select
                 value={viewMode}
                 onValueChange={(value) => setViewMode(value as ViewMode)}
@@ -632,10 +794,10 @@ export default function SelfStudyProgressReportContainer() {
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value={VIEW_MODES.SESSION}>
-                      📊 Session Breakdown
+                      Session Breakdown
                     </SelectItem>
                     <SelectItem value={VIEW_MODES.OVERALL}>
-                      📈 Overall Progress
+                      Overall Progress
                     </SelectItem>
                   </SelectGroup>
                 </SelectContent>
@@ -656,25 +818,6 @@ export default function SelfStudyProgressReportContainer() {
                 </SelectGroup>
               </SelectContent>
             </Select>
-
-            <InputGroup className="w-full sm:w-80">
-              <InputGroupInput
-                ref={searchInputRef}
-                placeholder="Search by member, section, or status..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <InputGroupAddon>
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  strokeWidth={2}
-                  className="h-4 w-4 text-muted-foreground"
-                />
-              </InputGroupAddon>
-              <InputGroupAddon align="inline-end">
-                <Kbd>Ctrl + K</Kbd>
-              </InputGroupAddon>
-            </InputGroup>
           </div>
         </div>
 
@@ -684,43 +827,53 @@ export default function SelfStudyProgressReportContainer() {
             <TableHeader>
               {/* First header row - Parent headers with colSpan */}
               <TableRow className="bg-muted/50">
-                <BorderedTableHead className="align-middle whitespace-nowrap" rowSpan={2}>
+                <BorderedTableHead
+                  className="align-middle whitespace-nowrap"
+                  rowSpan={2}
+                >
                   Sr.
                 </BorderedTableHead>
-                <BorderedTableHead className="align-middle whitespace-nowrap" rowSpan={2}>
+                <BorderedTableHead
+                  className="align-middle whitespace-nowrap"
+                  rowSpan={2}
+                >
                   Section
                 </BorderedTableHead>
-                <BorderedTableHead className="align-middle whitespace-nowrap" rowSpan={2}>
+                <BorderedTableHead
+                  className="align-middle whitespace-nowrap"
+                  rowSpan={2}
+                >
                   Member Name
                 </BorderedTableHead>
-                <BorderedTableHead colSpan={2} className="align-middle whitespace-nowrap">
+                <BorderedTableHead
+                  colSpan={2}
+                  className="align-middle whitespace-nowrap"
+                >
                   JLPT Level
                 </BorderedTableHead>
 
                 {/* Show either Session or Overall columns based on view mode */}
-                {viewMode === VIEW_MODES.SESSION ? (
-                  // Session columns - individual session data
-                  STUDY_COLUMNS.map((column) => (
-                    <BorderedTableHead
-                      key={column.key}
-                      colSpan={2}
-                      className="align-middle whitespace-nowrap"
-                    >
-                      {column.label}
-                    </BorderedTableHead>
-                  ))
-                ) : (
-                  // Overall columns - cumulative totals
-                  STUDY_COLUMNS.map((column) => (
-                    <BorderedTableHead
-                      key={`total-${column.key}`}
-                      colSpan={2}
-                      className="align-middle whitespace-nowrap"
-                    >
-                      Total {column.label}
-                    </BorderedTableHead>
-                  ))
-                )}
+                {viewMode === VIEW_MODES.SESSION
+                  ? // Session columns - individual session data
+                    STUDY_COLUMNS.map((column) => (
+                      <BorderedTableHead
+                        key={column.key}
+                        colSpan={2}
+                        className="align-middle whitespace-nowrap"
+                      >
+                        {column.label}
+                      </BorderedTableHead>
+                    ))
+                  : // Overall columns - cumulative totals
+                    STUDY_COLUMNS.map((column) => (
+                      <BorderedTableHead
+                        key={`total-${column.key}`}
+                        colSpan={2}
+                        className="align-middle whitespace-nowrap"
+                      >
+                        Total {column.label}
+                      </BorderedTableHead>
+                    ))}
 
                 {/* % Complete - shows different sub-headers based on view mode */}
                 <BorderedTableHead
@@ -729,60 +882,61 @@ export default function SelfStudyProgressReportContainer() {
                 >
                   % Complete
                 </BorderedTableHead>
-                <BorderedTableHead className="align-middle whitespace-nowrap" rowSpan={2}>
+                <BorderedTableHead
+                  className="align-middle whitespace-nowrap"
+                  rowSpan={2}
+                >
                   Status
                 </BorderedTableHead>
               </TableRow>
 
               {/* Second header row - Child headers */}
               <TableRow className="bg-muted/30">
-                <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
+                <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
                   Certified
                 </BorderedTableHead>
-                <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
+                <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
                   Exam Target
                 </BorderedTableHead>
 
                 {/* Show either Session or Overall column headers based on view mode */}
-                {viewMode === VIEW_MODES.SESSION ? (
-                  // Session columns - Current/Target pairs
-                  STUDY_COLUMNS.map((column) => (
-                    <React.Fragment key={column.key}>
-                      <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
-                        Current
-                      </BorderedTableHead>
-                      <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
-                        Target
-                      </BorderedTableHead>
-                    </React.Fragment>
-                  ))
-                ) : (
-                  // Overall columns - Current/Target pairs
-                  STUDY_COLUMNS.map((column) => (
-                    <React.Fragment key={`total-${column.key}`}>
-                      <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
-                        Current
-                      </BorderedTableHead>
-                      <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
-                        Target
-                      </BorderedTableHead>
-                    </React.Fragment>
-                  ))
-                )}
+                {viewMode === VIEW_MODES.SESSION
+                  ? // Session columns - Current/Target pairs
+                    STUDY_COLUMNS.map((column) => (
+                      <React.Fragment key={column.key}>
+                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                          Current
+                        </BorderedTableHead>
+                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                          Target
+                        </BorderedTableHead>
+                      </React.Fragment>
+                    ))
+                  : // Overall columns - Current/Target pairs
+                    STUDY_COLUMNS.map((column) => (
+                      <React.Fragment key={`total-${column.key}`}>
+                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                          Current
+                        </BorderedTableHead>
+                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                          Target
+                        </BorderedTableHead>
+                      </React.Fragment>
+                    ))}
 
                 {/* % Complete sub-headers - changes based on view mode */}
                 {viewMode === VIEW_MODES.SESSION ? (
                   // Session view: Only show "Current"
-                  <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
+                  <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
                     Current
                   </BorderedTableHead>
                 ) : (
                   // Overall view: Show "Actual" and "Target"
                   <>
-                    <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
+                    <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
                       Actual
                     </BorderedTableHead>
-                    <BorderedTableHead className="align-middle whitespace-nowrap font-medium">
+                    <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
                       Target
                     </BorderedTableHead>
                   </>
@@ -808,8 +962,8 @@ export default function SelfStudyProgressReportContainer() {
                 </TableRow>
               ) : (
                 paginatedData.map((item) => {
-                  const isUpcoming = item.status === 'Upcoming';
-                  
+                  const isUpcoming = item.status === "Upcoming"
+
                   return (
                     <TableRow
                       key={item.id}
@@ -835,59 +989,69 @@ export default function SelfStudyProgressReportContainer() {
                       </BorderedTableCell>
                       <BorderedTableCell>
                         <Badge variant="secondary" className="font-mono">
-                          {item.jlptLevel || '-'}
+                          {item.jlptLevel || "-"}
                         </Badge>
                       </BorderedTableCell>
                       <BorderedTableCell>
-                        {item.examTarget || '-'}
+                        {item.examTarget || "-"}
                       </BorderedTableCell>
 
                       {/* Show either Session or Overall data based on view mode */}
-                      {viewMode === VIEW_MODES.SESSION ? (
-                        // Session columns - individual session data
-                        STUDY_COLUMNS.flatMap(({ key }) => {
-                          const currentKey = `${key}Current`;
-                          const targetKey = `${key}Target`;
-                          return [
-                            <BorderedTableCell key={`${key}-current`} className="text-center">
-                              {isUpcoming ? '-' : item[currentKey]}
-                            </BorderedTableCell>,
-                            <BorderedTableCell key={`${key}-target`} className="text-center">
-                              {item[targetKey]}
-                            </BorderedTableCell>
-                          ];
-                        })
-                      ) : (
-                        // Overall columns - CUMULATIVE totals
-                        STUDY_COLUMNS.flatMap(({ key }) => {
-                          const totalCurrentKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Current`;
-                          const totalTargetKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Target`;
-                          return [
-                            <BorderedTableCell key={`total-${key}-current`} className="text-center font-semibold text-primary">
-                              {isUpcoming ? '-' : item[totalCurrentKey]}
-                            </BorderedTableCell>,
-                            <BorderedTableCell key={`total-${key}-target`} className="text-center font-semibold text-primary">
-                              {item[totalTargetKey]}
-                            </BorderedTableCell>
-                          ];
-                        })
-                      )}
+                      {viewMode === VIEW_MODES.SESSION
+                        ? // Session columns - individual session data
+                          STUDY_COLUMNS.flatMap(({ key }) => {
+                            const currentKey = `${key}Current`
+                            const targetKey = `${key}Target`
+                            return [
+                              <BorderedTableCell
+                                key={`${key}-current`}
+                                className="text-center"
+                              >
+                                {isUpcoming ? "-" : item[currentKey]}
+                              </BorderedTableCell>,
+                              <BorderedTableCell
+                                key={`${key}-target`}
+                                className="text-center"
+                              >
+                                {item[targetKey]}
+                              </BorderedTableCell>,
+                            ]
+                          })
+                        : // Overall columns - CUMULATIVE totals
+                          STUDY_COLUMNS.flatMap(({ key }) => {
+                            const totalCurrentKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Current`
+                            const totalTargetKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Target`
+                            return [
+                              <BorderedTableCell
+                                key={`total-${key}-current`}
+                                className="text-center font-semibold text-primary"
+                              >
+                                {isUpcoming ? "-" : item[totalCurrentKey]}
+                              </BorderedTableCell>,
+                              <BorderedTableCell
+                                key={`total-${key}-target`}
+                                className="text-center font-semibold text-primary"
+                              >
+                                {item[totalTargetKey]}
+                              </BorderedTableCell>,
+                            ]
+                          })}
 
                       {/* % Complete - changes based on view mode */}
                       {viewMode === VIEW_MODES.SESSION ? (
                         // Session view: Only show "Current"
                         <BorderedTableCell className="text-center">
-                          {isUpcoming ? '-' : `${item.percentCompleteCurrent}%`}
+                          {isUpcoming ? "-" : `${item.percentCompleteCurrent}%`}
                         </BorderedTableCell>
                       ) : (
                         // Overall view: Show "Actual" and "Target"
                         <>
                           <BorderedTableCell>
                             {isUpcoming ? (
-                              '-'
+                              "-"
                             ) : (
                               <div className="flex items-center gap-2">
-                                <div className="h-2 flex-1 min-w-[40px] rounded-full bg-muted">
+                                <div className="h-2 min-w-[40px] flex-1 rounded-full bg-muted">
                                   <div
                                     className="h-full rounded-full bg-primary transition-all"
                                     style={{
@@ -912,7 +1076,7 @@ export default function SelfStudyProgressReportContainer() {
                         </Badge>
                       </BorderedTableCell>
                     </TableRow>
-                  );
+                  )
                 })
               )}
             </TableBody>

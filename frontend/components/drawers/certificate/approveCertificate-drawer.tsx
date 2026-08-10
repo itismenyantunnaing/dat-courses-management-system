@@ -213,12 +213,19 @@ export function ApproveCertificateDrawer({
         }}
       >
         <DrawerHeader className="flex w-full justify-between border-b">
-          <DrawerTitle>Review Certificate Request</DrawerTitle>
-          {/* <DrawerClose asChild>
+          <div className="flex items-center justify-between">
+            <DrawerTitle>Review Requested Certificate</DrawerTitle>
+            {/* <DrawerClose asChild>
             <Button variant="ghost" size="icon" disabled={isSubmitting}>
               <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
             </Button>
           </DrawerClose> */}
+            <Badge
+              className={`${getStatusBadge(status)} px-3 py-1 text-xs font-medium`}
+            >
+              {status[0].toUpperCase() + status.slice(1)}
+            </Badge>
+          </div>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
@@ -245,27 +252,23 @@ export function ApproveCertificateDrawer({
                   </div>
                 </div>
               )}
-
-              {/* Status Badge - Top Right */}
-              <div className="absolute top-3 right-3">
-                <Badge
-                  className={`${getStatusBadge(status)} px-3 py-1 text-xs font-medium tracking-wider uppercase`}
-                >
-                  {status}
-                </Badge>
-              </div>
             </div>
 
             {/* Certificate Details */}
             <div className="mt-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold">
-                  {certificate.certificateType}
-                </h3>
-                <span>•</span>
-                <p className="text-sm text-muted-foreground">
-                  {certificate.japaneseLevel}
-                </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">
+                    {certificate.certificateType}
+                  </h3>
+                  <span>•</span>
+                  <p className="text-sm text-muted-foreground">
+                    {certificate.japaneseLevel}
+                  </p>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {format(new Date(submittedDate), "MMM d, yyyy")}
+                </span>
               </div>
 
               <Separator />
@@ -292,10 +295,6 @@ export function ApproveCertificateDrawer({
                       {employeeEmail}
                     </p>
                   </div>
-                  <div className="ml-auto text-sm text-muted-foreground">
-                    Submitted on:{" "}
-                    {format(new Date(submittedDate), "MMM d, yyyy")}
-                  </div>
                 </div>
               </div>
 
@@ -303,7 +302,7 @@ export function ApproveCertificateDrawer({
               <div className="space-y-2">
                 <Label htmlFor="remark" className="text-sm font-medium">
                   Remark
-                  <span className="ml-1 font-normal text-muted-foreground">
+                  <span className="font-normal text-muted-foreground">
                     (Optional for approval, required for denial)
                   </span>
                 </Label>

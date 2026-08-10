@@ -1270,7 +1270,7 @@ export const allTabs = [
     label: "Current target",
     importTitle: "Import Current Target Data",
     importDescription:
-      "Upload current target data file to import into the system. The system will automatically detect headers like Staff ID, JLPT / NAT Test, JLPT Highest Level, Communication Level, etc.",
+      "Upload current target data file to import into the system.",
     exportTitle: "Export Current Target Data",
     exportDescription: "Export current target data from the system.",
     accept: ".csv,.json,.xlsx,.xls",
@@ -1733,7 +1733,7 @@ export const allTabs = [
     label: "Holidays",
     importTitle: "Import Holidays Data",
     importDescription:
-      "Upload holiday data file to import into the system. The system will automatically find the '#Holidays' or 'Holiday' sheet.",
+      "Upload holiday data file to import into the system.",
     exportTitle: "Export Holidays Data",
     exportDescription: "Export holiday data from the system.",
     accept: ".csv,.json,.xlsx,.xls",

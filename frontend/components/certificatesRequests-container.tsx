@@ -186,7 +186,9 @@ const transformToCertificate = (
   } as JapaneseCertificate
 }
 
-export function CertificatesRequestsContainer({ selectedCertificateId }: CertificatesRequestsContainerProps) {
+export function CertificatesRequestsContainer({
+  selectedCertificateId,
+}: CertificatesRequestsContainerProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [statusTab, setStatusTab] = useState<StatusTab>("all")
@@ -279,13 +281,20 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
     // 2. We're not loading
     // 3. We haven't processed this ID yet
     // 4. We have certificates loaded
-    if (!selectedCertificateId || isLoading || hasProcessedSelectedIdRef.current || transformedCertificates.length === 0) {
+    if (
+      !selectedCertificateId ||
+      isLoading ||
+      hasProcessedSelectedIdRef.current ||
+      transformedCertificates.length === 0
+    ) {
       return
     }
 
     // Find the certificate (convert ID to string for comparison)
     const certIdStr = selectedCertificateId.toString()
-    const foundCertificate = transformedCertificates.find(c => c.id === certIdStr)
+    const foundCertificate = transformedCertificates.find(
+      (c) => c.id === certIdStr
+    )
 
     if (foundCertificate) {
       // Open the certificate detail drawer
@@ -295,19 +304,33 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
     }
 
     // If certificate not found, try to refresh data
-    console.warn(`Certificate with ID ${selectedCertificateId} not found. Refreshing...`)
+    console.warn(
+      `Certificate with ID ${selectedCertificateId} not found. Refreshing...`
+    )
     fetch_AllCertificates().then(() => {
       // After refresh, check again
-      const refreshedCertificate = transformedCertificates.find(c => c.id === certIdStr)
+      const refreshedCertificate = transformedCertificates.find(
+        (c) => c.id === certIdStr
+      )
       if (refreshedCertificate) {
-        console.log("✅ Found certificate after refresh:", refreshedCertificate.id)
+        console.log(
+          "✅ Found certificate after refresh:",
+          refreshedCertificate.id
+        )
         handleCertificateClick(refreshedCertificate)
       } else {
-        console.error(`Certificate with ID ${selectedCertificateId} not found after refresh`)
+        console.error(
+          `Certificate with ID ${selectedCertificateId} not found after refresh`
+        )
       }
       hasProcessedSelectedIdRef.current = true
     })
-  }, [selectedCertificateId, transformedCertificates, isLoading, fetch_AllCertificates])
+  }, [
+    selectedCertificateId,
+    transformedCertificates,
+    isLoading,
+    fetch_AllCertificates,
+  ])
 
   // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -336,8 +359,6 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
 
     loadData()
   }, [fetch_AllCertificates])
-
-
 
   // Filter certificates based on search term and status tab
   const getFilteredCertificates = () => {
@@ -536,7 +557,6 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
     )
   }
 
-
   return (
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
@@ -641,26 +661,6 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={viewMode === "list" ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => setViewMode("list")}
-                    className="h-9 w-9"
-                  >
-                    <HugeiconsIcon
-                      icon={ListViewIcon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>List View</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
                     variant={viewMode === "card" ? "default" : "outline"}
                     size="icon"
                     onClick={() => setViewMode("card")}
@@ -675,6 +675,26 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Card View</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "list" ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setViewMode("list")}
+                    className="h-9 w-9"
+                  >
+                    <HugeiconsIcon
+                      icon={ListViewIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>List View</p>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -871,7 +891,7 @@ export function CertificatesRequestsContainer({ selectedCertificateId }: Certifi
                       }}
                       className={
                         currentPage === totalPages ||
-                          filteredCertificates.length === 0
+                        filteredCertificates.length === 0
                           ? "pointer-events-none opacity-50"
                           : ""
                       }

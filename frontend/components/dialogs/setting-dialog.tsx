@@ -784,7 +784,7 @@ export function SettingDialog({
           </div>
         )}
 
-        <DialogFooter className="border-t p-6 pt-4">
+        <DialogFooter className="border-t p-6">
           <Button
             className="flex-1"
             variant="outline"
