@@ -1,4 +1,4 @@
-// store/zustandStores/employeeProfileStore.ts
+import type { EmployeeProfile } from "@/types/employee";
 import { EmployeeProfileStoreType } from "../types";
 
 type StoreSet = (
@@ -8,16 +8,9 @@ type StoreGet = () => EmployeeProfileStoreType;
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-export interface EmployeeProfile {
-  employeeId: string;
-  profilePhotoPath: string | null;
-  isCorePersonnel: boolean;
-  hasJapanBusinessTrip: boolean;
-  dob: string | null;
-}
 
 export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProfileStoreType => ({
-  employeeProfile: null,
+  profile: null,
   isLoading: false,
   isUpdating: false,
   error: null,
@@ -25,14 +18,14 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
   // Fetch employee profile
   fetch_EmployeeProfile: async (employeeId: string) => {
     if (!employeeId) {
-      set(() => ({ employeeProfile: null, error: 'Employee ID is required' }));
+      set(() => ({ profile: null, error: 'Employee ID is required' }));
       return;
     }
 
     set(() => ({ isLoading: true, error: null }));
 
     try {
-      const response = await fetch(`${apiUrl}/api/employees/${employeeId}`, {
+      const response = await fetch(`${apiUrl}/api/employees/${employeeId}/profile`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -45,19 +38,13 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
 
       const data = await response.json();
 
-      const profile: EmployeeProfile = {
-        employeeId: data.id || employeeId,
-        profilePhotoPath: data.profile_photo_path || null,
-        isCorePersonnel: data.is_core_personnel ?? false,
-        hasJapanBusinessTrip: data.has_japan_business_trip ?? false,
-        dob: data.dob || null,
-      };
+      const profile: EmployeeProfile = data ;
 
-      set(() => ({ employeeProfile: profile, isLoading: false }));
+      set(() => ({ profile: profile, isLoading: false }));
     } catch (error) {
       console.error('Error fetching employee profile:', error);
       set(() => ({
-        employeeProfile: null,
+        profile: null,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch profile'
       }));
@@ -73,7 +60,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       return 'Employee ID is required';
     }
 
-    const previousProfile = get().employeeProfile;
+    const previousProfile = get().profile;
 
     set(() => ({ isUpdating: true, error: null }));
 
@@ -102,7 +89,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       };
 
       set(() => ({
-        employeeProfile: updatedProfile,
+        profile: updatedProfile,
         isUpdating: false
       }));
 
@@ -112,7 +99,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       console.error('Error updating employee profile:', error);
 
       set(() => ({
-        employeeProfile: previousProfile,
+        profile: previousProfile,
         isUpdating: false,
         error: error instanceof Error ? error.message : 'Failed to update profile'
       }));
@@ -134,7 +121,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       return 'Employee ID is required';
     }
 
-    const previousProfile = get().employeeProfile;
+    const previousProfile = get().profile;
 
     set(() => ({ isUpdating: true, error: null }));
 
@@ -175,7 +162,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       };
 
       set(() => ({
-        employeeProfile: updatedProfile,
+        profile: updatedProfile,
         isUpdating: false
       }));
 
@@ -185,7 +172,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       console.error('Error updating employee profile fields:', error);
 
       set(() => ({
-        employeeProfile: previousProfile,
+        profile: previousProfile,
         isUpdating: false,
         error: error instanceof Error ? error.message : 'Failed to update profile'
       }));
@@ -204,7 +191,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       return 'File is required';
     }
 
-    const previousProfile = get().employeeProfile;
+    const previousProfile = get().profile;
 
     set(() => ({ isUpdating: true, error: null }));
 
@@ -236,7 +223,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       };
 
       set(() => ({
-        employeeProfile: updatedProfile,
+        profile: updatedProfile,
         isUpdating: false
       }));
 
@@ -246,7 +233,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       console.error('Error updating profile image:', error);
 
       set(() => ({
-        employeeProfile: previousProfile,
+        profile: previousProfile,
         isUpdating: false,
         error: error instanceof Error ? error.message : 'Failed to update profile image'
       }));
@@ -261,7 +248,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       return 'Employee ID is required';
     }
 
-    const previousProfile = get().employeeProfile;
+    const previousProfile = get().profile;
 
     set(() => ({ isUpdating: true, error: null }));
 
@@ -293,7 +280,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       };
 
       set(() => ({
-        employeeProfile: updatedProfile,
+        profile: updatedProfile,
         isUpdating: false
       }));
 
@@ -306,7 +293,7 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       console.error('Error deleting profile image:', error);
 
       set(() => ({
-        employeeProfile: previousProfile,
+        profile: previousProfile,
         isUpdating: false,
         error: error instanceof Error ? error.message : 'Failed to delete profile image'
       }));

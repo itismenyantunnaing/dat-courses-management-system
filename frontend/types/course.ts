@@ -1,11 +1,13 @@
 // types/course.ts
 
+import type { SessionData } from "./session"
+
 export interface Course {
   id: string
   imageUrl?: string
   title: string
-  trainerName?: string  // ← Maps from backend 'trainer_name'
-  courseType: "trainer" | "self-study"
+  trainerName?: string
+  courseType: string
   categoryId?: number
   category?: string
   targetLevel?: string
@@ -28,6 +30,7 @@ export interface Course {
   createdAt: Date
   updatedAt: Date
   isDeleted?: boolean
+  sessions: SessionData
 }
 
 // Backend DTO Interfaces
@@ -72,7 +75,7 @@ export interface BackendGroupDto {
   registered_count: number
 }
 
-export interface BackendCourseDto {
+export interface CourseDto {
   id: number
   course_name: string
   trainer_name?: string  // ← Maps to Course.trainerName
@@ -136,9 +139,12 @@ export interface CourseGroup {
 
 export interface CourseSession {
   id: string
+  courseId: string
   sessionNo?: number
+  sessionId?: number
   date: Date
   status?: string
+  courseType?: string
   // Trainer course fields
   startTime?: string
   endTime?: string
@@ -178,8 +184,11 @@ export interface CourseFormSubmitData {
   title: string
   trainerName?: string
   imageUrl?: string
-  courseType: "trainer" | "self-study"
+  status?: string
+  courseType: string
   category: CourseCategory
+  categoryId?: number
+  course_category_id?: number
   registrationDeadline?: Date
   groups: CourseGroup[]
   sessions: CourseSession[]
@@ -191,6 +200,7 @@ export interface CourseFormSubmitData {
   totalGrammar?: number
   totalReadingMinutes?: number
   totalListeningMinutes?: number
+  targetLevel?: string
 }
 
 export interface CourseFormProps {

@@ -1,5 +1,5 @@
 import type { EmployeeJapaneseLevel, TargetDates } from "@/types/current_target"
-import { Employee, type Division } from "@/types/employee"
+import { Employee, type Division, type EmployeeProfile } from "@/types/employee"
 import { Holiday } from "@/types/holiday"
 import {
   SkillCategory,
@@ -16,20 +16,20 @@ import {
   type TeamWithCounts,
   type DeptCertificationResponse,
   type TeamCertificationResponse,
+  type DepartmentData,
+  type TeamData,
 } from "@/types/exam_progress_report"
 import type { JapaneseCertificate } from "@/types/certificate"
 import type { SessionData } from "@/types/session";
-import type { DevelopmentData, ManagementSkillData, TechnicalSkillData } from "@/components/drawers/skillset/skillsetForm"
+import type { TechnicalSkillData } from "@/components/drawers/skillset/skillsetForm"
 import type {
   CategoryItem,
   Course,
   CourseCategoryData,
-  BackendCourseDto,
-  BackendCategoryDto
 } from "@/types/course"
 import {
   CourseStatsDTO,
-  DepartmentMonthlyAttendanceDTO,
+  DepartmentDailyAttendanceDTO,
   RiskResponseDTO,
   OverallCertificateStatisticsDTO,
   TeamCertificateStatisticsDTO,
@@ -73,6 +73,8 @@ export interface SystemConfig_StoreType {
 export interface Employee_StoreType {
   employee_data: Employee[]
   divisions: Division[]
+  dat_departments: DepartmentData[]
+  teams: TeamData[]
   isCreating?: boolean
   isDeleting?: boolean
   isUpdating?: boolean
@@ -82,6 +84,8 @@ export interface Employee_StoreType {
   role_options: { value: string; label: string }[]
   fetch_EmployeeData: () => Promise<void>
   fetch_divisions: () => Promise<void>
+  fetch_dat_departments: () => Promise<void>
+  fetch_teams: () => Promise<void>
   add_EmployeeData: (employee: Employee) => Promise<string>
   delete_EmployeeData: (employeeIds: string | string[]) => Promise<string>
   update_EmployeeData: (id: string, employee: Employee) => Promise<string>
@@ -95,7 +99,7 @@ export interface Holiday_StoreType {
   add_HolidayData: (holiday: Holiday) => Promise<string>
   delete_HolidayData: (holidayIds: number | number[]) => Promise<string>
   update_HolidayData: (id: number, updatedHoliday: Holiday) => Promise<string>
-  bulkCreate_HolidayData: (holidays: { holidayName: string; holidayDate: string }[]) => Promise<void>
+  bulkCreate_HolidayData: (holidays: { holidayName: string; holidayDate: string }[]) => Promise<string>
 }
 
 export interface Feedback_StoreType {
@@ -250,13 +254,13 @@ export interface ExamProgressReport_StoreType {
   teamData?: TeamCertificationResponse;
   deptDisplayData?: DeptWithCounts[];
   teamDisplayData?: TeamWithCounts[];
+  fetch_AllReportData: () => Promise<void>;  
   fetch_DeptData?: () => Promise<void>;
   fetch_TeamData?: () => Promise<void>;
   getDeptWithCounts: () => DeptWithCounts[];
   getTeamWithCounts: () => TeamWithCounts[];
   getTeamsByDept: (deptId: number) => TeamWithCounts[];
 }
-
 
 
 export interface Certificates_StoreType {
@@ -298,9 +302,6 @@ export interface Session_StoreType {
   setSession: (session: SessionData | null) => void
   clearSession: () => void
   getToken: () => string | null
-  getUserRole: () => string | null
-  getUserName: () => string | null
-  getUserEmail: () => string | null
   getUserId: () => string | null
 }
 
@@ -325,7 +326,7 @@ export interface Course_StoreType {
   // ========== HELPER METHODS ==========
   getAuthHeaders: () => HeadersInit;
   getMultipartAuthHeaders: () => HeadersInit;
-  transformBackendCourseToFrontend: (course: BackendCourseDto) => Course;
+  transformBackendCourseToFrontend: (course: Course) => Course;
   transformFrontendToBackendRequest: (course: Partial<Course>) => Record<string, unknown>;
 
   // ========== COURSE API METHODS ==========
@@ -343,17 +344,17 @@ export interface Course_StoreType {
   update_CourseData: (id: number | string, courseData: Partial<Course>) => Promise<{
     success: boolean;
     message?: string;
-    course?: Course;
+    course?: Course | null;
   }>;
   upload_CourseImage: (id: number | string, formData: FormData) => Promise<{
     success: boolean;
     message?: string;
-    course?: Course;
+    course?: Course | null;
   }>;
   delete_CourseImage: (id: number | string) => Promise<{
     success: boolean;
     message?: string;
-    course?: Course;
+    course?: Course | null;
   }>;
   delete_CourseData: (id: number | string) => Promise<{
     success: boolean;
@@ -414,12 +415,12 @@ export interface Course_StoreType {
   checkMyEnrollment: (courseId: number | string) => Promise<{
     success: boolean;
     isEnrolled: boolean;
-    enrollment?: EnrolledEmployee;
+    enrollment?: EnrolledEmployee | null;
     message?: string;
   }>;
-  getMyEnrollment: (courseId: number | string) => EnrolledEmployee | null;
+  getMyEnrollment: (courseId: number | string) => Promise<EnrolledEmployee | null | undefined>;
   isMeEnrolled: (courseId: number | string) => boolean;
-  getEnrollmentByEmployeeId: (courseId: number | string, employeeId: string) => EnrolledEmployee | null;
+  getEnrollmentByEmployeeId: (courseId: number | string, employeeId: string) => EnrolledEmployee | null | undefined;
   isEmployeeEnrolled: (courseId: number | string, employeeId: string) => boolean;
   getEnrollmentCountsByStatus: (courseId: number | string) => {
     total: number;
@@ -430,50 +431,6 @@ export interface Course_StoreType {
   };
   clearEnrollments: () => void;
   resetEnrollmentStates: () => void;
-
-  // ========== SELF-STUDY PROGRESS STATE ==========
-  studyProgress: StudyProgressData | null;
-  isFetchingProgress: boolean;
-  isAddingProgress: boolean;
-  isUpdatingProgress: boolean;
-  progressError: string | null;
-
-  // ========== SELF-STUDY PROGRESS METHODS ==========
-  fetch_studyProgress: (courseId: number | string) => Promise<{
-    success: boolean;
-    progress?: StudyProgressData;
-    message?: string;
-  }>;
-  add_studyProgress: (courseId: number | string, progressData: StudyProgressInput) => Promise<{
-    success: boolean;
-    message?: string;
-    data?: StudyProgressData;
-  }>;
-  update_studyProgress: (courseId: number | string, progressId: number, progressData: StudyProgressInput) => Promise<{
-    success: boolean;
-    message?: string;
-    data?: StudyProgressData;
-  }>;
-
-  // ========== ATTENDANCE STATE ==========
-  attendances: AttendanceRecord[];
-  isFetchingAttendance: boolean;
-  isCreatingAttendance: boolean;
-  isUpdatingAttendance: boolean;
-  attendanceError: string | null;
-
-  // ========== ATTENDANCE METHODS ==========
-  fetchAttendance: (courseId: number | string, groupId: number) => Promise<AttendanceRecord[]>;
-  createAttendance: (courseId: number | string, groupId: number, data: CreateAttendanceInput) => Promise<{
-    success: boolean;
-    message?: string;
-    data?: AttendanceRecord;
-  }>;
-  updateAttendance: (courseId: number | string, groupId: number, attendanceId: number, data: UpdateAttendanceInput) => Promise<{
-    success: boolean;
-    message?: string;
-    data?: AttendanceRecord;
-  }>;
 
   // ========== GROUP CHANGE STATE ==========
   groupChangeError: string | null;
@@ -520,7 +477,7 @@ export interface Course_StoreType {
   resetForm: () => void;
 }
 
-// ========== SUPPORTING TYPES ==========
+
 
 export interface EnrolledEmployee {
   id: number;
@@ -616,18 +573,19 @@ export interface GroupChangeRequest {
 }
 
 export interface DashboardData_StoreType {
+  profile: any
   // State
   courseStats: CourseStatsDTO[];
-  monthlyAttendance: DepartmentMonthlyAttendanceDTO[];
+  dailyAttendance: DepartmentDailyAttendanceDTO[];
   riskData: RiskResponseDTO | null;
   overallCertificateStats: OverallCertificateStatisticsDTO | null;
   teamCertificateStats: TeamCertificateStatisticsDTO | null;
-  activeLearnerCount: ActiveLearnerResponseDTO | null;
+  activeLearnersCount: ActiveLearnerResponseDTO | null;
   employeeCourseStats: EmployeeCourseStatsResponseDTO | null;
   employeeProgress: EmployeeProgressResponseDTO | null;
   employeeCourseSummary: EmployeeCourseSummaryResponseDTO[];
   upcomingSessions: UpcomingSessionResponse[];
-  employeeTargetLevel: EmployeeTargetLevelDTO | null;  
+  employeeTargetLevel: EmployeeTargetLevelDTO | null;
   isLoading: boolean;
   error: string | null;
 
@@ -641,7 +599,7 @@ export interface DashboardData_StoreType {
   fetchEmployeeCourseStats: (employeeId: string) => Promise<void>;
   fetchEmployeeAttendance: (employeeId: string) => Promise<void>;
   fetchAllEmployeesCourseSummary: () => Promise<void>;
-  fetchUpcomingSessions: (employeeId: string) => Promise<void>; 
+  fetchUpcomingSessions: (employeeId: string) => Promise<void>;
   fetchEmployeeTargetLevel: (employeeId: string) => Promise<void>;
   reset: () => void;
 }
@@ -704,7 +662,7 @@ export interface AuditLog_StoreType {
 }
 
 export interface EmployeeProfileStoreType {
-  employeeProfile: EmployeeProfile | null;
+  profile: EmployeeProfile | null;
   isLoading: boolean;
   isUpdating: boolean;
   error: string | null;
@@ -720,10 +678,3 @@ export interface EmployeeProfileStoreType {
   delete_ProfileImage: (employeeId: string) => Promise<string>;
 }
 
-export interface EmployeeProfile {
-  employeeId: string;
-  profilePhotoPath: string | null;
-  isCorePersonnel: boolean;
-  hasJapanBusinessTrip: boolean;
-  dob: string | null;
-}

@@ -25,4 +25,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     @Query("SELECT e FROM Employee e WHERE LOWER(e.name) LIKE LOWER(CONCAT('%', :name, '%')) AND e.isDeleted = false")
     List<Employee> searchByName(@Param("name") String name);
+
+    @Query("SELECT e.team.id FROM Employee e WHERE e.id = :employeeId")
+    Optional<String> findTeamIdByEmployeeId(@Param("employeeId") String employeeId);
 }

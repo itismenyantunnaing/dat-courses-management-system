@@ -43,6 +43,7 @@ public class CertificateService {
             dto.setEmployeeId(certificate.getEmployee().getId());
             dto.setEmployeeName(certificate.getEmployee().getName());
             dto.setEmail(certificate.getEmployee().getEmail());
+            dto.setProfilePhotoPath(certificate.getEmployee().getProfilePhotoPath());
             if (certificate.getEmployee().getTeam() != null) {
                 dto.setTeamName(certificate.getEmployee().getTeam().getTeamName());
             }

@@ -29,7 +29,7 @@ type StoreGet = () => any
 // Create session store
 const sessionStore = (set: StoreSet, get: StoreGet) => ({
   session: null,
-  isAuthenticated: false,
+  isAuthenticated: false,      
 
   setSession: (session: SessionData | null) => {
     set((state: any) => ({

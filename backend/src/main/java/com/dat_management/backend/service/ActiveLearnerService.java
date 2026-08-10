@@ -22,6 +22,7 @@ public class ActiveLearnerService {
     private final CourseEnrollmentRepository enrollmentRepository;
     private final CourseSessionRepository sessionRepository;
     private final SelfStudySessionProgressRepository progressRepository;
+    private final EmployeeRepository employeeRepository;
 
     private static final String STATUS_SUCCESS = "success";
 
@@ -138,4 +139,72 @@ public class ActiveLearnerService {
         
         return isActive;
     }
+
+    @Transactional(readOnly = true)
+public ActiveLearnerResponseDTO getTotalActiveLearnersByEmployeeId(String employeeId) {
+    log.info("========== STARTING ACTIVE LEARNER CALCULATION FOR EMPLOYEE: {} ==========", employeeId);
+    LocalDate today = LocalDate.now();
+    log.info("Using TODAY: {}", today);
+
+    // Get the employee's team ID
+    String teamId = getEmployeeTeamId(employeeId);
+    if (teamId == null) {
+        log.warn("Employee {} not found or has no team", employeeId);
+        return new ActiveLearnerResponseDTO(0, STATUS_SUCCESS);
+    }
+    log.info("Employee {} belongs to Team: {}", employeeId, teamId);
+
+    // Get all approved active enrollments for this team
+    List<CourseEnrollment> enrollments = enrollmentRepository.findAllApprovedActiveEnrollmentsByTeamId(teamId);
+    log.info("Found {} approved enrollments for team {}", enrollments.size(), teamId);
+
+    // Set to store unique employee IDs
+    Set<String> activeEmployeeIds = new HashSet<>();
+
+    for (CourseEnrollment enrollment : enrollments) {
+        Course course = enrollment.getCourse();
+        if (course == null) {
+            log.debug("Enrollment {} has no course, skipping", enrollment.getId());
+            continue;
+        }
+
+        CourseCategory.CourseType courseType = course.getCourseCategory().getCourseType();
+        String empId = enrollment.getEmployee().getId();
+        String employeeName = enrollment.getEmployee().getName();
+
+        boolean isActive = false;
+        String reason = "";
+
+        if (courseType == CourseCategory.CourseType.TRAINER_PROVIDED) {
+            // Trainer-Provided Logic: Check group's last session date
+            isActive = isTrainerCourseActive(enrollment, today);
+            reason = isActive ? "Group has future sessions" : "All group sessions ended";
+        } else if (courseType == CourseCategory.CourseType.SELF_STUDY) {
+            // Self-Study Logic: Check student's latest deadline
+            isActive = isSelfStudyCourseActive(enrollment, today);
+            reason = isActive ? "Has active deadlines or no tracking" : "All deadlines passed";
+        }
+
+        if (isActive) {
+            activeEmployeeIds.add(empId);
+            log.info("✅ Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
+                empId, employeeName, reason, course.getCourseName(), courseType);
+        } else {
+            log.info("❌ Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 
+                empId, employeeName, reason, course.getCourseName(), courseType);
+        }
+    }
+
+    int totalActiveLearners = activeEmployeeIds.size();
+    log.info("========== RESULTS ==========");
+    log.info("Total active learners in team {}: {}", teamId, totalActiveLearners);
+
+    return new ActiveLearnerResponseDTO(totalActiveLearners, STATUS_SUCCESS);
+}
+
+private String getEmployeeTeamId(String employeeId) {
+    // You need to implement this based on your Employee entity/repository
+    // Assuming you have an EmployeeRepository
+    return employeeRepository.findTeamIdByEmployeeId(employeeId).orElse(null);
+}
 }

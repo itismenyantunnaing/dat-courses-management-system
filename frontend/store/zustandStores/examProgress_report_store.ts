@@ -128,7 +128,7 @@ export const examProgressReport_Store = (set: StoreSet, get: StoreGet) => ({
     error: null as string | null,
 
     // Single fetch for all data
-    fetch_AllData: async () => {
+    fetch_AllReportData: async () => {
 
         try {
             const response = await fetch(`${apiUrl}/api/japanese-dashboard`, {

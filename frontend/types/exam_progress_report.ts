@@ -1,4 +1,3 @@
-// In types/exam_progress_report.ts
 
 export interface ApiResponse {
   byDepartment: DepartmentData[];
@@ -10,9 +9,27 @@ export interface ApiResponse {
   target2Date: string | null;
 }
 
+export interface DeptCertificationResponse {
+  departmentId: number;
+  departmentName: string;
+  certifications: {
+    [key: string]: number;
+  };
+}
+
+export interface TeamCertificationResponse {
+  teamId: number;
+  teamName: string;
+  departmentId: number;
+  certifications: {
+    [key: string]: number;
+  };
+}
+
+
 export interface DepartmentData {
-  id: number;           // ✅ Added
-  department: string;
+  id: number;          
+  deptName: string;
   n1: number;
   n2: number;
   n3: number;
@@ -32,7 +49,7 @@ export interface LevelCounts {
 
 export interface TeamData {
   team: string;
-  deptId: number;       // ✅ Added
+  deptId: number;     
   current: LevelCounts;
   target1: LevelCounts;
   target2: LevelCounts;

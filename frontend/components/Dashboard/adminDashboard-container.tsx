@@ -57,13 +57,7 @@ import {
 } from "@/components/ui/tooltip"
 import { mainStore } from "@/store/mainStore"
 
-// Mock data for other sections
-const mockTotalStats = {
-  totalEmployees: 156,
-  activeLearners: 132,
-  totalCourses: 48,
-  completionRate: 72,
-}
+
 
 // Certification Types - dynamically generated from the data
 const getCertificationTypes = (overallCertificateStats: any) => {
@@ -219,13 +213,11 @@ export default function AdminDashboardContainer() {
   const [isLoading, setIsLoading] = useState(true)
   const {
     fetch_EmployeeData,
-    fetch_AllData,
+    fetch_AllReportData,
     fetch_dat_departments,
     dat_departments,
     teamDisplayData,
     fetch_teams,
-    teams,
-    apiResponse,
     employee_data,
 
     // for Employees at Risk
@@ -246,7 +238,7 @@ export default function AdminDashboardContainer() {
     fetchDailyAttendance,
     dailyAttendance,
 
-    fetchActiverLearnerCount,
+    fetchActiveLearnerCount,
     activeLearnersCount
   } = mainStore()
 
@@ -255,7 +247,7 @@ export default function AdminDashboardContainer() {
       setIsLoading(true)
       try {
         await fetch_EmployeeData()
-        await fetch_AllData()
+        await fetch_AllReportData()
         await fetch_dat_departments()
         await fetch_teams()
         await fetchAll_CourseData()
@@ -264,7 +256,7 @@ export default function AdminDashboardContainer() {
         await fetchRiskData()
         await fetchOverallCertificateStats()
         await fetchDailyAttendance()
-        await fetchActiverLearnerCount()
+        await fetchActiveLearnerCount()
       } catch (error) {
         console.error("Error loading data:", error)
       } finally {
@@ -273,7 +265,7 @@ export default function AdminDashboardContainer() {
     }
 
     loadData()
-  }, [fetchAll_CourseData, fetchCourseStats, fetchDailyAttendance, fetchOverallCertificateStats, fetchRiskData, fetch_AllData, fetch_EmployeeData, fetch_courseCategories, fetch_dat_departments, fetch_teams])
+  }, [fetchAll_CourseData, fetchCourseStats, fetchDailyAttendance, fetchOverallCertificateStats, fetchRiskData, fetch_AllReportData, fetch_EmployeeData, fetch_courseCategories, fetch_dat_departments, fetch_teams])
 
   // Create department options with "All Departments" prepended
   const departmentOptions = useMemo(() => {
@@ -284,11 +276,17 @@ export default function AdminDashboardContainer() {
       Array.isArray(dat_departments) &&
       dat_departments.length > 0
     ) {
-      options.push(...dat_departments)
+      // Map DepartmentData to the expected shape
+      const mappedDepartments = dat_departments.map((dept: any) => ({
+        id: dept.id?.toString() || dept.deptId?.toString() || "",
+        deptName: dept.deptName || dept.department || dept.name || ""
+      }))
+      options.push(...mappedDepartments)
     }
 
     return options
   }, [dat_departments])
+
 
   // Get unique teams from teamDisplayData
   const allTeams = useMemo(() => {
@@ -510,7 +508,7 @@ export default function AdminDashboardContainer() {
 
   // Get filtered JLPT data
   const getFilteredJLPTData = () => {
-    let filteredTeams = []
+    let filteredTeams: any[] = []
 
     if (jlptDepartment === "All Departments" && jlptTeam === "All Teams") {
       filteredTeams = teamDisplayData || []
@@ -550,7 +548,7 @@ export default function AdminDashboardContainer() {
 
   // Get filtered Communication data
   const getFilteredCommunicationData = () => {
-    let filteredTeams = []
+    let filteredTeams: any[] = []
 
     if (commDepartment === "All Departments" && commTeam === "All Teams") {
       filteredTeams = teamDisplayData || []
@@ -603,7 +601,7 @@ export default function AdminDashboardContainer() {
   // Filter course data based on selected category
   const getFilteredCourseData = () => {
     return courseStats.filter(
-      (course) => course.category.toLowerCase() === selectedCategory
+      (course: any) => course.category.toLowerCase() === selectedCategory
     )
   }
 
@@ -613,6 +611,7 @@ export default function AdminDashboardContainer() {
   const getAttendanceData = () => {
     let data: {
       date: string;
+      attendance?: number;
       presentCount: number;
       absentCount: number;
       excusedCount: number;
@@ -705,7 +704,7 @@ export default function AdminDashboardContainer() {
     // Convert the stat object to array format for pie chart
     return Object.entries(selectedStat).map(([level, value], index) => ({
       name: level,
-      value: typeof value === 'number' ? value * 100 : 0, // Convert to percentage
+      value: typeof value === 'number' ? value : 0, // Convert to percentage
       fill: COLORS[index % COLORS.length]
     }))
   }
@@ -750,9 +749,9 @@ export default function AdminDashboardContainer() {
         />
         <StatCard
           title="Active Learners"
-          value={activeLearnersCount?.totalActiveLearners}
+          value={activeLearnersCount?.totalActiveLearners || 0}
           icon={BookOpenIcon}
-          description={`${Math.round((activeLearnersCount?.totalActiveLearners / mockTotalStats.totalEmployees) * 100)}% of employees`}
+          description={`${Math.round(((activeLearnersCount?.totalActiveLearners || 0) / employee_data?.length) * 100)}% of employees`}
         />
         <StatCard
           title="Total Courses"
@@ -1363,7 +1362,7 @@ export default function AdminDashboardContainer() {
                   </tr>
                 </thead>
                 <tbody>
-                  {riskData.atRiskStudents.map((employee, index) => (
+                  {riskData.atRiskStudents.map((employee: any, index: number) => (
                     <tr key={index} className="border-b last:border-0">
                       <td className="py-2 pr-4 text-sm font-medium">
                         {employee.name}

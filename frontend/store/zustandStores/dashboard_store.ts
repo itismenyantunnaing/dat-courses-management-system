@@ -1,6 +1,5 @@
 import {
   CourseStatsDTO,
-  DepartmentMonthlyAttendanceDTO,
   RiskResponseDTO,
   OverallCertificateStatisticsDTO,
   TeamCertificateStatisticsDTO,
@@ -8,7 +7,8 @@ import {
   EmployeeProgressResponseDTO,
   EmployeeCourseSummaryResponseDTO,
   UpcomingSessionResponse,
-  EmployeeTargetLevelDTO
+  EmployeeTargetLevelDTO,
+  type DepartmentDailyAttendanceDTO
 } from "@/types/dashboard";
 import type { DashboardData_StoreType } from "../types";
 
@@ -23,7 +23,6 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   // Initial state
   courseStats: [],
-  monthlyAttendance: [],
   riskData: null,
   overallCertificateStats: null,
   teamCertificateStats: null,
@@ -40,16 +39,22 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // for Admin and Approver dashboard
 
-  fetchActiverLearnerCount: async () => {
+  fetchActiveLearnerCount: async () => {
     const currentState = get();
+    const profile = get().profile
 
     // Don't fetch if already loading
     if (currentState.isLoading) return;
+    
 
     set(() => ({ isLoading: true, error: null }));
-
+    let response;
     try {
-      const response = await fetch(`${apiUrl}/api/course-stats/active-learners`);
+      if (profile.role.toLowerCase() === "approver" && profile.id) {
+        response = await fetch(`${apiUrl}/api/course-stats/active-learners?employeeId=${profile.id}`);
+      } else {
+        response = await fetch(`${apiUrl}/api/course-stats/active-learners`);
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -63,7 +68,7 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
     } catch (error) {
       console.error('Error fetching course stats:', error);
       set(() => ({
-        activeLearnersCount: [],
+        activeLearnersCount: null,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch course stats'
       }));
@@ -72,7 +77,6 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
 
   fetchCourseStats: async () => {
     const currentState = get();
-
     // Don't fetch if already loading
     if (currentState.isLoading) return;
 
@@ -114,7 +118,7 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: DepartmentMonthlyAttendanceDTO[] = await response.json();
+      const data: DepartmentDailyAttendanceDTO[] = await response.json();
       set(() => ({
         dailyAttendance: data,
         isLoading: false
@@ -414,7 +418,6 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   reset: () => {
     set(() => ({
       courseStats: [],
-      monthlyAttendance: [],
       riskData: null,
       overallCertificateStats: null,
       teamCertificateStats: null,

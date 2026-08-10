@@ -31,7 +31,7 @@ interface CourseDetailProps {
   course: Course
   onEdit: (course: Course) => void
   onBack: () => void
-  userRole: string
+  userRole: string | undefined
   onRegister?: (course: Course) => void
   isRegistered?: boolean
 }

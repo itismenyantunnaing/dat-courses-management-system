@@ -55,8 +55,8 @@ export function CertificateCard({
   const employeeName = certificate.employee?.name || "Unknown User"
   const employeeEmail = certificate.employee?.email || "No email provided"
   const employeeAvatar = certificate.employee?.avatar || ""
-  const submittedDate =
-    certificate.verifiedAt || certificate.createdAt || new Date().toISOString()
+  const submittedDate = certificate.verifiedAt || certificate.createdAt || new Date().toISOString()
+
 
   // Check if certificate has been verified
   const isVerified =

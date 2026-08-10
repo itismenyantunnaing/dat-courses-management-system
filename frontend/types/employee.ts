@@ -16,9 +16,25 @@ export interface Employee {
   role: string;
   dob: string;
   profile_photo_path: string;
+  avatar?: string
 }
 
 export interface Division {
   id: number;
   divisionName: string;
+}
+
+export interface EmployeeProfile {
+  id: string;
+  profilePhotoPath: string | null;
+  isCorePersonnel: boolean;
+  hasJapanBusinessTrip: boolean;
+  dob: string | null;
+  role: string;
+  team: string;
+   employeeId: string;
+  profilePhotoPath: string | null;
+  isCorePersonnel: boolean;
+  hasJapanBusinessTrip: boolean;
+  dob: string | null;
 }

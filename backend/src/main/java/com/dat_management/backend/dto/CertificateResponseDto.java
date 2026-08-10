@@ -13,6 +13,7 @@ public class CertificateResponseDto {
     private Integer id;
     private String employeeId;
     private String employeeName;
+    private String profilePhotoPath; 
     private String email;
     private String teamName;
     private String certificateType;

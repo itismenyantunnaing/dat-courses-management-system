@@ -49,13 +49,15 @@ const getCourseStartDate = (course: Course): Date | null => {
 // Helper function to get course end date
 const getCourseEndDate = (course: Course): Date | null => {
   if (course.courseType === "trainer") {
-    const dates = course.groups?.map((g) => g.endDate).filter((d) => d) || []
+    const dates = course.groups
+      ?.map((g) => g.endDate)
+      .filter((d) => d !== undefined && d !== null) || []
     if (dates.length === 0) return null
     return new Date(Math.max(...dates.map((d) => d.getTime())))
   }
   return null
-  
 }
+
 // Helper function to format time (remove seconds)
 const formatTime = (time: string | null): string | null => {
   if (!time) return null;
@@ -100,7 +102,7 @@ const getTotalSessions = (course: Course): number => {
       ) || 0
     )
   }
-  return course.self_study_sessions?.length || course.sessions?.length || 0
+  return course.self_study_sessions?.length || 0
 }
 
 // Helper function to get days until registration closes
@@ -274,7 +276,7 @@ export function CourseCard({
       <div className="px-4">
         <div className="mb-3 flex items-center gap-1">
           <Badge variant="outline">
-            {COURSE_TYPE_LABELS[course.courseType]}
+            {COURSE_TYPE_LABELS[course.courseType as keyof typeof COURSE_TYPE_LABELS]}
           </Badge>
           {isTrainer && course.trainerName && (
             <>

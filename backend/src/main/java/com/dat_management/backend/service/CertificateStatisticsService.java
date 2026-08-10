@@ -23,15 +23,6 @@ public class CertificateStatisticsService {
         log.info("Calculating overall certificate statistics");
         Map<String, Map<String, Double>> result = new HashMap<>();
         
-        // Get total employees count
-        long totalEmployees = certificateRepository.countTotalEmployees();
-        log.debug("Total employees: {}", totalEmployees);
-        
-        if (totalEmployees == 0) {
-            log.warn("No employees found in the system");
-            return new OverallCertificateStatisticsDTO(result);
-        }
-        
         // Get certificate counts
         List<Object[]> certificateCounts = certificateRepository.countVerifiedCertificatesByTypeAndLevel();
         log.debug("Found {} certificate type-level combinations", certificateCounts.size());
@@ -41,17 +32,15 @@ public class CertificateStatisticsService {
             String level = (String) row[1];
             Long count = (Long) row[2];
             
-            // Calculate percentage
-            double percentage = (count.doubleValue() / totalEmployees) * 100;
-            // Round to 1 decimal place
-            percentage = Math.round(percentage * 10.0) / 10.0;
+            // Use count directly as Double
+            double countValue = count.doubleValue();
             
             // Add to result map
             String typeKey = type.name();
             result.computeIfAbsent(typeKey, k -> new HashMap<>())
-                  .put(level != null ? level : "UNSPECIFIED", percentage);
+                  .put(level != null ? level : "UNSPECIFIED", countValue);
                   
-            log.debug("Added statistics: {} - {}: {}%", typeKey, level, percentage);
+            log.debug("Added statistics: {} - {}: {}", typeKey, level, countValue);
         }
         
         return new OverallCertificateStatisticsDTO(result);
@@ -61,22 +50,6 @@ public class CertificateStatisticsService {
     public TeamCertificateStatisticsDTO getTeamStatistics() {
         log.info("Calculating team-wise certificate statistics");
         Map<String, Map<String, Map<String, Double>>> result = new HashMap<>();
-        
-        // Get team employee counts
-        Map<String, Long> teamEmployeeCounts = new HashMap<>();
-        List<Object[]> teamCounts = certificateRepository.countEmployeesByTeam();
-        
-        if (teamCounts.isEmpty()) {
-            log.warn("No teams found in the system");
-            return new TeamCertificateStatisticsDTO(result);
-        }
-        
-        for (Object[] row : teamCounts) {
-            String teamName = (String) row[0];
-            Long count = (Long) row[1];
-            teamEmployeeCounts.put(teamName, count);
-            log.debug("Team '{}' has {} employees", teamName, count);
-        }
         
         // Get certificate counts by team
         List<Object[]> teamCertificateCounts = certificateRepository.countVerifiedCertificatesByTeamTypeAndLevel();
@@ -88,20 +61,17 @@ public class CertificateStatisticsService {
             String level = (String) row[2];
             Long count = (Long) row[3];
             
-            Long teamTotal = teamEmployeeCounts.getOrDefault(teamName, 1L);
-            
-            // Calculate percentage
-            double percentage = (count.doubleValue() / teamTotal) * 100;
-            percentage = Math.round(percentage * 10.0) / 10.0;
+            // Use count directly as Double
+            double countValue = count.doubleValue();
             
             // Add to result map
             String typeKey = type.name();
             result.computeIfAbsent(teamName, k -> new HashMap<>())
                   .computeIfAbsent(typeKey, k -> new HashMap<>())
-                  .put(level != null ? level : "UNSPECIFIED", percentage);
+                  .put(level != null ? level : "UNSPECIFIED", countValue);
                   
-            log.debug("Added team statistics: {} - {} - {}: {}%", 
-                      teamName, typeKey, level, percentage);
+            log.debug("Added team statistics: {} - {} - {}: {}", 
+                      teamName, typeKey, level, countValue);
         }
         
         return new TeamCertificateStatisticsDTO(result);
@@ -112,12 +82,6 @@ public class CertificateStatisticsService {
     public Map<String, Map<String, Double>> getTeamStatisticsByTeamName(String teamName) {
         log.info("Calculating certificate statistics for team: {}", teamName);
         Map<String, Map<String, Double>> result = new HashMap<>();
-        
-        long teamTotal = certificateRepository.countEmployeesByTeamName(teamName);
-        if (teamTotal == 0) {
-            log.warn("Team '{}' not found or has no employees", teamName);
-            return result;
-        }
         
         // Get specific team's certificate counts
         List<Object[]> teamCertificateCounts = certificateRepository.countVerifiedCertificatesByTeamTypeAndLevel();
@@ -130,12 +94,12 @@ public class CertificateStatisticsService {
             String level = (String) row[2];
             Long count = (Long) row[3];
             
-            double percentage = (count.doubleValue() / teamTotal) * 100;
-            percentage = Math.round(percentage * 10.0) / 10.0;
+            // Use count directly as Double
+            double countValue = count.doubleValue();
             
             String typeKey = type.name();
             result.computeIfAbsent(typeKey, k -> new HashMap<>())
-                  .put(level != null ? level : "UNSPECIFIED", percentage);
+                  .put(level != null ? level : "UNSPECIFIED", countValue);
         }
         
         return result;

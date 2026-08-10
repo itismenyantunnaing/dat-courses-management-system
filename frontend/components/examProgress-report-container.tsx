@@ -58,7 +58,7 @@ export function ExamProgressReportContainer() {
 
   // Get store methods
   const {
-    fetch_AllData,
+    fetch_AllReportData,
     getDeptWithCounts,
     getTeamWithCounts,
     getCommCapability,
@@ -108,7 +108,7 @@ export function ExamProgressReportContainer() {
   useEffect(() => {
     const loadAllData = async () => {
       setIsLoading(true)
-      await fetch_AllData()
+      await fetch_AllReportData()
 
       const depts = getDeptWithCounts() || []
       setDeptData(depts)
@@ -126,7 +126,7 @@ export function ExamProgressReportContainer() {
       setIsLoading(false)
     }
     loadAllData()
-  }, [fetch_AllData, getDeptWithCounts, getTeamWithCounts, getTargetDates])
+  }, [fetch_AllReportData, getDeptWithCounts, getTeamWithCounts, getTargetDates])
 
   // Update selected count when rowSelection changes
   useEffect(() => {

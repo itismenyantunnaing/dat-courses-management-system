@@ -80,7 +80,6 @@ const JP_TO_EN_MAP: Record<string, string> = {
 
   // Other ignored headers
   '委託元部署名\n※プルダウン入力': 'Name of the commissioning department *Select from the dropdown menu',
-  'ランク\n※プルダウン入力\n(会社を選択すると\nプルダウン表示されます）': 'Rank *Select from the dropdown menu (The dropdown menu will appear once you select a company)',
   'コア人材\n※FPTのみ': 'Core personnel *FPT only',
   '日本出張\nの有無\n': 'Whether or not you have a business trip to Japan',
   '※プルダウン入力': '※プルダウン入力',
@@ -457,7 +456,6 @@ export async function extractEmployeesFromExcel(
       "company - ID",
       "DAT - name",
       "※プルダウン入力 - Name of the commissioning department *Select from the dropdown menu",
-      "Rank *Select from the dropdown menu (The dropdown menu will appear once you select a company)",
       "Core personnel *FPT only",
       "Whether or not you have a business trip to Japan",
       // Japanese equivalents
@@ -469,7 +467,6 @@ export async function extractEmployeesFromExcel(
     // Additional headers to ignore (checked via .includes for partial matches)
     const IGNORED_HEADER_PARTS = [
       "ランク",
-      "Rank *Select",
       "コア人材",
       "Core personnel",
       "日本出張",

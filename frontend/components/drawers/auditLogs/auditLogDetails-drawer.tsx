@@ -117,6 +117,19 @@ const getActionBadge = (action: string) => {
   }
 }
 
+// Helper to format values for display
+const formatValue = (value: any): string => {
+  if (value === null || value === undefined) return 'null'
+  if (typeof value === 'object') {
+    // For nested objects, show a summary or JSON string
+    if (Array.isArray(value)) {
+      return `Array(${value.length})`
+    }
+    return JSON.stringify(value, null, 2)
+  }
+  return String(value)
+}
+
 // Format date
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr)
@@ -235,17 +248,29 @@ export function AuditLogDetailsDrawer({
                         <p className="text-[10px] font-medium text-red-600 dark:text-red-400">
                           Old Value
                         </p>
-                        <p className="font-mono text-sm text-red-700 line-through dark:text-red-300 break-all">
-                          {String(change.old)}
-                        </p>
+                        <div className="font-mono text-sm text-red-700 dark:text-red-300 break-all">
+                          {typeof change.old === 'object' ? (
+                            <pre className="whitespace-pre-wrap text-xs select-text">
+                              {JSON.stringify(change.old, null, 2)}
+                            </pre>
+                          ) : (
+                            <span className="select-text">{String(change.old)}</span>
+                          )}
+                        </div>
                       </div>
                       <div className="rounded-md bg-green-50 p-2 dark:bg-green-950/20">
                         <p className="text-[10px] font-medium text-green-600 dark:text-green-400">
                           New Value
                         </p>
-                        <p className="font-mono text-sm font-medium text-green-700 dark:text-green-300 break-all">
-                          {String(change.new)}
-                        </p>
+                        <div className="font-mono text-sm font-medium text-green-700 dark:text-green-300 break-all">
+                          {typeof change.new === 'object' ? (
+                            <pre className="whitespace-pre-wrap text-xs select-text">
+                              {JSON.stringify(change.new, null, 2)}
+                            </pre>
+                          ) : (
+                            <span className="select-text">{String(change.new)}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

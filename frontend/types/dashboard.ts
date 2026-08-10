@@ -15,7 +15,7 @@ export interface CourseStatsDTO {
 // ==============================
 // Monthly Attendance Types
 // ==============================
-export interface DepartmentMonthlyAttendanceDTO {
+export interface DepartmentDailyAttendanceDTO {
   departmentName: string;
   teams: TeamMonthlyAttendanceDTO[];
 }
@@ -94,7 +94,7 @@ export interface RiskLevelDTO {
 // ==============================
 export interface ActiveLearnerResponseDTO {
   totalActiveLearners: number;
-  // Add other fields based on your backend response
+  activeLearnersCount: number;
 }
 
 // ==============================
@@ -163,7 +163,11 @@ export interface OverallCertificateStatisticsDTO {
   totalCourses: number;
   totalCertificatesIssued: number;
   completionRate: number;
-  // Add other fields based on your backend response
+  statistics: {
+    [key: string]: {
+      [level: string]: number;
+    };
+  };
 }
 
 export interface TeamCertificateStatisticsDTO {
@@ -171,7 +175,11 @@ export interface TeamCertificateStatisticsDTO {
   totalEmployees: number;
   certificatesIssued: number;
   completionRate: number;
-  // Add other fields based on your backend response
+  statistics: {
+    [key: string]: {
+      [level: string]: number;
+    };
+  };
 }
 
 export interface UpcomingSessionResponse {
@@ -183,14 +191,14 @@ export interface UpcomingSessionResponse {
   endTime: string;      // LocalTime -> ISO string
   status: string;       // "ACTIVE" | "UPCOMING" | "COMPLETED" etc.
   attendanceStatus: string | null; // "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | null
-  
+
   // Self-study progress fields (will be null for trainer-led)
   grammarCount: number | null;
   vocabularyCount: number | null;
   kanjiCount: number | null;
   readingMinutes: number | null;
   listeningMinutes: number | null;
-  
+
   // Self-study targets (will be null for trainer-led)
   grammarTarget: number | null;
   vocabularyTarget: number | null;
@@ -201,6 +209,6 @@ export interface UpcomingSessionResponse {
 
 export interface EmployeeTargetLevelDTO {
   employeeId: string;
-  targetJlptNatLevel: string; 
-  targetDate: string;         
+  targetJlptNatLevel: string;
+  targetDate: string;
 }

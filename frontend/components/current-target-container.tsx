@@ -100,7 +100,6 @@ const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
       role="status"
       aria-label="Loading"
       className={cn("size-4 animate-spin", className)}
-      {...props}
     />
   )
 }
@@ -310,7 +309,7 @@ export function CurrentTargetContainer({
   // Update employees list when employee_data or map changes
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
-      const filteredEmployees = employee_data.filter((employee) => {
+      const filteredEmployees = employee_data.filter((employee: Employee) => {
         return employeeProfileMap.has(employee.id)
       })
       setEmployees(filteredEmployees)
@@ -863,8 +862,8 @@ export function CurrentTargetContainer({
 
   // Generate employee options for the create drawer
   const employeeOptions = employee_data
-    .filter((emp) => !employeeProfileMap.has(emp.id))
-    .map((emp) => ({
+    .filter((emp: Employee) => !employeeProfileMap.has(emp.id))
+    .map((emp: Employee) => ({
       value: emp.id,
       label: `${emp.id} - ${emp.name}`,
     }))

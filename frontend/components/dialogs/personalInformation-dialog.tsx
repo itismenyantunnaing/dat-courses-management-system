@@ -46,6 +46,7 @@ import {
   Add01Icon,
 } from "@hugeicons/core-free-icons"
 import { mainStore } from "@/store/mainStore"
+import { compressFile } from "@/lib/compressImage"
 
 // Custom progress bar component
 const ProgressBar = ({
@@ -144,15 +145,13 @@ export function PersonalInformationDialog({
 
   // Get store actions and state
   const {
-    employeeProfile,
     fetch_EmployeeProfile,
-    fetch_profile,
+    profile,
     update_EmployeeProfileFields,
     update_ProfileImage,
     delete_ProfileImage,
     isUpdating,
     isLoading,
-    profile,
     fetch_SkillHeaders,
     skill_headers,
     add_SkillData,
@@ -166,6 +165,8 @@ export function PersonalInformationDialog({
     devCap_headers,
     add_devCapData,
     update_devCapData,
+    add_EmployeeJapaneseLevel,
+    edit_EmployeeJapaneseLevel
   } = mainStore()
 
   const employeeId = profile?.id
@@ -177,7 +178,7 @@ export function PersonalInformationDialog({
       if (skill_headers.length === 0) {
         fetch_SkillHeaders()
       }
-      if (devCap_headers.length === 0) {  
+      if (devCap_headers.length === 0) {
         fetch_devCapHeaders()
       }
     }
@@ -185,28 +186,28 @@ export function PersonalInformationDialog({
 
   // Update form fields when profile data loads
   useEffect(() => {
-    if (employeeProfile) {
-      const corePersonnel = employeeProfile.isCorePersonnel ?? false
-      const japanTrip = employeeProfile.hasJapanBusinessTrip ?? false
-      const dobValue = employeeProfile.dob || ""
-      const photoPath = employeeProfile.profilePhotoPath || ""
+    if (profile) {
+      const corePersonnel = profile.isCorePersonnel ?? false
+      const japanTrip = profile.hasJapanBusinessTrip ?? false
+      const dobValue = profile.dob || ""
+      const photoPath = profile.profilePhotoPath || ""
 
       setIsCorePersonnel(corePersonnel)
       setHasJapanBusinessTrip(japanTrip)
       setDob(dobValue)
 
       // Set language skills if exists
-      if (employeeProfile.languageSkill) {
-        setLanguageLevel(employeeProfile.languageSkill.languageSkillLevel || 1)
-        setJlptLevel(employeeProfile.languageSkill.jlptHighestLevel || "")
+      if (profile.languageSkill) {
+        setLanguageLevel(profile.languageSkill.languageSkillLevel || 1)
+        setJlptLevel(profile.languageSkill.jlptHighestLevel || "")
       }
 
       // Set management skills if exists
-      if (employeeProfile.managementSkill) {
-        setManagementEducation(employeeProfile.managementSkill.educationScore || 1)
-        setManagementExperience(employeeProfile.managementSkill.managementExperienceLevel || 1)
-        setManagementQcd(employeeProfile.managementSkill.qcdScore || 1)
-        setManagementReportConsult(employeeProfile.managementSkill.reportConsultScore || 1)
+      if (profile.managementSkill) {
+        setManagementEducation(profile.managementSkill.educationScore || 1)
+        setManagementExperience(profile.managementSkill.managementExperienceLevel || 1)
+        setManagementQcd(profile.managementSkill.qcdScore || 1)
+        setManagementReportConsult(profile.managementSkill.reportConsultScore || 1)
       }
 
       setInitialValues({
@@ -254,7 +255,7 @@ export function PersonalInformationDialog({
       setSelectedFile(null)
       setPreviewImage("")
     }
-  }, [employeeProfile, profile])
+  }, [profile, profile])
 
 
 
@@ -285,24 +286,41 @@ export function PersonalInformationDialog({
     return hasImageChange || hasFieldChanges
   }
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File size exceeds 5MB limit. Please choose a smaller file.")
-        return
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0]
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size exceeds 5MB limit. Please choose a smaller file.")
+      return
+    }
+
+    const validTypes = ["image/jpeg", "image/png", "image/gif"]
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a valid image file (JPG, PNG, or GIF).")
+      return
+    }
+
+    setSelectedFile(file)
+    setImageRemoved(false)
+    setIsUploading(true)
+
+    try {
+      // ✅ COMPRESS THE IMAGE HERE
+      const compressedFile = await compressFile(file)
+      
+      // Use the compressed file instead of the original
+      setSelectedFile(compressedFile)
+      
+      // Create preview from compressed file
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string)
+        setIsUploading(false)
       }
-
-      const validTypes = ["image/jpeg", "image/png", "image/gif"]
-      if (!validTypes.includes(file.type)) {
-        alert("Please upload a valid image file (JPG, PNG, or GIF).")
-        return
-      }
-
-      setSelectedFile(file)
-      setImageRemoved(false)
-      setIsUploading(true)
-
+      reader.readAsDataURL(compressedFile)
+    } catch (error) {
+      console.error("❌ Failed to compress image:", error)
+      // Fallback: use original file if compression fails
       const reader = new FileReader()
       reader.onloadend = () => {
         setPreviewImage(reader.result as string)
@@ -311,6 +329,7 @@ export function PersonalInformationDialog({
       reader.readAsDataURL(file)
     }
   }
+}
 
   const handleRemoveImage = () => {
     setSelectedFile(null)
@@ -343,7 +362,7 @@ export function PersonalInformationDialog({
       })
 
       // Refresh profile data
-      await fetch_profile(employeeId)
+      await fetch_EmployeeProfile(employeeId)
 
       // Reset edit state
       setEditingSkillId(null)
@@ -384,7 +403,7 @@ export function PersonalInformationDialog({
 
 
       // Refresh profile data
-      await fetch_profile(employeeId)
+      await fetch_EmployeeProfile(employeeId)
 
       // Reset form
       setNewSkillName("")
@@ -451,7 +470,7 @@ export function PersonalInformationDialog({
       }
 
       // Refresh profile data
-      await fetch_profile(employeeId)
+      await fetch_EmployeeProfile(employeeId)
 
       // Exit edit mode
       setIsManagementEditing(false)
@@ -472,28 +491,29 @@ export function PersonalInformationDialog({
 
     setIsLanguageUpdating(true)
     try {
-      // First update the language level
+      // Prepare the data with both fields
       const languageData = {
         employeeId: employeeId,
         languageSkillLevel: languageLevel,
+        jlptHighestLevel: jlptLevel || null,
       }
 
       // Check if language skill exists
       if (profile?.languageSkill?.id) {
-        // Update existing language skill
-        await update_japaneseLevel(profile.languageSkill.id, languageData)
-        alert(`Language level updated successfully!`)
+        // Update existing language skill using edit_EmployeeJapaneseLevel
+        await edit_EmployeeJapaneseLevel(profile.languageSkill.id, languageData)
+        alert("Language skills updated successfully!")
       } else {
-        // Add new language skill
-        await add_japaneseLevel(languageData)
-        alert(`Language level Level ${languageLevel} added successfully!`)
+        // Add new language skill using add_EmployeeJapaneseLevel
+        await add_EmployeeJapaneseLevel(languageData)
+        alert("Language skills added successfully!")
       }
 
       // Refresh profile data
       await fetch_EmployeeProfile(employeeId)
     } catch (error) {
       console.error("❌ Failed to update language skill:", error)
-      alert("Failed to update language level")
+      alert("Failed to update language skills")
     } finally {
       setIsLanguageUpdating(false)
     }
@@ -557,7 +577,7 @@ export function PersonalInformationDialog({
         isCorePersonnel: isCorePersonnel,
         hasJapanBusinessTrip: hasJapanBusinessTrip,
         dob: dob,
-        profilePhotoPath: employeeProfile?.profilePhotoPath || profile?.profilePhotoPath || "",
+        profilePhotoPath: profile?.profilePhotoPath || profile?.profilePhotoPath || "",
       })
 
       onOpenChange(false)
@@ -569,96 +589,96 @@ export function PersonalInformationDialog({
   }
 
   // Handle development skill edit
-const handleDevSkillEdit = (skill: any) => {
-  console.log("📝 Editing development skill:", skill)
-  setEditingDevSkillId(skill.id)
-  setEditDevYears(skill.yearsOfExperience?.toString() || "")
-  setEditDevProcessName(skill.processName || "")
-}
-
-// Handle development skill update
-const handleDevSkillUpdate = async (skillId: string, developmentTypeName: string) => {
-  if (!employeeId) {
-    alert("No employee ID found")
-    return
+  const handleDevSkillEdit = (skill: any) => {
+    console.log("📝 Editing development skill:", skill)
+    setEditingDevSkillId(skill.id)
+    setEditDevYears(skill.yearsOfExperience?.toString() || "")
+    setEditDevProcessName(skill.processName || "")
   }
 
-  if (!editDevYears || !editDevProcessName) {
-    alert("Please fill in both years and process name")
-    return
+  // Handle development skill update
+  const handleDevSkillUpdate = async (skillId: string, developmentTypeName: string) => {
+    if (!employeeId) {
+      alert("No employee ID found")
+      return
+    }
+
+    if (!editDevYears || !editDevProcessName) {
+      alert("Please fill in both years and process name")
+      return
+    }
+
+    setIsDevUpdating(true)
+    try {
+      await update_devCapData(parseInt(skillId), {
+        employeeId: employeeId,
+        developmentTypeName: developmentTypeName,
+        processName: editDevProcessName,
+        yearsOfExperience: parseFloat(editDevYears),
+      })
+
+      alert("Development skill updated successfully!")
+
+      // Refresh profile data
+      await fetch_EmployeeProfile(employeeId)
+
+      // Reset edit state
+      setEditingDevSkillId(null)
+      setEditDevYears("")
+      setEditDevProcessName("")
+    } catch (error) {
+      console.error("❌ Failed to update development skill:", error)
+      alert("Failed to update development skill")
+    } finally {
+      setIsDevUpdating(false)
+    }
   }
 
-  setIsDevUpdating(true)
-  try {
-    await update_devCapData(parseInt(skillId), {
-      employeeId: employeeId,
-      developmentTypeName: developmentTypeName,
-      processName: editDevProcessName,
-      yearsOfExperience: parseFloat(editDevYears),
-    })
+  // Handle adding new development skill
+  const handleAddDevSkill = async () => {
+    if (!employeeId) {
+      alert("No employee ID found")
+      return
+    }
 
-    alert("Development skill updated successfully!")
+    if (!newDevTypeName || !newDevProcessName || !newDevYears) {
+      alert("Please fill in all fields")
+      return
+    }
 
-    // Refresh profile data
-    await fetch_profile(employeeId)
+    setIsAddingDevLoading(true)
+    try {
+      await add_devCapData({
+        employeeId: employeeId,
+        developmentTypeName: newDevTypeName,
+        processName: newDevProcessName,
+        yearsOfExperience: parseFloat(newDevYears),
+      })
 
-    // Reset edit state
+      alert("Development skill added successfully!")
+
+      // Refresh profile data
+      await fetch_EmployeeProfile(employeeId)
+
+      // Reset form
+      setNewDevTypeName("")
+      setNewDevProcessName("")
+      setNewDevYears("")
+      setIsAddingDevSkill(false)
+    } catch (error) {
+      console.error("❌ Failed to add development skill:", error)
+      alert("Failed to add development skill")
+    } finally {
+      setIsAddingDevLoading(false)
+    }
+  }
+
+  // Cancel development skill edit
+  const cancelDevSkillEdit = () => {
     setEditingDevSkillId(null)
     setEditDevYears("")
     setEditDevProcessName("")
-  } catch (error) {
-    console.error("❌ Failed to update development skill:", error)
-    alert("Failed to update development skill")
-  } finally {
-    setIsDevUpdating(false)
   }
-}
-
-// Handle adding new development skill
-const handleAddDevSkill = async () => {
-  if (!employeeId) {
-    alert("No employee ID found")
-    return
-  }
-
-  if (!newDevTypeName || !newDevProcessName || !newDevYears) {
-    alert("Please fill in all fields")
-    return
-  }
-
-  setIsAddingDevLoading(true)
-  try {
-    await add_devCapData({
-      employeeId: employeeId,
-      developmentTypeName: newDevTypeName,
-      processName: newDevProcessName,
-      yearsOfExperience: parseFloat(newDevYears),
-    })
-
-    alert("Development skill added successfully!")
-
-    // Refresh profile data
-    await fetch_profile(employeeId)
-
-    // Reset form
-    setNewDevTypeName("")
-    setNewDevProcessName("")
-    setNewDevYears("")
-    setIsAddingDevSkill(false)
-  } catch (error) {
-    console.error("❌ Failed to add development skill:", error)
-    alert("Failed to add development skill")
-  } finally {
-    setIsAddingDevLoading(false)
-  }
-}
-
-// Cancel development skill edit
-const cancelDevSkillEdit = () => {
-  setEditingDevSkillId(null)
-  setEditDevYears("")
-  setEditDevProcessName("")
-}
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -680,23 +700,21 @@ const cancelDevSkillEdit = () => {
   const getProfileImage = () => {
     if (imageRemoved) return ""
     if (previewImage) return previewImage
-    if (employeeProfile?.profilePhotoPath) return employeeProfile?.profilePhotoPath
     if (profile?.profilePhotoPath) return profile?.profilePhotoPath
-    if (profile?.avatar) return profile?.avatar
     return ""
   }
 
   const getEmployeeName = () => {
-    return profile?.name || employeeProfile?.employeeId || "User"
+    return profile?.name || profile?.employeeId || "User"
   }
 
   const hasExistingImage = () => {
-    return !imageRemoved && (employeeProfile?.profilePhotoPath || profile?.profilePhotoPath || profile?.avatar)
+    return !imageRemoved && (profile?.profilePhotoPath || profile?.profilePhotoPath || profile?.avatar)
   }
 
-  const displayProfile = profile || employeeProfile || {}
+  const displayProfile = profile || profile || {}
 
-  if (isLoading && !employeeProfile) {
+  if (isLoading && !profile) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
@@ -725,7 +743,7 @@ const cancelDevSkillEdit = () => {
     )
   }
 
-  if (!displayProfile && !employeeProfile) return null
+  if (!displayProfile && !profile) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -749,7 +767,7 @@ const cancelDevSkillEdit = () => {
                 <AvatarFallback className="text-2xl">
                   {getEmployeeName()
                     ?.split(" ")
-                    .map((n) => n[0])
+                    .map((n: any[]) => n[0])
                     .join("")
                     .toUpperCase()
                     .slice(0, 2) || "U"}
@@ -1335,267 +1353,267 @@ const cancelDevSkillEdit = () => {
             </div>
           </>
 
-        {/* Development Skills */}
-<>
-  <Separator className="my-4" />
-  <div className="py-2">
-    <div className="mb-3 flex items-center justify-between">
-      <h3 className="flex items-center gap-2 text-sm font-semibold">
-        <HugeiconsIcon
-          icon={UserIcon}
-          strokeWidth={2}
-          className="h-4 w-4"
-        />
-        Development Skills
-      </h3>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => setIsAddingDevSkill(!isAddingDevSkill)}
-        disabled={isUpdating || isSaving}
-      >
-        <HugeiconsIcon
-          icon={Add01Icon}
-          strokeWidth={2}
-          className="mr-1 h-4 w-4"
-        />
-        Add Development Skill
-      </Button>
-    </div>
+          {/* Development Skills */}
+          <>
+            <Separator className="my-4" />
+            <div className="py-2">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <HugeiconsIcon
+                    icon={UserIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                  Development Skills
+                </h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsAddingDevSkill(!isAddingDevSkill)}
+                  disabled={isUpdating || isSaving}
+                >
+                  <HugeiconsIcon
+                    icon={Add01Icon}
+                    strokeWidth={2}
+                    className="mr-1 h-4 w-4"
+                  />
+                  Add Development Skill
+                </Button>
+              </div>
 
-    {/* Add Development Skill Form */}
-    {isAddingDevSkill && (
-      <CardContent className="mb-4 space-y-3 rounded-lg border p-4">
-        <div className="grid grid-cols-3 gap-3">
-          {/* Development Type Dropdown */}
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Development Type *</Label>
-            <Select
-              value={newDevTypeName}
-              onValueChange={(value) => {
-                setNewDevTypeName(value)
-                console.log("📝 Development type changed:", value)
-              }}
-            >
-              <SelectTrigger className="h-9 w-full">
-                <SelectValue placeholder="Select type..." />
-              </SelectTrigger>
-              <SelectContent>
-                {devCap_headers.map((type: any) => (
-                  <SelectItem key={type.id} value={type.developmentTypeName}>
-                    {type.developmentTypeName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Process Name */}
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Process Name *</Label>
-            <Input
-              type="text"
-              value={newDevProcessName}
-              onChange={(e) => {
-                setNewDevProcessName(e.target.value)
-                console.log("📝 Process name changed:", e.target.value)
-              }}
-              placeholder="e.g., Agile, Waterfall"
-              className="h-9 w-full"
-              disabled={isAddingDevLoading}
-            />
-          </div>
-
-          {/* Years of Experience */}
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Years *</Label>
-            <Input
-              type="number"
-              step="0.5"
-              min="0"
-              value={newDevYears}
-              onChange={(e) => {
-                setNewDevYears(e.target.value)
-                console.log("📝 New dev years:", e.target.value)
-              }}
-              placeholder="0.0"
-              className="h-9 w-full"
-              disabled={isAddingDevLoading}
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setIsAddingDevSkill(false)
-              setNewDevTypeName("")
-              setNewDevProcessName("")
-              setNewDevYears("")
-            }}
-            disabled={isAddingDevLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleAddDevSkill}
-            disabled={isAddingDevLoading || !newDevTypeName || !newDevProcessName || !newDevYears}
-          >
-            {isAddingDevLoading ? (
-              <>
-                <HugeiconsIcon
-                  icon={Loading03Icon}
-                  strokeWidth={2}
-                  className="mr-2 h-4 w-4 animate-spin"
-                />
-                Adding...
-              </>
-            ) : (
-              "Add Skill"
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    )}
-
-    {/* Existing Development Skills */}
-    {profile?.developmentSkills && profile.developmentSkills.length > 0 && (
-      <CardContent className="space-y-3 p-0">
-        {profile.developmentSkills.map((skill: any, idx: number) => {
-          const years = skill.yearsOfExperience
-          const progress = getExperienceProgress(years)
-          const isEditing = editingDevSkillId === skill.id
-
-          return (
-            <div
-              key={idx}
-              className="rounded-lg border bg-muted/5 p-3"
-            >
-              {!isEditing ? (
-                // View mode
-                <div>
-                  <div className="mb-1 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">
-                        {skill.developmentTypeName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {skill.processName}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-semibold text-muted-foreground">
-                        {years.toFixed(1)} years
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => handleDevSkillEdit(skill)}
-                          disabled={isUpdating || isSaving}
-                        >
-                          <HugeiconsIcon
-                            icon={Edit01Icon}
-                            strokeWidth={2}
-                            className="h-4 w-4"
-                          />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-3">
-                    <ProgressBar
-                      value={progress}
-                      className="flex-1"
-                    />
-                    <span className="min-w-[40px] text-xs text-muted-foreground">
-                      {Math.round(progress)}%
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                // Edit mode
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">
-                      {skill.developmentTypeName}
-                    </span>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={cancelDevSkillEdit}
-                        disabled={isDevUpdating}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleDevSkillUpdate(skill.id, skill.developmentTypeName)}
-                        disabled={isDevUpdating || !editDevYears || !editDevProcessName}
-                      >
-                        {isDevUpdating ? "Saving..." : "Save"}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+              {/* Add Development Skill Form */}
+              {isAddingDevSkill && (
+                <CardContent className="mb-4 space-y-3 rounded-lg border p-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* Development Type Dropdown */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        Process Name
-                      </Label>
+                      <Label className="text-xs text-muted-foreground">Development Type *</Label>
+                      <Select
+                        value={newDevTypeName}
+                        onValueChange={(value) => {
+                          setNewDevTypeName(value)
+                          console.log("📝 Development type changed:", value)
+                        }}
+                      >
+                        <SelectTrigger className="h-9 w-full">
+                          <SelectValue placeholder="Select type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {devCap_headers.map((type: any) => (
+                            <SelectItem key={type.id} value={type.developmentTypeName}>
+                              {type.developmentTypeName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Process Name */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Process Name *</Label>
                       <Input
                         type="text"
-                        value={editDevProcessName}
+                        value={newDevProcessName}
                         onChange={(e) => {
-                          setEditDevProcessName(e.target.value)
-                          console.log("📝 Edit process name:", e.target.value)
+                          setNewDevProcessName(e.target.value)
+                          console.log("📝 Process name changed:", e.target.value)
                         }}
-                        placeholder="Process name"
-                        className="h-9"
-                        disabled={isDevUpdating}
+                        placeholder="e.g., Agile, Waterfall"
+                        className="h-9 w-full"
+                        disabled={isAddingDevLoading}
                       />
                     </div>
+
+                    {/* Years of Experience */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        Years of Experience
-                      </Label>
+                      <Label className="text-xs text-muted-foreground">Years *</Label>
                       <Input
                         type="number"
                         step="0.5"
                         min="0"
-                        value={editDevYears}
+                        value={newDevYears}
                         onChange={(e) => {
-                          setEditDevYears(e.target.value)
-                          console.log("📝 Edit dev years:", e.target.value)
+                          setNewDevYears(e.target.value)
+                          console.log("📝 New dev years:", e.target.value)
                         }}
                         placeholder="0.0"
-                        className="h-9"
-                        disabled={isDevUpdating}
+                        className="h-9 w-full"
+                        disabled={isAddingDevLoading}
                       />
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center gap-3">
-                    <ProgressBar
-                      value={getExperienceProgress(parseFloat(editDevYears) || 0)}
-                      className="flex-1"
-                    />
-                    <span className="min-w-[40px] text-xs text-muted-foreground">
-                      {Math.round(getExperienceProgress(parseFloat(editDevYears) || 0))}%
-                    </span>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsAddingDevSkill(false)
+                        setNewDevTypeName("")
+                        setNewDevProcessName("")
+                        setNewDevYears("")
+                      }}
+                      disabled={isAddingDevLoading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleAddDevSkill}
+                      disabled={isAddingDevLoading || !newDevTypeName || !newDevProcessName || !newDevYears}
+                    >
+                      {isAddingDevLoading ? (
+                        <>
+                          <HugeiconsIcon
+                            icon={Loading03Icon}
+                            strokeWidth={2}
+                            className="mr-2 h-4 w-4 animate-spin"
+                          />
+                          Adding...
+                        </>
+                      ) : (
+                        "Add Skill"
+                      )}
+                    </Button>
                   </div>
-                </div>
+                </CardContent>
+              )}
+
+              {/* Existing Development Skills */}
+              {profile?.developmentSkills && profile.developmentSkills.length > 0 && (
+                <CardContent className="space-y-3 p-0">
+                  {profile.developmentSkills.map((skill: any, idx: number) => {
+                    const years = skill.yearsOfExperience
+                    const progress = getExperienceProgress(years)
+                    const isEditing = editingDevSkillId === skill.id
+
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-lg border bg-muted/5 p-3"
+                      >
+                        {!isEditing ? (
+                          // View mode
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">
+                                  {skill.developmentTypeName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {skill.processName}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="text-sm font-semibold text-muted-foreground">
+                                  {years.toFixed(1)} years
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8"
+                                    onClick={() => handleDevSkillEdit(skill)}
+                                    disabled={isUpdating || isSaving}
+                                  >
+                                    <HugeiconsIcon
+                                      icon={Edit01Icon}
+                                      strokeWidth={2}
+                                      className="h-4 w-4"
+                                    />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center gap-3">
+                              <ProgressBar
+                                value={progress}
+                                className="flex-1"
+                              />
+                              <span className="min-w-[40px] text-xs text-muted-foreground">
+                                {Math.round(progress)}%
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          // Edit mode
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">
+                                {skill.developmentTypeName}
+                              </span>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={cancelDevSkillEdit}
+                                  disabled={isDevUpdating}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleDevSkillUpdate(skill.id, skill.developmentTypeName)}
+                                  disabled={isDevUpdating || !editDevYears || !editDevProcessName}
+                                >
+                                  {isDevUpdating ? "Saving..." : "Save"}
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  Process Name
+                                </Label>
+                                <Input
+                                  type="text"
+                                  value={editDevProcessName}
+                                  onChange={(e) => {
+                                    setEditDevProcessName(e.target.value)
+                                    console.log("📝 Edit process name:", e.target.value)
+                                  }}
+                                  placeholder="Process name"
+                                  className="h-9"
+                                  disabled={isDevUpdating}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  Years of Experience
+                                </Label>
+                                <Input
+                                  type="number"
+                                  step="0.5"
+                                  min="0"
+                                  value={editDevYears}
+                                  onChange={(e) => {
+                                    setEditDevYears(e.target.value)
+                                    console.log("📝 Edit dev years:", e.target.value)
+                                  }}
+                                  placeholder="0.0"
+                                  className="h-9"
+                                  disabled={isDevUpdating}
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center gap-3">
+                              <ProgressBar
+                                value={getExperienceProgress(parseFloat(editDevYears) || 0)}
+                                className="flex-1"
+                              />
+                              <span className="min-w-[40px] text-xs text-muted-foreground">
+                                {Math.round(getExperienceProgress(parseFloat(editDevYears) || 0))}%
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </CardContent>
               )}
             </div>
-          )
-        })}
-      </CardContent>
-    )}
-  </div>
-</>
+          </>
 
           {/* Language Skills */}
           <>
@@ -1620,7 +1638,6 @@ const cancelDevSkillEdit = () => {
                       value={jlptLevel}
                       onValueChange={(value) => {
                         setJlptLevel(value)
-                        console.log("📝 JLPT level changed:", value)
                       }}
                       disabled={isLanguageUpdating || isUpdating || isSaving}
                     >

@@ -93,7 +93,6 @@ const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
       role="status"
       aria-label="Loading"
       className={cn("size-4 animate-spin", className)}
-      {...props}
     />
   )
 }
@@ -207,7 +206,7 @@ export function CertificatesRequestsContainer({
 
   // Transform allCertificates to CertificateRequest format
   const transformedCertificates: CertificateRequest[] = allCertificates.map(
-    (cert) => ({
+    (cert: any) => ({
       id: cert.id,
       certificateType: cert.certificateType,
       japaneseLevel: cert.japaneseLevel,
@@ -216,7 +215,7 @@ export function CertificatesRequestsContainer({
       employee: {
         name: cert.employeeName || "",
         email: cert.email || "",
-        avatar: "",
+        avatar: cert.profilePhotoPath || "",
         id: cert.employeeId || "",
         teamName: cert.teamName,
       },
@@ -274,6 +273,7 @@ export function CertificatesRequestsContainer({
     }
   }, [selectedCertificateId])
 
+
   // Effect to find and open the certificate when selectedCertificateId is provided
   useEffect(() => {
     // Only process if:
@@ -313,10 +313,6 @@ export function CertificatesRequestsContainer({
         (c) => c.id === certIdStr
       )
       if (refreshedCertificate) {
-        console.log(
-          "✅ Found certificate after refresh:",
-          refreshedCertificate.id
-        )
         handleCertificateClick(refreshedCertificate)
       } else {
         console.error(
@@ -910,10 +906,7 @@ export function CertificatesRequestsContainer({
         onOpenChange={setApproveDrawerOpen}
         certificate={selectedCertificate as any}
         onApprove={handleApproveSuccess}
-        onDeny={() => {
-          setApproveDrawerOpen(false)
-          setDenyDrawerOpen(true)
-        }}
+        onDeny={handleDenySuccess}
       />
     </>
   )

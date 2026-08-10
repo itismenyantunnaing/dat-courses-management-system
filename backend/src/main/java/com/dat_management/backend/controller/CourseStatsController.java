@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -59,8 +60,18 @@ public class CourseStatsController {
     }
 
     @GetMapping("/active-learners")
-    public ResponseEntity<ActiveLearnerResponseDTO> getActiveLearners() {
-        ActiveLearnerResponseDTO response = activeLearnerService.getTotalActiveLearners();
+    public ResponseEntity<ActiveLearnerResponseDTO> getActiveLearners(
+            @RequestParam(value = "employeeId", required = false) String employeeId) {
+        ActiveLearnerResponseDTO response;
+
+        if (employeeId != null && !employeeId.isEmpty()) {
+            // Get active learners for specific employee's team
+            response = activeLearnerService.getTotalActiveLearnersByEmployeeId(employeeId);
+        } else {
+            // Get all active learners (existing behavior)
+            response = activeLearnerService.getTotalActiveLearners();
+        }
+
         return ResponseEntity.ok(response);
     }
 

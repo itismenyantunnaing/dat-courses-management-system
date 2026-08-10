@@ -2,6 +2,44 @@ INSERT IGNORE INTO role (role_name) VALUES ('Admin');
 INSERT IGNORE INTO role (role_name) VALUES ('Approver');
 INSERT IGNORE INTO role (role_name) VALUES ('Learner');
 
+INSERT IGNORE INTO employees (
+    id,
+    name,
+    email,
+    password,
+    status,
+    position,
+    emp_status,
+    failed_login_attempts,
+    role_id,
+    is_core_personnel,  -- Changed from isCorePersonnel
+    has_japan_business_trip,  -- Changed from hasJapanBusinessTrip
+    noti_setting,  -- Changed from notiSetting
+    is_deleted,  -- Changed from isDeleted
+    course_announcements,
+    exam_announcements,
+    certificate_updates,
+    email_notifications
+) VALUES (
+    'EMP002',
+    'Admin',
+    'kyawphoneygn@gmail.com',
+    '$2a$10$zeb9o8Yf8aRpPnK29sjJoukzQkh.YSH2.3cTJ/6iiwPM.MfyxCtwu',
+    'system', 
+    '',
+    'active',
+    0,
+    1,
+    false,  -- is_core_personnel
+    false,  -- has_japan_business_trip
+    false,  -- noti_setting
+    false,  -- is_deleted
+    true,   -- course_announcements
+    true,   -- exam_announcements
+    true,   -- certificate_updates
+    true    -- email_notifications
+);
+
 INSERT IGNORE INTO japanese_dictionary (japanese_text, english_text) VALUES 
 ('有','Yes'),
 ('なし','none'),

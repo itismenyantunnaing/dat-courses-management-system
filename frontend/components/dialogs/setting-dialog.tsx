@@ -30,6 +30,13 @@ import { mainStore } from "@/store/mainStore"
 interface SettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  notificationSettings?: {
+    courseAnnouncements: boolean
+    jlptExamAnnouncements: boolean
+    certificateUpdates: boolean
+    emailNotifications: boolean
+  }
+  onSaveNotificationSettings?: (settings: any) => Promise<void>
 }
 
 export function SettingDialog({

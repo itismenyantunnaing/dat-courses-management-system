@@ -202,7 +202,6 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     { field: "staff_id", header_name: t("ID") },
     { field: "name", header_name: t("Name") },
     { field: "dept", header_name: t("Name of the commissioning department *Select from the dropdown menu") },
-    { field: "rank", header_name: t("Rank *Select from the dropdown menu") },
     { field: "is_core_personnel", header_name: t("Core personnel *FPT only") },
     { field: "has_japan_business_trip", header_name: t("Whether or not you have a business trip to Japan") },
   ];
@@ -454,7 +453,6 @@ function buildExportData(data: ExportSkillData, options: ExportSkillOptions) {
     row.push(employee.id || '-');
     row.push(employee.name || '-');
     row.push(employee.dept_dir || '-');
-    row.push(employee.rank || '-');
     row.push(employee.is_core_personnel ? 'Yes' : 'No');
     row.push(employee.has_japan_business_trip ? 'Yes' : 'No');
 

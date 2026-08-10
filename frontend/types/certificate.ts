@@ -1,3 +1,5 @@
+import type { Employee } from "./employee"
+
 export const CERTIFICATE_TYPES = [
   'JLPT', 
   'NAT_TEST', 
@@ -12,6 +14,7 @@ export type CertificateLevel = typeof CERTIFICATE_LEVELS[number]
 
 export interface JapaneseCertificate {
   id: string
+  employee?: Employee
   certificateType: CertificateType
   japaneseLevel: CertificateLevel 
   file?: File
@@ -21,6 +24,7 @@ export interface JapaneseCertificate {
   employeeId?: string
   employeeName?: string
   email?: string
+  profilePhotoPath?: string
   teamName?: string
   verifiedByEmployeeId?: string | null
   verifiedByEmployeeName?: string | null

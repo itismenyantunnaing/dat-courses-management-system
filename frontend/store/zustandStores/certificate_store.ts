@@ -49,6 +49,7 @@ const transformCertificate = (cert: any): JapaneseCertificate => {
     employeeId: cert.employeeId || '',
     employeeName: cert.employeeName || '',
     email: cert.email || '',
+    profilePhotoPath: cert.profilePhotoPath,
     teamName: cert.teamName || '',
     verifiedByEmployeeId: cert.verifiedByEmployeeId || null,
     verifiedByEmployeeName: cert.verifiedByEmployeeName || null,

@@ -50,6 +50,7 @@ import { Self_Study_Section } from "./self-study-management-section"
 import { formatGroupsForAPI } from "./trainer-management-section"
 import { formatSelfStudySessionsForAPI } from "./self-study-management-section"
 import { EnrollEmployeesSection } from "./EnrollEmployeesSection"
+import { compressFile } from "@/lib/compressImage"
 
 // Default session days constant
 const DEFAULT_SESSION_DAYS = [4, 5] // Thursday, Friday
@@ -352,15 +353,29 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       }
     }
 
-    // Image upload handlers
-    const handleImageChange = (file: File | null) => {
+    // Image upload handlers with compression
+    const handleImageChange = async (file: File | null) => {
       if (file) {
-        setSelectedImage(file)
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          setImagePreview(reader.result as string)
+        try {
+          const compressedFile = await compressFile(file)
+          setSelectedImage(compressedFile)
+
+          // Create preview from compressed file
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string)
+          }
+          reader.readAsDataURL(compressedFile)
+        } catch (error) {
+          console.error("❌ Failed to compress image:", error)
+          // Fallback: use original file if compression fails
+          setSelectedImage(file)
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string)
+          }
+          reader.readAsDataURL(file)
         }
-        reader.readAsDataURL(file)
       } else {
         setSelectedImage(null)
         setImagePreview(initialImage || null)

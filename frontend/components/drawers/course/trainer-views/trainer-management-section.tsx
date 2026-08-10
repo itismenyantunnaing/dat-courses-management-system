@@ -1059,9 +1059,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                       const enrolledCount = getGroupEnrolledCount(group.id)
 
                       if (value !== undefined && value > 0) {
-                        if (value < enrolledCount) {
-                          return
-                        }
+                        // if (value < enrolledCount) {
+                        //   return
+                        // }
 
                         const newErrors = { ...groupErrors }
                         delete newErrors[group.id]

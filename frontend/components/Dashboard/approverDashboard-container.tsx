@@ -56,6 +56,9 @@ import {
 import { StatCard } from "../charts/stat-card"
 import { CHART_COLORS, JLPT_COLORS } from "../charts/chart-config"
 import { mainStore } from "@/store/mainStore"
+import type { RiskDTO } from "@/types/dashboard"
+import type { LevelCounts } from "@/types/exam_progress_report"
+import type { Employee } from "@/types/employee"
 
 // Chart config for Team Attendance
 const attendanceChartConfig = {
@@ -157,44 +160,6 @@ const truncateText = (text: string, maxLength: number = 28) => {
   return text.slice(0, maxLength) + "..."
 }
 
-// Truncated Select Item component
-const TruncatedSelectItem = ({
-  value,
-  label,
-  disabled = false,
-  maxLength = 28,
-}: {
-  value: string
-  label: string
-  disabled?: boolean
-  maxLength?: number
-}) => {
-  const needsTruncation = label.length > maxLength
-  const displayLabel = needsTruncation ? truncateText(label, maxLength) : label
-
-  if (!needsTruncation) {
-    return (
-      <SelectItem value={value} disabled={disabled}>
-        {label}
-      </SelectItem>
-    )
-  }
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <SelectItem value={value} disabled={disabled} className="max-w-full">
-            <span className="block truncate">{displayLabel}</span>
-          </SelectItem>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="max-w-xs">{label}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
-}
 
 export default function ApproverDashboardContainer() {
   const [selectedCategory, setSelectedCategory] = useState<string>("JLPT Exam Target")
@@ -206,13 +171,10 @@ export default function ApproverDashboardContainer() {
   const {
     profile,
     fetch_EmployeeData,
-    fetch_AllData,
+    fetch_AllReportData,
     fetch_dat_departments,
-    dat_departments,
     teamDisplayData,
     fetch_teams,
-    teams,
-    apiResponse,
     employee_data,
 
     // for Employees at Risk
@@ -221,7 +183,6 @@ export default function ApproverDashboardContainer() {
 
     // for Course Statistics 
     fetchAll_CourseData,
-    courses,
     fetch_courseCategories,
     courseCategory_data,
     fetchCourseStats,
@@ -229,7 +190,10 @@ export default function ApproverDashboardContainer() {
     fetchTeamCertificateStats,
     teamCertificateStats,
     fetchDailyAttendance,
-    dailyAttendance
+    dailyAttendance,
+
+    fetchActiveLearnerCount,
+    activeLearnersCount
   } = mainStore()
 
   // Load data
@@ -238,7 +202,7 @@ export default function ApproverDashboardContainer() {
       setIsLoading(true)
       try {
         await fetch_EmployeeData()
-        await fetch_AllData()
+        await fetch_AllReportData()
         await fetch_dat_departments()
         await fetch_teams()
         await fetchAll_CourseData()
@@ -247,6 +211,7 @@ export default function ApproverDashboardContainer() {
         await fetchRiskData()
         await fetchTeamCertificateStats()
         await fetchDailyAttendance()
+        await fetchActiveLearnerCount()
       } catch (error) {
         console.error("Error loading data:", error)
       } finally {
@@ -256,6 +221,8 @@ export default function ApproverDashboardContainer() {
 
     loadData()
   }, [])
+
+  console.log(activeLearnersCount)
 
   // Combine course categories with useMemo
   const combinedCourseCategories = useMemo(() => {
@@ -337,12 +304,12 @@ export default function ApproverDashboardContainer() {
 
   // Get available certification types from teamCertificateStats for the user's team
   const availableCertTypes = useMemo(() => {
-    if (!teamCertificateStats || !teamCertificateStats.statistics) {
+    if (!teamCertificateStats || !teamCertificateStats.statistics || !profile?.team) {
       return []
     }
 
     // Get the stats for the user's team
-    const teamStats = teamCertificateStats.statistics[profile?.team]
+    const teamStats = teamCertificateStats.statistics[profile.team]
     if (!teamStats) {
       return []
     }
@@ -432,35 +399,15 @@ export default function ApproverDashboardContainer() {
 
   const filteredAttendanceData = getAttendanceData()
 
-  // Calculate attendance trend (percentage change)
-  const attendanceTrend = useMemo(() => {
-    const data = filteredAttendanceData
-    if (!data || data.length < 2) return { value: 0, direction: 'up' as const }
-
-    // Get first and last attendance values
-    const firstValue = data[0]?.attendance || 0
-    const lastValue = data[data.length - 1]?.attendance || 0
-
-    if (firstValue === 0) return { value: 0, direction: 'up' as const }
-
-    // Calculate percentage change
-    const change = ((lastValue - firstValue) / firstValue)
-    const direction = change >= 0 ? 'up' as const : 'down' as const
-
-    return {
-      value: Math.abs(Math.round(change * 10) / 10), // Round to 1 decimal place
-      direction
-    }
-  }, [filteredAttendanceData])
 
   // Get filtered certification data for the user's team
   const filteredCertificationData = useMemo(() => {
-    if (!teamCertificateStats || !teamCertificateStats.statistics) {
+    if (!teamCertificateStats || !teamCertificateStats.statistics || !profile?.team) {
       return []
     }
 
     // Get the stats for the user's team
-    const teamStats = teamCertificateStats.statistics[profile?.team]
+    const teamStats = teamCertificateStats.statistics[profile.team]
     if (!teamStats) {
       return []
     }
@@ -514,7 +461,7 @@ export default function ApproverDashboardContainer() {
 
     // Filter to only show employees from the user's team
     return riskData.atRiskStudents.filter(
-      (employee) => employee.team === profile?.team
+      (employee: RiskDTO) => employee.team === profile?.team
     )
   }, [riskData, profile?.team])
 
@@ -561,9 +508,15 @@ export default function ApproverDashboardContainer() {
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           title="Total Team Members"
-          value={employee_data?.filter((employee) => employee.team === profile?.team)?.length || 0}
+          value={employee_data?.filter((employee: Employee) => employee.team === profile?.team)?.length || 0}
           icon={UserGroupIcon}
           description="Active in the system"
+        />
+        <StatCard
+          title="Active Learners"
+          value={activeLearnersCount?.totalActiveLearners || 0}
+          icon={BookOpenIcon}
+          description={`${Math.round(((activeLearnersCount?.totalActiveLearners || 0) / employee_data?.length) * 100)}% of employees`}
         />
         <StatCard
           title="Average Attendance"
@@ -577,12 +530,12 @@ export default function ApproverDashboardContainer() {
           icon={ChampionIcon}
           description="Overall course completion"
         />
-        <StatCard
+        {/* <StatCard
           title="Employees at Risk"
           value={atRiskCount}
           icon={AlertCircleIcon}
           description="Need attention"
-        />
+        /> */}
       </div>
 
       {/* Course Statistics - Category Select (Same as Admin) */}
@@ -886,7 +839,7 @@ export default function ApproverDashboardContainer() {
 
               // Check if we have data to display
               const hasData = chartData.length > 0 && chartData.some(
-                (item) => item.N1 > 0 || item.N2 > 0 || item.N3 > 0 || item.N4 > 0 || item.N5 > 0
+                (item: LevelCounts) => item.N1 > 0 || item.N2 > 0 || item.N3 > 0 || item.N4 > 0 || item.N5 > 0
               );
 
               if (!hasData) {
@@ -1093,7 +1046,7 @@ export default function ApproverDashboardContainer() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAtRiskEmployees.map((employee, index) => (
+                  {filteredAtRiskEmployees.map((employee: RiskDTO, index: number) => (
                     <tr key={index} className="border-b last:border-0">
                       <td className="py-2 pr-4 text-sm font-medium">
                         {employee.name}

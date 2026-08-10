@@ -35,20 +35,11 @@ import SelfStudyProgessReportContainer from "@/components/selfStudyProgess-repor
 import { AuditLogsContainer } from "@/components/auditLogs-container"
 import { webScoketStore } from "@/store/websocketStore"
 import { toast } from "sonner"
-
-  import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge"
+import type { SessionData } from "@/types/session"
 
 interface DashboardClientProps {
-  userData: {
-    token: string
-    userId: string
-    role: string
-    name: string
-    email: string
-    status: string
-    loginTime: number
-    expiresAt: number
-  }
+  userData: SessionData
 }
 
 export default function DashboardPage({ userData }: DashboardClientProps) {
@@ -64,7 +55,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const [pendingCertificateId, setPendingCertificateId] = useState<number | null>(null)
 
   // Get session store actions
-  const { setSession, fetch_profile, profile, unreadCount: dbUnreadCount, fetch_UnreadCount } = mainStore()
+  const { setSession, fetch_EmployeeProfile, profile, unreadCount: dbUnreadCount, fetch_UnreadCount } = mainStore()
   const { connect } = webScoketStore()
 
   //  Subscribe to WebSocket store for real-time updates (only for connection status and notifications list)
@@ -79,12 +70,12 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     if (!initialized.current && userData) {
       ; (async () => {
         setSession(userData)
-        await fetch_profile(userData.userId)
+        await fetch_EmployeeProfile(userData.userId)
         initialized.current = true
         setIsProfileLoaded(true)
       })()
     }
-  }, [userData, setSession, fetch_profile])
+  }, [userData, setSession, fetch_EmployeeProfile])
 
   // Connect to WebSocket when profile is loaded and user is authenticated
   useEffect(() => {
@@ -94,6 +85,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       fetch_UnreadCount(profile.id);
     }
   }, [isProfileLoaded, profile?.id, connect, fetch_UnreadCount]);
+
 
   //  Refetch database unread count ONLY when a NEW WebSocket notification arrives
   useEffect(() => {
@@ -119,71 +111,71 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   }, [])
 
   // Show alert when new notification arrives 
-useEffect(() => {
-  if (notifications.length > 0) {
-    const latest = notifications[0]
-    if (latest && !latest.read) {
-      // Check if there's a navigation target
-      const hasNavigationTarget = latest.courseId || latest.certificateId;
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latest = notifications[0]
+      if (latest && !latest.read) {
+        // Check if there's a navigation target
+        const hasNavigationTarget = latest.courseId || latest.certificateId;
 
-      // Base toast options
-      const toastOptions: any = {
-        description: latest.message,
-        duration: 5000,
-        position: 'top-center',
-        style: {
-          background: '#1a1a2e',
-          color: '#ffffff',
-          border: '1px solid #e94560',
-          borderRadius: '12px',
-          padding: '16px',
-          width: '480px', // Increased width
-          maxWidth: '90vw', // Responsive max width
-        },
-        cancel: {
-          label: 'Dismiss',
-          onClick: () => {
-            webScoketStore.getState().markAsRead(latest.id);
-          }
-        }
-      };
-
-      // Only add action (View button) if there's a navigation target
-      if (hasNavigationTarget) {
-        toastOptions.action = {
-          label: 'View',
-          onClick: () => {
-            // Mark as read
-            webScoketStore.getState().markAsRead(latest.id);
-
-            // Navigate
-            if (latest.courseId) {
-              setSelectedCourseId(latest.courseId);
-              setActiveTab('courses');
-            } else if (latest.certificateId) {
-              const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests';
-              setPendingCertificateId(latest.certificateId);
-              setSelectedCertificateId(null);
-              setActiveTab(targetTab);
+        // Base toast options
+        const toastOptions: any = {
+          description: latest.message,
+          duration: 5000,
+          position: 'top-center',
+          style: {
+            background: '#1a1a2e',
+            color: '#ffffff',
+            border: '1px solid #e94560',
+            borderRadius: '12px',
+            padding: '16px',
+            width: '480px', // Increased width
+            maxWidth: '90vw', // Responsive max width
+          },
+          cancel: {
+            label: 'Dismiss',
+            onClick: () => {
+              webScoketStore.getState().markAsRead(latest.id);
             }
           }
         };
-      }
 
-      // Show toast with the message
-      toast[latest.type === 'error' ? 'error' :
-        latest.type === 'success' ? 'success' :
-          latest.type === 'warning' ? 'warning' : 'info'](
-            latest.title || 'Notification',
-            toastOptions
-          );
+        // Only add action (View button) if there's a navigation target
+        if (hasNavigationTarget) {
+          toastOptions.action = {
+            label: 'View',
+            onClick: () => {
+              // Mark as read
+              webScoketStore.getState().markAsRead(latest.id);
+
+              // Navigate
+              if (latest.courseId) {
+                setSelectedCourseId(latest.courseId);
+                setActiveTab('courses');
+              } else if (latest.certificateId) {
+                const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests';
+                setPendingCertificateId(latest.certificateId);
+                setSelectedCertificateId(null);
+                setActiveTab(targetTab);
+              }
+            }
+          };
+        }
+
+        // Show toast with the message
+        toast[latest.type === 'error' ? 'error' :
+          latest.type === 'success' ? 'success' :
+            latest.type === 'warning' ? 'warning' : 'info'](
+              latest.title || 'Notification',
+              toastOptions
+            );
+      }
     }
-  }
-}, [notifications]);
+  }, [notifications]);
 
 
   useEffect(() => {
-    if (profile.status === "default") {
+    if (profile?.status === "default") {
       setIsChangePasswordOpen(true)
     }
   }, [profile])
@@ -410,7 +402,7 @@ useEffect(() => {
                   {/*  Connection status indicator */}
                   <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${isConnected ? 'bg-green-500' : 'bg-red-500'
                     }`} />
-                </div>   
+                </div>
 
                 {user_role !== "learner" &&
                   <Button
@@ -452,6 +444,34 @@ useEffect(() => {
         onOpenChange={setSendMailOpen}
         defaultEmail={profile?.email || ""}
       />
+        {/* Forced Password Change Dialog for New Users */}
+      {/* <Dialog
+        open={isChangePasswordOpen}
+        onOpenChange={(open) => {
+          // Prevent closing if user status is still "default"
+          if (userData.status === "default" && !open) return
+          setIsChangePasswordOpen(open)
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-[425px]"
+          onPointerDownOutside={(e) => {
+            // Prevent closing by clicking outside if user status is still "default"
+            if (userData.status === "default") e.preventDefault()
+          }}
+          onEscapeKeyDown={(e) => {
+            // Prevent closing by pressing escape if user status is still "default"
+            if (userData.status === "default") e.preventDefault()
+          }}
+        >
+          <ChangePassword
+            flow="change"
+            step="old-password"
+            force={true}
+            onClose={() => setIsChangePasswordOpen(false)}
+          />
+        </DialogContent>
+      </Dialog> */}
     </>
   )
 }

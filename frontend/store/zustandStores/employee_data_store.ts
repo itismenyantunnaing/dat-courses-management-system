@@ -32,32 +32,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     return getAuthToken();
   },
 
-  fetch_profile: async (userId?: string) => {
-    try {
-      const token = getAuthToken();
-      const response = await fetch(`${apiUrl}/api/employees/${userId}/profile`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        try {
-          await logout()
-        } catch (error) {
-          console.error("Logout failed:", error)
-        }
-        return
-      }
-
-      const data = await response.json();
-      set(() => ({ profile: data }))
-    } catch (error) {
-      console.error('Error fetching profile data:', error);
-      set(() => ({ profile: [] }))
-    }
-  },
 
   fetch_roles: async () => {
     try {

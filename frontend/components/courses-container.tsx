@@ -28,7 +28,7 @@ import {
   CourseIcon,
   AlertCircleIcon,
 } from "@hugeicons/core-free-icons"
-import { Course, type CourseCategory } from "@/types/course"
+import { Course, CourseFormSubmitData } from "@/types/course"
 import { CourseCard } from "../components/cards/course-card"
 import { CourseDetail } from "../components/drawers/course/course-detail"
 import { Trainer_CourseForm } from "./drawers/course/trainer-views/trainer-CourseForm"
@@ -62,8 +62,9 @@ const getCourseStartDate = (course: Course): Date | null => {
     if (dates.length === 0) return null
     return new Date(Math.min(...dates.map((d) => d.getTime())))
   }
-  if (course.sessions?.length > 0) {
-    return course.sessions[0].date
+  // For self-study courses, use self_study_sessions
+  if (course.self_study_sessions?.length > 0) {
+    return course.self_study_sessions[0].date || null
   }
   return null
 }
@@ -75,7 +76,7 @@ const getCourseSessionsCount = (course: Course): number => {
       course.groups?.reduce((total, g) => total + g.sessions.length, 0) || 0
     )
   }
-  return course.sessions?.length || 0
+  return course.self_study_sessions?.length || 0
 }
 
 export function CoursesContainer({
@@ -157,7 +158,7 @@ export function CoursesContainer({
 
     // Find the course (convert ID to string for comparison)
     const courseIdStr = selectedCourseId.toString()
-    const foundCourse = courses.find(c => c.id === courseIdStr)
+    const foundCourse = courses.find((c : Course) => c.id === courseIdStr)
 
     if (foundCourse) {
       // Found the course - open it in detail view
@@ -184,7 +185,7 @@ export function CoursesContainer({
     console.warn(`Course with ID ${selectedCourseId} not found. Refreshing...`)
     fetchAll_CourseData().then(() => {
       // After refresh, check again
-      const refreshedCourse = courses.find(c => c.id === courseIdStr)
+      const refreshedCourse = courses.find((c : Course) => c.id === courseIdStr)
       if (refreshedCourse) {
         setSelectedCourse(refreshedCourse)
       } 
@@ -213,18 +214,18 @@ export function CoursesContainer({
   // Get counts for each tab (admin)
   const getAdminTabCounts = useMemo(() => {
     const all = courses.length
-    const draft = courses.filter((c) => c.status === "draft").length
+    const draft = courses.filter((c: Course)  => c.status === "draft").length
     const active = courses.filter(
-      (c) => c.status === "active" || c.status === "upcoming"
+      (c: Course) => c.status === "active" || c.status === "upcoming"
     ).length
     return { all, draft, active }
   }, [courses])
 
   // Get counts for each tab (learner)
   const getLearnerTabCounts = useMemo(() => {
-    const all = courses.filter((c) => c.status !== "draft").length
+    const all = courses.filter((c: Course) => c.status !== "draft").length
     const yourCourses = courses.filter(
-      (c) => userEnrolledCourseIds.has(c.id) && c.status !== "draft"
+      (c: Course) => userEnrolledCourseIds.has(c.id) && c.status !== "draft"
     ).length
     return { all, yourCourses }
   }, [courses, userEnrolledCourseIds])
@@ -239,7 +240,7 @@ export function CoursesContainer({
         }
         return true
       })
-      .filter((course) => {
+      .filter((course: Course) => {
         const startDate = getCourseStartDate(course)
         const dateStr = startDate
           ? format(startDate, "MMM yyyy").toLowerCase()
@@ -256,13 +257,13 @@ export function CoursesContainer({
 
     // Apply tab filter
     if (activeTab === "draft") {
-      filtered = filtered.filter((course) => course.status === "draft")
+      filtered = filtered.filter((course: Course) => course.status === "draft")
     } else if (activeTab === "active") {
       filtered = filtered.filter(
-        (course) => course.status === "active" || course.status === "upcoming"
+        (course: Course) => course.status === "active" || course.status === "upcoming"
       )
     } else if (activeTab === "your-courses") {
-      filtered = filtered.filter((course) =>
+      filtered = filtered.filter((course: Course) =>
         userEnrolledCourseIds.has(course.id)
       )
     }
@@ -295,7 +296,6 @@ export function CoursesContainer({
     setIsSubmitting(false)
   }
 
-  console.log(selectedCourse)
 
   const handleDeleteCourse = async () => {
     if (editingCourse) {
@@ -308,7 +308,7 @@ export function CoursesContainer({
     }
   }
 
-  const handleSubmit = async (data: CourseCategory) => {
+  const handleSubmit = async (data: CourseFormSubmitData) => {
     setIsSubmitting(true)
 
     try {
@@ -678,7 +678,7 @@ export function CoursesContainer({
               {/* Course Grid */}
               {filteredCourses.length > 0 ? (
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {filteredCourses.map((course, index) => {
+                  {filteredCourses.map((course: Course, index: number) => {
                     if (course.status !== "draft") {
                       return (
                         <CourseCard
@@ -841,7 +841,7 @@ export function CoursesContainer({
             {/* Course Grid */}
             {filteredCourses.length > 0 ? (
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredCourses.map((course, index) => (
+                {filteredCourses.map((course: Course, index: number) => (
                   <CourseCard
                     key={index}
                     course={course}
@@ -887,7 +887,7 @@ export function CoursesContainer({
           <div className="mt-6">
             <Trainer_CourseForm
               mode={editingCourse ? "edit" : "add"}
-              initialData={editingCourse || undefined}
+              initialData={editingCourse as any}
               initialImage={editingCourse?.imageUrl || null}
               onSubmit={handleSubmit}
               onCancel={handleCancel}

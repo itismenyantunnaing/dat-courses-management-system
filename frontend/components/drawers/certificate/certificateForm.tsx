@@ -20,6 +20,7 @@ import {
   type JapaneseCertificate,
 } from "@/types/certificate"
 import { mainStore } from "@/store/mainStore"
+import { compressFile } from "@/lib/compressImage"
 
 interface CertificateFormData {
   certificateType: (typeof CERTIFICATE_TYPES)[number] | ""
@@ -182,24 +183,36 @@ export const CertificateForm = forwardRef<
       }
     }, [formData.certificateType])
 
-    const handleImageChange = (file: File | null) => {
+    const handleImageChange = async (file: File | null) => {
       if (file) {
         if (!file.type.startsWith("image/")) {
           alert("Please select an image file")
           return
         }
 
-        if (file.size > 10 * 1024 * 1024) {
-          alert("File size must be less than 10MB")
-          return
+        try {
+          // Try to compress the file
+          const compressed = await compressFile(file)
+          setSelectedFile(compressed)
+          
+          // Create preview from compressed file
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string)
+          }
+          reader.readAsDataURL(compressed)
+        } catch (error) {
+          // Fallback: use original file if compression fails
+          console.warn('Compression failed, using original file:', error)
+          setSelectedFile(file)
+          
+          // Create preview from original file
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string)
+          }
+          reader.readAsDataURL(file)
         }
-
-        setSelectedFile(file)
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          setImagePreview(reader.result as string)
-        }
-        reader.readAsDataURL(file)
       } else {
         setSelectedFile(null)
         setImagePreview(initialImage || null)
@@ -291,15 +304,7 @@ export const CertificateForm = forwardRef<
                   ? "Current image uploaded"
                   : "Choose an image or drag & drop it here"}
             </p>
-            <p className="text-xs text-muted-foreground">
-              Maximum 10 MB (JPG, PNG)
-            </p>
-            {selectedFile && (
-              <p className="text-xs text-green-600">
-                ✓ Image selected: {(selectedFile.size / 1024 / 1024).toFixed(2)}{" "}
-                MB
-              </p>
-            )}
+           
           </div>
           <input
             type="file"

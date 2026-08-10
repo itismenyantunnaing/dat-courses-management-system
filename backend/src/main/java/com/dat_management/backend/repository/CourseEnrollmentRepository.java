@@ -51,6 +51,13 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
             "AND ce.course.isDeleted = false")
     List<CourseEnrollment> findActiveEnrollmentsByEmployeeId(@Param("employeeId") String employeeId);
 
+    @Query("SELECT ce FROM CourseEnrollment ce WHERE ce.enrollmentStatus = 'APPROVED' " +
+            "AND ce.employee.isDeleted = false " +
+            "AND ce.employee.empStatus = 'active' " +
+            "AND ce.course.isDeleted = false " +
+            "AND ce.employee.team.id = :teamId")
+    List<CourseEnrollment> findAllApprovedActiveEnrollmentsByTeamId(@Param("teamId") String teamId);
+
     /*
      * ===============================================
      * TRAINER PROVIDED SESSIONS

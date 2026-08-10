@@ -112,7 +112,6 @@ export function SendMailDialog({
     jlptExamAnnouncements: true,
     certificateUpdates: true,
     emailNotifications: true,
-    emailNotifications: true,
   })
 
   // Get default provider from system config
@@ -180,7 +179,7 @@ export function SendMailDialog({
     switch (searchTab) {
       case "employee":
         filteredData = transformedEmployees.filter(
-          (employee) =>
+          (employee: any) =>
             employee?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             employee?.email?.toLowerCase().includes(searchQuery.toLowerCase())
         )
@@ -775,7 +774,7 @@ export function SendMailDialog({
                         <AvatarFallback className="rounded-lg">
                           {employee.name
                             ?.split(" ")
-                            .map((n) => n[0])
+                            .map((n: any[]) => n[0])
                             .join("")
                             .toUpperCase()
                             .slice(0, 2) || "U"}
@@ -1001,7 +1000,7 @@ export function SendMailDialog({
                     <AvatarFallback className="rounded-lg">
                       {employee.name
                         ?.split(" ")
-                        .map((n) => n[0])
+                        .map((n: any[]) => n[0])
                         .join("")
                         .toUpperCase()
                         .slice(0, 2) || "U"}

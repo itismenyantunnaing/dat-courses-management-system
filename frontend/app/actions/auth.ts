@@ -1,5 +1,6 @@
 'use server'
 
+import type { SessionData } from '@/types/session'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -20,12 +21,6 @@ interface LoginResponse {
     status?: string
     message?: string
     lockedUntil?: string
-}
-
-interface SessionData {
-    token: string
-    userId: string
-    expiresAt: number 
 }
 
 // Session configuration - 1 HOUR

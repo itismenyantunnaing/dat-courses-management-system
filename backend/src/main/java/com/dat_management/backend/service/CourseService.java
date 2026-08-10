@@ -11,6 +11,7 @@ import com.dat_management.backend.repository.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +22,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -40,6 +42,7 @@ public class CourseService {
     // =========================================================
     @Transactional(readOnly = true)
     public List<CourseDto> getAllCourses() {
+        log.info("📋 Fetching all non-deleted courses");
         return courseRepo.findByIsDeletedFalseOrderByCreatedAtDesc()
                 .stream()
                 .map(c -> toCourseDto(c, false))
@@ -51,13 +54,16 @@ public class CourseService {
     // =========================================================
     @Transactional(readOnly = true)
     public CourseDto getCourseById(Integer id) {
+        log.info("🔍 Fetching course with ID: {}", id);
         return toCourseDto(findCourseOrThrow(id), true);
     }
 
     // =========================================================
     // API 3 — POST /api/courses (with optional image)
     // =========================================================
-    public CourseDto createCourse(CourseRequestDto req, MultipartFile image,HttpServletRequest request) {
+    public CourseDto createCourse(CourseRequestDto req, MultipartFile image, HttpServletRequest request) {
+        log.info("📝 Creating new course: {}", req.getCourseName());
+        
         CourseCategory category = findCategoryOrThrow(req.getCourseCategoryId());
 
         Course course = new Course();
@@ -75,9 +81,11 @@ public class CourseService {
                 : CourseStatus.DRAFT);
         course.setIsDeleted(false);
         course = courseRepo.save(course);
+        log.info("✅ Course created with ID: {}", course.getId());
 
         // Save groups + sessions
         if (req.getGroups() != null) {
+            log.info("📦 Creating {} groups for course", req.getGroups().size());
             for (GroupRequestDto gReq : req.getGroups()) {
                 CourseGroup group = saveGroup(course, gReq);
                 saveSessionsForGroup(course, group, gReq.getSessions());
@@ -86,31 +94,34 @@ public class CourseService {
 
         // Save self-study sessions
         if (req.getSelfStudySessions() != null) {
+            log.info("📚 Creating {} self-study sessions", req.getSelfStudySessions().size());
             saveSelfStudySessions(course, req.getSelfStudySessions());
         }
 
         // Save image if provided
         if (image != null && !image.isEmpty()) {
             try {
+                log.info("🖼️ Uploading image for course ID: {}", course.getId());
                 String imagePath = courseImageStorageService.storeImage(image, course.getId());
                 course.setImagePath(imagePath);
                 courseRepo.save(course);
             } catch (IOException e) {
+                log.error("❌ Failed to upload image: {}", e.getMessage());
                 throw new RuntimeException("Failed to upload image: " + e.getMessage());
             }
         }
 
-        
         CourseDto result = toCourseDto(courseRepo.findById(course.getId()).get(), false);
 
         if (result.getStatus() != null && CourseStatus.OPEN.name().equalsIgnoreCase(result.getStatus())) {
-        notificationService.sendToAllActive(
-                NotificationType.COURSE,
-                "New course available",
-                "A new course \"" + course.getCourseName() + "\" has been created. Please check the course details and enrollment deadline.",
-                course.getId(),
-                request);
-    }
+            log.info("📢 Sending notification for new course: {}", course.getCourseName());
+            notificationService.sendToAllActive(
+                    NotificationType.COURSE,
+                    "New course available",
+                    "A new course \"" + course.getCourseName() + "\" has been created. Please check the course details and enrollment deadline.",
+                    course.getId(),
+                    request);
+        }
         return result;
     }
 
@@ -118,89 +129,109 @@ public class CourseService {
     // API 4 — PUT /api/courses/:id
     // =========================================================
     public CourseDto updateCourse(Integer id, CourseUpdateDto req, HttpServletRequest request) {
-    Course course = findCourseOrThrow(id);
-    
-    // Store the old status before updating
-    CourseStatus oldStatus = course.getStatus();
-    boolean statusChangedToOpen = false;
-
-    // Update basic fields
-    if (req.getCourseName() != null)
-        course.setCourseName(req.getCourseName());
-    if (req.getTrainerName() != null)
-        course.setTrainerName(req.getTrainerName());
-    if (req.getSelfStudyType() != null)
-        course.setSelfStudyType(req.getSelfStudyType());
-    if (req.getTargetLevel() != null)
-        course.setTargetLevel(req.getTargetLevel());
-    if (req.getTotalSessions() != null)
-        course.setTotalSessions(req.getTotalSessions());
-    if (req.getStartDate() != null)
-        course.setStartDate(req.getStartDate());
-    if (req.getEndDate() != null)
-        course.setEndDate(req.getEndDate());
-    if (req.getRegistrationDeadline() != null)
-        course.setRegistrationDeadline(req.getRegistrationDeadline());
-    if (req.getStatus() != null) {
-        CourseStatus newStatus = CourseStatus.valueOf(req.getStatus());
-        course.setStatus(newStatus);
+        log.info("🔄 Updating course ID: {}", id);
+        Course course = findCourseOrThrow(id);
         
-        // Check if status changed to OPEN
-        if (CourseStatus.OPEN.equals(newStatus) && !CourseStatus.OPEN.equals(oldStatus)) {
-            statusChangedToOpen = true;
+        // Store the old status before updating
+        CourseStatus oldStatus = course.getStatus();
+        boolean statusChangedToOpen = false;
+
+        // Update basic fields
+        if (req.getCourseName() != null) {
+            log.info("  📝 Updating course name: {} → {}", course.getCourseName(), req.getCourseName());
+            course.setCourseName(req.getCourseName());
         }
-    }
-    if (req.getCourseCategoryId() != null)
-        course.setCourseCategory(findCategoryOrThrow(req.getCourseCategoryId()));
+        if (req.getTrainerName() != null) {
+            log.info("  👨‍🏫 Updating trainer: {} → {}", course.getTrainerName(), req.getTrainerName());
+            course.setTrainerName(req.getTrainerName());
+        }
+        if (req.getSelfStudyType() != null)
+            course.setSelfStudyType(req.getSelfStudyType());
+        if (req.getTargetLevel() != null)
+            course.setTargetLevel(req.getTargetLevel());
+        if (req.getTotalSessions() != null)
+            course.setTotalSessions(req.getTotalSessions());
+        if (req.getStartDate() != null)
+            course.setStartDate(req.getStartDate());
+        if (req.getEndDate() != null)
+            course.setEndDate(req.getEndDate());
+        if (req.getRegistrationDeadline() != null)
+            course.setRegistrationDeadline(req.getRegistrationDeadline());
+        if (req.getStatus() != null) {
+            CourseStatus newStatus = CourseStatus.valueOf(req.getStatus());
+            course.setStatus(newStatus);
+            
+            if (CourseStatus.OPEN.equals(newStatus) && !CourseStatus.OPEN.equals(oldStatus)) {
+                statusChangedToOpen = true;
+                log.info("  📢 Course status changed to OPEN");
+            }
+        }
+        if (req.getCourseCategoryId() != null) {
+            log.info("  📂 Updating category to ID: {}", req.getCourseCategoryId());
+            course.setCourseCategory(findCategoryOrThrow(req.getCourseCategoryId()));
+        }
 
-    course = courseRepo.save(course);
+        course = courseRepo.save(course);
 
-    // Handle groups update
-    if (req.getGroups() != null && !req.getGroups().isEmpty()) {
-        updateGroups(course, req.getGroups());
-    }
+        // Handle groups update - ONLY if groups are provided in the request
+        if (req.getGroups() != null && !req.getGroups().isEmpty()) {
+            log.info("  👥 Updating groups for course ID: {}", id);
+            updateGroups(course, req.getGroups());
+        } else {
+            log.info("  ℹ️ No group changes in request. Skipping group update.");
+        }
 
-    // Handle self-study sessions update
-    if (req.getSelfStudySessions() != null) {
-        updateSelfStudySessions(course, req.getSelfStudySessions());
-    }
+        // Handle self-study sessions update
+        if (req.getSelfStudySessions() != null) {
+            log.info("  📚 Updating self-study sessions");
+            updateSelfStudySessions(course, req.getSelfStudySessions());
+        }
 
-    // ✅ Send notification if status changed to OPEN
-    if (statusChangedToOpen) {
-        notificationService.sendToAllActive(
-            NotificationType.COURSE,
-            "New course available",
-            "Course \"" + course.getCourseName() + "\" is now open for registration! Please check the course details and enrollment deadline.",
-            course.getId(),
-            request
-        );
+        // Send notification if status changed to OPEN
+        if (statusChangedToOpen) {
+            log.info("📢 Sending notification for course status change to OPEN");
+            notificationService.sendToAllActive(
+                NotificationType.COURSE,
+                "New course available",
+                "Course \"" + course.getCourseName() + "\" is now open for registration! Please check the course details and enrollment deadline.",
+                course.getId(),
+                request
+            );
+        }
+        
+        log.info("✅ Course update completed for ID: {}", id);
+        return toCourseDto(courseRepo.findById(course.getId()).get(), false);
     }
-    return toCourseDto(courseRepo.findById(course.getId()).get(), false);
-}
 
     // =========================================================
     // API 5 — DELETE /api/courses/:id
     // =========================================================
     public void deleteCourse(Integer id) throws IOException {
+        log.info("🗑️ Deleting course ID: {}", id);
         Course course = findCourseOrThrow(id);
 
         String imagePath = course.getImagePath();
         if (imagePath != null && !imagePath.isEmpty()) {
+            log.info("  🖼️ Deleting image: {}", imagePath);
             courseImageStorageService.deleteImage(imagePath);
         }
         course.setImagePath(null);
         course.setIsDeleted(true);
         courseRepo.save(course);
+        log.info("✅ Course ID: {} marked as deleted", id);
     }
 
     // =========================================================
     // RESTORE — /api/courses/:id/restore
     // =========================================================
     public CourseDto restoreCourse(Integer id) {
+        log.info("♻️ Restoring course ID: {}", id);
         Course course = courseRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));
         course.setIsDeleted(false);
-        return toCourseDto(courseRepo.save(course), false);
+        Course restored = courseRepo.save(course);
+        log.info("✅ Course ID: {} restored", id);
+        return toCourseDto(restored, false);
     }
 
     // =========================================================
@@ -208,6 +239,7 @@ public class CourseService {
     // =========================================================
     @Transactional(readOnly = true)
     public List<CategoryDto> getAllCategories() {
+        log.info("📋 Fetching all categories");
         return categoryRepo.findByIsDeletedFalse()
                 .stream()
                 .map(this::toCategoryDto)
@@ -218,6 +250,7 @@ public class CourseService {
     // GET /api/course-categories/:id
     // =========================================================
     public CategoryDto getCategoryById(Integer id) {
+        log.info("🔍 Fetching category ID: {}", id);
         CourseCategory cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         return toCategoryDto(cat);
@@ -227,6 +260,7 @@ public class CourseService {
     // API 7 — POST /api/course-categories
     // =========================================================
     public CategoryDto createCategory(String name, String type) {
+        log.info("📝 Creating category: {} with type: {}", name, type);
         if (name == null || name.isBlank())
             throw new RuntimeException("course_category_name is required");
         CourseCategory cat = CourseCategory.builder()
@@ -234,56 +268,74 @@ public class CourseService {
                 .courseType(CourseType.valueOf(type))
                 .isDeleted(false)
                 .build();
-        return toCategoryDto(categoryRepo.save(cat));
+        CategoryDto result = toCategoryDto(categoryRepo.save(cat));
+        log.info("✅ Category created with ID: {}", result.getId());
+        return result;
     }
 
     // =========================================================
     // API 8 — PUT /api/course-categories/:id
     // =========================================================
     public CategoryDto updateCategory(Integer id, String name, String type) {
+        log.info("🔄 Updating category ID: {}", id);
         CourseCategory cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
-        if (name != null && !name.isBlank())
+        if (name != null && !name.isBlank()) {
+            log.info("  📝 Updating name: {} → {}", cat.getCourseCategoryName(), name);
             cat.setCourseCategoryName(name);
-        if (type != null && !type.isBlank())
+        }
+        if (type != null && !type.isBlank()) {
+            log.info("  📂 Updating type: {} → {}", cat.getCourseType(), type);
             cat.setCourseType(CourseType.valueOf(type));
-        return toCategoryDto(categoryRepo.save(cat));
+        }
+        CategoryDto result = toCategoryDto(categoryRepo.save(cat));
+        log.info("✅ Category ID: {} updated", id);
+        return result;
     }
 
     // =========================================================
     // API 9 — DELETE /api/course-categories/:id
     // =========================================================
     public void deleteCategory(Integer id) {
+        log.info("🗑️ Deleting category ID: {}", id);
         CourseCategory cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         cat.setIsDeleted(true);
         categoryRepo.save(cat);
+        log.info("✅ Category ID: {} marked as deleted", id);
     }
 
     // =========================================================
     // RESTORE — /api/course-categories/:id/restore
     // =========================================================
     public CategoryDto restoreCategory(Integer id) {
+        log.info("♻️ Restoring category ID: {}", id);
         CourseCategory cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         cat.setIsDeleted(false);
-        return toCategoryDto(categoryRepo.save(cat));
+        CategoryDto result = toCategoryDto(categoryRepo.save(cat));
+        log.info("✅ Category ID: {} restored", id);
+        return result;
     }
 
     // =========================================================
     // UPLOAD IMAGE — POST /api/courses/:id/image
     // =========================================================
     public CourseDto uploadCourseImage(Integer id, MultipartFile file) {
+        log.info("🖼️ Uploading image for course ID: {}", id);
         Course course = findCourseOrThrow(id);
         try {
             if (course.getImagePath() != null) {
+                log.info("  🗑️ Deleting old image: {}", course.getImagePath());
                 courseImageStorageService.deleteImage(course.getImagePath());
             }
             String imagePath = courseImageStorageService.storeImage(file, id);
             course.setImagePath(imagePath);
             courseRepo.save(course);
+            log.info("✅ Image uploaded successfully for course ID: {}", id);
             return toCourseDto(course, false);
         } catch (IOException e) {
+            log.error("❌ Failed to upload image: {}", e.getMessage());
             throw new RuntimeException("Failed to upload image: " + e.getMessage());
         }
     }
@@ -292,16 +344,20 @@ public class CourseService {
     // DELETE IMAGE — DELETE /api/courses/:id/image
     // =========================================================
     public CourseDto deleteCourseImage(Integer id) {
+        log.info("🗑️ Deleting image for course ID: {}", id);
         Course course = findCourseOrThrow(id);
         if (course.getImagePath() == null) {
+            log.warn("⚠️ Course ID: {} has no image to delete", id);
             throw new RuntimeException("Course has no image to delete");
         }
         try {
             courseImageStorageService.deleteImage(course.getImagePath());
             course.setImagePath(null);
             courseRepo.save(course);
+            log.info("✅ Image deleted for course ID: {}", id);
             return toCourseDto(course, false);
         } catch (IOException e) {
+            log.error("❌ Failed to delete image: {}", e.getMessage());
             throw new RuntimeException("Failed to delete image: " + e.getMessage());
         }
     }
@@ -311,8 +367,10 @@ public class CourseService {
     // =========================================================
     @Transactional(readOnly = true)
     public List<CourseEnrollmentDto> getCourseEnrollments(Integer courseId) {
+        log.info("📋 Fetching enrollments for course ID: {}", courseId);
         findCourseOrThrow(courseId);
         List<CourseEnrollment> enrollments = enrollmentRepo.findByCourseId(courseId);
+        log.info("  - Found {} enrollments", enrollments.size());
         return enrollments.stream()
                 .map(this::toCourseEnrollmentDto)
                 .collect(Collectors.toList());
@@ -323,6 +381,7 @@ public class CourseService {
     // =========================================================
     @Transactional(readOnly = true)
     public List<SessionDto> getGroupSessions(Integer courseId, Integer groupId) {
+        log.info("📋 Fetching sessions for group ID: {} in course ID: {}", groupId, courseId);
         findCourseOrThrow(courseId);
         CourseGroup group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Group not found with id: " + groupId));
@@ -341,6 +400,7 @@ public class CourseService {
     @Transactional
     public Map<String, Object> updateSessionStatus(Integer courseId, Integer groupId, Integer sessionId,
             String sessionStatus) {
+        log.info("🔄 Updating session status for session ID: {} in group ID: {}", sessionId, groupId);
         CourseSession session = sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found with id: " + sessionId));
         if (sessionStatus == null || sessionStatus.isEmpty()) {
@@ -349,6 +409,7 @@ public class CourseService {
         CourseSession.SessionStatus status = CourseSession.SessionStatus.valueOf(sessionStatus.toUpperCase());
         session.setSessionStatus(status);
         CourseSession updated = sessionRepo.save(session);
+        log.info("✅ Session ID: {} status updated to: {}", sessionId, status);
         Map<String, Object> sessionData = new HashMap<>();
         sessionData.put("id", updated.getId());
         sessionData.put("session_status", updated.getSessionStatus().name());
@@ -357,502 +418,672 @@ public class CourseService {
     }
 
     // =========================================================
-    // PRIVATE HELPERS - GROUP MANAGEMENT
+    // PRIVATE HELPERS - GROUP MANAGEMENT (FIXED WITH AUTO-CREATION)
     // =========================================================
 
     /**
-     * Main group update logic:
+     * Main group update logic with fixes (NO entity structure changes):
      * 
-     * Scenario 1: Auto-Creation (1 Group in Request)
-     * - Condition: Exactly 1 group, current capacity in DB is NULL, new capacity
-     * NOT NULL, enrollments > new capacity
-     * - Action: Create additional groups with SAME capacity, distribute enrollments
-     * evenly
+     * First redistribution detection:
+     *   - Exactly 1 group exists with capacity = NULL
+     *   - Request has 1 or more groups with finite capacities
+     *   - Members exist in the course
      * 
-     * Scenario 2: Multiple Groups (2+ Groups in Request)
-     * - Condition: User sends 2+ groups
-     * - Action: Update/Create groups, redistribute enrollments based on capacities,
-     * delete groups not in request
-     * 
-     * Scenario 3: Delete Group (Group not in request)
-     * - Condition: Group exists in DB but not in request
-     * - Action: Move all enrollments to other groups based on capacities, delete
-     * empty group
+     * Auto-creation during first redistribution:
+     *   - If only 1 group requested AND capacity < total members
+     *   - Auto-create additional groups with SAME capacity
+     *   - Distribute all members across all groups
      */
     private void updateGroups(Course course, List<GroupRequestDto> groupRequests) {
-        System.out.println("=== Starting updateGroups ===");
-        System.out.println("Number of groups in request: " + groupRequests.size());
-
-        // Get existing groups for this course
+        log.info("========================================");
+        log.info("🔄 STARTING updateGroups for Course ID: {}", course.getId());
+        log.info("========================================");
+        
+        // Get existing groups
         List<CourseGroup> existingGroups = groupRepo.findByCourseIdOrderByGroupNameAsc(course.getId());
-
-        System.out.println("Existing groups in DB (" + existingGroups.size() + "): " +
-                existingGroups.stream().map(g -> g.getId() + ":" + g.getGroupName() +
-                        "(cap:" + g.getCapacity() + ", enrollments:" + groupRepo.countEnrollmentsByGroupId(g.getId())
-                        + ")")
-                        .collect(Collectors.joining(", ")));
-
-        // Create a map of group name -> existing group for easy lookup
-        Map<String, CourseGroup> existingGroupByName = existingGroups.stream()
-                .collect(Collectors.toMap(
-                        CourseGroup::getGroupName,
-                        Function.identity(),
-                        (a, b) -> a));
-
-        // Track which existing groups are still in the request
-        Set<String> requestGroupNames = new HashSet<>();
-
-        // =========================================================
-        // Step 1: Process groups from the request (Update or Create)
-        // This updates capacities FIRST before any redistribution
-        // =========================================================
+        
+        log.info("📊 Current State:");
+        log.info("  - Course ID: {}", course.getId());
+        log.info("  - Existing Groups: {}", existingGroups.size());
+        for (CourseGroup g : existingGroups) {
+            long memberCount = groupRepo.countEnrollmentsByGroupId(g.getId());
+            log.info("    • Group: '{}' (ID: {}, Capacity: {}, Members: {})", 
+                g.getGroupName(), g.getId(), g.getCapacity(), memberCount);
+        }
+        
+        log.info("📥 Requested Groups: {}", groupRequests.size());
         for (GroupRequestDto gReq : groupRequests) {
-            String groupName = gReq.getGroupName();
-            if (groupName == null || groupName.trim().isEmpty()) {
-                throw new RuntimeException("Group name is required");
+            log.info("    • Group: '{}' (Capacity: {})", gReq.getGroupName(), gReq.getCapacity());
+        }
+
+        // =========================================================
+        // DETECT: Is this the FIRST redistribution?
+        // =========================================================
+        boolean isFirstRedistribution = false;
+        
+        if (existingGroups.size() == 1) {
+            CourseGroup theOnlyGroup = existingGroups.get(0);
+            long memberCount = groupRepo.countEnrollmentsByGroupId(theOnlyGroup.getId());
+            
+            boolean hasNullCapacity = theOnlyGroup.getCapacity() == null;
+            boolean allRequestedHaveFiniteCapacity = groupRequests.stream()
+                    .allMatch(gReq -> gReq.getCapacity() != null);
+            boolean hasMembers = memberCount > 0;
+            
+            if (hasNullCapacity && allRequestedHaveFiniteCapacity && hasMembers) {
+                isFirstRedistribution = true;
+                log.info("🎯 FIRST REDISTRIBUTION DETECTED!");
+                log.info("  - Group '{}' has NULL capacity → New capacities defined", 
+                    theOnlyGroup.getGroupName());
+                log.info("  - Requested {} groups with capacities:", groupRequests.size());
+                for (GroupRequestDto gReq : groupRequests) {
+                    log.info("      • '{}': Capacity = {}", gReq.getGroupName(), gReq.getCapacity());
+                }
+                log.info("  - Members to distribute: {}", memberCount);
             }
+        }
 
-            // Check for duplicate group names within the request itself
-            long duplicateInRequest = groupRequests.stream()
-                    .filter(r -> groupName.equals(r.getGroupName()))
-                    .count();
+        if (isFirstRedistribution) {
+            log.info("========================================");
+            log.info("🔄 EXECUTING FIRST REDISTRIBUTION (Full Distribution)");
+            log.info("========================================");
+            handleFirstRedistribution(course, groupRequests, existingGroups);
+            log.info("✅ First redistribution completed.");
+            log.info("========================================");
+            return;
+        }
 
-            if (duplicateInRequest > 1) {
-                throw new RuntimeException(
-                        String.format("Duplicate group name '%s' found in the request", groupName));
-            }
-
-            requestGroupNames.add(groupName);
-
-            // Check if this group name already exists in the course
-            if (existingGroupByName.containsKey(groupName)) {
-                // EXISTING GROUP - Update it (capacity is updated here FIRST)
-                CourseGroup group = existingGroupByName.get(groupName);
-                System.out.println("Updating existing group: " + groupName + " (ID: " + group.getId() + ")");
-
-                Integer oldCapacity = group.getCapacity();
+        log.info("ℹ️ Not first redistribution. Using minimal update logic.");
+        
+        // =========================================================
+        // SUBSEQUENT UPDATES: Check what changed
+        // =========================================================
+        Map<String, CourseGroup> existingGroupByName = existingGroups.stream()
+                .collect(Collectors.toMap(CourseGroup::getGroupName, Function.identity()));
+        
+        Set<String> requestGroupNames = new HashSet<>();
+        boolean capacityChanged = false;
+        boolean groupsAdded = false;
+        boolean groupsDeleted = false;
+        
+        log.info("📊 Analyzing changes...");
+        
+        for (GroupRequestDto gReq : groupRequests) {
+            requestGroupNames.add(gReq.getGroupName());
+            
+            if (existingGroupByName.containsKey(gReq.getGroupName())) {
+                CourseGroup existingGroup = existingGroupByName.get(gReq.getGroupName());
+                Integer oldCapacity = existingGroup.getCapacity();
                 Integer newCapacity = gReq.getCapacity();
-                System.out.println("  Old capacity: " + oldCapacity + ", New capacity: " + newCapacity);
+                
+                if (!Objects.equals(oldCapacity, newCapacity)) {
+                    capacityChanged = true;
+                    log.info("  📊 Capacity changed for '{}': {} → {}", 
+                        gReq.getGroupName(), oldCapacity, newCapacity);
+                }
+            } else {
+                groupsAdded = true;
+                log.info("  ➕ New group added: '{}' (Capacity: {})", 
+                    gReq.getGroupName(), gReq.getCapacity());
+            }
+        }
+        
+        for (CourseGroup existingGroup : existingGroups) {
+            if (!requestGroupNames.contains(existingGroup.getGroupName())) {
+                groupsDeleted = true;
+                long memberCount = groupRepo.countEnrollmentsByGroupId(existingGroup.getId());
+                log.info("  ➖ Group deleted: '{}' (Members: {}, Capacity: {})", 
+                    existingGroup.getGroupName(), memberCount, existingGroup.getCapacity());
+            }
+        }
+        
+        log.info("📊 Change Summary:");
+        log.info("  - Capacity Changed: {}", capacityChanged);
+        log.info("  - Groups Added: {}", groupsAdded);
+        log.info("  - Groups Deleted: {}", groupsDeleted);
+        
+        // Case 1: Only metadata changed (no group structure changes)
+        if (!capacityChanged && !groupsAdded && !groupsDeleted) {
+            log.info("ℹ️ No group structure changes detected. Skipping redistribution.");
+            log.info("  (Only updating group metadata like status or sessions)");
+            processGroupUpdates(course, groupRequests, existingGroups);
+            log.info("========================================");
+            return;
+        }
+        
+        // Case 2: Group structure changed - check if redistribution is needed
+        log.info("🔍 Checking if redistribution is needed...");
+        
+        processGroupUpdates(course, groupRequests, existingGroups);
+        
+        existingGroups = groupRepo.findByCourseIdOrderByGroupNameAsc(course.getId());
+        
+        boolean anyGroupOverCapacity = false;
+        for (CourseGroup group : existingGroups) {
+            if (group.getCapacity() != null) {
+                long currentMembers = groupRepo.countEnrollmentsByGroupId(group.getId());
+                if (currentMembers > group.getCapacity()) {
+                    anyGroupOverCapacity = true;
+                    log.info("  ⚠️ Group '{}' is OVER capacity: {} / {} members", 
+                        group.getGroupName(), currentMembers, group.getCapacity());
+                }
+            }
+        }
+        
+        if (anyGroupOverCapacity) {
+            log.info("🔄 Redistribution needed: Some groups are over capacity");
+            redistributeWithMinimalChanges(course, existingGroups);
+        } else {
+            log.info("✅ All groups within capacity. No redistribution needed.");
+            log.info("  (Keeping existing group assignments stable)");
+        }
+        
+        if (groupsDeleted) {
+            log.info("🗑️ Deleting groups not in request...");
+            deleteGroupsNotInRequest(course, existingGroups, requestGroupNames);
+        }
+        
+        log.info("✅ updateGroups completed for Course ID: {}", course.getId());
+        log.info("========================================");
+    }
 
-                // Update group basic info
-                group.setCapacity(newCapacity);
+    /**
+     * HANDLE FIRST REDISTRIBUTION WITH AUTO-CREATION
+     * This happens ONLY ONCE: when going from NULL capacity to finite capacities
+     * 
+     * Auto-creation logic:
+     *   - If ONLY 1 group requested AND capacity < total members
+     *   - Auto-create additional groups with SAME capacity
+     *   - Distribute all members across all groups
+     */
+    private void handleFirstRedistribution(Course course, List<GroupRequestDto> groupRequests, 
+                                           List<CourseGroup> existingGroups) {
+        log.info("📊 First Redistribution Started");
+        log.info("  - Request has {} groups to create/update", groupRequests.size());
+        
+        CourseGroup originalGroup = existingGroups.get(0);
+        int totalMembers = (int) groupRepo.countEnrollmentsByGroupId(originalGroup.getId());
+        
+        log.info("  - Original Group: '{}' (Members: {})", originalGroup.getGroupName(), totalMembers);
+        
+        // =========================================================
+        // STEP 1: Calculate total capacity from request
+        // =========================================================
+        int requestedTotalCapacity = 0;
+        Map<String, Integer> requestedCapacities = new HashMap<>();
+        
+        for (GroupRequestDto gReq : groupRequests) {
+            Integer cap = gReq.getCapacity();
+            if (cap != null) {
+                requestedTotalCapacity += cap;
+                requestedCapacities.put(gReq.getGroupName(), cap);
+            }
+        }
+        
+        log.info("  - Requested total capacity: {}", requestedTotalCapacity);
+        log.info("  - Total members: {}", totalMembers);
+        
+        // =========================================================
+        // STEP 2: Check if we need to auto-create groups
+        // =========================================================
+        boolean needsAutoCreate = false;
+        int groupsNeeded = 0;
+        int autoCreateCapacity = 0;
+        String baseGroupName = null;
+        
+        if (requestedTotalCapacity < totalMembers && groupRequests.size() == 1) {
+            // Only 1 group requested and capacity is insufficient
+            // → Auto-create additional groups
+            needsAutoCreate = true;
+            Integer singleCapacity = groupRequests.get(0).getCapacity();
+            baseGroupName = groupRequests.get(0).getGroupName();
+            autoCreateCapacity = singleCapacity != null ? singleCapacity : 0;
+            
+            if (autoCreateCapacity > 0) {
+                groupsNeeded = (int) Math.ceil((double) totalMembers / autoCreateCapacity);
+                log.info("  🔄 Auto-creation needed!");
+                log.info("  - Single group capacity: {}", autoCreateCapacity);
+                log.info("  - Groups needed: {} (ceil({}/{}))", groupsNeeded, totalMembers, autoCreateCapacity);
+            } else {
+                throw new RuntimeException("Capacity cannot be 0 or null for auto-creation");
+            }
+        } else if (requestedTotalCapacity < totalMembers && groupRequests.size() > 1) {
+            // Multiple groups requested but total capacity insufficient
+            log.error("  ❌ Total capacity ({}) is less than total members ({})", requestedTotalCapacity, totalMembers);
+            throw new RuntimeException(
+                String.format("Total capacity (%d) is less than total enrollments (%d). " +
+                    "Please increase capacity or add more groups.",
+                    requestedTotalCapacity, totalMembers));
+        }
+        
+        // =========================================================
+        // STEP 3: Process groups from the request
+        // =========================================================
+        log.info("  📦 Processing {} groups from request...", groupRequests.size());
+        
+        Map<String, CourseGroup> existingGroupByName = existingGroups.stream()
+                .collect(Collectors.toMap(CourseGroup::getGroupName, Function.identity()));
+        
+        List<CourseGroup> allGroups = new ArrayList<>();
+        int totalCapacity = 0;
+        
+        for (GroupRequestDto gReq : groupRequests) {
+            CourseGroup group;
+            String groupName = gReq.getGroupName();
+            Integer capacity = gReq.getCapacity();
+            
+            if (existingGroupByName.containsKey(groupName)) {
+                group = existingGroupByName.get(groupName);
+                group.setCapacity(capacity);
                 if (gReq.getGroupStatus() != null) {
                     group.setGroupStatus(GroupStatus.valueOf(gReq.getGroupStatus()));
                 }
                 group = groupRepo.save(group);
-
-                // Update sessions for this group
-                updateSessionsForGroup(group, gReq.getSessions());
-
+                log.info("    ✅ Updated group '{}': Capacity = {}", groupName, capacity);
             } else {
-                // NEW GROUP - Create it
-                System.out.println(
-                        "Creating new group from request: " + groupName + " with capacity: " + gReq.getCapacity());
-                CourseGroup group = saveGroup(course, gReq);
-                saveSessionsForGroup(course, group, gReq.getSessions());
-                existingGroups.add(group);
-                System.out.println("  Created group with ID: " + group.getId());
+                group = new CourseGroup();
+                group.setCourse(course);
+                group.setGroupName(groupName);
+                group.setCapacity(capacity);
+                group.setGroupStatus(gReq.getGroupStatus() != null 
+                    ? GroupStatus.valueOf(gReq.getGroupStatus()) 
+                    : GroupStatus.OPEN);
+                group = groupRepo.save(group);
+                log.info("    ✅ Created new group '{}': Capacity = {}", groupName, capacity);
+                copySessionsFromGroup(course, group, originalGroup);
+            }
+            
+            allGroups.add(group);
+            if (capacity != null) {
+                totalCapacity += capacity;
             }
         }
-
+        
         // =========================================================
-        // Step 2: Check for Auto-Creation (Only when exactly 1 group in request)
-        // Auto-creation creates new groups with capacities
-        // IMPORTANT: This MUST happen BEFORE redistribution
+        // STEP 4: AUTO-CREATE additional groups (if needed)
         // =========================================================
-        Set<String> autoCreatedGroupNames = new HashSet<>();
-
-        if (groupRequests.size() == 1) {
-            System.out.println("Only 1 group in request. Checking if auto-creation needed...");
-            autoCreatedGroupNames = handleAutoCreation(course, groupRequests, existingGroups);
-            System.out.println("Auto-created groups: " + autoCreatedGroupNames);
-        }
-
-        // =========================================================
-        // Step 3: Redistribute enrollments based on updated capacities
-        // Now all groups (including auto-created ones) have been created
-        // =========================================================
-        // Check if there's any group with NULL capacity
-        boolean hasUnlimited = existingGroups.stream().anyMatch(g -> g.getCapacity() == null);
-
-        if (!hasUnlimited) {
-            System.out.println("Redistributing enrollments based on updated capacities...");
-            redistributeEnrollmentsBasedOnCapacities(course, existingGroups, groupRequests);
-        } else {
-            System.out.println("Found group with NULL capacity. Skipping redistribution.");
-        }
-
-        // =========================================================
-        // Step 4: Delete groups that are not in the request
-        // IMPORTANT: Do NOT delete auto-created groups
-        // =========================================================
-        System.out.println("Checking for groups to delete...");
-        List<CourseGroup> groupsToDelete = new ArrayList<>();
-
-        for (CourseGroup existingGroup : existingGroups) {
-            // Skip auto-created groups - they should be kept
-            if (autoCreatedGroupNames.contains(existingGroup.getGroupName())) {
-                System.out.println("  Keeping auto-created group: " + existingGroup.getGroupName());
-                continue;
-            }
-
-            if (!requestGroupNames.contains(existingGroup.getGroupName())) {
-                long enrollmentCount = groupRepo.countEnrollmentsByGroupId(existingGroup.getId());
-                System.out.println("  Group " + existingGroup.getGroupName() + " (ID: " + existingGroup.getId() +
-                        ") not in request. Enrollments: " + enrollmentCount);
-
-                if (enrollmentCount == 0) {
-                    // Safe to delete - no enrollments
-                    groupsToDelete.add(existingGroup);
-                } else {
-                    // This group has enrollments but is not in the request
-                    // Move enrollments to available groups (capacities are already updated)
-                    System.out.println("    Moving " + enrollmentCount + " enrollments to other groups...");
-                    moveEnrollmentsToAvailableGroups(existingGroup, existingGroups);
-                    groupsToDelete.add(existingGroup);
+        List<CourseGroup> autoCreatedGroups = new ArrayList<>();
+        
+        if (needsAutoCreate) {
+            log.info("  🔄 Auto-creating {} additional groups...", groupsNeeded - 1);
+            
+            int baseNumber = allGroups.size() + 1;
+            
+            for (int i = 0; i < groupsNeeded - 1; i++) {
+                String newGroupName = "Group " + (baseNumber + i);
+                
+                // Ensure unique name
+                while (isGroupNameTaken(newGroupName, allGroups, groupRequests)) {
+                    newGroupName = baseGroupName + "_" + (baseNumber + i) + "_" + System.currentTimeMillis();
                 }
+                
+                CourseGroup newGroup = new CourseGroup();
+                newGroup.setCourse(course);
+                newGroup.setGroupName(newGroupName);
+                newGroup.setCapacity(autoCreateCapacity);
+                newGroup.setGroupStatus(GroupStatus.OPEN);
+                newGroup = groupRepo.save(newGroup);
+                
+                log.info("    ✅ Auto-created group '{}': Capacity = {}", newGroupName, autoCreateCapacity);
+                
+                copySessionsFromGroup(course, newGroup, originalGroup);
+                
+                allGroups.add(newGroup);
+                autoCreatedGroups.add(newGroup);
+                totalCapacity += autoCreateCapacity;
             }
+            
+            log.info("  - Total capacity after auto-creation: {}", totalCapacity);
         }
-
-        // Delete groups
-        for (CourseGroup groupToDelete : groupsToDelete) {
-            System.out.println(
-                    "  Deleting group: " + groupToDelete.getGroupName() + " (ID: " + groupToDelete.getId() + ")");
-            sessionRepo.deleteByCourseGroupId(groupToDelete.getId());
-            groupRepo.delete(groupToDelete);
-        }
-
-        System.out.println("=== Finished updateGroups ===");
-    }
-
-    /**
-     * Auto-creation logic: Only called when exactly 1 group is in the request
-     * Condition: Current capacity in DB is NULL, new capacity NOT NULL, enrollments
-     * > new capacity
-     */
-    private Set<String> handleAutoCreation(Course course, List<GroupRequestDto> groupRequests,
-            List<CourseGroup> existingGroups) {
-        Set<String> autoCreatedGroupNames = new HashSet<>();
-
-        // Get the first (and only) group from the request
-        GroupRequestDto firstGroup = groupRequests.get(0);
-
-        // Find the existing group
-        CourseGroup mainGroup = existingGroups.stream()
-                .filter(g -> g.getGroupName().equals(firstGroup.getGroupName()))
-                .findFirst()
-                .orElse(null);
-
-        if (mainGroup == null) {
-            System.out.println("Main group not found in existing groups. Skipping auto-creation.");
-            return autoCreatedGroupNames;
-        }
-
-        // Get enrollments for the main group
-        List<CourseEnrollment> enrollments = enrollmentRepo.findByCourseGroupIdOrderByEnrolledAtAsc(mainGroup.getId());
-        int enrollmentCount = enrollments.size();
-
-        // Check conditions for auto-creation
-        Integer currentCapacity = mainGroup.getCapacity(); // Capacity in DB (already updated)
-
-        System.out.println("Auto-creation check for group: " + mainGroup.getGroupName());
-        System.out.println("  Current capacity: " + currentCapacity);
-        System.out.println("  Enrollments: " + enrollmentCount);
-
-        // Auto-creation happens when:
-        // 1. Capacity is NOT null
-        // 2. Enrollments > capacity
-        if (currentCapacity == null) {
-            System.out.println("  Capacity is NULL (unlimited). No auto-creation needed.");
-            return autoCreatedGroupNames;
-        }
-
-        if (enrollmentCount <= currentCapacity) {
-            System.out.println("  All enrollments fit within capacity. No auto-creation needed.");
-            return autoCreatedGroupNames;
-        }
-
-        // Need to create additional groups
-        int remainingEnrollments = enrollmentCount - currentCapacity;
-        int groupsNeeded = (int) Math.ceil((double) remainingEnrollments / currentCapacity);
-        System.out.println("  Need to create " + groupsNeeded + " additional groups with capacity " + currentCapacity);
-
-        // Create additional groups with SAME capacity as the original group
-        int baseNumber = existingGroups.size() + 1;
-
-        for (int i = 0; i < groupsNeeded; i++) {
-            String groupName = "Group " + (baseNumber + i);
-
-            // Ensure unique group name
-            while (isGroupNameTaken(groupName, existingGroups, groupRequests)) {
-                groupName = "Group " + (baseNumber + i) + "_" + System.currentTimeMillis();
-            }
-
-            // Create new group with SAME capacity as the original group
-            CourseGroup newGroup = new CourseGroup();
-            newGroup.setCourse(course);
-            newGroup.setGroupName(groupName);
-            newGroup.setCapacity(currentCapacity);
-            newGroup.setGroupStatus(GroupStatus.OPEN);
-            newGroup = groupRepo.save(newGroup);
-            System.out.println("  Auto-created group: " + groupName + " (ID: " + newGroup.getId() + ", capacity: "
-                    + currentCapacity + ")");
-
-            // Copy sessions from the main group
-            copySessionsFromGroup(course, newGroup, mainGroup);
-
-            // Add to existing groups list
-            existingGroups.add(newGroup);
-
-            // Track auto-created group name
-            autoCreatedGroupNames.add(groupName);
-        }
-
-        return autoCreatedGroupNames;
-    }
-
-    /**
-     * Redistributes enrollments based on group capacities
-     * This handles distribution across all groups
-     */
-    private void redistributeEnrollmentsBasedOnCapacities(Course course, List<CourseGroup> groups,
-            List<GroupRequestDto> groupRequests) {
-        System.out.println("=== Redistributing enrollments based on capacities ===");
-
-        // Get all enrollments for this course
-        List<CourseEnrollment> allEnrollments = enrollmentRepo.findByCourseId(course.getId());
-
-        if (allEnrollments.isEmpty()) {
-            System.out.println("No enrollments to redistribute");
-            return;
-        }
-
-        System.out.println("Total enrollments: " + allEnrollments.size());
-
-        // Check if any group has NULL capacity (unlimited)
-        boolean hasUnlimited = groups.stream().anyMatch(g -> g.getCapacity() == null);
-
-        if (hasUnlimited) {
-            System.out.println("Found group with NULL capacity (unlimited). No redistribution needed.");
-            return;
-        }
-
-        // If we reach here, all groups have finite capacities
-        // Calculate total capacity
-        int totalCapacity = groups.stream()
-                .filter(g -> g.getCapacity() != null)
-                .mapToInt(CourseGroup::getCapacity)
-                .sum();
-
-        System.out.println("Total capacity: " + totalCapacity);
-
-        if (totalCapacity < allEnrollments.size()) {
+        
+        // =========================================================
+        // STEP 5: Validate capacity is sufficient
+        // =========================================================
+        if (totalCapacity < totalMembers) {
+            log.error("  ❌ Total capacity ({}) is less than total members ({})", totalCapacity, totalMembers);
             throw new RuntimeException(
-                    String.format("Total capacity (%d) is less than total enrollments (%d). " +
-                            "Please increase capacity or add more groups.",
-                            totalCapacity, allEnrollments.size()));
+                String.format("Total capacity (%d) is less than total enrollments (%d). " +
+                    "Please increase capacity or add more groups.",
+                    totalCapacity, totalMembers));
         }
-
-        // Group enrollments by their current group
-        Map<Integer, List<CourseEnrollment>> enrollmentsByGroup = new HashMap<>();
-        for (CourseEnrollment enrollment : allEnrollments) {
-            Integer groupId = enrollment.getCourseGroup().getId();
-            enrollmentsByGroup.computeIfAbsent(groupId, k -> new ArrayList<>()).add(enrollment);
+        
+        // =========================================================
+        // STEP 6: Distribute ALL members across ALL groups
+        // =========================================================
+        log.info("  🔄 Distributing {} members across {} groups", totalMembers, allGroups.size());
+        redistributeAllMembersEvenly(course, allGroups);
+        
+        log.info("✅ First Redistribution Completed");
+        log.info("  - Groups after redistribution: {}", allGroups.size());
+        for (CourseGroup group : allGroups) {
+            long memberCount = groupRepo.countEnrollmentsByGroupId(group.getId());
+            log.info("    • Group '{}': {} members (Capacity: {})", 
+                group.getGroupName(), memberCount, group.getCapacity());
         }
+    }
 
-        // Print current distribution
-        for (Map.Entry<Integer, List<CourseEnrollment>> entry : enrollmentsByGroup.entrySet()) {
-            CourseGroup group = groups.stream().filter(g -> g.getId().equals(entry.getKey())).findFirst().orElse(null);
-            System.out.println("  Current: Group " + (group != null ? group.getGroupName() : "Unknown") +
-                    " has " + entry.getValue().size() + " enrollments (capacity: "
-                    + (group != null ? group.getCapacity() : "N/A") + ")");
-        }
-
-        // Build capacity map
+    /**
+     * REDISTRIBUTE ALL MEMBERS EVENLY (Used only for first redistribution)
+     */
+    private void redistributeAllMembersEvenly(Course course, List<CourseGroup> groups) {
+        log.info("  📊 Redistributing ALL members evenly");
+        
+        List<CourseEnrollment> allEnrollments = enrollmentRepo.findByCourseId(course.getId());
+        log.info("    - Total enrollments to distribute: {}", allEnrollments.size());
+        
+        allEnrollments.sort(Comparator.comparing(CourseEnrollment::getEnrolledAt));
+        
         Map<Integer, Integer> groupCapacities = new HashMap<>();
-        Map<Integer, String> groupNames = new HashMap<>();
-
+        Map<Integer, Integer> groupCounts = new HashMap<>();
+        
         for (CourseGroup group : groups) {
-            groupNames.put(group.getId(), group.getGroupName());
             if (group.getCapacity() != null) {
                 groupCapacities.put(group.getId(), group.getCapacity());
-            }
-        }
-
-        // Redistribute enrollments
-        List<CourseEnrollment> allEnrollmentsList = new ArrayList<>(allEnrollments);
-        Collections.sort(allEnrollmentsList, Comparator.comparing(CourseEnrollment::getEnrolledAt));
-
-        int enrollmentIndex = 0;
-        for (CourseGroup group : groups) {
-            if (group.getCapacity() == null)
-                continue;
-
-            int capacity = group.getCapacity();
-            List<CourseEnrollment> groupEnrollments = new ArrayList<>();
-
-            // Get existing enrollments for this group
-            List<CourseEnrollment> existing = enrollmentsByGroup.getOrDefault(group.getId(), new ArrayList<>());
-
-            // Keep existing enrollments if they fit within capacity
-            int keepCount = Math.min(existing.size(), capacity);
-            for (int i = 0; i < keepCount && i < existing.size(); i++) {
-                groupEnrollments.add(existing.get(i));
-            }
-
-            // Fill remaining capacity with other enrollments
-            int remainingCapacity = capacity - groupEnrollments.size();
-            while (remainingCapacity > 0 && enrollmentIndex < allEnrollmentsList.size()) {
-                CourseEnrollment enrollment = allEnrollmentsList.get(enrollmentIndex);
-                // Skip enrollments already assigned
-                if (!isEnrollmentAlreadyAssigned(enrollment, groupEnrollments)) {
-                    groupEnrollments.add(enrollment);
-                    remainingCapacity--;
-                }
-                enrollmentIndex++;
-            }
-
-            // Update enrollments for this group
-            for (CourseEnrollment enrollment : groupEnrollments) {
-                if (!enrollment.getCourseGroup().getId().equals(group.getId())) {
-                    enrollment.setCourseGroup(group);
-                    enrollmentRepo.save(enrollment);
-                    System.out
-                            .println("  Moved enrollment " + enrollment.getId() + " to group " + group.getGroupName());
-                }
-            }
-        }
-
-        // Check if all enrollments are assigned
-        int assignedCount = 0;
-        for (CourseGroup group : groups) {
-            if (group.getCapacity() != null) {
-                assignedCount += groupRepo.countEnrollmentsByGroupId(group.getId());
-            }
-        }
-
-        if (assignedCount < allEnrollments.size()) {
-            System.out.println("WARNING: Not all enrollments could be assigned. Unassigned: " +
-                    (allEnrollments.size() - assignedCount));
-        }
-    }
-
-    /**
-     * Checks if an enrollment is already assigned to a group
-     */
-    private boolean isEnrollmentAlreadyAssigned(CourseEnrollment enrollment, List<CourseEnrollment> assigned) {
-        return assigned.stream().anyMatch(e -> e.getId().equals(enrollment.getId()));
-    }
-
-    /**
-     * Moves enrollments from a group to available groups
-     * This is called when a group is being deleted (not in request)
-     */
-    private void moveEnrollmentsToAvailableGroups(CourseGroup sourceGroup, List<CourseGroup> allGroups) {
-        List<CourseEnrollment> enrollments = enrollmentRepo.findByCourseGroupId(sourceGroup.getId());
-
-        if (enrollments.isEmpty()) {
-            return;
-        }
-
-        // Find groups with available capacity (capacities are already updated)
-        List<CourseGroup> availableGroups = new ArrayList<>();
-        for (CourseGroup group : allGroups) {
-            if (group.getId().equals(sourceGroup.getId()))
-                continue;
-            if (group.getCapacity() == null) {
-                availableGroups.add(group);
             } else {
-                long currentEnrollments = groupRepo.countEnrollmentsByGroupId(group.getId());
-                if (currentEnrollments < group.getCapacity()) {
-                    availableGroups.add(group);
-                }
+                groupCapacities.put(group.getId(), Integer.MAX_VALUE);
             }
+            groupCounts.put(group.getId(), 0);
         }
-
-        if (availableGroups.isEmpty()) {
-            throw new RuntimeException(
-                    "Cannot move enrollments from group " + sourceGroup.getGroupName() +
-                            " - no available groups with capacity. Please check your capacity settings.");
-        }
-
-        // Sort available groups by capacity (largest first, unlimited first)
-        availableGroups.sort((g1, g2) -> {
-            if (g1.getCapacity() == null)
-                return -1;
-            if (g2.getCapacity() == null)
-                return 1;
-            return g2.getCapacity().compareTo(g1.getCapacity());
-        });
-
+        
         int enrollmentIndex = 0;
-        for (CourseGroup targetGroup : availableGroups) {
-            long currentEnrollments = groupRepo.countEnrollmentsByGroupId(targetGroup.getId());
-            int availableCapacity = targetGroup.getCapacity() == null ? Integer.MAX_VALUE
-                    : targetGroup.getCapacity() - (int) currentEnrollments;
-
-            int toMove = Math.min(availableCapacity, enrollments.size() - enrollmentIndex);
-
-            for (int i = 0; i < toMove && enrollmentIndex < enrollments.size(); i++) {
-                CourseEnrollment enrollment = enrollments.get(enrollmentIndex);
-                enrollment.setCourseGroup(targetGroup);
+        for (CourseGroup group : groups) {
+            int capacity = groupCapacities.get(group.getId());
+            int toAssign = Math.min(capacity, allEnrollments.size() - enrollmentIndex);
+            
+            for (int i = 0; i < toAssign && enrollmentIndex < allEnrollments.size(); i++) {
+                CourseEnrollment enrollment = allEnrollments.get(enrollmentIndex);
+                enrollment.setCourseGroup(group);
                 enrollmentRepo.save(enrollment);
-                System.out.println("    Moved enrollment " + enrollment.getId() +
-                        " from " + sourceGroup.getGroupName() + " to " + targetGroup.getGroupName());
+                groupCounts.put(group.getId(), groupCounts.get(group.getId()) + 1);
+                log.info("      ✓ Assigned enrollment {} to group '{}'", 
+                    enrollment.getId(), group.getGroupName());
                 enrollmentIndex++;
             }
-
-            if (enrollmentIndex >= enrollments.size()) {
+            
+            if (enrollmentIndex >= allEnrollments.size()) {
                 break;
             }
         }
-
-        if (enrollmentIndex < enrollments.size()) {
-            throw new RuntimeException(
-                    String.format("Could not move all enrollments from group %s. %d enrollments remain. " +
-                            "Please increase capacity of other groups.",
-                            sourceGroup.getGroupName(), enrollments.size() - enrollmentIndex));
+        
+        log.info("    - Distribution complete:");
+        for (CourseGroup group : groups) {
+            int count = groupCounts.getOrDefault(group.getId(), 0);
+            int capacity = groupCapacities.getOrDefault(group.getId(), 0);
+            String capStr = capacity == Integer.MAX_VALUE ? "UNLIMITED" : String.valueOf(capacity);
+            log.info("      • Group '{}': {} / {} members", group.getGroupName(), count, capStr);
         }
     }
 
     /**
-     * Copies sessions from a source group to a target group
+     * PROCESS GROUP UPDATES (Create/Update groups without redistribution)
      */
-    private void copySessionsFromGroup(Course course, CourseGroup targetGroup, CourseGroup sourceGroup) {
-        if (sourceGroup == null)
-            return;
-
-        List<CourseSession> sourceSessions = sessionRepo.findByCourseGroupIdOrderBySessionNoAsc(sourceGroup.getId());
-        if (!sourceSessions.isEmpty()) {
-            for (CourseSession session : sourceSessions) {
-                CourseSession newSession = new CourseSession();
-                newSession.setCourse(course);
-                newSession.setCourseGroup(targetGroup);
-                newSession.setSessionNo(session.getSessionNo());
-                newSession.setSessionDate(session.getSessionDate());
-                newSession.setStartTime(session.getStartTime());
-                newSession.setEndTime(session.getEndTime());
-                newSession.setSessionStatus(SessionStatus.PLANNED);
-                sessionRepo.save(newSession);
+    private void processGroupUpdates(Course course, List<GroupRequestDto> groupRequests, 
+                                     List<CourseGroup> existingGroups) {
+        log.info("  📝 Processing group updates...");
+        
+        Map<String, CourseGroup> existingGroupByName = existingGroups.stream()
+                .collect(Collectors.toMap(CourseGroup::getGroupName, Function.identity()));
+        
+        for (GroupRequestDto gReq : groupRequests) {
+            if (existingGroupByName.containsKey(gReq.getGroupName())) {
+                CourseGroup group = existingGroupByName.get(gReq.getGroupName());
+                group.setCapacity(gReq.getCapacity());
+                if (gReq.getGroupStatus() != null) {
+                    group.setGroupStatus(GroupStatus.valueOf(gReq.getGroupStatus()));
+                }
+                groupRepo.save(group);
+                log.info("    ✅ Updated group '{}': Capacity = {}, Status = {}", 
+                    group.getGroupName(), group.getCapacity(), group.getGroupStatus());
+                updateSessionsForGroup(group, gReq.getSessions());
+            } else {
+                CourseGroup newGroup = saveGroup(course, gReq);
+                saveSessionsForGroup(course, newGroup, gReq.getSessions());
+                existingGroups.add(newGroup);
+                log.info("    ✅ Created new group '{}': Capacity = {}", 
+                    newGroup.getGroupName(), newGroup.getCapacity());
             }
         }
     }
 
     /**
-     * Updates sessions for a group - handles add/update/delete incrementally
+     * REDISTRIBUTE WITH MINIMAL CHANGES
+     * Only move members who are in over-capacity groups
      */
-    private void updateSessionsForGroup(CourseGroup group, List<SessionDto> sessionReqs) {
-        if (sessionReqs == null)
+    private void redistributeWithMinimalChanges(Course course, List<CourseGroup> groups) {
+        log.info("🔄 Starting minimal redistribution...");
+        
+        Map<Integer, List<CourseEnrollment>> enrollmentsByGroup = new HashMap<>();
+        Map<Integer, Integer> currentCounts = new HashMap<>();
+        
+        for (CourseGroup group : groups) {
+            List<CourseEnrollment> enrollments = enrollmentRepo.findByCourseGroupId(group.getId());
+            enrollmentsByGroup.put(group.getId(), enrollments);
+            currentCounts.put(group.getId(), enrollments.size());
+            log.info("  - Group '{}': {} members (Capacity: {})", 
+                group.getGroupName(), enrollments.size(), group.getCapacity());
+        }
+        
+        List<CourseGroup> overCapacityGroups = new ArrayList<>();
+        List<CourseGroup> underCapacityGroups = new ArrayList<>();
+        
+        for (CourseGroup group : groups) {
+            if (group.getCapacity() == null) {
+                log.info("  - Group '{}' has unlimited capacity (NULL)", group.getGroupName());
+                continue;
+            }
+            int current = currentCounts.getOrDefault(group.getId(), 0);
+            int capacity = group.getCapacity();
+            if (current > capacity) {
+                overCapacityGroups.add(group);
+                log.info("  ⚠️ Group '{}' is OVER capacity: {} > {}", 
+                    group.getGroupName(), current, capacity);
+            } else if (current < capacity) {
+                underCapacityGroups.add(group);
+                log.info("  ✅ Group '{}' has space: {} < {}", 
+                    group.getGroupName(), current, capacity);
+            }
+        }
+        
+        if (overCapacityGroups.isEmpty()) {
+            log.info("✅ No over-capacity groups. No redistribution needed.");
             return;
+        }
+        
+        log.info("🔄 Moving members from over-capacity groups...");
+        int totalMoved = 0;
+        
+        for (CourseGroup sourceGroup : overCapacityGroups) {
+            int capacity = sourceGroup.getCapacity();
+            List<CourseEnrollment> members = enrollmentsByGroup.get(sourceGroup.getId());
+            members.sort(Comparator.comparing(CourseEnrollment::getEnrolledAt));
+            
+            int excess = members.size() - capacity;
+            log.info("  - Group '{}' has {} excess members to move", sourceGroup.getGroupName(), excess);
+            
+            for (int i = 0; i < excess; i++) {
+                CourseEnrollment member = members.get(members.size() - 1 - i);
+                
+                CourseGroup targetGroup = null;
+                for (CourseGroup g : underCapacityGroups) {
+                    int current = currentCounts.getOrDefault(g.getId(), 0);
+                    int cap = g.getCapacity() == null ? Integer.MAX_VALUE : g.getCapacity();
+                    if (current < cap) {
+                        targetGroup = g;
+                        break;
+                    }
+                }
+                
+                if (targetGroup != null) {
+                    member.setCourseGroup(targetGroup);
+                    enrollmentRepo.save(member);
+                    currentCounts.put(sourceGroup.getId(), currentCounts.get(sourceGroup.getId()) - 1);
+                    currentCounts.put(targetGroup.getId(), currentCounts.get(targetGroup.getId()) + 1);
+                    totalMoved++;
+                    log.info("      ✓ Moved enrollment {} from '{}' to '{}'", 
+                        member.getId(), sourceGroup.getGroupName(), targetGroup.getGroupName());
+                } else {
+                    log.warn("      ⚠️ No available space for enrollment {}", member.getId());
+                    throw new RuntimeException(
+                        String.format("Cannot move enrollment %d from group '%s'. No available capacity in other groups.",
+                            member.getId(), sourceGroup.getGroupName()));
+                }
+            }
+        }
+        
+        log.info("✅ Minimal redistribution completed. Total members moved: {}", totalMoved);
+    }
 
-        // Get existing sessions for this group
+    /**
+     * DELETE GROUPS NOT IN REQUEST
+     */
+    private void deleteGroupsNotInRequest(Course course, List<CourseGroup> existingGroups, 
+                                          Set<String> requestGroupNames) {
+        log.info("🗑️ Deleting groups not in request...");
+        
+        List<CourseGroup> groupsToDelete = new ArrayList<>();
+        
+        for (CourseGroup existingGroup : existingGroups) {
+            if (!requestGroupNames.contains(existingGroup.getGroupName())) {
+                long memberCount = groupRepo.countEnrollmentsByGroupId(existingGroup.getId());
+                log.info("  - Group '{}' not in request. Members: {}", 
+                    existingGroup.getGroupName(), memberCount);
+                
+                if (memberCount > 0) {
+                    log.warn("  ⚠️ Group '{}' has {} members! Moving them first...", 
+                        existingGroup.getGroupName(), memberCount);
+                    
+                    boolean moved = moveMembersToAvailableGroups(existingGroup, existingGroups);
+                    if (!moved) {
+                        throw new RuntimeException(
+                            String.format("Cannot delete group '%s'. No available capacity in other groups. " +
+                                "Please increase capacity or delete members first.",
+                                existingGroup.getGroupName()));
+                    }
+                }
+                groupsToDelete.add(existingGroup);
+            }
+        }
+        
+        for (CourseGroup groupToDelete : groupsToDelete) {
+            log.info("  🗑️ Deleting group '{}' (ID: {})", 
+                groupToDelete.getGroupName(), groupToDelete.getId());
+            sessionRepo.deleteByCourseGroupId(groupToDelete.getId());
+            groupRepo.delete(groupToDelete);
+        }
+        
+        log.info("✅ Groups deletion completed. Deleted {} groups.", groupsToDelete.size());
+    }
+
+    /**
+     * MOVE MEMBERS FROM A GROUP TO AVAILABLE GROUPS
+     */
+    private boolean moveMembersToAvailableGroups(CourseGroup sourceGroup, List<CourseGroup> allGroups) {
+        List<CourseEnrollment> members = enrollmentRepo.findByCourseGroupId(sourceGroup.getId());
+        
+        if (members.isEmpty()) {
+            log.info("  ✅ Group '{}' has no members to move", sourceGroup.getGroupName());
+            return true;
+        }
+        
+        log.info("  Moving {} members from '{}'", members.size(), sourceGroup.getGroupName());
+        
+        List<CourseGroup> availableGroups = new ArrayList<>();
+        for (CourseGroup group : allGroups) {
+            if (group.getId().equals(sourceGroup.getId())) continue;
+            if (group.getCapacity() == null) {
+                availableGroups.add(group);
+                log.info("    ✓ Group '{}' has unlimited capacity", group.getGroupName());
+            } else {
+                long currentMembers = groupRepo.countEnrollmentsByGroupId(group.getId());
+                if (currentMembers < group.getCapacity()) {
+                    availableGroups.add(group);
+                    int space = group.getCapacity() - (int) currentMembers;
+                    log.info("    ✓ Group '{}' has {} spaces available", group.getGroupName(), space);
+                }
+            }
+        }
+        
+        if (availableGroups.isEmpty()) {
+            log.error("❌ No available groups to move members to!");
+            return false;
+        }
+        
+        int memberIndex = 0;
+        for (CourseGroup targetGroup : availableGroups) {
+            if (memberIndex >= members.size()) break;
+            
+            int availableSpace = targetGroup.getCapacity() == null ? 
+                Integer.MAX_VALUE : 
+                targetGroup.getCapacity() - (int) groupRepo.countEnrollmentsByGroupId(targetGroup.getId());
+            
+            int toMove = Math.min(availableSpace, members.size() - memberIndex);
+            
+            for (int i = 0; i < toMove && memberIndex < members.size(); i++) {
+                CourseEnrollment member = members.get(memberIndex);
+                member.setCourseGroup(targetGroup);
+                enrollmentRepo.save(member);
+                log.info("      ✓ Moved member {} to '{}'", member.getId(), targetGroup.getGroupName());
+                memberIndex++;
+            }
+        }
+        
+        if (memberIndex < members.size()) {
+            log.error("❌ Could not move all members! {} members remain", members.size() - memberIndex);
+            return false;
+        }
+        
+        log.info("  ✅ All {} members moved successfully", members.size());
+        return true;
+    }
+
+    /**
+     * COPY SESSIONS FROM SOURCE GROUP TO TARGET GROUP
+     */
+    private void copySessionsFromGroup(Course course, CourseGroup targetGroup, CourseGroup sourceGroup) {
+        if (sourceGroup == null) {
+            log.warn("  ⚠️ Source group is null. Cannot copy sessions.");
+            return;
+        }
+        
+        List<CourseSession> sourceSessions = sessionRepo.findByCourseGroupIdOrderBySessionNoAsc(sourceGroup.getId());
+        if (sourceSessions.isEmpty()) {
+            log.info("  ℹ️ Source group has no sessions to copy");
+            return;
+        }
+        
+        log.info("  📋 Copying {} sessions from '{}' to '{}'", 
+            sourceSessions.size(), sourceGroup.getGroupName(), targetGroup.getGroupName());
+        
+        for (CourseSession session : sourceSessions) {
+            CourseSession newSession = new CourseSession();
+            newSession.setCourse(course);
+            newSession.setCourseGroup(targetGroup);
+            newSession.setSessionNo(session.getSessionNo());
+            newSession.setSessionDate(session.getSessionDate());
+            newSession.setStartTime(session.getStartTime());
+            newSession.setEndTime(session.getEndTime());
+            newSession.setSessionStatus(SessionStatus.PLANNED);
+            sessionRepo.save(newSession);
+        }
+    }
+
+    // =========================================================
+    // PRIVATE HELPERS - SESSION MANAGEMENT
+    // =========================================================
+
+    private void updateSessionsForGroup(CourseGroup group, List<SessionDto> sessionReqs) {
+        if (sessionReqs == null) {
+            log.info("  ℹ️ No session updates for group '{}'", group.getGroupName());
+            return;
+        }
+
+        log.info("  📋 Updating {} sessions for group '{}'", sessionReqs.size(), group.getGroupName());
+
         List<CourseSession> existingSessions = sessionRepo.findByCourseGroupIdOrderBySessionNoAsc(group.getId());
 
-        // Map existing sessions by ID for easy lookup
         Map<Integer, CourseSession> existingSessionMap = existingSessions.stream()
                 .collect(Collectors.toMap(CourseSession::getId, Function.identity()));
 
-        // Map existing sessions by session number for duplicate checking
         Map<Integer, CourseSession> existingSessionByNo = existingSessions.stream()
                 .filter(s -> s.getSessionNo() != null)
                 .collect(Collectors.toMap(
@@ -860,25 +1091,20 @@ public class CourseService {
                         Function.identity(),
                         (a, b) -> a));
 
-        // Track which sessions from the request are processed
         Set<Integer> requestSessionIds = new HashSet<>();
 
         for (SessionDto sReq : sessionReqs) {
             if (sReq.getId() != null && existingSessionMap.containsKey(sReq.getId())) {
-                // === UPDATE EXISTING SESSION ===
                 CourseSession session = existingSessionMap.get(sReq.getId());
                 requestSessionIds.add(session.getId());
 
-                // Update session fields
                 if (sReq.getSessionNo() != null) {
                     Integer newSessionNo = sReq.getSessionNo().intValue();
-                    if (!newSessionNo
-                            .equals(session.getSessionNo() != null ? session.getSessionNo().intValue() : null)) {
+                    if (!newSessionNo.equals(session.getSessionNo() != null ? session.getSessionNo().intValue() : null)) {
                         CourseSession conflictingSession = existingSessionByNo.get(newSessionNo);
                         if (conflictingSession != null && !conflictingSession.getId().equals(session.getId())) {
                             throw new RuntimeException(
-                                    String.format("Session number %d already exists for this group",
-                                            sReq.getSessionNo()));
+                                    String.format("Session number %d already exists for this group", sReq.getSessionNo()));
                         }
                     }
                     session.setSessionNo(sReq.getSessionNo());
@@ -899,7 +1125,6 @@ public class CourseService {
                 sessionRepo.save(session);
 
             } else {
-                // === CREATE NEW SESSION ===
                 Integer newSessionNo = sReq.getSessionNo() != null ? sReq.getSessionNo().intValue() : null;
                 CourseSession existingByNo = existingSessionByNo.get(newSessionNo);
 
@@ -930,7 +1155,6 @@ public class CourseService {
             }
         }
 
-        // === DELETE SESSIONS NO LONGER IN REQUEST ===
         for (CourseSession existingSession : existingSessions) {
             if (!requestSessionIds.contains(existingSession.getId())) {
                 boolean sessionNoStillExists = sessionReqs.stream()
@@ -938,18 +1162,27 @@ public class CourseService {
                                 s.getSessionNo().equals(existingSession.getSessionNo()));
 
                 if (!sessionNoStillExists) {
+                    log.info("    🗑️ Deleting session ID: {} (No. {})", 
+                        existingSession.getId(), existingSession.getSessionNo());
                     sessionRepo.delete(existingSession);
                 }
             }
         }
+        
+        log.info("  ✅ Sessions updated for group '{}'", group.getGroupName());
     }
 
-    /**
-     * Updates self-study sessions by matching on id or session_no
-     */
+    // =========================================================
+    // PRIVATE HELPERS - SELF-STUDY SESSIONS
+    // =========================================================
+
     private void updateSelfStudySessions(Course course, List<SelfStudySessionDto> sessionRequests) {
-        if (sessionRequests == null)
+        if (sessionRequests == null) {
+            log.info("  ℹ️ No self-study session updates");
             return;
+        }
+
+        log.info("  📚 Updating {} self-study sessions", sessionRequests.size());
 
         List<SelfStudySession> existingSessions = selfStudyRepo.findByCourseIdOrderBySessionNoAsc(course.getId());
 
@@ -1046,6 +1279,8 @@ public class CourseService {
         for (SelfStudySession existingSession : existingSessions) {
             if (!requestSessionIds.contains(existingSession.getId())) {
                 try {
+                    log.info("    🗑️ Deleting self-study session ID: {} (No. {})", 
+                        existingSession.getId(), existingSession.getSessionNo());
                     selfStudyRepo.delete(existingSession);
                 } catch (Exception e) {
                     throw new RuntimeException(
@@ -1055,6 +1290,8 @@ public class CourseService {
                 }
             }
         }
+        
+        log.info("  ✅ Self-study sessions updated");
     }
 
     // =========================================================
@@ -1161,12 +1398,16 @@ public class CourseService {
         g.setGroupStatus(gReq.getGroupStatus() != null
                 ? GroupStatus.valueOf(gReq.getGroupStatus())
                 : GroupStatus.OPEN);
+        log.debug("  💾 Saved group: '{}' (Capacity: {})", g.getGroupName(), g.getCapacity());
         return groupRepo.save(g);
     }
 
     private void saveSessionsForGroup(Course course, CourseGroup group, List<SessionDto> sessions) {
-        if (sessions == null)
+        if (sessions == null) {
+            log.debug("  ℹ️ No sessions to save for group '{}'", group.getGroupName());
             return;
+        }
+        log.debug("  📋 Saving {} sessions for group '{}'", sessions.size(), group.getGroupName());
         for (SessionDto s : sessions) {
             CourseSession cs = new CourseSession();
             cs.setCourse(course);

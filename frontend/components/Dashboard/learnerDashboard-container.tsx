@@ -42,6 +42,8 @@ import { cn } from "@/lib/utils"
 import { StatCard } from "../charts/stat-card"
 import { NotificationsDrawer } from "../drawers/notifications-drawer"
 import { mainStore } from "@/store/mainStore"
+import type { Course, CourseSession } from "@/types/course"
+import type { EmployeeCourseDetailDTO } from "@/types/dashboard"
 
 interface LearnerDashboardContainerProps {
   onNavigateToCourse?: (courseId: number) => void
@@ -169,6 +171,11 @@ export default function LearnerDashboardContainer({
 
   useEffect(() => {
     const loadData = async () => {
+      if (!profile?.id) {
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
       try {
         await fetchEmployeeCourseStats(profile.id)
@@ -178,7 +185,7 @@ export default function LearnerDashboardContainer({
 
         // Fetch study progress for self-study courses
         const selfStudyCourses = upcomingAllSessionsData.filter(
-          session => session.courseType === "SELF_STUDY"
+          (session: CourseSession) => session.courseType === "SELF_STUDY"
         );
         for (const session of selfStudyCourses) {
           await fetch_studyProgress(session.courseId);
@@ -191,16 +198,16 @@ export default function LearnerDashboardContainer({
     }
 
     loadData()
-  }, [fetchEmployeeCourseStats, fetchEmployeeAttendance, profile.id, fetchAllUpcomingSessions, fetchEmployeeTargetLevel])
+  }, [fetchEmployeeCourseStats, fetchEmployeeAttendance, profile?.id, fetchAllUpcomingSessions, fetchEmployeeTargetLevel])
 
   // Fetch enrollments for the current user to get enrollment IDs
   useEffect(() => {
     const fetchEnrollments = async () => {
       if (upcomingAllSessionsData.length > 0) {
         // Get unique course IDs for trainer-provided courses
-        const uniqueCourseIds = new Set();
-        upcomingAllSessionsData.forEach(session => {
-          if (session.courseType === "TRAINER_PROVIDED") {
+        const uniqueCourseIds = new Set<string | number>();
+        upcomingAllSessionsData.forEach((session: CourseSession) => {
+          if (session.courseType === "TRAINER_PROVIDED" && session.courseId) {
             uniqueCourseIds.add(session.courseId);
           }
         });
@@ -218,6 +225,7 @@ export default function LearnerDashboardContainer({
 
     fetchEnrollments();
   }, [upcomingAllSessionsData, fetch_courseEnrollments]);
+
 
   // Update saved progress when studyProgress changes
   useEffect(() => {
@@ -239,7 +247,7 @@ export default function LearnerDashboardContainer({
   // Helper to get enrollment ID for a course
   const getEnrollmentId = (courseId: number): number | null => {
     const enrollment = enrollments.find(
-      (e: any) => e.courseId === courseId && e.employeeId === profile.id
+      (e: any) => e.courseId === courseId && e.employeeId === profile?.id
     );
     return enrollment?.id || null;
   };
@@ -259,31 +267,35 @@ export default function LearnerDashboardContainer({
   useEffect(() => {
     const initialInputs: { [key: number]: any } = {};
     const selfStudySessions = upcomingAllSessionsData.filter(
-      session => session.courseType === "SELF_STUDY"
+      (session: CourseSession) => session.courseType === "SELF_STUDY"
     );
 
-    selfStudySessions.forEach((session) => {
-      const existingProgress = savedProgress[session.sessionId?.toString()];
-      if (existingProgress) {
-        initialInputs[session.sessionId] = {
-          kanjiCount: existingProgress.kanji_count || 0,
-          vocabularyCount: existingProgress.vocabulary_count || 0,
-          grammarCount: existingProgress.grammar_count || 0,
-          readingMinutes: existingProgress.reading_minutes || 0,
-          listeningMinutes: existingProgress.listening_minutes || 0,
-        };
-      } else {
-        initialInputs[session.sessionId] = {
-          kanjiCount: 0,
-          vocabularyCount: 0,
-          grammarCount: 0,
-          readingMinutes: 0,
-          listeningMinutes: 0,
-        };
+    selfStudySessions.forEach((session: CourseSession) => {
+      // Check if sessionId exists
+      if (session.sessionId) {
+        const existingProgress = savedProgress[session.sessionId.toString()];
+        if (existingProgress) {
+          initialInputs[session.sessionId] = {
+            kanjiCount: existingProgress.kanji_count || 0,
+            vocabularyCount: existingProgress.vocabulary_count || 0,
+            grammarCount: existingProgress.grammar_count || 0,
+            readingMinutes: existingProgress.reading_minutes || 0,
+            listeningMinutes: existingProgress.listening_minutes || 0,
+          };
+        } else {
+          initialInputs[session.sessionId] = {
+            kanjiCount: 0,
+            vocabularyCount: 0,
+            grammarCount: 0,
+            readingMinutes: 0,
+            listeningMinutes: 0,
+          };
+        }
       }
     });
     setSelfStudyInputs(initialInputs);
   }, [upcomingAllSessionsData, savedProgress]);
+
 
   const handleAttendanceChange = async (session: any, value: string) => {
     // Only proceed if it's a trainer-led session
@@ -342,7 +354,7 @@ export default function LearnerDashboardContainer({
       }, 1500);
 
       // Refresh the sessions data to get updated attendance status
-      await fetchAllUpcomingSessions(profile.id);
+      await fetchAllUpcomingSessions(profile?.id);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update attendance';
@@ -540,7 +552,7 @@ export default function LearnerDashboardContainer({
       // Use the navigation callback
       if (onNavigateToCertificate) {
         onNavigateToCertificate(id);
-      } 
+      }
     }
   };
 
@@ -619,7 +631,7 @@ export default function LearnerDashboardContainer({
           />
           <StatCard
             title="Total Sessions"
-            value={employeeCourseStats?.totalSessions}
+            value={employeeCourseStats?.totalSessions || 0}
             icon={DashboardBrowsingIcon}
             description={`${employeeCourseStats?.activeSessions || 0} active`}
           />
@@ -641,7 +653,7 @@ export default function LearnerDashboardContainer({
               <CardTitle>Overall Attendance</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {employeeCourseStats?.courses?.map((course, index) => (
+              {employeeCourseStats?.courses?.map((course: EmployeeCourseDetailDTO, index: number) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
@@ -667,7 +679,7 @@ export default function LearnerDashboardContainer({
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {employeeAttendance?.courses?.map((course, index) => (
+              {employeeAttendance?.courses?.map((course: any, index: number) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
