@@ -16,46 +16,21 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class CertificateFileStorageService {
 
-    @Value("${file.upload-dir:../frontend/public/uploads/certificates}")
+    @Value("${file.upload-dir:/data/uploads/certificates}")
     private String uploadDir;
     
     private Path uploadPath;
 
     @PostConstruct
     public void init() {
-        // Find the project root (dat-courses-management-system)
-        Path currentDir = Paths.get(System.getProperty("user.dir"));
-        Path projectRoot = null;
+        // Use configured uploadDir (overridden by profiles)
+        this.uploadPath = Paths.get(uploadDir).normalize().toAbsolutePath();
 
-        // Traverse up to find the directory that contains both backend and frontend
-        Path tempDir = currentDir;
-        while (tempDir != null) {
-            if (Files.exists(tempDir.resolve("backend")) && Files.exists(tempDir.resolve("frontend"))) {
-                projectRoot = tempDir;
-                break;
-            }
-            tempDir = tempDir.getParent();
-        }
-
-        // If project root found, use it
-        if (projectRoot != null) {
-            this.uploadPath = projectRoot
-                .resolve("frontend")
-                .resolve("public")
-                .resolve("uploads")
-                .resolve("certificates")
-                .normalize()
-                .toAbsolutePath();
-        } else {
-            // Fallback: use the configured upload directory
-            this.uploadPath = Paths.get(uploadDir).normalize().toAbsolutePath();
-        }
-        
         System.out.println("=========================================");
-        System.out.println("📁 Current working directory: " + currentDir);
-        System.out.println("📁 Project root found: " + projectRoot);
-        System.out.println("📁 Upload directory: " + uploadPath);
-        
+        System.out.println("📁 Current working directory: " + System.getProperty("user.dir"));
+        System.out.println("📁 Configured upload directory: " + uploadDir);
+        System.out.println("📁 Resolved upload path: " + uploadPath);
+
         try {
             if (!Files.exists(uploadPath)) {
                 System.out.println("📁 Directory does not exist, creating...");
@@ -137,7 +112,7 @@ public class CertificateFileStorageService {
         }
 
         // Return the relative path for the database
-        return "uploads/certificates/" + fileName;
+        return "/uploads/certificates/" + fileName;
     }
 
     public void deleteFile(String filePath) throws IOException {

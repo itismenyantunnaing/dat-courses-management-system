@@ -22,6 +22,15 @@ import {
 import { mainStore } from "@/store/mainStore"
 import { compressFile } from "@/lib/compressImage"
 
+//Helper for imageUrl
+const getImageUrl = (url?: string | null) => {
+  if (!url) return null
+
+  return url.startsWith("http")
+      ? url
+      : `${process.env.NEXT_PUBLIC_API_URL}${url}`
+}
+
 interface CertificateFormData {
   certificateType: (typeof CERTIFICATE_TYPES)[number] | ""
   level: (typeof CERTIFICATE_LEVELS)[number] | ""
@@ -66,7 +75,7 @@ export const CertificateForm = forwardRef<
     })
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string | null>(
-      initialImage || null
+        getImageUrl(initialImage)
     )
     const [isDragging, setIsDragging] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
@@ -169,7 +178,7 @@ export const CertificateForm = forwardRef<
     // ✅ Update image preview when initialImage changes
     useEffect(() => {
       if (mode === "edit" && initialImage) {
-        setImagePreview(initialImage)
+        setImagePreview(getImageUrl(initialImage))
         setSelectedFile(null)
       }
     }, [initialImage, mode])
@@ -215,7 +224,7 @@ export const CertificateForm = forwardRef<
         }
       } else {
         setSelectedFile(null)
-        setImagePreview(initialImage || null)
+        setImagePreview(getImageUrl(initialImage))
       }
     }
 

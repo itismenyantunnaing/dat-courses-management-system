@@ -37,8 +37,14 @@ public class CertificateService {
     private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
 
-    @Value("${file.max-size:5242880}")
+    // Default (10MB) matches the "Maximum 10 MB" copy shown on the certificate upload form.
+    // Keep this in sync with `file.max-size` in application.properties.
+    @Value("${file.max-size:10485760}")
     private long maxFileSize;
+
+    private String maxFileSizeLabel() {
+        return (maxFileSize / (1024 * 1024)) + "MB";
+    }
 
     private static final Map<String, Integer> JLPT_RANKING = Map.of(
         "N5", 1,
@@ -139,11 +145,11 @@ public class CertificateService {
             });
 
     String level = japaneseLevel == null ? null : japaneseLevel.trim();
-    
+
     // Only update JLPT level if it's a JLPT certificate
     if (certificateType == CertificateType.JLPT) {
         String currentLevel = profile.getJlptHighestLevel();
-        
+
         // Update only if new level is higher or no current level exists
         if (isHigherLevel(level, currentLevel)) {
             profile.setJlptHighestLevel(level);
@@ -153,13 +159,13 @@ public class CertificateService {
     } else {
         // For other certificate types (NAT_TEST, TOP_J, BJT, OTHER)
         String currentLevel = profile.getOtherJapaneseLevel();
-        
+
         // You might want similar logic for other certificate levels
         // Or just update directly if you don't track other levels
         if (isHigherLevel(level, currentLevel)) {
             profile.setOtherJapaneseLevel(level);
         }
-        
+
         EmployeeJapaneseProfile.JapaneseExamType examType = mapJapaneseExamType(certificateType);
         if (examType != null) {
             profile.setJlptNatTest(examType);
@@ -197,7 +203,7 @@ public class CertificateService {
                         (extension.isEmpty() ? "unknown" : extension));
             }
             if (!fileStorageService.isValidFileSize(file, maxFileSize)) {
-                throw new RuntimeException("File size exceeds maximum allowed size (5MB)");
+                throw new RuntimeException("File size exceeds maximum allowed size (" + maxFileSizeLabel() + ")");
             }
         } else {
             // For update - file is optional, but if provided validate it
@@ -208,7 +214,7 @@ public class CertificateService {
                             (extension.isEmpty() ? "unknown" : extension));
                 }
                 if (!fileStorageService.isValidFileSize(file, maxFileSize)) {
-                    throw new RuntimeException("File size exceeds maximum allowed size (5MB)");
+                    throw new RuntimeException("File size exceeds maximum allowed size (" + maxFileSizeLabel() + ")");
                 }
             }
         }
@@ -366,7 +372,7 @@ public class CertificateService {
         String currentUserId = currentUser.getId();
 
         notificationRepository.nullifyCertificateReference(id);
-        
+
         if (!ownerId.equals(currentUserId)) {
             throw new RuntimeException("You can only delete your own certificates.");
         }
@@ -409,13 +415,13 @@ public class CertificateService {
         if (newLevel == null || currentLevel == null) {
             return newLevel != null; // If new is not null but current is null, it's higher
         }
-        
+
         Integer newRank = JLPT_RANKING.get(newLevel.toUpperCase());
         Integer currentRank = JLPT_RANKING.get(currentLevel.toUpperCase());
-        
+
         if (newRank == null) return false; // Invalid level
         if (currentRank == null) return true; // Current is invalid, so new is higher
-        
+
         return newRank > currentRank;
     }
 }

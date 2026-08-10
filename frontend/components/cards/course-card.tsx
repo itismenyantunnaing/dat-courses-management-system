@@ -221,7 +221,7 @@ export function CourseCard({
         {course.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={course.imageUrl}
+            src={course.imageUrl.startsWith("http") ? course.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${course.imageUrl}`}
             alt={course.title}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

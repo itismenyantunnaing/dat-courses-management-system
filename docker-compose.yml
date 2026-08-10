@@ -55,6 +55,11 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    environment:
+      # Flip to "true" once this is served behind HTTPS (reverse proxy/TLS
+      # termination) — until then the browser will silently refuse to store
+      # a Secure cookie over plain HTTP and login will appear to do nothing.
+      COOKIE_SECURE: "false"
     depends_on:
       - backend
 

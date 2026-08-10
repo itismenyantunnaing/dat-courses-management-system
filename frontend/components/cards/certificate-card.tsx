@@ -46,7 +46,7 @@ export function CertificateCard({
 }: CertificateCardProps) {
   const [imageError, setImageError] = useState(false)
 
-  const imageUrl = certificate.filePath || "/placeholder-certificate.png"
+  // const imageUrl = certificate.filePath || "/placeholder-certificate.png"
   const status = certificate.verificationStatus || ""
 
   const handleCardClick = () => {
@@ -75,7 +75,8 @@ export function CertificateCard({
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
           {!imageError ? (
             <Image
-              src={imageUrl}
+              src={certificate.filePath.startsWith("http") ? certificate.filePath : `${process.env.NEXT_PUBLIC_API_URL}${certificate.filePath}`}
+
               alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"

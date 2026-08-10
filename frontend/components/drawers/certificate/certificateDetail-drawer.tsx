@@ -111,7 +111,15 @@ export function CertificateDetailDrawer({
 
   if (!certificate) return null
 
-  const imageUrl = certificate.filePath || "/placeholder-certificate.png"
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || ""
+  const buildUrl = (p?: string) => {
+    if (!p) return "/placeholder-certificate.png"
+    if (p.startsWith("http") || p.startsWith("data:")) return p
+    if (p.startsWith("/")) return `${apiBase}${p}`
+    return `${apiBase}/${p}`
+  }
+  const imageUrl = buildUrl(certificate.filePath)
+
   const status = certificate.verificationStatus || ""
 
   // Get employee info

@@ -30,8 +30,8 @@ const SESSION_CONFIG = {
     COOKIE_NAME: 'auth_session',
     COOKIE_OPTIONS: {
         httpOnly: true,
-        secure: true,
-        sameSite: 'lax' as const, 
+        secure: process.env.COOKIE_SECURE === 'true',
+        sameSite: 'lax' as const,
         path: '/',
     }
 }

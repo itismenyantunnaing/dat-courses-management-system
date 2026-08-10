@@ -13,34 +13,11 @@ import java.nio.file.StandardCopyOption;
 @Service
 public class CourseImageStorageService {
 
-  @Value("${file.upload-dir:../uploads/certificates}")
+  @Value("${file.upload-dir:/data/uploads}")
   private String uploadDir;
 
   private String getCourseUploadDir() {
-    // Find the project root (dat-courses-management-system)
-    Path currentDir = Paths.get(System.getProperty("user.dir"));
-    Path projectRoot = null;
-
-    // Traverse up to find the directory that contains both backend and frontend
-    while (currentDir != null) {
-      if (Files.exists(currentDir.resolve("backend")) && Files.exists(currentDir.resolve("frontend"))) {
-        projectRoot = currentDir;
-        break;
-      }
-      currentDir = currentDir.getParent();
-    }
-
-    // If not found, default to relative path
-    if (projectRoot == null) {
-      // Fallback: try to use parent of upload directory (certificates path)
-      Path certificatesPath = Paths.get(uploadDir);
-      Path uploadsPath = certificatesPath.getParent();
-      Path publicPath = uploadsPath.getParent();
-      return publicPath.resolve("courses").toString();
-    }
-
-    // Build the path to frontend/public/courses from the project root
-    return projectRoot.resolve("frontend").resolve("public").resolve("courses").toString();
+      return Paths.get(uploadDir, "courses").toString();
   }
 
   public String storeImage(MultipartFile file, Integer courseId) throws IOException {
@@ -101,7 +78,7 @@ public class CourseImageStorageService {
       throw new IOException("Failed to save course image: " + e.getMessage(), e);
     }
 
-    return "courses/" + fileName;
+      return "/courses/" + fileName;
   }
 
     public void deleteImage(String imagePath) throws IOException {

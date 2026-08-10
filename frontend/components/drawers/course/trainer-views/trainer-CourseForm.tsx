@@ -90,6 +90,15 @@ const formatLocalDateDisplay = (date: Date): string => {
   return format(date, 'PPP');
 };
 
+//Helper for imageUrl
+const getImageUrl = (url?: string | null) => {
+  if (!url) return null
+
+  return url.startsWith("http")
+      ? url
+      : `${process.env.NEXT_PUBLIC_API_URL}${url}`
+}
+
 // Helper function to convert Employee to MentionedLearner
 const convertEmployeeToMentionedLearner = (employee: any): MentionedLearner => ({
   id: employee.id,
@@ -202,7 +211,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
     const [selectedImage, setSelectedImage] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string | null>(
-      initialImage || null
+        getImageUrl(initialImage)
     )
     const [isDragging, setIsDragging] = useState(false)
     const [activeGroupTab, setActiveGroupTab] = useState<string>(
