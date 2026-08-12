@@ -12,11 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.dat_management.backend.dto.CertificateResponseDto;
+import com.dat_management.backend.entity.DepartmentDat;
+import com.dat_management.backend.entity.Division;
 import com.dat_management.backend.entity.Employee;
 import com.dat_management.backend.entity.EmployeeCertificate;
 import com.dat_management.backend.entity.EmployeeCertificate.CertificateType;
 import com.dat_management.backend.entity.EmployeeCertificate.VerificationStatus;
 import com.dat_management.backend.entity.EmployeeJapaneseProfile;
+import com.dat_management.backend.entity.Team;
 import com.dat_management.backend.repository.EmployeeCertificateRepository;
 import com.dat_management.backend.repository.EmployeeJapaneseProfileRepository;
 
@@ -40,12 +43,29 @@ public class CertificateService {
         dto.setId(certificate.getId());
 
         if (certificate.getEmployee() != null) {
-            dto.setEmployeeId(certificate.getEmployee().getId());
-            dto.setEmployeeName(certificate.getEmployee().getName());
-            dto.setEmail(certificate.getEmployee().getEmail());
-            dto.setProfilePhotoPath(certificate.getEmployee().getProfilePhotoPath());
-            if (certificate.getEmployee().getTeam() != null) {
-                dto.setTeamName(certificate.getEmployee().getTeam().getTeamName());
+            Employee employee = certificate.getEmployee();
+            dto.setEmployeeId(employee.getId());
+            dto.setEmployeeName(employee.getName());
+            dto.setEmail(employee.getEmail());
+            dto.setProfilePhotoPath(employee.getProfilePhotoPath());
+            
+            // Get team, department, and division information
+            if (employee.getTeam() != null) {
+                Team team = employee.getTeam();
+                dto.setTeamName(team.getTeamName());
+                
+                // Get department from team's departmentDat
+                if (team.getDepartmentDat() != null) {
+                    DepartmentDat deptDat = team.getDepartmentDat();
+                    
+                    // departmentName from deptName
+                    dto.setDepartmentName(deptDat.getDeptName());
+                    
+                    // Get division name from departmentDat's division relationship
+                    if (deptDat.getDivision() != null) {
+                        dto.setDivisionName(deptDat.getDivision().getDivisionName());
+                    }
+                }
             }
         }
 

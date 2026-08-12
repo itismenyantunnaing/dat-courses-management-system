@@ -38,6 +38,8 @@ const transformCertificate = (cert: any): JapaneseCertificate => {
   if (!['approved', 'pending', 'rejected'].includes(status)) {
     status = 'pending';
   }
+  console.log("AAAAAAAAAAAaa")
+  console.log(cert)
 
   return {
     id: String(cert.id || ''),
@@ -50,6 +52,8 @@ const transformCertificate = (cert: any): JapaneseCertificate => {
     employeeName: cert.employeeName || '',
     email: cert.email || '',
     profilePhotoPath: cert.profilePhotoPath,
+    divisionName: cert.divisionName || '',
+    departmentName: cert.departmentName || '',
     teamName: cert.teamName || '',
     verifiedByEmployeeId: cert.verifiedByEmployeeId || null,
     verifiedByEmployeeName: cert.verifiedByEmployeeName || null,

@@ -46,14 +46,29 @@ export function FeedbackCard({
     return formatTime(feedback.createdAt)
   }
 
+  // Check if department has valid data (not N/A, not empty, not null)
+  const hasDepartment =
+    feedback.employee.department &&
+    feedback.employee.department !== "N/A" &&
+    feedback.employee.department.trim() !== ""
+
+  // Check if team has valid data (not N/A, not empty, not null)
+  const hasTeam =
+    feedback.employee.team &&
+    feedback.employee.team !== "N/A" &&
+    feedback.employee.team.trim() !== ""
+
+  // Determine if we should show the department/team section
+  const showDepartmentTeam = hasDepartment || hasTeam
+
   return (
     <Card
       className="group h-full cursor-pointer transition-all hover:bg-muted/40"
       onClick={onClick}
     >
-      <CardHeader className="pb-2">
+      <CardHeader>
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <Avatar className="h-10 w-10 flex-shrink-0">
               <AvatarImage
                 src={feedback.employee.avatar || ""}
@@ -64,17 +79,27 @@ export function FeedbackCard({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base font-medium truncate">
+              <CardTitle className="truncate text-base font-medium">
                 {feedback.employee.name}
               </CardTitle>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
-                <span className="truncate min-w-0">{feedback.employee.department}</span>
-                <span className="flex-shrink-0">•</span>
-                <span className="truncate">{feedback.employee.team}</span>
-              </div>
+              {showDepartmentTeam && (
+                <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                  {hasDepartment && (
+                    <span className="min-w-0 truncate">
+                      {feedback.employee.department}
+                    </span>
+                  )}
+                  {hasDepartment && hasTeam && (
+                    <span className="flex-shrink-0">•</span>
+                  )}
+                  {hasTeam && (
+                    <span className="truncate">{feedback.employee.team}</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground flex-shrink-0 ml-2">
+          <div className="ml-2 flex flex-shrink-0 items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
             <HugeiconsIcon
               icon={ClockIcon}
               strokeWidth={2}
@@ -84,21 +109,24 @@ export function FeedbackCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="relative pb-10 pt-1">
-        <h4 className="mb-1 text-sm font-medium truncate">{feedback.subject}</h4>
-        <div 
-          className="line-clamp-2 text-sm text-muted-foreground pr-12"
-          style={{ 
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            wordBreak: 'break-word'
+      <CardContent className="relative">
+        <h4 className="mb-1 truncate text-sm font-medium">
+          {feedback.subject}
+        </h4>
+        <div
+          className="line-clamp-2 text-sm text-muted-foreground"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            wordBreak: "break-word",
           }}
         >
           {feedback.description}
         </div>
-        <div className="absolute bottom-2 right-2 z-10 flex items-center gap-0.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        {/* Action buttons with background and blur */}
+        <div className="absolute right-4 bottom-[-2] z-10 flex items-center gap-0.5 rounded-lg bg-background/80 px-1 py-1 opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100">
           {canEdit && onEdit && (
             <Button
               variant="ghost"

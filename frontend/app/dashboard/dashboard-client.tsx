@@ -38,7 +38,6 @@ import { webScoketStore } from "@/store/websocketStore"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import type { SessionData } from "@/types/session"
-import { Download } from "lucide-react" // or use any icon you prefer
 
 interface DashboardClientProps {
   userData: SessionData
@@ -54,11 +53,21 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const [isExporting, setIsExporting] = useState(false)
 
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
-  const [selectedCertificateId, setSelectedCertificateId] = useState<number | null>(null)
-  const [pendingCertificateId, setPendingCertificateId] = useState<number | null>(null)
+  const [selectedCertificateId, setSelectedCertificateId] = useState<
+    number | null
+  >(null)
+  const [pendingCertificateId, setPendingCertificateId] = useState<
+    number | null
+  >(null)
 
   // Get session store actions
-  const { setSession, fetch_EmployeeProfile, profile, unreadCount: dbUnreadCount, fetch_UnreadCount } = mainStore()
+  const {
+    setSession,
+    fetch_EmployeeProfile,
+    profile,
+    unreadCount: dbUnreadCount,
+    fetch_UnreadCount,
+  } = mainStore()
   const { connect } = webScoketStore()
 
   // Subscribe to WebSocket store for real-time updates
@@ -71,7 +80,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Initialize session in Zustand store when component mounts
   useEffect(() => {
     if (!initialized.current && userData) {
-      ; (async () => {
+      ;(async () => {
         setSession(userData)
         await fetch_EmployeeProfile(userData.userId)
         initialized.current = true
@@ -90,28 +99,31 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
   // Refetch database unread count ONLY when a NEW WebSocket notification arrives
   useEffect(() => {
-    if (profile?.id && notifications.length > previousNotificationsLength.current) {
-      fetch_UnreadCount(profile.id);
+    if (
+      profile?.id &&
+      notifications.length > previousNotificationsLength.current
+    ) {
+      fetch_UnreadCount(profile.id)
     }
-    previousNotificationsLength.current = notifications.length;
-  }, [notifications, profile?.id, fetch_UnreadCount]);
+    previousNotificationsLength.current = notifications.length
+  }, [notifications, profile?.id, fetch_UnreadCount])
 
   // Clean up WebSocket connection when component unmounts
   useEffect(() => {
     return () => {
-      const { disconnect } = webScoketStore.getState();
-      disconnect();
-    };
-  }, []);
+      const { disconnect } = webScoketStore.getState()
+      disconnect()
+    }
+  }, [])
 
   useEffect(() => {
     setMounted(true)
     if (typeof window !== "undefined") {
-      ; (window as any).mainStore = mainStore
+      ;(window as any).mainStore = mainStore
     }
   }, [])
 
-  // Show alert when new notification arrives 
+  // Show alert when new notification arrives
   useEffect(() => {
     if (notifications.length > 0) {
       const latest = notifications[0]
@@ -121,7 +133,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         const toastOptions: any = {
           description: latest.message,
           duration: 5000,
-          position: 'top-center',
+          position: "top-center",
           style: {
             background: '#1a1a2e',
             color: '#ffffff',
@@ -132,40 +144,47 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             maxWidth: '90vw',
           },
           cancel: {
-            label: 'Dismiss',
+            label: "Dismiss",
             onClick: () => {
-              webScoketStore.getState().markAsRead(latest.id);
-            }
-          }
-        };
+              webScoketStore.getState().markAsRead(latest.id)
+            },
+          },
+        }
 
         if (hasNavigationTarget) {
           toastOptions.action = {
-            label: 'View',
+            label: "View",
             onClick: () => {
               webScoketStore.getState().markAsRead(latest.id);
               if (latest.courseId) {
-                setSelectedCourseId(latest.courseId);
-                setActiveTab('courses');
+                setSelectedCourseId(latest.courseId)
+                setActiveTab("courses")
               } else if (latest.certificateId) {
-                const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests';
-                setPendingCertificateId(latest.certificateId);
-                setSelectedCertificateId(null);
-                setActiveTab(targetTab);
+                const targetTab =
+                  user_role === "learner"
+                    ? "japanese-certificates"
+                    : "certificates-requests"
+                setPendingCertificateId(latest.certificateId)
+                setSelectedCertificateId(null)
+                setActiveTab(targetTab)
               }
-            }
-          };
+            },
+          }
         }
 
-        toast[latest.type === 'error' ? 'error' :
-          latest.type === 'success' ? 'success' :
-            latest.type === 'warning' ? 'warning' : 'info'](
-              latest.title || 'Notification',
-              toastOptions
-            );
+        // Show toast with the message
+        toast[
+          latest.type === "error"
+            ? "error"
+            : latest.type === "success"
+              ? "success"
+              : latest.type === "warning"
+                ? "warning"
+                : "info"
+        ](latest.title || "Notification", toastOptions)
       }
     }
-  }, [notifications]);
+  }, [notifications])
 
   useEffect(() => {
     if (profile?.status === "default") {
@@ -191,7 +210,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     )
   }, [user_role, isProfileLoaded])
 
-  const totalUnreadCount = dbUnreadCount || 0;
+  //  Use database unread count
+  const totalUnreadCount = dbUnreadCount || 0
 
   useEffect(() => {
     if ((activeTab === 'japanese-certificates' || activeTab === 'certificates-requests') && pendingCertificateId) {
@@ -270,7 +290,7 @@ const handleExportTemplate = async () => {
       case "courses":
         return "Courses"
       case "current_target_level":
-        return "Current Target Level"
+        return "Target Level for JLPT"
       case "seminar":
         return "Seminar Management"
       case "exams":
@@ -282,9 +302,10 @@ const handleExportTemplate = async () => {
       case "japanese-certificates":
         return "Japanese Certificates"
       case "certificates-requests":
-        return "Certificates Requests"
+        return "Requested Certificates"
       case "feedback":
-        return "Learners' feedback"
+        // Dynamic label based on user role
+        return user_role === "learner" ? "Your Feedback" : "Learners' Feedback"
       case "exam_progress_report":
         return "Exam Progress Report"
       case "self_study_progress":
@@ -305,12 +326,12 @@ const handleExportTemplate = async () => {
       props: {
         onNavigateToCourse: (courseId: number) => {
           setSelectedCourseId(courseId)
-          setActiveTab('courses')
+          setActiveTab("courses")
         },
         onNavigateToCertificate: (certificateId: number) => {
           setSelectedCertificateId(certificateId)
-          setActiveTab('japanese-certificates')
-        }
+          setActiveTab("japanese-certificates")
+        },
       },
     },
     { value: "employees", component: EmployeeContainer },
@@ -319,7 +340,7 @@ const handleExportTemplate = async () => {
       component: CoursesContainer,
       props: {
         userRole: userRole,
-        selectedCourseId: selectedCourseId
+        selectedCourseId: selectedCourseId,
       },
     },
     { value: "seminar", component: SeminarContainer },
@@ -330,19 +351,22 @@ const handleExportTemplate = async () => {
     { value: "holidays", component: HolidaysContainer },
     { value: "audit_logs", component: AuditLogsContainer },
     { value: "exam_progress_report", component: ExamProgressReportContainer },
-    { value: "self_study_progress", component: SelfStudyProgessReportContainer },
+    {
+      value: "self_study_progress",
+      component: SelfStudyProgessReportContainer,
+    },
     {
       value: "japanese-certificates",
       component: JapaneseCertificateContainer,
       props: {
-        selectedCertificateId: selectedCertificateId
+        selectedCertificateId: selectedCertificateId,
       },
     },
     {
       value: "certificates-requests",
       component: CertificatesRequestsContainer,
       props: {
-        selectedCertificateId: selectedCertificateId
+        selectedCertificateId: selectedCertificateId,
       },
     },
   ]
@@ -412,9 +436,9 @@ const handleExportTemplate = async () => {
                     {totalUnreadCount > 0 && (
                       <Badge
                         variant="destructive"
-                        className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px] animate-pulse"
+                        className="absolute -top-2 -right-2 flex h-5 min-w-[20px] animate-pulse items-center justify-center px-1 text-[10px]"
                       >
-                        {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                        {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
                       </Badge>
                     )}
                   </Button>
@@ -422,7 +446,7 @@ const handleExportTemplate = async () => {
                     }`} />
                 </div>
 
-                {user_role !== "learner" &&
+                {user_role !== "learner" && (
                   <Button
                     variant="outline"
                     size="icon"
@@ -435,7 +459,7 @@ const handleExportTemplate = async () => {
                       className="h-5 w-5"
                     />
                   </Button>
-                }
+                )}
               </div>
             </div>
           </header>
@@ -462,6 +486,34 @@ const handleExportTemplate = async () => {
         onOpenChange={setSendMailOpen}
         defaultEmail={profile?.email || ""}
       />
+      {/* Forced Password Change Dialog for New Users */}
+      {/* <Dialog
+        open={isChangePasswordOpen}
+        onOpenChange={(open) => {
+          // Prevent closing if user status is still "default"
+          if (userData.status === "default" && !open) return
+          setIsChangePasswordOpen(open)
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-[425px]"
+          onPointerDownOutside={(e) => {
+            // Prevent closing by clicking outside if user status is still "default"
+            if (userData.status === "default") e.preventDefault()
+          }}
+          onEscapeKeyDown={(e) => {
+            // Prevent closing by pressing escape if user status is still "default"
+            if (userData.status === "default") e.preventDefault()
+          }}
+        >
+          <ChangePassword
+            flow="change"
+            step="old-password"
+            force={true}
+            onClose={() => setIsChangePasswordOpen(false)}
+          />
+        </DialogContent>
+      </Dialog> */}
     </>
   )
 }

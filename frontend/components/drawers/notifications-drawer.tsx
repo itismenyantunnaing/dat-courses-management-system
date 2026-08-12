@@ -12,7 +12,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { NotificationIcon } from "@hugeicons/core-free-icons"
+import { Cancel01Icon, NotificationIcon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { mainStore } from "@/store/mainStore"
@@ -41,7 +41,7 @@ type TabType = (typeof TABS)[number]["id"]
 interface NotificationsDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAction?: (action: 'view-course' | 'view-certificate', id: number) => void
+  onAction?: (action: "view-course" | "view-certificate", id: number) => void
 }
 
 export function NotificationsDrawer({
@@ -61,10 +61,10 @@ export function NotificationsDrawer({
     mark_NotificationRead,
     mark_AllNotificationsRead,
     isLoading,
-    profile
+    profile,
   } = mainStore()
 
-  const employeeId = profile?.id;
+  const employeeId = profile?.id
 
   // Load database notifications when drawer opens
   useEffect(() => {
@@ -76,7 +76,7 @@ export function NotificationsDrawer({
 
   const formatTime = (timestamp: string | Date) => {
     if (!timestamp) return "Just now"
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp
+    const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
@@ -106,12 +106,16 @@ export function NotificationsDrawer({
   }
 
   // Handle action click (View Course / View Certificate)
-  const handleActionClick = async (notification: Notification, actionType: 'view-course' | 'view-certificate', id: number) => {
+  const handleActionClick = async (
+    notification: Notification,
+    actionType: "view-course" | "view-certificate",
+    id: number
+  ) => {
     // Mark as read first if unread
     if (notification.unread) {
       await markNotificationAsRead(notification.id)
     }
-    
+
     // Close drawer and execute action
     onOpenChange(false)
     onAction?.(actionType, id)
@@ -124,7 +128,7 @@ export function NotificationsDrawer({
         await mark_AllNotificationsRead(employeeId)
         await fetch_Notifications(employeeId, false)
         await fetch_UnreadCount(employeeId)
-        console.log('✅ All notifications marked as read')
+        console.log("✅ All notifications marked as read")
       } catch (error) {
         console.error("Failed to mark all as read:", error)
       }
@@ -141,33 +145,35 @@ export function NotificationsDrawer({
   // Format notifications with proper unread status
   const allNotifications: Notification[] = useMemo(() => {
     if (!dbNotifications || dbNotifications.length === 0) return []
-    
-    return dbNotifications.map((notif: any) => {
-      let category: Notification["category"] = "all"
-      if (notif.type === "COURSE") category = "course"
-      else if (notif.type === "CERTIFICATE") category = "certificate"
-      else if (notif.type === "JLPT_EXAM") category = "jlpt"
 
-      return {
-        id: notif.id,
-        message: notif.message || "",
-        time: formatTime(notif.createdAt),
-        unread: !notif.isRead, // Use the read status from the store
-        type: notif.type,
-        category: category,
-        certificateId: notif.certificateId,
-        courseId: notif.courseId,
-      }
-    }).sort((a, b) => {
-      // Unread notifications come first
-      if (a.unread && !b.unread) return -1
-      if (!a.unread && b.unread) return 1
-      
-      // If both have same read status, sort by time (newest first)
-      const timeA = new Date(a.time).getTime() || 0
-      const timeB = new Date(b.time).getTime() || 0
-      return timeB - timeA
-    })
+    return dbNotifications
+      .map((notif: any) => {
+        let category: Notification["category"] = "all"
+        if (notif.type === "COURSE") category = "course"
+        else if (notif.type === "CERTIFICATE") category = "certificate"
+        else if (notif.type === "JLPT_EXAM") category = "jlpt"
+
+        return {
+          id: notif.id,
+          message: notif.message || "",
+          time: formatTime(notif.createdAt),
+          unread: !notif.isRead, // Use the read status from the store
+          type: notif.type,
+          category: category,
+          certificateId: notif.certificateId,
+          courseId: notif.courseId,
+        }
+      })
+      .sort((a, b) => {
+        // Unread notifications come first
+        if (a.unread && !b.unread) return -1
+        if (!a.unread && b.unread) return 1
+
+        // If both have same read status, sort by time (newest first)
+        const timeA = new Date(a.time).getTime() || 0
+        const timeB = new Date(b.time).getTime() || 0
+        return timeB - timeA
+      })
   }, [dbNotifications])
 
   const filteredNotifications = allNotifications.filter(
@@ -179,22 +185,25 @@ export function NotificationsDrawer({
     if (tabId === "all") {
       return unreadCount || 0
     }
-    return allNotifications.filter((n) => n.category === tabId && n.unread).length
+    return allNotifications.filter((n) => n.category === tabId && n.unread)
+      .length
   }
 
   if (isLoading && !dbNotifications?.length) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange} direction="right">
         <DrawerContent className="right-0 left-auto h-full w-[500px] rounded-l-2xl border-l border-gray-100 bg-white shadow-2xl">
-          <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <p className="mt-4 text-sm text-gray-400">Loading notifications...</p>
+          <div className="flex h-full flex-col items-center justify-center py-12 text-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+            <p className="mt-4 text-sm text-gray-400">
+              Loading notifications...
+            </p>
           </div>
         </DrawerContent>
       </Drawer>
     )
   }
-  
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent className="right-0 left-auto h-full w-[500px] rounded-l-2xl border-l border-gray-100 bg-white shadow-2xl">
@@ -217,6 +226,11 @@ export function NotificationsDrawer({
               </Button>
             )}
           </div>
+          <DrawerClose asChild>
+            <Button variant="ghost" size="icon">
+              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+            </Button>
+          </DrawerClose>
         </DrawerHeader>
 
         {/* Tabs */}
@@ -282,16 +296,16 @@ export function NotificationsDrawer({
             <div>
               {filteredNotifications.map((notification, index) => {
                 const isLast = index === filteredNotifications.length - 1
-                
+
                 // Determine the action type for this notification
-                let actionType: 'view-course' | 'view-certificate' | null = null
+                let actionType: "view-course" | "view-certificate" | null = null
                 let actionId: number | null = null
-                
+
                 if (notification.courseId) {
-                  actionType = 'view-course'
+                  actionType = "view-course"
                   actionId = notification.courseId
                 } else if (notification.certificateId) {
-                  actionType = 'view-certificate'
+                  actionType = "view-certificate"
                   actionId = notification.certificateId
                 }
 
@@ -299,7 +313,7 @@ export function NotificationsDrawer({
                   <div
                     key={notification.id}
                     className={cn(
-                      "group relative flex gap-3 px-5 py-4 transition-all duration-200 hover:bg-gray-50 cursor-pointer",
+                      "group relative flex cursor-pointer gap-3 px-5 py-4 transition-all duration-200 hover:bg-gray-50",
                       !isLast && "border-b border-gray-100",
                       !notification.unread && "hover:bg-gray-50/50"
                     )}
@@ -307,16 +321,20 @@ export function NotificationsDrawer({
                   >
                     {/* System Icon - changes color based on read/unread */}
                     <div className="flex-shrink-0 pt-0.5">
-                      <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center transition-colors duration-200",
-                        notification.unread ? "bg-green-100" : "bg-gray-100"
-                      )}>
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-200",
+                          notification.unread ? "bg-green-100" : "bg-gray-100"
+                        )}
+                      >
                         <HugeiconsIcon
                           icon={NotificationIcon}
                           strokeWidth={2}
                           className={cn(
                             "h-5 w-5 transition-colors duration-200",
-                            notification.unread ? "text-green-600" : "text-gray-400"
+                            notification.unread
+                              ? "text-green-600"
+                              : "text-gray-400"
                           )}
                         />
                       </div>
@@ -324,10 +342,14 @@ export function NotificationsDrawer({
 
                     {/* Content */}
                     <div className="min-w-0 flex-1">
-                      <p className={cn(
-                        "text-[15px] leading-snug transition-colors duration-200",
-                        notification.unread ? "text-gray-900 font-medium" : "text-gray-600"
-                      )}>
+                      <p
+                        className={cn(
+                          "text-[15px] leading-snug transition-colors duration-200",
+                          notification.unread
+                            ? "font-medium text-gray-900"
+                            : "text-gray-600"
+                        )}
+                      >
                         {notification.message}
                       </p>
 
@@ -343,10 +365,17 @@ export function NotificationsDrawer({
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleActionClick(notification, actionType, actionId)
+                              handleActionClick(
+                                notification,
+                                actionType,
+                                actionId
+                              )
                             }}
                           >
-                            View {actionType === 'view-course' ? 'Course' : 'Certificate'}
+                            View{" "}
+                            {actionType === "view-course"
+                              ? "Course"
+                              : "Certificate"}
                           </Button>
                         </div>
                       )}
@@ -355,7 +384,7 @@ export function NotificationsDrawer({
                     {/* Unread dot */}
                     {notification.unread && (
                       <div className="flex-shrink-0 pt-2">
-                        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                        <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
                       </div>
                     )}
                   </div>

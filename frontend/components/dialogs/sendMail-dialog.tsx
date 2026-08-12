@@ -38,23 +38,22 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  MailSend02Icon,
   PlusSignIcon,
-  CheckmarkCircle01Icon,
   CancelIcon,
   Building04Icon,
   BriefcaseIcon,
   UserGroupIcon,
-  UserIcon,
-  Setting06Icon,
-  Edit03Icon,
-  MailEdit02Icon,
+  RecoveryMailIcon,
+  Exchange01Icon,
+  Loading03Icon,
+  ReloadIcon,
 } from "@hugeicons/core-free-icons"
 import { SettingDialog } from "./setting-dialog"
 import { mainStore } from "@/store/mainStore"
 import type { Employee } from "@/types/employee"
+import { cn } from "@/lib/utils"
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
 interface SendMailDialogProps {
   open: boolean
@@ -63,6 +62,19 @@ interface SendMailDialogProps {
 }
 
 const ITEMS_PER_PAGE = 20
+
+// Spinner component using Hugeicons
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
 
 export function SendMailDialog({
   open,
@@ -76,8 +88,8 @@ export function SendMailDialog({
     systemConfig,
     fetch_SystemConfig,
     getToken,
-    getAuthHeaders
-  } = mainStore();
+    getAuthHeaders,
+  } = mainStore()
 
   // Local state
   const [selectedEmails, setSelectedEmails] = useState<string[]>([])
@@ -100,6 +112,7 @@ export function SendMailDialog({
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const commandListRef = useRef<HTMLDivElement>(null)
+  const commandInputRef = useRef<HTMLInputElement>(null)
   const isLoadingMoreRef = useRef(false)
   const searchQueryRef = useRef(searchQuery)
   const searchTabRef = useRef(searchTab)
@@ -142,10 +155,14 @@ export function SendMailDialog({
 
   // Helper to get unique categories
   const getUniqueDivisions = () => [
-    ...new Set(employee_data.map((emp: any) => emp.div_name || "").filter(Boolean)),
+    ...new Set(
+      employee_data.map((emp: any) => emp.div_name || "").filter(Boolean)
+    ),
   ]
   const getUniqueDepartments = () => [
-    ...new Set(employee_data.map((emp: any) => emp.dept_dat || "").filter(Boolean)),
+    ...new Set(
+      employee_data.map((emp: any) => emp.dept_dat || "").filter(Boolean)
+    ),
   ]
   const getUniqueTeams = () => [
     ...new Set(employee_data.map((emp: any) => emp.team || "").filter(Boolean)),
@@ -169,8 +186,6 @@ export function SendMailDialog({
     )
   }
 
-
-
   // Get all filtered data (for group selection and total count)
   const getAllFilteredData = useCallback(() => {
     let filteredData: any[] = []
@@ -193,7 +208,8 @@ export function SendMailDialog({
           .map((div) => ({
             type: "division",
             name: div,
-            count: employee_data.filter((emp: any) => emp.div_name === div).length,
+            count: employee_data.filter((emp: any) => emp.div_name === div)
+              .length,
             icon: Building04Icon,
             allSelected: isAllSelected(div, "division"),
           }))
@@ -207,7 +223,8 @@ export function SendMailDialog({
           .map((dept) => ({
             type: "department",
             name: dept,
-            count: employee_data.filter((emp: any) => emp.dept_dat === dept).length,
+            count: employee_data.filter((emp: any) => emp.dept_dat === dept)
+              .length,
             icon: BriefcaseIcon,
             allSelected: isAllSelected(dept, "department"),
           }))
@@ -287,12 +304,14 @@ export function SendMailDialog({
 
   const handleSelectCategory = (category: string, type: string) => {
     // Get ALL employees in the category (not just visible ones)
-    const employeesInCategory = employee_data.map(transformEmployee).filter((emp) => {
-      if (type === "division") return emp.division === category
-      if (type === "department") return emp.department === category
-      if (type === "team") return emp.team === category
-      return false
-    })
+    const employeesInCategory = employee_data
+      .map(transformEmployee)
+      .filter((emp) => {
+        if (type === "division") return emp.division === category
+        if (type === "department") return emp.department === category
+        if (type === "team") return emp.team === category
+        return false
+      })
 
     const allSelected = employeesInCategory.every((emp) =>
       selectedEmployees.some((selected) => selected.id === emp.id)
@@ -340,10 +359,10 @@ export function SendMailDialog({
   }
 
   const handleSend = async () => {
-    if (!isFormValid) return;
-    setIsSending(true);
+    if (!isFormValid) return
+    setIsSending(true)
     try {
-      const headers = getAuthHeaders ? getAuthHeaders() : {};
+      const headers = getAuthHeaders ? getAuthHeaders() : {}
       await fetch(`${apiUrl}/api/email/send`, {
         method: "POST",
         headers: {
@@ -355,32 +374,29 @@ export function SendMailDialog({
           subject,
           text: description,
         }),
-      });
-      onOpenChange(false);
+      })
+      onOpenChange(false)
       // Reset form
-      setSubject("");
-      setDescription("");
-      setSelectedEmployees([]);
-      setSelectedEmails([]);
+      setSubject("")
+      setDescription("")
+      setSelectedEmployees([])
+      setSelectedEmails([])
     } catch (error) {
-      console.error("Failed to send email:", error);
+      console.error("Failed to send email:", error)
     } finally {
-      setIsSending(false);
+      setIsSending(false)
     }
-  };
+  }
 
   // Fetch data when dialog opens
   useEffect(() => {
     if (open) {
-      setIsLoadingInitial(true);
-      Promise.all([
-        fetch_EmployeeData(),
-        fetch_SystemConfig()
-      ]).finally(() => {
-        setIsLoadingInitial(false);
-      });
+      setIsLoadingInitial(true)
+      Promise.all([fetch_EmployeeData(), fetch_SystemConfig()]).finally(() => {
+        setIsLoadingInitial(false)
+      })
     }
-  }, [open, fetch_EmployeeData, fetch_SystemConfig]);
+  }, [open, fetch_EmployeeData, fetch_SystemConfig])
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -416,12 +432,8 @@ export function SendMailDialog({
       setIsLoadingMore(true)
 
       setTimeout(() => {
-        setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, allFilteredData.length))
-        setIsLoadingMore(false)
-        setTimeout(() => {
-          isLoadingMoreRef.current = false
-        }, 100)
-      }, 300)
+        commandInputRef.current?.focus()
+      }, 100)
     }
   }, [hasMoreEntries, isLoading, allFilteredData.length, searchTab, searchQuery])
 
@@ -430,9 +442,7 @@ export function SendMailDialog({
     subject.trim() !== "" &&
     description.trim() !== ""
 
-  const handleSaveSettings = async (
-    updatedNotificationSettings: any
-  ) => {
+  const handleSaveSettings = async (updatedNotificationSettings: any) => {
     setIsLoading(true)
     try {
       setNotificationSettings(updatedNotificationSettings)
@@ -505,14 +515,7 @@ export function SendMailDialog({
           }}
         >
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="flex items-center gap-2">
-              <HugeiconsIcon
-                icon={MailSend02Icon}
-                strokeWidth={2}
-                className="h-5 w-5"
-              />
-              Send Mail
-            </DialogTitle>
+            <DialogTitle>Send Mail</DialogTitle>
             <DialogDescription>
               Compose and send an email to employees.
             </DialogDescription>
@@ -521,8 +524,10 @@ export function SendMailDialog({
           {isLoadingInitial ? (
             <div className="flex flex-1 items-center justify-center py-12">
               <div className="flex flex-col items-center gap-3">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                <p className="text-sm text-muted-foreground">Loading employees...</p>
+                <Spinner className="h-8 w-8 text-primary" />
+                <p className="text-sm text-muted-foreground">
+                  Loading employees...
+                </p>
               </div>
             </div>
           ) : (
@@ -535,7 +540,7 @@ export function SendMailDialog({
                     htmlFor="to-field"
                   >
                     <div>
-                      To <span className="text-destructive">*</span>
+                      Send to <span className="text-destructive">*</span>
                     </div>
                     <div className="flex justify-between">
                       <div className="flex-1" />
@@ -550,7 +555,7 @@ export function SendMailDialog({
                             strokeWidth={2}
                             className="h-4 w-4"
                           />
-                          Add
+                          Choose employee
                         </Button>
                         {selectedEmployees.length > 0 && (
                           <Button
@@ -580,16 +585,18 @@ export function SendMailDialog({
                           <Badge
                             key={employee.email}
                             variant="secondary"
-                            className="flex cursor-pointer items-center px-2 py-1.5 text-sm font-normal hover:bg-muted/80"
+                            className="flex max-w-[200px] cursor-pointer items-center gap-1 px-2 py-1.5 text-sm font-normal hover:bg-muted/80"
                             onClick={() => setViewAllOpen(true)}
                           >
-                            <span className="text-xs">{employee.email}</span>
+                            <span className="truncate text-xs">
+                              {employee.email}
+                            </span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleRemoveEmployee(employee.id)
                               }}
-                              className="rounded-full p-0.5 transition-colors hover:bg-muted"
+                              className="flex-shrink-0 rounded-full p-0.5 transition-colors hover:bg-muted"
                             >
                               <HugeiconsIcon
                                 icon={CancelIcon}
@@ -602,7 +609,7 @@ export function SendMailDialog({
                         {remainingCount > 0 && (
                           <Badge
                             variant="secondary"
-                            className="cursor-pointer px-3 py-1.5 text-sm font-medium hover:bg-muted/80"
+                            className="cursor-pointer px-3 py-1.5 text-xs font-normal hover:bg-muted"
                             onClick={() => setViewAllOpen(true)}
                           >
                             +{remainingCount} more
@@ -621,10 +628,14 @@ export function SendMailDialog({
 
                 {/* Email Provider - Display only with Change Default button */}
                 <Field>
-                  <FieldLabel htmlFor="email-provider">Email Provider</FieldLabel>
+                  <FieldLabel htmlFor="email-provider">
+                    Email Provider
+                  </FieldLabel>
                   <div className="flex items-center justify-between rounded-lg">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{defaultProvider.name}</span>
+                      <span className="font-medium">
+                        {defaultProvider.name}
+                      </span>
                       <span className="text-sm text-muted-foreground">
                         (will use {defaultProvider.email})
                       </span>
@@ -636,11 +647,11 @@ export function SendMailDialog({
                       className="text-muted-foreground hover:text-foreground"
                     >
                       <HugeiconsIcon
-                        icon={MailEdit02Icon}
+                        icon={ReloadIcon}
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
-                      Change mail
+                      Change to Outlook
                     </Button>
                   </div>
                 </Field>
@@ -693,11 +704,6 @@ export function SendMailDialog({
               onClick={handleSend}
               disabled={!isFormValid || isSending || isLoadingInitial}
             >
-              <HugeiconsIcon
-                icon={MailSend02Icon}
-                strokeWidth={2}
-                className="mr-2 h-4 w-4"
-              />
               {isSending ? "Sending..." : "Send Email"}
             </Button>
           </DialogFooter>
@@ -747,6 +753,7 @@ export function SendMailDialog({
               </TabsList>
             </Tabs>
             <CommandInput
+              ref={commandInputRef}
               placeholder={
                 searchTab === "employee"
                   ? "Search employees..."
@@ -768,7 +775,6 @@ export function SendMailDialog({
             {searchTab === "employee" && (
               <CommandGroup>
                 {filteredData.map((employee) => {
-
                   const isSelected = selectedEmployees.some(
                     (selected) => selected.id === employee.id
                   )
@@ -821,15 +827,12 @@ export function SendMailDialog({
 
                 {/* Loading more indicator for employee tab */}
                 {hasMoreEntries && (
-                  <div className="border-t pt-2 mt-2">
+                  <div className="mt-2 pt-2">
                     <div className="flex flex-col items-center gap-2 py-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></span>
+                      <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                        <Spinner className="h-4 w-4 text-primary" />
                         <span>Loading more employees...</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        Showing {filteredData.length} of {allFilteredData.length} employees
-                      </span>
                     </div>
                   </div>
                 )}
@@ -838,7 +841,8 @@ export function SendMailDialog({
                 {!hasMoreEntries && allFilteredData.length > 0 && searchQuery.trim().length === 0 && (
                   <div className="border-t pt-2 mt-2">
                     <p className="py-2 text-center text-xs text-muted-foreground">
-                      Showing all {allFilteredData.length} employees
+                      You've reached the end of the list (
+                      {allFilteredData.length} employees)
                     </p>
                   </div>
                 )}
@@ -856,7 +860,7 @@ export function SendMailDialog({
               </CommandGroup>
             )}
 
-            {/* Division Tab - Show Divisions with Count (no pagination) */}
+            {/* Division Tab - Show Divisions with Count */}
             {searchTab === "division" && (
               <CommandGroup>
                 {filteredData.map((division) => {
@@ -869,10 +873,12 @@ export function SendMailDialog({
                       }
                       className="group flex cursor-pointer items-center justify-between"
                     >
-                      <div className="flex flex-1 items-center gap-2">
-                        <span className="font-medium">{division.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({division.count} employees)
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="truncate font-medium">
+                          {division.name}
+                        </span>
+                        <span className="flex-shrink-0 text-xs text-muted-foreground">
+                          ({division.count} employee{division.count > 1 ? 's' : ''})
                         </span>
                       </div>
 
@@ -910,10 +916,12 @@ export function SendMailDialog({
                       }
                       className="group flex cursor-pointer items-center justify-between"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{department.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({department.count} employees)
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="truncate font-medium">
+                          {department.name}
+                        </span>
+                        <span className="flex-shrink-0 text-xs text-muted-foreground">
+                          ({department.count} employee{department.count > 1 ? 's' : ''})
                         </span>
                       </div>
 
@@ -949,10 +957,12 @@ export function SendMailDialog({
                       onSelect={() => handleSelectCategory(team.name, "team")}
                       className="group flex cursor-pointer items-center justify-between"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{team.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({team.count} employees)
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="truncate font-medium">
+                          {team.name}
+                        </span>
+                        <span className="flex-shrink-0 text-xs text-muted-foreground">
+                          ({team.count} employee{team.count > 1 ? 's' : ''})
                         </span>
                       </div>
                       <CommandShortcut>

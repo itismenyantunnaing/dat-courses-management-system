@@ -1,9 +1,13 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { Kbd } from "@/components/ui/kbd"
 import {
   Select,
   SelectContent,
@@ -16,11 +20,11 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
-import { DepartmentTable } from '@/components/examProgressTables/DepartmentTable'
-import { TeamTargetPlanTable } from '@/components/examProgressTables/TeamTargetPlanTable'
-import { TeamCommunicationTable } from '@/components/examProgressTables/TeamCommunicationTable'
-import { CommunicationCapabilityTable } from '@/components/examProgressTables/CommunicationCapabilityTable'
-import { TeamNoCertifiedTable } from '@/components/examProgressTables/TeamNoCertifiedTable'
+import { DepartmentTable } from "@/components/examProgressTables/DepartmentTable"
+import { TeamTargetPlanTable } from "@/components/examProgressTables/TeamTargetPlanTable"
+import { TeamCommunicationTable } from "@/components/examProgressTables/TeamCommunicationTable"
+import { CommunicationCapabilityTable } from "@/components/examProgressTables/CommunicationCapabilityTable"
+import { TeamNoCertifiedTable } from "@/components/examProgressTables/TeamNoCertifiedTable"
 import { Button } from "@/components/ui/button"
 import { Delete02Icon } from "@hugeicons/core-free-icons"
 import {
@@ -34,7 +38,12 @@ import {
 
 const STROKE_WIDTH = 2
 
-type ViewType = 'department' | 'teamTargetPlan' | 'teamCommunication' | 'teamCommunicationCapability' | 'teamNone'
+type ViewType =
+  | "department"
+  | "teamTargetPlan"
+  | "teamCommunication"
+  | "teamCommunicationCapability"
+  | "teamNone"
 
 export function ExamProgressReportContainer() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -55,6 +64,7 @@ export function ExamProgressReportContainer() {
   const [capabilityData, setCapabilityData] = useState<any[]>([])
 
   const isDataLoadedRef = useRef(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Get store methods
   const {
@@ -65,6 +75,20 @@ export function ExamProgressReportContainer() {
     getTargetDates,
   } = mainStore()
 
+  // Keyboard shortcut for search focus (Ctrl+K / Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+K (Windows/Linux) or Cmd+K (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
   // Transform data to pivot format for capability table
   const transformToPivot = (data: any[]) => {
     if (data.length === 0) return []
@@ -73,7 +97,12 @@ export function ExamProgressReportContainer() {
     let index = 0
     while (true) {
       const key = `current_comm_${index}`
-      if (key in firstRow) { commKeys.push(key); index++ } else { break; }
+      if (key in firstRow) {
+        commKeys.push(key)
+        index++
+      } else {
+        break
+      }
     }
     const pivotRows: any[] = []
     const fullTexts = [
@@ -84,11 +113,13 @@ export function ExamProgressReportContainer() {
       "Level 2 | G1: Email reading/writing/MS team chat, Daily team conversation",
       "Level 2 | G2: Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese",
       "Level 2 | G3: Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, Basic meeting participation",
-      "Level 3: Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal"
+      "Level 3: Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal",
     ]
     commKeys.forEach((key, idx) => {
-      let currentTotal = 0, target1Total = 0, target2Total = 0
-      data.forEach(row => {
+      let currentTotal = 0,
+        target1Total = 0,
+        target2Total = 0
+      data.forEach((row) => {
         currentTotal += (row[`current_comm_${idx}`] as number) || 0
         target1Total += (row[`target1_comm_${idx}`] as number) || 0
         target2Total += (row[`target2_comm_${idx}`] as number) || 0
@@ -98,7 +129,7 @@ export function ExamProgressReportContainer() {
         level_full: fullTexts[idx] || key,
         current: currentTotal,
         target1: target1Total,
-        target2: target2Total
+        target2: target2Total,
       })
     })
     return pivotRows
@@ -126,7 +157,12 @@ export function ExamProgressReportContainer() {
       setIsLoading(false)
     }
     loadAllData()
-  }, [fetch_AllReportData, getDeptWithCounts, getTeamWithCounts, getTargetDates])
+  }, [
+    fetch_AllReportData,
+    getDeptWithCounts,
+    getTeamWithCounts,
+    getTargetDates,
+  ])
 
   // Update selected count when rowSelection changes
   useEffect(() => {
@@ -145,18 +181,18 @@ export function ExamProgressReportContainer() {
   // Dynamic placeholder based on view type
   const getPlaceholder = () => {
     switch (viewType) {
-      case 'department':
-        return 'Search departments...'
-      case 'teamTargetPlan':
-        return 'Search teams...'
-      case 'teamCommunication':
-        return 'Search teams...'
-      case 'teamNone':
-        return 'Search teams...'
-      case 'teamCommunicationCapability':
-        return 'Search communication levels...'
+      case "department":
+        return "Search departments..."
+      case "teamTargetPlan":
+        return "Search teams..."
+      case "teamCommunication":
+        return "Search teams..."
+      case "teamNone":
+        return "Search teams..."
+      case "teamCommunicationCapability":
+        return "Search communication levels..."
       default:
-        return 'Search...'
+        return "Search..."
     }
   }
 
@@ -167,20 +203,22 @@ export function ExamProgressReportContainer() {
   const handleDeleteConfirm = async () => {
     setIsDeleting(true)
     try {
-      const selectedIds = Object.keys(rowSelection).filter(key => rowSelection[key])
+      const selectedIds = Object.keys(rowSelection).filter(
+        (key) => rowSelection[key]
+      )
 
       // Delete from the appropriate data source based on view type
       switch (viewType) {
-        case 'department': {
+        case "department": {
           const newData = deptData.filter((item) => {
             return !selectedIds.includes(item.dept_name)
           })
           setDeptData(newData)
           break
         }
-        case 'teamTargetPlan':
-        case 'teamCommunication':
-        case 'teamNone': {
+        case "teamTargetPlan":
+        case "teamCommunication":
+        case "teamNone": {
           const newData = teamData.filter((item) => {
             return !selectedIds.includes(item.team_name)
           })
@@ -190,7 +228,7 @@ export function ExamProgressReportContainer() {
           setCapabilityData(newCapData)
           break
         }
-        case 'teamCommunicationCapability': {
+        case "teamCommunicationCapability": {
           const newData = capabilityData.filter((item) => {
             return !selectedIds.includes(item.id)
           })
@@ -201,7 +239,6 @@ export function ExamProgressReportContainer() {
 
       setRowSelection({})
       setDeleteDialogOpen(false)
-
     } catch (error) {
       console.error("Delete failed:", error)
     } finally {
@@ -212,13 +249,13 @@ export function ExamProgressReportContainer() {
   // Get current data based on view type
   const getCurrentData = () => {
     switch (viewType) {
-      case 'department':
+      case "department":
         return deptData
-      case 'teamTargetPlan':
-      case 'teamCommunication':
-      case 'teamNone':
+      case "teamTargetPlan":
+      case "teamCommunication":
+      case "teamNone":
         return teamData
-      case 'teamCommunicationCapability':
+      case "teamCommunicationCapability":
         return capabilityData
       default:
         return []
@@ -244,54 +281,72 @@ export function ExamProgressReportContainer() {
       <div className="flex flex-col gap-4 py-6">
         <CardContent className="px-4">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative max-w-sm flex-1">
-              <HugeiconsIcon
-                icon={Search01Icon}
-                strokeWidth={STROKE_WIDTH}
-                className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-              />
-              <Input
+            <InputGroup className="max-w-sm flex-1">
+              <InputGroupInput
+                ref={searchInputRef}
                 placeholder={getPlaceholder()}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
               />
-            </div>
+              <InputGroupAddon>
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  strokeWidth={STROKE_WIDTH}
+                  className="h-4 w-4 text-muted-foreground"
+                />
+              </InputGroupAddon>
+              <InputGroupAddon align="inline-end">
+                <Kbd>Ctrl + K</Kbd>
+              </InputGroupAddon>
+            </InputGroup>
+
             <div className="flex gap-2">
               {selectedCount > 0 && (
                 <Button variant="destructive" onClick={handleDeleteClick}>
-                  <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="mr-1 h-4 w-4" />
-                  Delete ({selectedCount}) row{selectedCount > 1 ? 's' : ''}
+                  <HugeiconsIcon
+                    icon={Delete02Icon}
+                    strokeWidth={2}
+                    className="mr-1 h-4 w-4"
+                  />
+                  Delete ({selectedCount}) row{selectedCount > 1 ? "s" : ""}
                 </Button>
               )}
 
               {/* Show department filter only for team views that support it (exclude Communication Capability) */}
-              {(viewType !== 'department' && viewType !== 'teamCommunicationCapability') && deptData && deptData.length > 0 && (
-                <Select
-                  value={selectedDeptId?.toString() || "all"}
-                  onValueChange={(value) => {
-                    setSelectedDeptId(value === "all" ? null : Number(value))
-                    setCurrentPage(1)
-                    setRowSelection({})
-                  }}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="All Departments" />
-                  </SelectTrigger>
-                  <SelectContent align="center" sideOffset={5}>
-                    <SelectGroup>
-                      <SelectItem value="all">All Departments</SelectItem>
-                      {deptData
-                        .filter((dept) => dept.id !== null && dept.id !== undefined)
-                        .map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id.toString()}>
-                            {dept.dept_name}
-                          </SelectItem>
-                        ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              )}
+              {viewType !== "department" &&
+                viewType !== "teamCommunicationCapability" &&
+                deptData &&
+                deptData.length > 0 && (
+                  <Select
+                    value={selectedDeptId?.toString() || "all"}
+                    onValueChange={(value) => {
+                      setSelectedDeptId(value === "all" ? null : Number(value))
+                      setCurrentPage(1)
+                      setRowSelection({})
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All Departments" />
+                    </SelectTrigger>
+                    <SelectContent align="center" sideOffset={5}>
+                      <SelectGroup>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {deptData
+                          .filter(
+                            (dept) => dept.id !== null && dept.id !== undefined
+                          )
+                          .map((dept) => (
+                            <SelectItem
+                              key={dept.id}
+                              value={dept.id.toString()}
+                            >
+                              {dept.dept_name}
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
 
               <Select value={viewType} onValueChange={handleViewChange}>
                 <SelectTrigger className="w-[220px]">
@@ -300,17 +355,25 @@ export function ExamProgressReportContainer() {
                 <SelectContent align="center" sideOffset={5}>
                   <SelectGroup>
                     <SelectItem value="department">By Department</SelectItem>
-                    <SelectItem value="teamTargetPlan">By Team (Target Plan)</SelectItem>
-                    <SelectItem value="teamCommunication">By Team (Communication Level)</SelectItem>
-                    <SelectItem value="teamNone">By Team (No Certified Members)</SelectItem>
-                    <SelectItem value="teamCommunicationCapability">Communication Capability</SelectItem>
+                    <SelectItem value="teamTargetPlan">
+                      By Team (Target Plan)
+                    </SelectItem>
+                    <SelectItem value="teamCommunication">
+                      By Team (Communication Level)
+                    </SelectItem>
+                    <SelectItem value="teamNone">
+                      By Team (No Certified Members)
+                    </SelectItem>
+                    <SelectItem value="teamCommunicationCapability">
+                      Communication Capability
+                    </SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {viewType === 'department' && (
+          {viewType === "department" && (
             <DepartmentTable
               key={`dept-${viewType}`}
               searchTerm={searchTerm}
@@ -324,7 +387,7 @@ export function ExamProgressReportContainer() {
             />
           )}
 
-          {viewType === 'teamTargetPlan' && (
+          {viewType === "teamTargetPlan" && (
             <TeamTargetPlanTable
               key={`team-${viewType}`}
               searchTerm={searchTerm}
@@ -339,7 +402,7 @@ export function ExamProgressReportContainer() {
             />
           )}
 
-          {viewType === 'teamCommunication' && (
+          {viewType === "teamCommunication" && (
             <TeamCommunicationTable
               key={`comm-${viewType}`}
               searchTerm={searchTerm}
@@ -354,7 +417,7 @@ export function ExamProgressReportContainer() {
             />
           )}
 
-          {viewType === 'teamCommunicationCapability' && (
+          {viewType === "teamCommunicationCapability" && (
             <CommunicationCapabilityTable
               key={`cap-${viewType}`}
               searchTerm={searchTerm}
@@ -369,7 +432,7 @@ export function ExamProgressReportContainer() {
             />
           )}
 
-          {viewType === 'teamNone' && (
+          {viewType === "teamNone" && (
             <TeamNoCertifiedTable
               key={`none-${viewType}`}
               searchTerm={searchTerm}
@@ -396,10 +459,17 @@ export function ExamProgressReportContainer() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
               {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>

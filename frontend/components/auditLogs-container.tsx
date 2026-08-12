@@ -9,10 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -200,7 +197,15 @@ export function AuditLogsContainer() {
 
   // Initial fetch
   useEffect(() => {
-    fetch_AuditLogsWithFilters(undefined, undefined, undefined, undefined, undefined, 0, itemsPerPage)
+    fetch_AuditLogsWithFilters(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      0,
+      itemsPerPage
+    )
   }, [])
 
   // Check if any filters are active
@@ -298,6 +303,9 @@ export function AuditLogsContainer() {
     startIndex,
     startIndex + itemsPerPage
   )
+
+  // Check if there is any data to display
+  const hasData = filteredData.length > 0
 
   // Handle items per page change
   const handleItemsPerPageChange = (value: string) => {
@@ -416,7 +424,15 @@ export function AuditLogsContainer() {
       setAuditLogs((prev) => prev.filter((log) => log.id !== logToDelete.id))
       setDeleteDialogOpen(false)
       setLogToDelete(null)
-      await fetch_AuditLogsWithFilters(undefined, undefined, undefined, undefined, undefined, currentPage - 1, itemsPerPage)
+      await fetch_AuditLogsWithFilters(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        currentPage - 1,
+        itemsPerPage
+      )
     } catch (error) {
       console.error("Failed to delete log:", error)
     } finally {
@@ -438,7 +454,15 @@ export function AuditLogsContainer() {
       )
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
-      await fetch_AuditLogsWithFilters(undefined, undefined, undefined, undefined, undefined, currentPage - 1, itemsPerPage)
+      await fetch_AuditLogsWithFilters(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        currentPage - 1,
+        itemsPerPage
+      )
     } catch (error) {
       console.error("Failed to delete logs:", error)
     } finally {
@@ -531,7 +555,7 @@ export function AuditLogsContainer() {
                 />
               </InputGroupAddon>
               <InputGroupAddon align="inline-end">
-                <Kbd>Ctrl + K</Kbd>
+                <Kbd>⌘K</Kbd>
               </InputGroupAddon>
             </InputGroup>
 
@@ -738,9 +762,6 @@ export function AuditLogsContainer() {
                   <BorderedTableHead className="align-middle whitespace-nowrap">
                     Timestamp
                   </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    Actions
-                  </BorderedTableHead>
                 </TableRow>
               </TableHeader>
 
@@ -748,7 +769,7 @@ export function AuditLogsContainer() {
                 {paginatedData.length === 0 && !isLoading ? (
                   <TableRow>
                     <BorderedTableCell
-                      colSpan={11}
+                      colSpan={10}
                       className="py-8 text-center text-muted-foreground"
                     >
                       {searchTerm || hasActiveFilters ? (
@@ -815,8 +836,13 @@ export function AuditLogsContainer() {
                                 </span>
                                 {log.employeeRole && (
                                   <>
-                                    <span className="text-xs text-muted-foreground">·</span>
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                    <span className="text-xs text-muted-foreground">
+                                      ·
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className="h-4 px-1.5 py-0 text-[10px]"
+                                    >
                                       {log.employeeRole}
                                     </Badge>
                                   </>
@@ -831,7 +857,7 @@ export function AuditLogsContainer() {
                           </Badge>
                         </BorderedTableCell>
                         <BorderedTableCell selected={isSelected}>
-                          <div className="text-sm max-w-[200px] truncate">
+                          <div className="max-w-[200px] truncate text-sm">
                             {log.description}
                           </div>
                         </BorderedTableCell>
@@ -863,26 +889,6 @@ export function AuditLogsContainer() {
                           selected={isSelected}
                         >
                           {formatDate(log.createdAt)}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          selected={isSelected}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleIndividualDelete(log)
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
-                          >
-                            <HugeiconsIcon
-                              icon={Delete02Icon}
-                              strokeWidth={2}
-                              className="h-4 w-4"
-                            />
-                          </Button>
                         </BorderedTableCell>
                       </TableRow>
                     )
@@ -940,85 +946,93 @@ export function AuditLogsContainer() {
             </div>
           )}
 
-          {/* Pagination */}
-          <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-            <Field orientation="horizontal" className="w-fit">
-              <FieldLabel htmlFor="select-rows-per-page">
-                Rows per page
-              </FieldLabel>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={handleItemsPerPageChange}
-                disabled={isLoading}
-              >
-                <SelectTrigger className="w-15" id="select-rows-per-page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <div className="text-sm text-muted-foreground">
-              Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
-              {filteredData.length} logs
-            </div>
-            <Pagination className="mx-0 w-auto">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handlePrevious()
-                    }}
-                    className={
-                      currentPage === 1 || filteredData.length === 0 || isLoading
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-                {getPageNumbers(totalPages, currentPage).map((page, index) => (
-                  <PaginationItem key={index}>
-                    {page === "..." ? (
-                      <span className="px-2">...</span>
-                    ) : (
-                      <PaginationLink
-                        href="#"
-                        isActive={currentPage === page}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          handleGoToPage(page as number)
-                        }}
-                      >
-                        {page}
-                      </PaginationLink>
-                    )}
+          {/* Pagination - Only show when there's data */}
+          {hasData && (
+            <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+              <Field orientation="horizontal" className="w-fit">
+                <FieldLabel htmlFor="select-rows-per-page">
+                  Rows per page
+                </FieldLabel>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={handleItemsPerPageChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="w-15" id="select-rows-per-page">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
+                {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
+                {filteredData.length} logs
+              </div>
+              <Pagination className="mx-0 w-auto">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        handlePrevious()
+                      }}
+                      className={
+                        currentPage === 1 ||
+                        filteredData.length === 0 ||
+                        isLoading
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
                   </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handleNext()
-                    }}
-                    className={
-                      currentPage === totalPages || filteredData.length === 0 || isLoading
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+                  {getPageNumbers(totalPages, currentPage).map(
+                    (page, index) => (
+                      <PaginationItem key={index}>
+                        {page === "..." ? (
+                          <span className="px-2">...</span>
+                        ) : (
+                          <PaginationLink
+                            href="#"
+                            isActive={currentPage === page}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleGoToPage(page as number)
+                            }}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    )
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        handleNext()
+                      }}
+                      className={
+                        currentPage === totalPages ||
+                        filteredData.length === 0 ||
+                        isLoading
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </div>
 
@@ -1031,8 +1045,8 @@ export function AuditLogsContainer() {
               Are you sure you want to delete this audit log entry?
               <br />
               <span className="font-semibold">
-                {logToDelete?.employeeName || "Unknown"} - {logToDelete?.action} on{" "}
-                {logToDelete?.module}
+                {logToDelete?.employeeName || "Unknown"} - {logToDelete?.action}{" "}
+                on {logToDelete?.module}
               </span>
               <br />
               This action cannot be undone.

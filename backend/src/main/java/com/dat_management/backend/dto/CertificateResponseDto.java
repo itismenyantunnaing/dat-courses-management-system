@@ -16,6 +16,8 @@ public class CertificateResponseDto {
     private String profilePhotoPath; 
     private String email;
     private String teamName;
+    private String divisionName;     
+    private String departmentName;   
     private String certificateType;
     private String japaneseLevel;
     private String filePath;

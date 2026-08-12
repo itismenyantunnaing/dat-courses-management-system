@@ -32,18 +32,35 @@ export function EditFeedbackDialog({
 }: EditFeedbackDialogProps) {
   const [subject, setSubject] = useState("")
   const [description, setDescription] = useState("")
+  const [originalSubject, setOriginalSubject] = useState("")
+  const [originalDescription, setOriginalDescription] = useState("")
 
   useEffect(() => {
     if (feedback) {
-      setSubject(feedback.subject || "")
-      setDescription(feedback.description || "")
+      const newSubject = feedback.subject || ""
+      const newDescription = feedback.description || ""
+      setSubject(newSubject)
+      setDescription(newDescription)
+      setOriginalSubject(newSubject)
+      setOriginalDescription(newDescription)
     }
   }, [feedback])
 
+  // Check if there are any changes
+  const hasChanges =
+    subject !== originalSubject || description !== originalDescription
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!feedback?.id) return
+    if (!feedback?.id || !hasChanges) return
     await onSubmit(feedback.id, subject, description)
+  }
+
+  // Reset to original values when canceling
+  const handleCancel = () => {
+    setSubject(originalSubject)
+    setDescription(originalDescription)
+    onOpenChange(false)
   }
 
   return (
@@ -84,16 +101,21 @@ export function EditFeedbackDialog({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={handleCancel}
               disabled={isLoading}
+              className="flex-1"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              className="flex-1"
+              type="submit"
+              disabled={isLoading || !hasChanges}
+            >
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

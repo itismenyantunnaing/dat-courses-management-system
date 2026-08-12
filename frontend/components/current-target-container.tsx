@@ -894,6 +894,9 @@ export function CurrentTargetContainer({
   // Determine if selection bar is active
   const isSelectionActive = selectedCount > 0
 
+  // Check if there is any data to display
+  const hasData = filteredEmployees.length > 0
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -925,11 +928,32 @@ export function CurrentTargetContainer({
                   />
                 </InputGroupAddon>
                 <InputGroupAddon align="inline-end">
-                  <Kbd>Ctrl + K</Kbd>
+                  <Kbd>⌘K</Kbd>
                 </InputGroupAddon>
               </InputGroup>
             </div>
             <div className="flex gap-2">
+              {/* Edit Target Dates Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={handleEditTargetDates}
+                  >
+                    <HugeiconsIcon
+                      icon={CalendarSyncIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit Target Dates</p>
+                </TooltipContent>
+              </Tooltip>
+
               {/* Property Visibility Dropdown */}
               <DropdownMenu>
                 <Tooltip>
@@ -963,27 +987,6 @@ export function CurrentTargetContainer({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Edit Target Dates Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={handleEditTargetDates}
-                  >
-                    <HugeiconsIcon
-                      icon={CalendarSyncIcon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Edit Target Dates</p>
-                </TooltipContent>
-              </Tooltip>
-
               {/* Filter Dropdown with indicator */}
               <DropdownMenu>
                 <Tooltip>
@@ -1011,7 +1014,6 @@ export function CurrentTargetContainer({
                 </Tooltip>
 
                 <DropdownMenuContent className="w-80">
-
                   {/* JLPT / NAT Test */}
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
@@ -1789,88 +1791,92 @@ export function CurrentTargetContainer({
             </>
           )}
 
-          <div
-            className={cn(
-              "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-            )}
-          >
-            <Field orientation="horizontal" className="w-fit">
-              <FieldLabel htmlFor="select-rows-per-page">
-                Rows per page
-              </FieldLabel>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={handleItemsPerPageChange}
-              >
-                <SelectTrigger className="w-18" id="select-rows-per-page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    <SelectItem value="15">15</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <div className="text-sm text-muted-foreground">
-              Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredEmployees.length)} of{" "}
-              {filteredEmployees.length} employees with Japanese language data
-            </div>
-            <Pagination className="mx-0 w-auto">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handlePrevious()
-                    }}
-                    className={
-                      currentPage === 1 || filteredEmployees.length === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-                {getPageNumbers().map((page, index) => (
-                  <PaginationItem key={index}>
-                    {page === "..." ? (
-                      <span className="px-2">...</span>
-                    ) : (
-                      <PaginationLink
-                        href="#"
-                        isActive={currentPage === page}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          setCurrentPage(page as number)
-                        }}
-                      >
-                        {page}
-                      </PaginationLink>
-                    )}
+          {/* Pagination - Only show when there's data */}
+          {hasData && (
+            <div
+              className={cn(
+                "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+              )}
+            >
+              <Field orientation="horizontal" className="w-fit">
+                <FieldLabel htmlFor="select-rows-per-page">
+                  Rows per page
+                </FieldLabel>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={handleItemsPerPageChange}
+                >
+                  <SelectTrigger className="w-18" id="select-rows-per-page">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      <SelectItem value="15">15</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
+                {Math.min(startIndex + itemsPerPage, filteredEmployees.length)}{" "}
+                of {filteredEmployees.length} employees with Japanese language
+                data
+              </div>
+              <Pagination className="mx-0 w-auto">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        handlePrevious()
+                      }}
+                      className={
+                        currentPage === 1 || filteredEmployees.length === 0
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
                   </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handleNext()
-                    }}
-                    className={
-                      currentPage === totalPages ||
-                      filteredEmployees.length === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+                  {getPageNumbers().map((page, index) => (
+                    <PaginationItem key={index}>
+                      {page === "..." ? (
+                        <span className="px-2">...</span>
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          isActive={currentPage === page}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setCurrentPage(page as number)
+                          }}
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        handleNext()
+                      }}
+                      className={
+                        currentPage === totalPages ||
+                        filteredEmployees.length === 0
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </div>
 

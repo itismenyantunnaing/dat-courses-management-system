@@ -21,6 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Pagination,
@@ -43,6 +51,7 @@ import {
   CalendarAdd01Icon,
   Cancel01Icon,
   Loading03Icon,
+  Calendar03Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -369,6 +378,12 @@ export function HolidaysContainer({
       (holiday) => rowSelection[holiday.id?.toString() ?? ""]
     )
 
+  // Check if there is any data to display
+  const hasData = filteredHolidays.length > 0
+
+  // Check if there are any holidays at all (not filtered)
+  const hasAnyHolidays = holiday_data.length > 0
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -386,259 +401,301 @@ export function HolidaysContainer({
     <>
       <div className="flex flex-col gap-4 py-4">
         <CardContent className="px-4">
-          {/* Search and New Button */}
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <InputGroup className="max-w-sm">
-              <InputGroupInput
-                ref={searchInputRef}
-                placeholder={searchPlaceholder}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <InputGroupAddon>
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  strokeWidth={2}
-                  className="h-4 w-4 text-muted-foreground"
+          {/* Search and New Button - Only show when there are holidays */}
+          {hasAnyHolidays && (
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <InputGroup className="max-w-sm">
+                <InputGroupInput
+                  ref={searchInputRef}
+                  placeholder={searchPlaceholder}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
-              </InputGroupAddon>
-              <InputGroupAddon align="inline-end">
-                <Kbd>Ctrl + K</Kbd>
-              </InputGroupAddon>
-            </InputGroup>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="default"
-                onClick={handleNewHoliday}
-                className="bg-primary hover:bg-primary/90"
-              >
-                <HugeiconsIcon icon={CalendarAdd01Icon} strokeWidth={2} />
-                New
-              </Button>
+                <InputGroupAddon>
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    strokeWidth={2}
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                </InputGroupAddon>
+                <InputGroupAddon align="inline-end">
+                  <Kbd>⌘K</Kbd>
+                </InputGroupAddon>
+              </InputGroup>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="default"
+                  onClick={handleNewHoliday}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <HugeiconsIcon icon={CalendarAdd01Icon} strokeWidth={2} />
+                  New Holiday
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Table */}
-          <div
-            className={cn("relative overflow-x-auto rounded-md border-y")}
-            style={{ zIndex: 1 }}
-          >
-            <Table key={refreshKey}>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <BorderedTableHead className="w-10 align-middle whitespace-nowrap">
-                    <Checkbox
-                      checked={areAllFilteredSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all"
-                    />
-                  </BorderedTableHead>
-                  {holidayHeaders.slice(1).map((header) => (
-                    <BorderedTableHead
-                      key={header.field}
-                      className="align-middle whitespace-nowrap"
-                    >
-                      {header.header_name}
-                    </BorderedTableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {paginatedHolidays.length === 0 ? (
-                  <TableRow>
-                    <BorderedTableCell
-                      colSpan={totalColumns}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      No holidays found
-                    </BorderedTableCell>
-                  </TableRow>
-                ) : (
-                  paginatedHolidays.map((holiday, index) => {
-                    const isSelected =
-                      !!holiday.id && !!rowSelection[holiday.id.toString()]
-                    return (
-                      <TableRow
-                        key={holiday.id}
-                        className="cursor-pointer transition-colors hover:bg-muted/50"
-                        onClick={() => handleRowClick(holiday)}
-                      >
-                        <BorderedTableCell
-                          className="w-10"
-                          selected={isSelected}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() =>
-                              handleRowSelect(holiday.id?.toString() ?? "")
-                            }
-                            aria-label={`Select ${holiday.holidayName}`}
-                          />
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {index + 1}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="font-medium"
-                          selected={isSelected}
-                        >
-                          {holiday.holidayName}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="text-sm"
-                          selected={isSelected}
-                        >
-                          {new Date(holiday.holidayDate).toLocaleDateString()}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {getDayName(holiday.holidayDate)}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          <Badge
-                            className={getStatusBadge(holiday.holidayDate)}
-                          >
-                            {getStatusLabel(holiday.holidayDate)}
-                          </Badge>
-                        </BorderedTableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Selection Bar */}
-          {isSelectionActive && (
+          {/* Table - Only show when there's data */}
+          {hasData ? (
             <>
-              <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
-                <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={areAllFilteredSelected}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
-                      />
-                      <span className="text-sm font-medium whitespace-nowrap">
-                        {selectedCount} holiday
-                        {selectedCount > 1 ? "s are" : " is"} selected
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleBulkDeleteClick}
-                        disabled={isDeleting}
-                      >
-                        <HugeiconsIcon
-                          icon={Delete02Icon}
-                          strokeWidth={2}
-                          className="mr-1 h-4 w-4"
+              <div
+                className={cn("relative overflow-x-auto rounded-md border-y")}
+                style={{ zIndex: 1 }}
+              >
+                <Table key={refreshKey}>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <BorderedTableHead className="w-10 align-middle whitespace-nowrap">
+                        <Checkbox
+                          checked={areAllFilteredSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
                         />
-                        Delete
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleClearSelection}
-                        className="px-2"
-                      >
-                        <HugeiconsIcon
-                          icon={Cancel01Icon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
+                      </BorderedTableHead>
+                      {holidayHeaders.slice(1).map((header) => (
+                        <BorderedTableHead
+                          key={header.field}
+                          className="align-middle whitespace-nowrap"
+                        >
+                          {header.header_name}
+                        </BorderedTableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {paginatedHolidays.map((holiday, index) => {
+                      const isSelected =
+                        !!holiday.id && !!rowSelection[holiday.id.toString()]
+                      return (
+                        <TableRow
+                          key={holiday.id}
+                          className="cursor-pointer transition-colors hover:bg-muted/50"
+                          onClick={() => handleRowClick(holiday)}
+                        >
+                          <BorderedTableCell
+                            className="w-10"
+                            selected={isSelected}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() =>
+                                handleRowSelect(holiday.id?.toString() ?? "")
+                              }
+                              aria-label={`Select ${holiday.holidayName}`}
+                            />
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            {startIndex + index + 1}
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            className="font-medium"
+                            selected={isSelected}
+                          >
+                            {holiday.holidayName}
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            className="text-sm"
+                            selected={isSelected}
+                          >
+                            {new Date(holiday.holidayDate).toLocaleDateString()}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            {getDayName(holiday.holidayDate)}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            <Badge
+                              className={getStatusBadge(holiday.holidayDate)}
+                            >
+                              {getStatusLabel(holiday.holidayDate)}
+                            </Badge>
+                          </BorderedTableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Selection Bar */}
+              {isSelectionActive && (
+                <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
+                  <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={areAllFilteredSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
                         />
-                      </Button>
+                        <span className="text-sm font-medium whitespace-nowrap">
+                          {selectedCount} holiday
+                          {selectedCount > 1 ? "s are" : " is"} selected
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleBulkDeleteClick}
+                          disabled={isDeleting}
+                        >
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            strokeWidth={2}
+                            className="mr-1 h-4 w-4"
+                          />
+                          Delete
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearSelection}
+                          className="px-2"
+                        >
+                          <HugeiconsIcon
+                            icon={Cancel01Icon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </>
-          )}
+              )}
 
-          {/* Pagination */}
-          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Field orientation="horizontal" className="w-fit">
-              <FieldLabel htmlFor="select-rows-per-page">
-                Rows per page
-              </FieldLabel>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={handleItemsPerPageChange}
-              >
-                <SelectTrigger className="w-15" id="select-rows-per-page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    <SelectItem value="15">15</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <div className="text-sm text-muted-foreground">
-              Showing {filteredHolidays.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredHolidays.length)} of{" "}
-              {filteredHolidays.length} holidays
-            </div>
-            <Pagination className="mx-0 w-auto">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handlePrevious()
-                    }}
-                    className={
-                      currentPage === 1 || filteredHolidays.length === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-                {getPageNumbers().map((page, index) => (
-                  <PaginationItem key={index}>
-                    {page === "..." ? (
-                      <span className="px-2">...</span>
-                    ) : (
-                      <PaginationLink
+              {/* Pagination - Only show when there's data */}
+              <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="select-rows-per-page">
+                    Rows per page
+                  </FieldLabel>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={handleItemsPerPageChange}
+                  >
+                    <SelectTrigger className="w-15" id="select-rows-per-page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectGroup>
+                        <SelectItem value="15">15</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredHolidays.length === 0 ? 0 : startIndex + 1}{" "}
+                  to{" "}
+                  {Math.min(startIndex + itemsPerPage, filteredHolidays.length)}{" "}
+                  of {filteredHolidays.length} holidays
+                </div>
+                <Pagination className="mx-0 w-auto">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
                         href="#"
-                        isActive={currentPage === page}
                         onClick={(e) => {
                           e.preventDefault()
-                          setCurrentPage(page as number)
+                          handlePrevious()
                         }}
-                      >
-                        {page}
-                      </PaginationLink>
-                    )}
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handleNext()
-                    }}
-                    className={
-                      currentPage === totalPages ||
-                      filteredHolidays.length === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
+                        className={
+                          currentPage === 1 || filteredHolidays.length === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                    {getPageNumbers().map((page, index) => (
+                      <PaginationItem key={index}>
+                        {page === "..." ? (
+                          <span className="px-2">...</span>
+                        ) : (
+                          <PaginationLink
+                            href="#"
+                            isActive={currentPage === page}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setCurrentPage(page as number)
+                            }}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleNext()
+                        }}
+                        className={
+                          currentPage === totalPages ||
+                          filteredHolidays.length === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </>
+          ) : (
+            // Empty state - like feedback container
+            <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon
+                    icon={Calendar03Icon}
+                    strokeWidth={2}
+                    className="h-12 w-12 text-muted-foreground"
                   />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+                </EmptyMedia>
+                <EmptyTitle>
+                  {searchTerm ? "No Matching Holidays" : "No Holiday"}
+                </EmptyTitle>
+                <EmptyDescription className="text-center text-pretty">
+                  {searchTerm ? (
+                    <>Try adjusting your search.</>
+                  ) : (
+                    "Add holidays to exclude off-days from your course schedules."
+                  )}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {searchTerm ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("")
+                    }}
+                  >
+                    Clear Search
+                  </Button>
+                ) : (
+                  <Button
+                    variant="default"
+                    onClick={handleNewHoliday}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <HugeiconsIcon
+                      icon={CalendarAdd01Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                    Add Holiday
+                  </Button>
+                )}
+              </EmptyContent>
+            </Empty>
+          )}
         </CardContent>
       </div>
 

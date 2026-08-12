@@ -18,6 +18,39 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import { Kbd } from "@/components/ui/kbd"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
@@ -27,6 +60,11 @@ import {
   FilterMailIcon,
   Delete02Icon,
   CommentAdd01Icon,
+  ChatFeedback01Icon,
+  ListViewIcon,
+  GridViewIcon,
+  MessageEdit01Icon,
+  Message01Icon,
 } from "@hugeicons/core-free-icons"
 import { FeedbackCard } from "./cards/feedback-card"
 import { NewFeedbackDialog } from "./dialogs/newFeedback-dialog"
@@ -52,6 +90,8 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from "./ui/dropdown-menu"
+
+type ViewMode = "list" | "card"
 
 // Helper function to format time
 const formatTime = (dateString: string) => {
@@ -107,18 +147,26 @@ type FeedbackFilterState = {
 
 export function FeedbackContainer() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackSuggestionDto | null>(null)
+  const [selectedFeedback, setSelectedFeedback] =
+    useState<FeedbackSuggestionDto | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [newFeedbackDialogOpen, setNewFeedbackDialogOpen] = useState(false)
   const [editFeedbackDialogOpen, setEditFeedbackDialogOpen] = useState(false)
-  const [feedbackToEdit, setFeedbackToEdit] = useState<FeedbackSuggestionDto | null>(null)
+  const [feedbackToEdit, setFeedbackToEdit] =
+    useState<FeedbackSuggestionDto | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [feedbackToDelete, setFeedbackToDelete] = useState<number | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  
+  const [message, setMessage] = useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [viewMode, setViewMode] = useState<ViewMode>("card")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+
   // Filter state
   const [filters, setFilters] = useState<FeedbackFilterState>({
     department: [],
@@ -137,21 +185,58 @@ export function FeedbackContainer() {
     update_FeedbackData,
     fetch_FeedbackByEmployeeId,
     profile,
-    setProfile
+    setProfile,
   } = mainStore()
 
   // Determine user role
-  const userRole = profile?.role?.toLowerCase() || ''
-  const isLearner = userRole === 'learner'
-  const isAdminOrApprover = userRole === 'admin' || userRole === 'approver'
+  const userRole = profile?.role?.toLowerCase() || ""
+  const isLearner = userRole === "learner"
+  const isAdmin = userRole === "admin"
+  const isApprover = userRole === "approver"
+  const isAdminOrApprover = isAdmin || isApprover
   const canCreateFeedback = isLearner
   const canEditFeedback = isLearner
+  const canFilter = isAdmin || isApprover // Only admin and approver can filter
+
+  // Get the appropriate icon based on role
+  const getEmptyStateIcon = () => {
+    if (isAdmin) {
+      return Message01Icon
+    }
+    // For learner and approver, use CommentAdd01Icon
+    return CommentAdd01Icon
+  }
+
+  // Check if any filters are active - MOVED BEFORE useEffect
+  const hasActiveFilters = Object.values(filters).some(
+    (filterArray) => filterArray.length > 0
+  )
+
+  // Keyboard shortcuts - supports both Ctrl+K (Windows/Linux) and Cmd+K (Mac)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+K (Windows/Linux) or Cmd+K (Mac) - focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+
+      // Check for Escape key - clear filters
+      if (e.key === "Escape" && hasActiveFilters) {
+        e.preventDefault()
+        clearAllFilters()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [hasActiveFilters]) // Re-run when hasActiveFilters changes
 
   // Fetch feedback data on component mount based on role
   useEffect(() => {
     const loadFeedback = async () => {
       if (profile) {
-        setProfile(profile);
+        setProfile(profile)
       }
 
       if (isLearner && profile?.id) {
@@ -163,10 +248,15 @@ export function FeedbackContainer() {
       }
     }
     loadFeedback()
-  }, [fetch_FeedbackData, fetch_FeedbackByEmployeeId, profile?.id, isLearner, isAdminOrApprover, profile, setProfile])
-
-  // Check if any filters are active
-  const hasActiveFilters = Object.values(filters).some((filterArray) => filterArray.length > 0)
+  }, [
+    fetch_FeedbackData,
+    fetch_FeedbackByEmployeeId,
+    profile?.id,
+    isLearner,
+    isAdminOrApprover,
+    profile,
+    setProfile,
+  ])
 
   // Get unique values for filter fields from feedback data
   const getFilterUniqueValues = (field: keyof FeedbackSuggestionDto) => {
@@ -179,6 +269,17 @@ export function FeedbackContainer() {
     })
     return Array.from(values).sort()
   }
+
+  // Get department values
+  const departmentValues = getFilterUniqueValues("department")
+  const hasDepartmentData = departmentValues.length > 0
+
+  // Get team values
+  const teamValues = getFilterUniqueValues("team")
+  const hasTeamData = teamValues.length > 0
+
+  // Check if there's any filter data available
+  const hasFilterData = hasDepartmentData || hasTeamData
 
   // Helper to toggle filter values
   const toggleFilter = (field: keyof FeedbackFilterState, value: string) => {
@@ -205,7 +306,7 @@ export function FeedbackContainer() {
     .filter((feedbackItem) => {
       // Search filter
       const searchLower = searchTerm.toLowerCase()
-      const matchesSearch = 
+      const matchesSearch =
         feedbackItem.employeeId?.toLowerCase().includes(searchLower) ||
         feedbackItem.employeeName?.toLowerCase().includes(searchLower) ||
         feedbackItem.subject?.toLowerCase().includes(searchLower) ||
@@ -213,12 +314,17 @@ export function FeedbackContainer() {
         feedbackItem.department?.toLowerCase().includes(searchLower) ||
         feedbackItem.team?.toLowerCase().includes(searchLower)
 
-      // Department filter
-      const matchesDepartment = filters.department.length === 0 || 
-        (feedbackItem.department && filters.department.includes(feedbackItem.department))
+      // Department filter - only apply if user is not learner
+      const matchesDepartment =
+        !canFilter ||
+        filters.department.length === 0 ||
+        (feedbackItem.department &&
+          filters.department.includes(feedbackItem.department))
 
-      // Team filter
-      const matchesTeam = filters.team.length === 0 || 
+      // Team filter - only apply if user is not learner
+      const matchesTeam =
+        !canFilter ||
+        filters.team.length === 0 ||
         (feedbackItem.team && filters.team.includes(feedbackItem.team))
 
       return matchesSearch && matchesDepartment && matchesTeam
@@ -227,12 +333,52 @@ export function FeedbackContainer() {
       const dateA = getEffectiveDate(a).getTime()
       const dateB = getEffectiveDate(b).getTime()
 
-      if (sortOrder === 'desc') {
+      if (sortOrder === "desc") {
         return dateB - dateA
       } else {
         return dateA - dateB
       }
     })
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedFeedbacks.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedFeedbacks = filteredAndSortedFeedbacks.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  )
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value))
+    setCurrentPage(1)
+  }
+
+  const handlePrevious = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
+  const handleNext = () =>
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = []
+    const maxVisible = 5
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 4; i++) pages.push(i)
+      pages.push("...")
+      pages.push(totalPages)
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1)
+      pages.push("...")
+      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i)
+    } else {
+      pages.push(1)
+      pages.push("...")
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
+      pages.push("...")
+      pages.push(totalPages)
+    }
+    return pages
+  }
 
   // Handle feedback card click
   const handleFeedbackClick = (feedbackItem: FeedbackSuggestionDto) => {
@@ -241,7 +387,10 @@ export function FeedbackContainer() {
   }
 
   // Handle edit button click
-  const handleEditClick = (e: React.MouseEvent, feedbackItem: FeedbackSuggestionDto) => {
+  const handleEditClick = (
+    e: React.MouseEvent,
+    feedbackItem: FeedbackSuggestionDto
+  ) => {
     e.stopPropagation()
     setFeedbackToEdit(feedbackItem)
     setEditFeedbackDialogOpen(true)
@@ -265,8 +414,8 @@ export function FeedbackContainer() {
     try {
       const result = await delete_FeedbackData(feedbackToDelete)
 
-      if (result.includes('successfully')) {
-        setMessage({ type: 'success', text: result })
+      if (result.includes("successfully")) {
+        setMessage({ type: "success", text: result })
         setDeleteDialogOpen(false)
         setFeedbackToDelete(null)
 
@@ -277,11 +426,11 @@ export function FeedbackContainer() {
 
         setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: 'error', text: result })
+        setMessage({ type: "error", text: result })
       }
     } catch (error) {
       console.error("Failed to delete feedback:", error)
-      setMessage({ type: 'error', text: 'Failed to delete feedback' })
+      setMessage({ type: "error", text: "Failed to delete feedback" })
     } finally {
       setIsDeleting(false)
     }
@@ -299,7 +448,7 @@ export function FeedbackContainer() {
       const employeeId = profile?.id
 
       if (!employeeId) {
-        throw new Error('Employee ID not found')
+        throw new Error("Employee ID not found")
       }
 
       const newFeedback: FeedbackSuggestionDto = {
@@ -310,45 +459,49 @@ export function FeedbackContainer() {
 
       const result = await add_FeedbackData(newFeedback)
 
-      if (result.includes('successfully')) {
+      if (result.includes("successfully")) {
         setNewFeedbackDialogOpen(false)
-        setMessage({ type: 'success', text: result })
+        setMessage({ type: "success", text: result })
         setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: 'error', text: result })
+        setMessage({ type: "error", text: result })
       }
     } catch (error) {
       console.error("Failed to submit feedback:", error)
-      setMessage({ type: 'error', text: 'Failed to submit feedback' })
+      setMessage({ type: "error", text: "Failed to submit feedback" })
     } finally {
       setIsSubmitting(false)
     }
   }
 
   // Handle edit feedback
-  const handleEditFeedback = async (id: number, subject: string, description: string) => {
+  const handleEditFeedback = async (
+    id: number,
+    subject: string,
+    description: string
+  ) => {
     setIsSubmitting(true)
     try {
       const updatedFeedback: FeedbackSuggestionDto = {
         id: id,
-        employeeId: feedbackToEdit?.employeeId || '',
+        employeeId: feedbackToEdit?.employeeId || "",
         subject: subject,
         description: description,
       }
 
       const result = await update_FeedbackData(id, updatedFeedback)
 
-      if (result.includes('successfully')) {
+      if (result.includes("successfully")) {
         setEditFeedbackDialogOpen(false)
         setFeedbackToEdit(null)
-        setMessage({ type: 'success', text: result })
+        setMessage({ type: "success", text: result })
         setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: 'error', text: result })
+        setMessage({ type: "error", text: result })
       }
     } catch (error) {
       console.error("Failed to update feedback:", error)
-      setMessage({ type: 'error', text: 'Failed to update feedback' })
+      setMessage({ type: "error", text: "Failed to update feedback" })
     } finally {
       setIsSubmitting(false)
     }
@@ -356,196 +509,252 @@ export function FeedbackContainer() {
 
   // Get display time for detail dialog
   const getDisplayTime = (feedbackItem: FeedbackSuggestionDto | null) => {
-    if (!feedbackItem) return 'Just now'
+    if (!feedbackItem) return "Just now"
     if (feedbackItem.updatedAt) {
       return formatTime(feedbackItem.updatedAt)
     }
     if (feedbackItem.createdAt) {
       return formatTime(feedbackItem.createdAt)
     }
-    return 'Just now'
+    return "Just now"
   }
 
   // Toggle sort order
   const toggleSortOrder = () => {
-    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')
+    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+    setCurrentPage(1)
   }
 
-  // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-      e.preventDefault()
-      searchInputRef.current?.focus()
-    }
-  }
+  const hasFeedback = filteredAndSortedFeedbacks.length > 0
 
   return (
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
         <CardContent className="px-0">
-          {/* Header with Search and New Button */}
-          <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-            <InputGroup className="w-[400px]" onKeyDown={handleKeyDown}>
-              <InputGroupInput
-                ref={searchInputRef}
-                placeholder="Search by employee, subject, description..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <InputGroupAddon>
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  strokeWidth={2}
-                  className="h-4 w-4 text-muted-foreground"
+          {/* Header with Search and New Button - Only show when there's feedback */}
+          {feedback.length > 0 && (
+            <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+              <InputGroup className="w-[400px]">
+                <InputGroupInput
+                  ref={searchInputRef}
+                  placeholder="Search by employee, subject, description..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
-              </InputGroupAddon>
-              <InputGroupAddon align="inline-end">
-                <Kbd>⌘K</Kbd>
-              </InputGroupAddon>
-            </InputGroup>
+                <InputGroupAddon>
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    strokeWidth={2}
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                </InputGroupAddon>
+                <InputGroupAddon align="inline-end">
+                  <Kbd>⌘K</Kbd>
+                </InputGroupAddon>
+              </InputGroup>
 
-            <div className="flex items-center gap-2">
-              {/* Filter Dropdown */}
-              <DropdownMenu>
+              <div className="flex items-center gap-2">
+                {/* View Mode Toggle */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="relative h-9 w-9"
-                      >
-                        <HugeiconsIcon
-                          icon={FilterMailIcon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                        {hasActiveFilters && (
-                          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      variant={viewMode === "list" ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setViewMode("list")}
+                      className="h-9 w-9"
+                    >
+                      <HugeiconsIcon
+                        icon={ListViewIcon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Filter</p>
+                    <p>List View</p>
                   </TooltipContent>
                 </Tooltip>
 
-                <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
-                  {/* Department Filter */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Department
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getFilterUniqueValues("department").map((value) => (
-                          <DropdownMenuCheckboxItem
-                            key={value}
-                            checked={filters.department.includes(value)}
-                            onCheckedChange={() =>
-                              toggleFilter("department", value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={viewMode === "card" ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setViewMode("card")}
+                      className="h-9 w-9"
+                    >
+                      <HugeiconsIcon
+                        icon={GridViewIcon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Card View</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Sort Buttons */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={toggleSortOrder}
+                    >
+                      <HugeiconsIcon
+                        icon={
+                          sortOrder === "desc"
+                            ? SortByUp01Icon
+                            : SortByDown01Icon
+                        }
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {sortOrder === "desc" ? "Least recent" : "Most recent"}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Filter Dropdown - Only show for admin/approver and when there's filter data */}
+                {canFilter && hasFilterData && (
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="relative h-9 w-9"
                           >
-                            {value}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
+                            <HugeiconsIcon
+                              icon={FilterMailIcon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
+                            {hasActiveFilters && (
+                              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Filter</p>
+                      </TooltipContent>
+                    </Tooltip>
 
-                  {/* Team Filter */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Team</DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getFilterUniqueValues("team").map((value) => (
-                          <DropdownMenuCheckboxItem
-                            key={value}
-                            checked={filters.team.includes(value)}
-                            onCheckedChange={() =>
-                              toggleFilter("team", value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {value}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
+                    <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
+                      {/* Department Filter - Only show if there are departments */}
+                      {hasDepartmentData && (
+                        <>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              Department
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                {departmentValues.map((value) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={value}
+                                    checked={filters.department.includes(value)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("department", value)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {value}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        </>
+                      )}
 
-                  <DropdownMenuSeparator />
+                      {/* Team Filter - Only show if there are teams */}
+                      {hasTeamData && (
+                        <>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              Team
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                {teamValues.map((value) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={value}
+                                    checked={filters.team.includes(value)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("team", value)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {value}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
 
-                  {/* Clear Filters Button */}
-                  <DropdownMenuItem
-                    onClick={clearAllFilters}
-                    variant="destructive"
-                    className="gap-2"
-                  >
-                    <HugeiconsIcon
-                      icon={Delete02Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                    Clear All Filters
-                    <DropdownMenuShortcut>
-                      <Kbd>Esc</Kbd>
-                    </DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
 
-              {/* Sort Buttons */}
-              <Tooltip>
-                <TooltipTrigger asChild>
+                      {/* Clear Filters Button - Always show */}
+                      <DropdownMenuItem
+                        onClick={clearAllFilters}
+                        variant="destructive"
+                        className="gap-2"
+                      >
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                        Clear All Filters
+                        <DropdownMenuShortcut>
+                          <Kbd>Esc</Kbd>
+                        </DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {canCreateFeedback && (
                   <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={toggleSortOrder}
+                    variant="default"
+                    onClick={handleNewFeedback}
+                    className="bg-primary hover:bg-primary/90"
+                    disabled={isLoading}
+                    title={
+                      !canCreateFeedback
+                        ? "Only learners can create feedback"
+                        : ""
+                    }
                   >
-                    <HugeiconsIcon
-                      icon={sortOrder === 'desc' ? SortByUp01Icon : SortByDown01Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
+                    <HugeiconsIcon icon={CommentAdd01Icon} strokeWidth={2} />
+                    New Feedback
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{sortOrder === 'desc' ? 'Least recent' : 'Most recent'}</p>
-                </TooltipContent>
-              </Tooltip>
-
-              {canCreateFeedback && (
-                <Button
-                  variant="default"
-                  onClick={handleNewFeedback}
-                  className="bg-primary hover:bg-primary/90"
-                  disabled={isLoading}
-                  title={!canCreateFeedback ? "Only learners can create feedback" : ""}
-                >
-                  <HugeiconsIcon icon={CommentAdd01Icon} strokeWidth={2} />
-                  New Feedback
-                </Button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* Role Indicator */}
-          {/* <div className="mx-4 mb-4">
-            <span className="text-sm text-muted-foreground">
-              {isLearner ? 'Showing your feedback' :
-                isAdminOrApprover ? 'Showing all feedback' :
-                  'Showing feedback'}
-            </span>
-          </div> */}
+          )}
 
           {/* Message Display */}
           {message && (
-            <div className={`mx-4 mb-4 p-4 rounded ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>
+            <div
+              className={`mx-4 mb-4 rounded p-4 ${
+                message.type === "success"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
               {message.text}
             </div>
           )}
@@ -557,53 +766,326 @@ export function FeedbackContainer() {
             </div>
           )}
 
-          {/* Feedback Cards Grid */}
+          {/* Feedback Cards/Table Grid */}
           {!isLoading && (
             <div className="mx-4">
-              {filteredAndSortedFeedbacks.length === 0 ? (
-                <div className="py-12 text-center text-muted-foreground">
-                  {searchTerm || hasActiveFilters ? (
-                    <>
-                      No feedback found matching {searchTerm && `"${searchTerm}"`}
-                      {searchTerm && hasActiveFilters && " and "}
-                      {hasActiveFilters && "selected filters"}
-                    </>
+              {paginatedFeedbacks.length > 0 ? (
+                <>
+                  {viewMode === "card" ? (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      {paginatedFeedbacks.map((feedbackItem) => (
+                        <FeedbackCard
+                          key={feedbackItem.id}
+                          feedback={{
+                            id: feedbackItem.id!,
+                            employee: {
+                              name:
+                                feedbackItem.employeeName ||
+                                `Employee ${feedbackItem.employeeId}`,
+                              email: `${feedbackItem.employeeId}@company.com`,
+                              department: feedbackItem.department || "N/A",
+                              team: feedbackItem.team || "N/A",
+                              avatar: feedbackItem.profilePhotoPath || "",
+                            },
+                            subject: feedbackItem.subject,
+                            description: feedbackItem.description,
+                            createdAt:
+                              feedbackItem.createdAt ||
+                              new Date().toISOString(),
+                            updatedAt: feedbackItem.updatedAt,
+                          }}
+                          onClick={() => handleFeedbackClick(feedbackItem)}
+                          onDelete={handleDeleteClick}
+                          onEdit={
+                            canEditFeedback
+                              ? (e) => handleEditClick(e, feedbackItem)
+                              : undefined
+                          }
+                          formatTime={formatTime}
+                          getInitials={getInitials}
+                          canEdit={canEditFeedback}
+                        />
+                      ))}
+                    </div>
                   ) : (
-                    isLearner ? (
-                      <>You haven't submitted any feedback yet</>
-                    ) : (
-                      <>No feedback available</>
-                    )
+                    // Table View with border
+                    <div className="relative overflow-x-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="border-r whitespace-nowrap">
+                              Sr.
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Employee
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Department
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Team
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Subject
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Description
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Last updated
+                            </TableHead>
+                            <TableHead className="text-right whitespace-nowrap">
+                              Actions
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedFeedbacks.map((feedbackItem, index) => (
+                            <TableRow
+                              key={feedbackItem.id}
+                              className="cursor-pointer transition-colors hover:bg-muted/50"
+                              onClick={() => handleFeedbackClick(feedbackItem)}
+                            >
+                              <TableCell className="border-r whitespace-nowrap">
+                                {startIndex + index + 1}
+                              </TableCell>
+                              <TableCell className="border-r">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage
+                                      src={feedbackItem.profilePhotoPath || ""}
+                                      alt={feedbackItem.employeeName || ""}
+                                    />
+                                    <AvatarFallback className="text-xs text-primary">
+                                      {feedbackItem.employeeName
+                                        ? getInitials(feedbackItem.employeeName)
+                                        : feedbackItem.employeeId
+                                            ?.slice(0, 2)
+                                            .toUpperCase() || "U"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <div className="text-sm font-medium">
+                                      {feedbackItem.employeeName ||
+                                        `Employee ${feedbackItem.employeeId}`}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {feedbackItem.employeeId}
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="border-r whitespace-nowrap">
+                                {feedbackItem.department || "-"}
+                              </TableCell>
+                              <TableCell className="border-r whitespace-nowrap">
+                                {feedbackItem.team || "-"}
+                              </TableCell>
+                              <TableCell className="max-w-[150px] border-r">
+                                <div className="truncate">
+                                  {feedbackItem.subject}
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-[200px] border-r">
+                                <div className="truncate text-sm text-muted-foreground">
+                                  {feedbackItem.description}
+                                </div>
+                              </TableCell>
+                              <TableCell className="border-r text-sm whitespace-nowrap text-muted-foreground">
+                                {getDisplayTime(feedbackItem)}
+                              </TableCell>
+                              <TableCell className="text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1">
+                                  {canEditFeedback && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleEditClick(e, feedbackItem)
+                                      }}
+                                    >
+                                      <HugeiconsIcon
+                                        icon={MessageEdit01Icon}
+                                        strokeWidth={2}
+                                        className="h-4 w-4"
+                                      />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleDeleteClick(e, feedbackItem.id!)
+                                    }}
+                                  >
+                                    <HugeiconsIcon
+                                      icon={Delete02Icon}
+                                      strokeWidth={2}
+                                      className="h-4 w-4"
+                                    />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
-                </div>
+
+                  {/* Pagination - Only show when there's data */}
+                  {filteredAndSortedFeedbacks.length > 0 && (
+                    <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <Field orientation="horizontal" className="w-fit">
+                        <FieldLabel htmlFor="select-rows-per-page">
+                          Rows per page
+                        </FieldLabel>
+                        <Select
+                          value={itemsPerPage.toString()}
+                          onValueChange={handleItemsPerPageChange}
+                        >
+                          <SelectTrigger
+                            className="w-15"
+                            id="select-rows-per-page"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent align="start">
+                            <SelectGroup>
+                              <SelectItem value="20">20</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                              <SelectItem value="100">100</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                      <div className="text-sm text-muted-foreground">
+                        Showing{" "}
+                        {filteredAndSortedFeedbacks.length === 0
+                          ? 0
+                          : startIndex + 1}{" "}
+                        to{" "}
+                        {Math.min(
+                          startIndex + itemsPerPage,
+                          filteredAndSortedFeedbacks.length
+                        )}{" "}
+                        of {filteredAndSortedFeedbacks.length} feedbacks
+                      </div>
+                      <Pagination className="mx-0 w-auto">
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handlePrevious()
+                              }}
+                              className={
+                                currentPage === 1 ||
+                                filteredAndSortedFeedbacks.length === 0
+                                  ? "pointer-events-none opacity-50"
+                                  : ""
+                              }
+                            />
+                          </PaginationItem>
+                          {getPageNumbers().map((page, index) => (
+                            <PaginationItem key={index}>
+                              {page === "..." ? (
+                                <span className="px-2">...</span>
+                              ) : (
+                                <PaginationLink
+                                  href="#"
+                                  isActive={currentPage === page}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    setCurrentPage(page as number)
+                                  }}
+                                >
+                                  {page}
+                                </PaginationLink>
+                              )}
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleNext()
+                              }}
+                              className={
+                                currentPage === totalPages ||
+                                filteredAndSortedFeedbacks.length === 0
+                                  ? "pointer-events-none opacity-50"
+                                  : ""
+                              }
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredAndSortedFeedbacks.map((feedbackItem) => (
-                    <FeedbackCard
-                      key={feedbackItem.id}
-                      feedback={{
-                        id: feedbackItem.id!,
-                        employee: {
-                          name: feedbackItem.employeeName || `Employee ${feedbackItem.employeeId}`,
-                          email: `${feedbackItem.employeeId}@company.com`,
-                          department: feedbackItem.department || "N/A",
-                          team: feedbackItem.team || "N/A",
-                          avatar: feedbackItem.profilePhotoPath || "",
-                        },
-                        subject: feedbackItem.subject,
-                        description: feedbackItem.description,
-                        createdAt: feedbackItem.createdAt || new Date().toISOString(),
-                        updatedAt: feedbackItem.updatedAt,
-                      }}
-                      onClick={() => handleFeedbackClick(feedbackItem)}
-                      onDelete={handleDeleteClick}
-                      onEdit={canEditFeedback ? (e) => handleEditClick(e, feedbackItem) : undefined}
-                      formatTime={formatTime}
-                      getInitials={getInitials}
-                      canEdit={canEditFeedback}
-                    />
-                  ))}
-                </div>
+                // Empty state - with role-based icon
+                <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <HugeiconsIcon
+                        icon={Message01Icon}
+                        strokeWidth={2}
+                        className="h-12 w-12 text-muted-foreground"
+                      />
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {searchTerm || hasActiveFilters
+                        ? "No Matching Feedback"
+                        : "No Feedback"}
+                    </EmptyTitle>
+                    <EmptyDescription className="text-center text-pretty">
+                      {searchTerm || hasActiveFilters ? (
+                        <>Try adjusting your search or filters.</>
+                      ) : isLearner ? (
+                        "Share your thoughts on courses, management, or the system."
+                      ) : (
+                        "No feedback available in the system."
+                      )}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    {(searchTerm || hasActiveFilters) &&
+                    filteredAndSortedFeedbacks.length === 0 ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchTerm("")
+                          clearAllFilters()
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    ) : (
+                      canCreateFeedback && (
+                        <Button
+                          variant="default"
+                          onClick={handleNewFeedback}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          <HugeiconsIcon
+                            icon={CommentAdd01Icon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                          New Feedback
+                        </Button>
+                      )
+                    )}
+                  </EmptyContent>
+                </Empty>
               )}
             </div>
           )}
@@ -627,7 +1109,7 @@ export function FeedbackContainer() {
                 </h4>
                 <div
                   className="text-sm leading-relaxed whitespace-pre-wrap"
-                  style={{ wordBreak: 'break-word' }}
+                  style={{ wordBreak: "break-word" }}
                 >
                   {selectedFeedback?.description}
                 </div>
@@ -636,22 +1118,28 @@ export function FeedbackContainer() {
           </div>
 
           <DialogFooter className="border-t p-6 pt-4">
-            <div className="flex w-full items-start justify-between">
+            <div className="flex w-full items-center justify-between">
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12">
                   <AvatarImage
                     src={selectedFeedback?.profilePhotoPath || ""}
-                    alt={selectedFeedback?.employeeName || `Employee ${selectedFeedback?.employeeId}`}
+                    alt={
+                      selectedFeedback?.employeeName ||
+                      `Employee ${selectedFeedback?.employeeId}`
+                    }
                   />
                   <AvatarFallback className="text-lg text-primary">
                     {selectedFeedback?.employeeName
                       ? getInitials(selectedFeedback.employeeName)
-                      : selectedFeedback?.employeeId?.slice(0, 2).toUpperCase() || "U"}
+                      : selectedFeedback?.employeeId
+                          ?.slice(0, 2)
+                          .toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-medium">
-                    {selectedFeedback?.employeeName || `Employee ${selectedFeedback?.employeeId}`}
+                    {selectedFeedback?.employeeName ||
+                      `Employee ${selectedFeedback?.employeeId}`}
                   </p>
                   <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
                     {selectedFeedback?.department && (
@@ -662,9 +1150,6 @@ export function FeedbackContainer() {
                     )}
                     {selectedFeedback?.team && (
                       <span>{selectedFeedback.team}</span>
-                    )}
-                    {!selectedFeedback?.department && !selectedFeedback?.team && (
-                      <span>ID: {selectedFeedback?.employeeId}</span>
                     )}
                   </div>
                 </div>
@@ -714,7 +1199,7 @@ export function FeedbackContainer() {
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -722,6 +1207,7 @@ export function FeedbackContainer() {
                 setFeedbackToDelete(null)
               }}
               disabled={isDeleting}
+              className="flex-1"
             >
               Cancel
             </Button>
@@ -729,6 +1215,7 @@ export function FeedbackContainer() {
               variant="destructive"
               onClick={handleDeleteConfirm}
               disabled={isDeleting}
+              className="flex-1"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </Button>

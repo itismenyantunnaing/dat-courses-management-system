@@ -25,6 +25,8 @@ import {
   MonitorDotIcon,
   Certificate01Icon,
   Comment01Icon,
+  Message01Icon,
+  Calendar03Icon,
 } from "@hugeicons/core-free-icons"
 
 const STROKE_WIDTH = 2
@@ -165,7 +167,7 @@ export const adminData: SidebarConfig = {
               label: "Export data",
               tabId: "skills",
               action: "export",
-            }
+            },
           ],
         },
         {
@@ -191,7 +193,7 @@ export const adminData: SidebarConfig = {
           tabId: "holidays",
           type: "primary-action",
           icon: (
-            <HugeiconsIcon icon={CalendarIcon} strokeWidth={STROKE_WIDTH} />
+            <HugeiconsIcon icon={Calendar03Icon} strokeWidth={STROKE_WIDTH} />
           ),
           actions: [
             {
@@ -261,12 +263,7 @@ export const adminData: SidebarConfig = {
           title: "Self Study Progress",
           tabId: "self_study_progress",
           type: "primary",
-          icon: (
-            <HugeiconsIcon
-              icon={Chart01Icon}
-              strokeWidth={STROKE_WIDTH}
-            />
-          ),
+          icon: <HugeiconsIcon icon={Chart01Icon} strokeWidth={STROKE_WIDTH} />,
         },
       ],
     },
@@ -276,13 +273,20 @@ export const adminData: SidebarConfig = {
         {
           title: "Feedback",
           tabId: "feedback",
-          type: "primary",
+          type: "primary-action",
           icon: (
             <HugeiconsIcon
-              icon={ChatFeedback01Icon}
+              icon={Message01Icon}
               strokeWidth={STROKE_WIDTH}
             />
           ),
+          actions: [
+            {
+              label: "Export data",
+              tabId: "exam_progress_report",
+              action: "export",
+            },
+          ],
         },
       ],
     },
@@ -294,10 +298,7 @@ export const adminData: SidebarConfig = {
           tabId: "audit_logs",
           type: "primary",
           icon: (
-            <HugeiconsIcon
-              icon={MonitorDotIcon}
-              strokeWidth={STROKE_WIDTH}
-            />
+            <HugeiconsIcon icon={MonitorDotIcon} strokeWidth={STROKE_WIDTH} />
           ),
         },
       ],
@@ -354,7 +355,12 @@ export const learnerData: SidebarConfig = {
           title: "Japanese Certificates",
           tabId: "japanese-certificates",
           type: "primary",
-          icon: <HugeiconsIcon icon={Certificate01Icon} strokeWidth={STROKE_WIDTH} />,
+          icon: (
+            <HugeiconsIcon
+              icon={Certificate01Icon}
+              strokeWidth={STROKE_WIDTH}
+            />
+          ),
         },
       ],
     },
@@ -366,10 +372,7 @@ export const learnerData: SidebarConfig = {
           tabId: "feedback",
           type: "primary",
           icon: (
-            <HugeiconsIcon
-              icon={Comment01Icon}
-              strokeWidth={STROKE_WIDTH}
-            />
+            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
           ),
         },
       ],
@@ -479,7 +482,7 @@ export const approverData: SidebarConfig = {
           type: "primary",
           icon: (
             <HugeiconsIcon
-              icon={ChatFeedback01Icon}
+              icon={Message01Icon}
               strokeWidth={STROKE_WIDTH}
             />
           ),

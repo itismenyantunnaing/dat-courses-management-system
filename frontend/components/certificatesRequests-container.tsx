@@ -213,6 +213,7 @@ export function CertificatesRequestsContainer({
   const isDivisionHead = userRole === "division_head"
   const isAdmin = userRole === "admin"
 
+
   // Transform allCertificates to CertificateRequest format
   const transformedCertificates: CertificateRequest[] = allCertificates.map(
     (cert: any) => ({
@@ -255,6 +256,7 @@ export function CertificatesRequestsContainer({
     }
     // Filter by department for department_head
     else if (isDepartmentHead && profile?.deptDat) {
+
       filtered = filtered.filter((cert) => {
         const certDept = cert.employee.departmentName || cert.departmentName || ""
         const deptHeadDept = profile.deptDat || ""
@@ -748,26 +750,6 @@ export function CertificatesRequestsContainer({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={viewMode === "card" ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => setViewMode("card")}
-                    className="h-9 w-9"
-                  >
-                    <HugeiconsIcon
-                      icon={GridViewIcon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Card View</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
                     variant={viewMode === "list" ? "default" : "outline"}
                     size="icon"
                     onClick={() => setViewMode("list")}
@@ -782,6 +764,26 @@ export function CertificatesRequestsContainer({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>List View</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "card" ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setViewMode("card")}
+                    className="h-9 w-9"
+                  >
+                    <HugeiconsIcon
+                      icon={GridViewIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Card View</p>
                 </TooltipContent>
               </Tooltip>
             </div>
