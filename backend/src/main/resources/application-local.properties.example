@@ -1,0 +1,18 @@
+# Copy this file to application-local.properties (same folder) and fill in
+# your own values. application-local.properties is gitignored on purpose —
+# it holds your personal DB credentials and secrets, never commit it.
+#
+# This is loaded automatically when running the backend locally
+# (spring.profiles.active=local is the default, set in application.properties).
+
+spring.datasource.url=jdbc:mysql://localhost:3306/lms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+spring.datasource.username=your_mysql_username
+spring.datasource.password=your_mysql_password
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# Any long random string works for local dev
+jwt.secret=change_me_to_any_random_string
+
+# Optional: only needed if you're testing email-sending features locally
+spring.mail.username=
+spring.mail.password=

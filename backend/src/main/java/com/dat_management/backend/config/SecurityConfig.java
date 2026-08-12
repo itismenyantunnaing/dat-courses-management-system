@@ -83,6 +83,7 @@ public class SecurityConfig {
                                 "/api/employees/",
                                 "/courses/**",
                                 "/uploads/certificates/**",
+                                "/profiles/**",
                                 "/api/**"
                         ).permitAll()
                         
