@@ -24,6 +24,7 @@ public class CertificateResponseDto {
     private String verificationStatus;
     private String verifiedByEmployeeId;
     private String verifiedByEmployeeName;
+    private String verifiedByProfilePhotoPath;
     private LocalDateTime verifiedAt;
     private String remark;
     private LocalDateTime createdAt;

@@ -493,7 +493,7 @@ export interface EnrolledEmployee {
   courseGroupName: string;
   enrollmentStatus: string;
   enrolledAt: string;
-  pfImage?: string;
+  profilePhotoPath?: string;
   groupChangeStatus?: string;
   requestedCourseGroupId?: number;
   requestedCourseGroupName?: string;

@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import { TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -95,7 +96,7 @@ export function GroupsTab({
 
   // Check if user is a learner
   const isLearner = userRole === "learner"
-  
+
   // Check if user is Department_Head specifically
   const isDepartmentHead = userRole === "department_head"
   const isDivisionHead = userRole === "division_head"
@@ -111,7 +112,7 @@ export function GroupsTab({
       (emp) =>
         emp.courseGroupId === groupId && emp.enrollmentStatus !== "CANCELLED"
     )
-    
+
     // For Department_Head, filter by department
     if (isDepartmentHead && profile?.deptDat) {
       employees = employees.filter(
@@ -124,8 +125,8 @@ export function GroupsTab({
     //     (emp) => emp.departmentName === profile.deptDat
     //   )
     // }
-    
-    
+
+
     return employees
   }
 
@@ -175,14 +176,14 @@ export function GroupsTab({
   // Check if a group has any employees from the department
   const hasDepartmentEmployees = (groupId: number) => {
     if (!isDepartmentHead || !profile?.deptDat) return true
-    
+
     const groupEmployees = enrollments.filter(
       (emp) =>
-        emp.courseGroupId === groupId && 
+        emp.courseGroupId === groupId &&
         emp.enrollmentStatus !== "CANCELLED" &&
         emp.departmentName === profile.deptDat
     )
-    
+
     return groupEmployees.length > 0
   }
 
@@ -193,13 +194,13 @@ export function GroupsTab({
           .filter((group: any) => {
             // Admin can see all groups
             if (isAdmin) return true
-            
+
             // Department_Head: only show groups that have at least one employee from their department
             if (isDepartmentHead) {
               const groupId = parseInt(group.id)
               return hasDepartmentEmployees(groupId)
             }
-            
+
             // Approver (non-department_head) can see all groups
             if (isApprover) return true
 
@@ -234,7 +235,7 @@ export function GroupsTab({
                         <span>
                           <span className="font-medium">Enrolled:</span>{" "}
                           {groupEmployees.length}
-                        
+
                         </span>
                         <span>
                           <span className="font-medium">Sessions:</span>{" "}
@@ -472,7 +473,7 @@ export function GroupsTab({
                                                     // Admin can edit all
                                                     isAdmin ||
                                                     // Department_Head can edit employees in their department
-                                                    (isDepartmentHead && 
+                                                    (isDepartmentHead &&
                                                      profile?.deptDat &&
                                                      employee.departmentName === profile.deptDat) ||
                                                     // Approver (non-department_head) can ONLY edit their own attendance
@@ -492,10 +493,7 @@ export function GroupsTab({
                                                       <div className="flex items-center gap-2">
                                                         <Avatar className="h-6 w-6">
                                                           <AvatarImage
-                                                            src={
-                                                              employee.pfImage ||
-                                                              ""
-                                                            }
+                                                            src={resolveUploadUrl(employee.profilePhotoPath)}
                                                           />
                                                           <AvatarFallback className="text-[10px]">
                                                             {getInitials(
@@ -641,7 +639,7 @@ export function GroupsTab({
                                         </table>
                                       ) : (
                                         <div className="py-6 text-center text-sm text-muted-foreground">
-                                          {isDepartmentHead 
+                                          {isDepartmentHead
                                             ? "No employees from your department are enrolled in this group yet."
                                             : "No employees enrolled in this group yet."}
                                         </div>
@@ -672,7 +670,7 @@ export function GroupsTab({
             </p>
           </div>
         )}
-        
+
         {isDepartmentHead && course.groups && course.groups.length > 0 && (
           <div className="py-4 text-center text-sm text-muted-foreground">
             Showing groups with employees from your department ({profile?.deptDat || "Unknown Department"})

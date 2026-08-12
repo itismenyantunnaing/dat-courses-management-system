@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { HugeiconsIcon } from "@hugeicons/react"
+import {resolveUploadUrl} from "@/lib/utils";
 import {
   Calendar03Icon,
   Calendar05Icon,
@@ -221,7 +222,7 @@ export function CourseCard({
         {course.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={course.imageUrl.startsWith("http") ? course.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${course.imageUrl}`}
+            src={resolveUploadUrl(course.imageUrl)}
             alt={course.title}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

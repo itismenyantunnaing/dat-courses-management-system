@@ -82,7 +82,7 @@ interface EnrolledEmployee {
   courseGroupName: string
   enrollmentStatus: string
   enrolledAt: string
-  pfImage?: string
+  profilePhotoPath?: string
 }
 
 interface SelfStudySectionProps {

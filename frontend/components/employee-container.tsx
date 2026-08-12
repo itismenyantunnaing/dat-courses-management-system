@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import {
   Table,
   TableBody,
@@ -948,7 +949,7 @@ export function EmployeeContainer({
               <div className="mb-4 flex items-center gap-3">
                 <Avatar className="h-10 w-10">
                   <AvatarImage
-                    src={employee.profile_photo_path || ""}
+                    src={resolveUploadUrl(employee.profile_photo_path) || ""}
                     alt={employee.name}
                   />
                   <AvatarFallback className="text-primary">
@@ -2408,7 +2409,7 @@ export function EmployeeContainer({
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8">
                                 <AvatarImage
-                                  src={employee.profile_photo_path || null}
+                                  src={resolveUploadUrl(employee.profile_photo_path) || null}
                                   alt={employee.name}
                                 />
                                 <AvatarFallback className="text-xs text-primary">

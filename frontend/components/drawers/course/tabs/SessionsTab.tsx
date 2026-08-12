@@ -2,6 +2,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import { TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -924,7 +925,7 @@ export function SessionsTab({
                       className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
                     >
                       <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage src={employee.pfImage || ""} />
+                        <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
                         <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
                           {getInitials(employee.employeeName)}
                         </AvatarFallback>

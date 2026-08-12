@@ -142,10 +142,10 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedEmployees() {
-//        if (employeeRepository.count() > 0) {
-//            System.out.println("Database already seeded. Skipping...");
-//            return;
-//        }
+        if (employeeRepository.count() > 0) {
+            System.out.println("Database already seeded. Skipping...");
+            return;
+        }
 
         System.out.println("Seeding initial roles and employees...");
 

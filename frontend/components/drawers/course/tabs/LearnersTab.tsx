@@ -45,7 +45,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command"
 import { format } from "date-fns"
-import { cn } from "@/lib/utils"
+import { cn, resolveUploadUrl } from "@/lib/utils"
 import { mainStore } from "@/store/mainStore"
 import { MentionedLearner } from "@/types/course"
 import {
@@ -532,7 +532,7 @@ export function LearnersTab({
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Avatar className="h-6 w-6">
-                                <AvatarImage src={employee.pfImage || ""} />
+                                <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
                                 <AvatarFallback className="bg-primary/10 text-[10px] text-primary">
                                   {getInitials(employee.employeeName)}
                                 </AvatarFallback>
@@ -630,7 +630,7 @@ export function LearnersTab({
                     >
                       <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={employee.pfImage || ""} />
+                          <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
                           <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
                             {getInitials(employee.employeeName)}
                           </AvatarFallback>

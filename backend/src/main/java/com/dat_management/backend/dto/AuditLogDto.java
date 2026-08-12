@@ -42,6 +42,7 @@ public final class AuditLogDto {
         private String employeeId;
         private String employeeName;
         private String employeeRole;
+        private String employeeProfilePhotoPath;
         private String action;
         private String module;
         private String oldValue;

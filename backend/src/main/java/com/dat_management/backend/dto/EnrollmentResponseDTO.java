@@ -15,6 +15,7 @@ public class EnrollmentResponseDTO {
     private String employeeName;
     private String email;
     private String position;
+    private String profilePhotoPath;
 
     private Integer teamId;
     private String teamName;

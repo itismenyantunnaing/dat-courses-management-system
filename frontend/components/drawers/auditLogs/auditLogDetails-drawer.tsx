@@ -16,7 +16,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ClockIcon,
 } from "@hugeicons/core-free-icons"
-import { cn } from "@/lib/utils"
+import { resolveUploadUrl} from "@/lib/utils"
 
 // Types - Updated to match API response
 interface AuditLog {
@@ -24,6 +24,7 @@ interface AuditLog {
   employeeId: string
   employeeName: string | null
   employeeRole: string | null
+  employeeProfilePhotoPath: string | null
   action: string
   module: string
   oldValue: string | null
@@ -180,7 +181,10 @@ export function AuditLogDetailsDrawer({
             <div className="flex items-center gap-2 rounded-lg py-2">
               <Avatar className="h-12 w-12 rounded-full">
                 <AvatarImage
-                  src="/avatars/default.jpg"
+                    src={
+                        resolveUploadUrl(log.employeeProfilePhotoPath) ||
+                        "/avatars/default.jpg"
+                    }
                   alt={log.employeeName || "User"}
                 />
                 <AvatarFallback className="rounded-full text-sm font-medium">

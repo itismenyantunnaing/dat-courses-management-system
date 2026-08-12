@@ -2,6 +2,7 @@ package com.dat_management.backend.service;
 
 import com.dat_management.backend.entity.Employee;
 import com.dat_management.backend.repository.EmployeeRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,53 +22,45 @@ public class EmployeeProfileService {
 
     private final EmployeeRepository employeeRepository;
 
-    @Value("${file.upload-dir:../uploads/profiles}")
+    // Same property WebConfig reads to decide where to SERVE profile images from.
+    // Keeping storage and serving on this single property (like
+    // CertificateFileStorageService/CourseImageStorageService already do for
+    // certificates/courses) means the two can never drift apart again.
+    // "local" profile -> ../frontend/public/uploads/profiles
+    // "prod" profile (Docker) -> /data/uploads/profiles
+    @Value("${file.profile-upload-dir:/data/uploads/profiles}")
     private String uploadDir;
 
-    private String getProfileUploadDir() {
-        Path currentDir = Paths.get(System.getProperty("user.dir"));
-        Path projectRoot = null;
+    private Path uploadPath;
 
-        while (currentDir != null) {
-            if (Files.exists(currentDir.resolve("backend")) && Files.exists(currentDir.resolve("frontend"))) {
-                projectRoot = currentDir;
-                break;
+    @PostConstruct
+    public void init() {
+        this.uploadPath = Paths.get(uploadDir).normalize().toAbsolutePath();
+
+        System.out.println("=========================================");
+        System.out.println("📁 Current working directory: " + System.getProperty("user.dir"));
+        System.out.println("📁 Configured profile upload directory: " + uploadDir);
+        System.out.println("📁 Resolved profile upload path: " + uploadPath);
+
+        try {
+            if (!Files.exists(uploadPath)) {
+                System.out.println("📁 Directory does not exist, creating...");
+                Files.createDirectories(uploadPath);
+                System.out.println("✅ Created directory: " + uploadPath);
+            } else {
+                System.out.println("✅ Directory exists: " + uploadPath);
             }
-            currentDir = currentDir.getParent();
+        } catch (Exception e) {
+            System.err.println("❌ Failed to create profile upload directory: " + e.getMessage());
+            throw new RuntimeException("Cannot create profile upload directory: " + e.getMessage(), e);
         }
-
-        if (projectRoot == null) {
-            Path profilesPath = Paths.get(uploadDir);
-            Path uploadsPath = profilesPath.getParent();
-            Path publicPath = uploadsPath.getParent();
-            return publicPath.resolve("profiles").toString();
-        }
-
-        return projectRoot.resolve("frontend").resolve("public").resolve("profiles").toString();
     }
 
     @Transactional
     public String storeProfileImage(MultipartFile file, String employeeId) throws IOException {
         System.out.println("=========================================");
         System.out.println("📁 Profile image upload started for employee: " + employeeId);
-        System.out.println("📁 Current working directory: " + System.getProperty("user.dir"));
-        System.out.println("📁 Base upload dir configured: " + uploadDir);
-
-        Path uploadPath = Paths.get(getProfileUploadDir());
-        System.out.println("📁 Resolved profile upload path: " + uploadPath.toAbsolutePath());
-
-        try {
-            if (!Files.exists(uploadPath)) {
-                System.out.println("📁 Directory does not exist, attempting to create...");
-                Files.createDirectories(uploadPath);
-                System.out.println("✅ Created profile upload directory");
-            } else {
-                System.out.println("✅ Directory exists: " + uploadPath.toAbsolutePath());
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Failed to create directory: " + e.getMessage());
-            throw new IOException("Cannot create profile upload directory: " + e.getMessage(), e);
-        }
+        System.out.println("📁 Upload directory: " + uploadPath);
 
         if (file == null || file.isEmpty()) {
             throw new IOException("File is null or empty");
@@ -113,12 +106,14 @@ public class EmployeeProfileService {
             throw new IOException("Failed to save profile image: " + e.getMessage(), e);
         }
 
-        // FIX 3: Store the new path with unique filename
-        String profilePath = "profiles/" + fileName;
+        // FIX 3: Store the new path with unique filename.
+        // Leading slash so the frontend can safely do `${NEXT_PUBLIC_API_URL}${path}`
+        // the same way it already does for certificate.filePath / course.imageUrl.
+        String profilePath = "/profiles/" + fileName;
         employee.setProfilePhotoPath(profilePath);
         employee.setUpdatedAt(LocalDateTime.now());
         employeeRepository.save(employee);
-        
+
         System.out.println("✅ Employee updated with new profile path: " + profilePath);
         System.out.println("✅ Updated at: " + employee.getUpdatedAt());
 
@@ -149,7 +144,6 @@ public class EmployeeProfileService {
 
     public void deleteImage(String imagePath) throws IOException {
         if (imagePath != null && !imagePath.isEmpty()) {
-            Path uploadPath = Paths.get(getProfileUploadDir());
             String filename = Paths.get(imagePath).getFileName().toString();
             Path path = uploadPath.resolve(filename);
             if (Files.exists(path)) {

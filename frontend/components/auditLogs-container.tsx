@@ -71,7 +71,7 @@ import {
   MonitorDotIcon,
   Loading03Icon,
 } from "@hugeicons/core-free-icons"
-import { cn } from "@/lib/utils"
+import { cn, resolveUploadUrl } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -94,6 +94,7 @@ interface AuditLog {
   employeeId: string
   employeeName: string | null
   employeeRole: string | null
+  employeeProfilePhotoPath: string | null
   action: string
   module: string
   oldValue: string | null
@@ -874,8 +875,11 @@ export function AuditLogsContainer() {
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8 rounded-full">
                                 <AvatarImage
-                                  src="/avatars/default.jpg"
-                                  alt={log.employeeName || ""}
+                                    src={
+                                        resolveUploadUrl(log.employeeProfilePhotoPath) ||
+                                        "/avatars/default.jpg"
+                                    }
+                                    alt={log.employeeName || ""}
                                 />
                                 <AvatarFallback className="rounded-full text-xs">
                                   {getInitials(log.employeeName)}

@@ -1,6 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { resolveUploadUrl } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -229,7 +230,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
           <div className="flex items-start gap-4">
             <Avatar className="h-16 w-16">
               <AvatarImage
-                src={employee.profile_photo_path || ""}
+                src={resolveUploadUrl(employee.profile_photo_path) || ""}
                 alt={employee.name}
               />
               <AvatarFallback className="text-lg text-primary">

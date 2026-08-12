@@ -44,7 +44,7 @@ import {
   UserGroupIcon,
   Loading01Icon,
 } from "@hugeicons/core-free-icons"
-import { cn } from "@/lib/utils"
+import { cn, resolveUploadUrl } from "@/lib/utils"
 import { Course } from "@/types/course"
 import { mainStore } from "@/store/mainStore"
 
@@ -62,7 +62,7 @@ interface EnrolledEmployee {
   courseGroupName: string
   enrollmentStatus: string
   enrolledAt: string
-  pfImage?: string
+  profilePhotoPath?: string
   groupChangeStatus?: string
   requestedCourseGroupId?: number
   requestedCourseGroupName?: string
@@ -705,7 +705,7 @@ export function ChangeGroupDialogs({
                     className="group flex cursor-pointer items-center gap-3"
                   >
                     <Avatar className="h-8 w-8 rounded-full">
-                      <AvatarImage src={employee.pfImage || ""} />
+                      <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
                       <AvatarFallback className="rounded-full">
                         {getInitials(employee.employeeName)}
                       </AvatarFallback>
@@ -816,7 +816,7 @@ export function ChangeGroupDialogs({
                   className="flex cursor-pointer items-center gap-3"
                 >
                   <Avatar className="h-8 w-8 rounded-full">
-                    <AvatarImage src={employee.pfImage || ""} />
+                    <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
                     <AvatarFallback className="rounded-full">
                       {getInitials(employee.employeeName)}
                     </AvatarFallback>

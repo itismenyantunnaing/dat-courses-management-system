@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { resolveUploadUrl } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -242,7 +243,7 @@ export function NavUser() {
                 <Avatar className="h-8 w-8 rounded-full">
                   <AvatarImage
                     src={
-                      displayProfile.profilePhotoPath ||
+                      resolveUploadUrl(displayProfile.profilePhotoPath) ||
                       "/avatars/default.jpg"
                     }
                     alt={displayProfile.name}
@@ -278,7 +279,7 @@ export function NavUser() {
                   <Avatar className="h-8 w-8 rounded-full">
                     <AvatarImage
                       src={
-                        displayProfile.profilePhotoPath ||
+                        resolveUploadUrl(displayProfile.profilePhotoPath) ||
                         "/avatars/default.jpg"
                       }
                       alt={displayProfile.name}

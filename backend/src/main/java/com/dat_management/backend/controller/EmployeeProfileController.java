@@ -40,7 +40,7 @@ public class EmployeeProfileController {
             @RequestParam(value = "isCorePersonnel", required = false) Boolean isCorePersonnel,
             @RequestParam(value = "hasJapanBusinessTrip", required = false) Boolean hasJapanBusinessTrip,
             @RequestParam(value = "dob", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dob) {
-        
+
         try {
             // Find existing employee
             Employee employee = employeeRepository.findByIdAndIsDeletedFalse(employeeId)
@@ -48,13 +48,23 @@ public class EmployeeProfileController {
 
             Map<String, Object> response = new HashMap<>();
             Map<String, Object> updatedFields = new HashMap<>(); // FIX: Create a separate map instead of casting
-            
+
             response.put("employeeId", employeeId);
             response.put("updatedFields", updatedFields);
 
             // 1. Update profile image if file is provided
             if (file != null && !file.isEmpty()) {
                 String imagePath = employeeProfileService.storeProfileImage(file, employeeId);
+
+                // storeProfileImage() persists the new path on its OWN copy of the
+                // Employee entity (fetched fresh inside that @Transactional method).
+                // The `employee` object in this method was loaded earlier and is now
+                // stale, so it must be updated here too — otherwise the
+                // employeeRepository.save(employee) call below (which always runs
+                // once any field changed) writes the stale entity back to the DB
+                // and silently reverts profilePhotoPath to its old value, undoing
+                // the write that just happened.
+                employee.setProfilePhotoPath(imagePath);
                 response.put("profilePhotoPath", imagePath);
                 updatedFields.put("profilePhotoPath", "Updated"); // FIX: Use the map directly
             }
@@ -89,7 +99,7 @@ public class EmployeeProfileController {
 
             // Return full employee data
             response.put("employee", getEmployeeMap(employee));
-            
+
             return ResponseEntity.ok(response);
 
         } catch (RuntimeException e) {
@@ -117,7 +127,7 @@ public class EmployeeProfileController {
             @RequestParam(value = "isCorePersonnel", required = false) Boolean isCorePersonnel,
             @RequestParam(value = "hasJapanBusinessTrip", required = false) Boolean hasJapanBusinessTrip,
             @RequestParam(value = "dob", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dob) {
-        
+
         return updateEmployeeProfile(employeeId, file, isCorePersonnel, hasJapanBusinessTrip, dob);
     }
 
@@ -130,22 +140,22 @@ public class EmployeeProfileController {
         try {
             Employee employee = employeeRepository.findByIdAndIsDeletedFalse(employeeId)
                     .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
-            
+
             if (employee.getProfilePhotoPath() != null && !employee.getProfilePhotoPath().isEmpty()) {
                 employeeProfileService.deleteImage(employee.getProfilePhotoPath());
             }
-            
+
             employee.setProfilePhotoPath(null);
             employee.setUpdatedAt(LocalDateTime.now());
             employeeRepository.save(employee);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Profile image deleted successfully");
             response.put("employeeId", employeeId);
             response.put("updatedAt", employee.getUpdatedAt());
-            
+
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", e.getMessage());

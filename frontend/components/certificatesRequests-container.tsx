@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import {
   Table,
   TableBody,
@@ -225,7 +226,7 @@ export function CertificatesRequestsContainer({
       employee: {
         name: cert.employeeName || "",
         email: cert.email || "",
-        avatar: cert.profilePhotoPath || "",
+        avatar: resolveUploadUrl(cert.profilePhotoPath) || "",
         id: cert.employeeId || "",
         teamName: cert.teamName,
         departmentName: cert.departmentName,

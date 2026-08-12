@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect, forwardRef, useMemo, useCallback } from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -90,21 +91,12 @@ const formatLocalDateDisplay = (date: Date): string => {
   return format(date, 'PPP');
 };
 
-//Helper for imageUrl
-const getImageUrl = (url?: string | null) => {
-  if (!url) return null
-
-  return url.startsWith("http")
-      ? url
-      : `${process.env.NEXT_PUBLIC_API_URL}${url}`
-}
-
 // Helper function to convert Employee to MentionedLearner
 const convertEmployeeToMentionedLearner = (employee: any): MentionedLearner => ({
   id: employee.id,
   name: employee.name || employee.full_name || '',
   email: employee.email || '',
-  avatar: employee.profile_photo_path || employee.avatar || '',
+  avatar: resolveUploadUrl(employee.profile_photo_path) || employee.avatar || '',
   department: employee.dept_dat || employee.department || '',
   team: employee.team || '',
   status: (employee.status || employee.emp_status || 'active') as 'active' | 'pending' | 'completed' | 'inactive',
@@ -211,7 +203,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
     const [selectedImage, setSelectedImage] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string | null>(
-        getImageUrl(initialImage)
+        resolveUploadUrl(initialImage)
     )
     const [isDragging, setIsDragging] = useState(false)
     const [activeGroupTab, setActiveGroupTab] = useState<string>(
@@ -420,7 +412,7 @@ useEffect(() => {
         }
       } else {
         setSelectedImage(null)
-        setImagePreview(initialImage || null)
+        setImagePreview(resolveUploadUrl(initialImage) || null)
       }
     }
 

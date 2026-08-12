@@ -3,6 +3,7 @@ export interface AuditLog {
   employeeId: string;
   employeeName: string | null;
   employeeRole: string | null;
+  employeeProfilePhotoPath: string | null;
   action: string;
   module: string;
   oldValue: string | null;

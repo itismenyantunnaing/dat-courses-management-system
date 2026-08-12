@@ -30,7 +30,7 @@ import {
 import Image from "next/image"
 import { JapaneseCertificate } from "@/types/certificate"
 import { format } from "date-fns"
-import { cn } from "@/lib/utils"
+import { resolveUploadUrl} from "@/lib/utils"
 import { CertificateForm } from "@/components/drawers/certificate/certificateForm"
 import { mainStore } from "@/store/mainStore"
 import { CERTIFICATE_TYPES, CERTIFICATE_LEVELS } from "@/types/certificate"
@@ -111,14 +111,9 @@ export function CertificateDetailDrawer({
 
   if (!certificate) return null
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || ""
-  const buildUrl = (p?: string) => {
-    if (!p) return "/placeholder-certificate.png"
-    if (p.startsWith("http") || p.startsWith("data:")) return p
-    if (p.startsWith("/")) return `${apiBase}${p}`
-    return `${apiBase}/${p}`
-  }
-  const imageUrl = buildUrl(certificate.filePath)
+  const imageUrl = certificate.filePath
+      ? resolveUploadUrl(certificate.filePath)
+      : "/placeholder-certificate.png"
 
   const status = certificate.verificationStatus || ""
 
@@ -127,7 +122,12 @@ export function CertificateDetailDrawer({
     certificate.employee?.name || certificate.employeeName || "Unknown User"
   const employeeEmail =
     certificate.employee?.email || certificate.email || "No email provided"
-  const employeeAvatar = certificate.employee?.avatar || ""
+  const employeeAvatar = certificate.profilePhotoPath
+    ? resolveUploadUrl(certificate.profilePhotoPath)
+    : certificate.employee?.avatar || ""
+  const verifiedByAvatar = certificate.verifiedByProfilePhotoPath
+      ? resolveUploadUrl(certificate.verifiedByProfilePhotoPath)
+      : ""
 
   // Get submitted date
   const submittedDate = certificate.createdAt || new Date()
@@ -418,7 +418,7 @@ export function CertificateDetailDrawer({
                             <Avatar className="h-10 w-10 overflow-hidden rounded-full">
                               <AvatarImage
                                 className="h-10 w-10 overflow-hidden rounded-full"
-                                src=""
+                                src={verifiedByAvatar}
                                 alt={certificate.verifiedByEmployeeName}
                               />
                               <AvatarFallback className="overflow-hidden rounded-full">

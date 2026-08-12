@@ -187,6 +187,7 @@ public class CourseEnrollmentService {
                                 .employeeName(employee.getName())
                                 .email(employee.getEmail())
                                 .position(employee.getPosition())
+                                .profilePhotoPath(employee.getProfilePhotoPath())
                                 .teamId(teamId)
                                 .teamName(teamName)
                                 .departmentId(departmentId)

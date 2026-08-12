@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import { CardContent } from "@/components/ui/card"
 import {
   Dialog,
@@ -828,7 +829,7 @@ export function FeedbackContainer() {
                               email: `${feedbackItem.employeeId}@company.com`,
                               department: feedbackItem.department || "N/A",
                               team: feedbackItem.team || "N/A",
-                              avatar: feedbackItem.profilePhotoPath || "",
+                              avatar: resolveUploadUrl(selectedFeedback?.profilePhotoPath) || "",
                             },
                             subject: feedbackItem.subject || "",
                             category: feedbackItem.category,
@@ -891,7 +892,7 @@ export function FeedbackContainer() {
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-8 w-8">
                                     <AvatarImage
-                                      src={feedbackItem.profilePhotoPath || ""}
+                                      src={resolveUploadUrl(selectedFeedback?.profilePhotoPath) || ""}
                                       alt={feedbackItem.employeeName || ""}
                                     />
                                     <AvatarFallback className="text-xs text-primary">
@@ -1160,11 +1161,8 @@ export function FeedbackContainer() {
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12">
                   <AvatarImage
-                    src={selectedFeedback?.profilePhotoPath || ""}
-                    alt={
-                      selectedFeedback?.employeeName ||
-                      `Employee ${selectedFeedback?.employeeId}`
-                    }
+                    src={resolveUploadUrl(selectedFeedback?.profilePhotoPath) || ""}
+                    alt={selectedFeedback?.employeeName || `Employee ${selectedFeedback?.employeeId}`}
                   />
                   <AvatarFallback className="text-lg text-primary">
                     {selectedFeedback?.employeeName

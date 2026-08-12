@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { resolveUploadUrl } from "@/lib/utils"
 import { JapaneseCertificate } from "@/types/certificate"
 import { format } from "date-fns"
 import Image from "next/image"
@@ -45,8 +46,7 @@ export function CertificateCard({
   showEmployeeInfo = false,
 }: CertificateCardProps) {
   const [imageError, setImageError] = useState(false)
-
-  // const imageUrl = certificate.filePath || "/placeholder-certificate.png"
+  const imageUrl = resolveUploadUrl(certificate.filePath) || "/placeholder-certificate.png"
   const status = certificate.verificationStatus || ""
 
   const handleCardClick = () => {
@@ -56,7 +56,7 @@ export function CertificateCard({
   // Get employee info from certificate or use defaults
   const employeeName = certificate.employee?.name || "Unknown User"
   const employeeEmail = certificate.employee?.email || "No email provided"
-  const employeeAvatar = certificate.employee?.avatar || ""
+  const employeeAvatar = resolveUploadUrl(certificate.profilePhotoPath) || certificate.employee?.avatar || ""
   const submittedDate =
     certificate.verifiedAt || certificate.createdAt || new Date().toISOString()
 
@@ -75,7 +75,7 @@ export function CertificateCard({
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
           {!imageError ? (
             <Image
-              src={certificate.filePath.startsWith("http") ? certificate.filePath : `${process.env.NEXT_PUBLIC_API_URL}${certificate.filePath}`}
+              src={imageUrl}
 
               alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
               fill

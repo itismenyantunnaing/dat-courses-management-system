@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -700,7 +701,7 @@ export function PersonalInformationDialog({
   const getProfileImage = () => {
     if (imageRemoved) return ""
     if (previewImage) return previewImage
-    if (profile?.profilePhotoPath) return profile?.profilePhotoPath
+    if (profile?.profilePhotoPath) return resolveUploadUrl(profile?.profilePhotoPath)
     return ""
   }
 

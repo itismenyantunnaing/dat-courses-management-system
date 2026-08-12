@@ -28,6 +28,7 @@ export interface JapaneseCertificate {
   teamName?: string
   verifiedByEmployeeId?: string | null
   verifiedByEmployeeName?: string | null
+  verifiedByProfilePhotoPath?: string | null
   createdAt?: Date | null
   updatedAt?: Date
   remark?: string | null 

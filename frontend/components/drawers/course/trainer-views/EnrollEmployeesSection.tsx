@@ -11,6 +11,7 @@ import React, {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { resolveUploadUrl } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -950,7 +951,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
               >
                 <div className="flex flex-1 items-center justify-between gap-2">
                   <Avatar className="h-8 w-8 shrink-0 rounded-full">
-                    <AvatarImage src={employee.pfImage || ""} />
+                    <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
                     <AvatarFallback className="rounded-full text-sm text-primary">
                       {getInitials(employee.employeeName)}
                     </AvatarFallback>

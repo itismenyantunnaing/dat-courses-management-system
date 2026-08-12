@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useMemo } from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,7 +42,7 @@ const convertEmployeeToMentionedLearner = (employee: any) => ({
   id: employee.id,
   name: employee.name || employee.full_name || "",
   email: employee.email || "",
-  avatar: employee.profile_photo_path || employee.avatar || "",
+  avatar: resolveUploadUrl(employee.profile_photo_path) || employee.avatar || "",
   department: employee.dept_dat || employee.department || "",
   team: employee.team || "",
   status: (employee.status || employee.emp_status || "active") as

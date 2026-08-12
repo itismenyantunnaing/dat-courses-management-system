@@ -200,11 +200,13 @@ public class AuditLogService {
     private AuditLogResponseDTO toDTO(AuditLog entry) {
         String employeeName = null;
         String employeeRole = null;
+        String employeeProfilePhotoPath = null;
 
         if (entry.getEmployeeId() != null) {
             Employee employee = employeeRepository.findById(entry.getEmployeeId()).orElse(null);
             if (employee != null) {
                 employeeName = employee.getName();
+                employeeProfilePhotoPath = employee.getProfilePhotoPath();
                 if (employee.getRole() != null) {
                     employeeRole = employee.getRole().getRoleName();
                 }
@@ -216,6 +218,7 @@ public class AuditLogService {
                 .employeeId(entry.getEmployeeId())
                 .employeeName(employeeName)
                 .employeeRole(employeeRole)
+                .employeeProfilePhotoPath(employeeProfilePhotoPath)
                 .action(entry.getAction())
                 .module(entry.getModule())
                 .oldValue(entry.getOldValue())

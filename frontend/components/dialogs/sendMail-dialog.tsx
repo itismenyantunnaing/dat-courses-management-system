@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -147,7 +148,7 @@ export function SendMailDialog({
     id: emp.id,
     name: emp.name || "",
     email: emp.email || "",
-    avatar: emp.profile_photo_path || "",
+    avatar: resolveUploadUrl(emp.profile_photo_path) || "",
     division: emp.div_name || "",
     department: emp.dept_dat || "",
     team: emp.team || "",

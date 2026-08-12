@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { resolveUploadUrl } from "@/lib/utils"
 import { TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -178,7 +179,7 @@ export function GroupRequestsTab({
               <div className="mb-4 flex items-center gap-3">
                 <Avatar className="h-10 w-10">
                   <AvatarImage
-                    src={request.pfImage || ""}
+                    src={resolveUploadUrl(request.profilePhotoPath)}
                     alt={request.employeeName}
                   />
                   <AvatarFallback className="text-primary">
