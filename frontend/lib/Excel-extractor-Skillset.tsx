@@ -1,12 +1,10 @@
 import ExcelJS from "exceljs";
 
-// Japanese-to-English header translation map
-// Maps Japanese header parts (from 【DAT】①管理･開発能力②技術力_2025 4Q.xlsx) to their English equivalents
 const JP_TO_EN_MAP: Record<string, string> = {
   // Name / ID
   '名前': 'name',
   '会社': 'company',
-
+  
   // Administrator / Management
   '管理者': 'administrator',
   '管理経験（レベル1～5）': 'Management experience (Levels 1-5)',
@@ -15,15 +13,15 @@ const JP_TO_EN_MAP: Record<string, string> = {
   '報連相\n（1～4点）': 'Reporting, contacting, and consulting (1-4 points)',
   '教育\n（1～4点）': 'Education (1-4 points)',
   '合計\n（レベル1～5）': 'Total (Levels 1-5)',
-
+  
   // Developer
   '開発者（DIR業務、YSX業務限り）': 'Developer (DIR and YSX tasks only)',
-
+  
   // Language skills
   '語学力': 'language skills',
   'レベル\n（レベル1～5）': 'Level (Levels 1-5)',
   'JLPT/NAT\n（N1~N5）': 'JLPT/NAT (N1~N5)',
-
+  
   // Development capabilities
   '開発能力': 'Development capabilities',
   'ホスト/オンライン': 'Host/Online',
@@ -32,29 +30,29 @@ const JP_TO_EN_MAP: Record<string, string> = {
   '分散/バッチ': 'Distributed/Batch',
   '経験年数': 'Years of experience',
   '経験工程': 'Experience Process',
-
+  
   // Technical ability
   '技術力': 'technical ability',
   '技術力\n\n\n': 'technical ability',
-
+  
   // Programming Language categories
   'プログラミング言語': 'Programming Language',
   'ホスト系': 'Host Club',
   '分散系': 'distributed system',
   'アセンブラ': 'assembler',
-
+  
   // DB (same in both)
-
+  
   // Trending words / Cloud
   'トレンドワード': 'Trending words',
   'クラウド': 'Cloud',
   'Alibaba Cloud': 'Actual Cloud',
-
+  
   // Subcategories
   '先端技術': 'cutting edge technology',
   '※DATのみ': 'DAT only',
   'Other クラウド': 'Other Cloud',
-
+  
   // Skill names with Japanese differences
   'Amazon Web Services（AWS）': 'Amazon Web Services (AWS)',
   'Google Cloud Platform（GCP）': 'Google Cloud Platform (GCP)',
@@ -73,13 +71,14 @@ const JP_TO_EN_MAP: Record<string, string> = {
   'Shell': 'shell',
   'PostGresSQL': 'PostgreSQL',
   'android': 'Android',
-
+  
   // Bottom-level attributes
   '年数': 'Years',
   '経験': 'experience',
-
+  
   // Other ignored headers
   '委託元部署名\n※プルダウン入力': 'Name of the commissioning department *Select from the dropdown menu',
+  'ランク\n※プルダウン入力\n(会社を選択すると\nプルダウン表示されます）': 'Rank *Select from the dropdown menu (The dropdown menu will appear once you select a company)',
   'コア人材\n※FPTのみ': 'Core personnel *FPT only',
   '日本出張\nの有無\n': 'Whether or not you have a business trip to Japan',
   '※プルダウン入力': '※プルダウン入力',
@@ -195,41 +194,41 @@ export function parseTechnicalHeader(header: string): {
 } {
   // Split by " - "
   const parts = header.split(' - ').map(p => p.trim());
-
+  
   // Default values
   let skill = '';
   let subcategory = '';
   let category = '';
   let attribute = '';
-
+  
   // Start from right side
   // Rightmost part is the attribute (Years, experience, etc.)
   if (parts.length > 0) {
     attribute = parts[parts.length - 1];
   }
-
+  
   // Second from right is the skill name
   if (parts.length > 1) {
     skill = parts[parts.length - 2];
   }
-
+  
   // Third from right is subcategory (if exists)
   if (parts.length > 2) {
     subcategory = parts[parts.length - 3];
   }
-
+  
   // Fourth from right is category (if exists)
   if (parts.length > 3) {
     category = parts[parts.length - 4];
   }
-
+  
   // If the first part is "technical ability", remove it from category
   if (category === 'technical ability' || category === 'Technical Ability') {
     // Generate a random ID and use "empty-{randomId}" format
     const randomId = Math.random().toString(36).substring(2, 10); // Generates a random 8-character string
     category = parts.length > 4 ? parts[parts.length - 5] : `empty-${randomId}`;
   }
-
+  
   return { skill, subcategory, category, attribute };
 }
 
@@ -269,13 +268,13 @@ for (const category of TECHNICAL_ABILITY_CONFIG) {
 function getCellValue(cell: ExcelJS.Cell): string {
   const actualCell = cell.isMerged ? (cell.master || cell) : cell;
   const value = actualCell.value;
-
+  
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value.trim();
   if (typeof value === "number") return value.toString();
   if (typeof value === "boolean") return value.toString();
   if (value instanceof Date) return value.toISOString().split('T')[0];
-
+  
   if (typeof value === "object") {
     if ("result" in value) {
       const result = (value as any).result;
@@ -298,8 +297,8 @@ function getCellValue(cell: ExcelJS.Cell): string {
 }
 
 export async function extractEmployeesFromExcel(
-  file: File,
-  skill_headers: string[],
+  file: File, 
+  skill_headers: string[], 
   limit?: number
 ): Promise<ExtractionResult> {
   try {
@@ -312,101 +311,60 @@ export async function extractEmployeesFromExcel(
     let idColumnIndex = -1;
     let nameColumnIndex = -1;
 
-    // // --- PHASE 1: FIND THE BEST SHEET ---
-    // // Support both English "Original data" and Japanese "元データ" sheet names
-    // targetWorksheet = workbook.worksheets.find(ws => 
-    //   ws.name.includes("Original data") || ws.name.includes("Original") || !ws.name.includes("元データ")
-    // ) || null;
-
-    // // Detect if this is a Japanese-format file
-    // let isJapaneseFormat = false;
-    // if (targetWorksheet) {
-    //   // Check if sheet name contains Japanese characters (元データ without English "Original")
-    //   const sheetName = targetWorksheet.name;
-    //   if (sheetName.includes("元データ") && !sheetName.includes("Original data")) {
-    //     isJapaneseFormat = true;
-    //   }
-    //   // Also check if header cells contain Japanese like 名前
-    //   for (let r = 1; r <= 15; r++) {
-    //     const row = targetWorksheet.getRow(r);
-    //     row.eachCell({ includeEmpty: false }, (cell) => {
-    //       const val = getCellValue(cell);
-    //       if (val === '名前') isJapaneseFormat = true;
-    //     });
-    //     if (isJapaneseFormat) break;
-    //   }
-    // }
-
-    // if (!targetWorksheet) {
-    //   for (const worksheet of workbook.worksheets) {
-    //     if (worksheet.name.includes("Scoring") || worksheet.name.includes("Category") || worksheet.name.includes("Master")) continue;
-
-    //     for (let r = 1; r <= 20; r++) {
-    //       const row = worksheet.getRow(r);
-    //       let foundID = -1;
-    //       let foundName = -1;
-    //       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-    //         const val = getCellValue(cell);
-    //         const lower = val.toLowerCase();
-    //         if (lower === "id" || lower === "staff id") foundID = colNumber;
-    //         if (lower === "name" || val === "名前") foundName = colNumber;
-    //       });
-    //       if (foundID !== -1 && foundName !== -1) {
-    //         targetWorksheet = worksheet;
-    //         // Check if Japanese format
-    //         row.eachCell({ includeEmpty: false }, (cell) => {
-    //           if (getCellValue(cell) === '名前') isJapaneseFormat = true;
-    //         });
-    //         break;
-    //       }
-    //     }
-    //     if (targetWorksheet) break;
-    //   }
-    // }
-
-    // if (!targetWorksheet) {
-    //   return { success: false, headers: [], employees: [], error: "Could not find a valid data sheet." };
-    // }
-
-    // --- PHASE 1: FIND THE REQUIRED SHEET ---
-    // ONLY try to find "Original data", "Original", or "元データ" sheet
-    targetWorksheet = workbook.worksheets.find(ws =>
-      ws.name.includes("Original data") || ws.name.includes("Skill") 
+    // --- PHASE 1: FIND THE BEST SHEET ---
+    // Support both English "Original data" and Japanese "元データ" sheet names
+    targetWorksheet = workbook.worksheets.find(ws => 
+      ws.name.includes("Original data") || ws.name.includes("Original") || ws.name.includes("元データ")
     ) || null;
-
-    // If no worksheet found, show error immediately
-    if (!targetWorksheet) {
-      const sheetNames = workbook.worksheets.map(ws => `"${ws.name}"`).join(', ');
-      const sheetCount = workbook.worksheets.length;
-
-      let errorMessage = '';
-
-      if (sheetCount === 0) {
-        errorMessage = '❌ The Excel file appears to be empty or corrupted. No tabs/sheets found.';
-      } else {
-        errorMessage =
-          `❌ Could not find the required "Original data" or "Original" tab in the Excel file.\n\n` +
-          `This tab should contain employee data with "ID" and "Name" columns in English.`;
-      }
-
-      return { success: false, headers: [], employees: [], error: errorMessage };
-    }
 
     // Detect if this is a Japanese-format file
     let isJapaneseFormat = false;
-    // Check if sheet name contains Japanese characters (元データ without English "Original")
-    const sheetName = targetWorksheet.name;
-    if (sheetName.includes("元データ") && !sheetName.includes("Original data")) {
-      isJapaneseFormat = true;
+    if (targetWorksheet) {
+      // Check if sheet name contains Japanese characters (元データ without English "Original")
+      const sheetName = targetWorksheet.name;
+      if (sheetName.includes("元データ") && !sheetName.includes("Original data")) {
+        isJapaneseFormat = true;
+      }
+      // Also check if header cells contain Japanese like 名前
+      for (let r = 1; r <= 15; r++) {
+        const row = targetWorksheet.getRow(r);
+        row.eachCell({ includeEmpty: false }, (cell) => {
+          const val = getCellValue(cell);
+          if (val === '名前') isJapaneseFormat = true;
+        });
+        if (isJapaneseFormat) break;
+      }
     }
-    // Also check if header cells contain Japanese like 名前
-    for (let r = 1; r <= 15; r++) {
-      const row = targetWorksheet.getRow(r);
-      row.eachCell({ includeEmpty: false }, (cell) => {
-        const val = getCellValue(cell);
-        if (val === '名前') isJapaneseFormat = true;
-      });
-      if (isJapaneseFormat) break;
+
+    if (!targetWorksheet) {
+      for (const worksheet of workbook.worksheets) {
+        if (worksheet.name.includes("Scoring") || worksheet.name.includes("Category") || worksheet.name.includes("Master")) continue;
+        
+        for (let r = 1; r <= 20; r++) {
+          const row = worksheet.getRow(r);
+          let foundID = -1;
+          let foundName = -1;
+          row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+            const val = getCellValue(cell);
+            const lower = val.toLowerCase();
+            if (lower === "id" || lower === "staff id") foundID = colNumber;
+            if (lower === "name" || val === "名前") foundName = colNumber;
+          });
+          if (foundID !== -1 && foundName !== -1) {
+            targetWorksheet = worksheet;
+            // Check if Japanese format
+            row.eachCell({ includeEmpty: false }, (cell) => {
+              if (getCellValue(cell) === '名前') isJapaneseFormat = true;
+            });
+            break;
+          }
+        }
+        if (targetWorksheet) break;
+      }
+    }
+
+    if (!targetWorksheet) {
+      return { success: false, headers: [], employees: [], error: "Could not find a valid data sheet." };
     }
 
     // --- PHASE 2: DETECT HEADER BLOCK ---
@@ -436,12 +394,12 @@ export async function extractEmployeesFromExcel(
 
     const startHeader = Math.max(1, anchorRow - 4);
     const endHeader = anchorRow + 4;
-
+    
     for (let r = startHeader; r <= endHeader; r++) {
       const row = targetWorksheet.getRow(r);
       const rowValues = [];
       row.eachCell({ includeEmpty: false }, (cell) => rowValues.push(getCellValue(cell)));
-
+      
       if (rowValues.length > 0) {
         headerRowRange.push(r);
       }
@@ -456,6 +414,7 @@ export async function extractEmployeesFromExcel(
       "company - ID",
       "DAT - name",
       "※プルダウン入力 - Name of the commissioning department *Select from the dropdown menu",
+      "Rank *Select from the dropdown menu (The dropdown menu will appear once you select a company)",
       "Core personnel *FPT only",
       "Whether or not you have a business trip to Japan",
       // Japanese equivalents
@@ -467,6 +426,7 @@ export async function extractEmployeesFromExcel(
     // Additional headers to ignore (checked via .includes for partial matches)
     const IGNORED_HEADER_PARTS = [
       "ランク",
+      "Rank *Select",
       "コア人材",
       "Core personnel",
       "日本出張",
@@ -478,23 +438,23 @@ export async function extractEmployeesFromExcel(
       "position",
       "management headcount",
     ];
-
+    
     for (let col = 1; col <= maxColumn; col++) {
       const parts: string[] = [];
       for (const rowNum of headerRowRange) {
         const cell = targetWorksheet!.getRow(rowNum).getCell(col);
         let val = getCellValue(cell);
-
+        
         // If Japanese format, translate each header part to English
         if (isJapaneseFormat && val) {
           val = translateHeaderPart(val);
         }
-
+        
         if (val && !parts.includes(val)) {
           parts.push(val);
         }
       }
-
+      
       let headerName = parts.join(" - ");
       if (!headerName) {
         headerName = `Column_${col}`;
@@ -512,7 +472,7 @@ export async function extractEmployeesFromExcel(
       const isIgnored = headerName.startsWith("Column_") ||
         IGNORED_HEADERS.includes(headerName) ||
         IGNORED_HEADER_PARTS.some(part => headerName.includes(part));
-
+      
       if (!isIgnored) {
         allHeaders.push({ name: headerName, col });
       }
@@ -540,14 +500,14 @@ export async function extractEmployeesFromExcel(
       if (idVal.toLowerCase().includes("total") || nameVal.toLowerCase().includes("total")) break;
 
       const employeeData: EmployeeRow = {};
-
+      
       for (const headerInfo of allHeaders) {
         const headerName = headerInfo.name;
         const cellValue = getCellValue(row.getCell(headerInfo.col));
-
+        
         // Check if this is a technical header using right-to-left parsing
         const parsed = parseTechnicalHeader(headerName);
-
+        
         // Only process if it looks like a technical skill (has attribute and skill)
         if (parsed.attribute && (parsed.skill || headerName.toLowerCase().includes('experience'))) {
           // If header is just "experience" without skill name, use previous skill
@@ -563,7 +523,7 @@ export async function extractEmployeesFromExcel(
           } else {
             // Normal header with skill name
             employeeData[headerName] = cellValue;
-
+            
             // Store the current skill for future experience-only headers
             if (parsed.skill) {
               previousSkill = parsed.skill;
@@ -576,15 +536,22 @@ export async function extractEmployeesFromExcel(
           employeeData[headerName] = cellValue;
         }
       }
-
+      
       employeeData["ID"] = idVal;
       employeeData["name"] = nameVal;
-
+      
       employees.push(employeeData);
 
+      // Log first 10 employees
+      if (employees.length <= 10) {
+        const techKeys = Object.keys(employeeData).filter(key => 
+          key.includes('Years') || key.includes('experience')
+        );
 
+      }
 
       if (limit && employees.length >= limit) {
+        console.log(`📊 Stopping extraction after ${limit} employees (limit reached)`);
         break;
       }
     }

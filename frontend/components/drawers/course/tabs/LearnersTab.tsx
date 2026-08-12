@@ -62,6 +62,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { AddLearnerDialogs } from "@/components/dialogs/addLearner-dialog"
 
 interface LearnersTabProps {
   enrollments: any[]
@@ -115,9 +116,15 @@ export function LearnersTab({
   isEnrolling = false,
   isUnenrolling = false,
 }: LearnersTabProps) {
+  // Check if user is Department_Head
+  const isDepartmentHead = userRole === "department_head"
   const isApprover = userRole === "approver"
   const isAdmin = userRole === "admin"
+  
+  const canManageLearners = isAdmin 
+  
   const [viewMode, setViewMode] = useState<ViewMode>("table")
+  const [addLearnerOpen, setAddLearnerOpen] = useState(false)
   const [learnersCommandOpen, setLearnersCommandOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [visibleLearnersCount, setVisibleLearnersCount] = useState(
@@ -139,9 +146,17 @@ export function LearnersTab({
     (e) => e.enrollmentStatus !== "CANCELLED"
   )
 
+  // Filter by team for approver
   if (isApprover && profile?.team) {
     activeEnrollments = activeEnrollments.filter(
       (employee) => employee.teamName === profile.team
+    )
+  }
+
+  // Filter by department for department_head
+  if (isDepartmentHead && profile?.deptDat) {
+    activeEnrollments = activeEnrollments.filter(
+      (employee) => employee.departmentName === profile.deptDat
     )
   }
 
@@ -186,9 +201,19 @@ export function LearnersTab({
   }, [activeEnrollments])
 
   // Filter available employees (not already enrolled)
+  // For department_head, only show employees from their department
   const availableEmployees = useMemo(() => {
-    return allEmployees.filter((employee) => !enrolledIds.has(employee.id))
-  }, [allEmployees, enrolledIds])
+    let employees = allEmployees.filter((employee) => !enrolledIds.has(employee.id))
+    
+    // Filter by department for department_head
+    if (isDepartmentHead && profile?.deptDat) {
+      employees = employees.filter(
+        (employee) => employee.department === profile.deptDat
+      )
+    }
+    
+    return employees
+  }, [allEmployees, enrolledIds, isDepartmentHead, profile?.deptDat])
 
   const displayedLearners = useMemo(() => {
     if (!deferredSearchQuery.trim()) {
@@ -259,23 +284,36 @@ export function LearnersTab({
     }
   }, [])
 
-  const handleEnrollEmployee = async (employee: any) => {
+  // Updated: Accept either employee object or employee ID + groupId
+  const handleEnrollEmployee = async (employeeOrId: any, groupId?: number) => {
     if (!onEnrollEmployee) {
       alert("Enroll function not available")
       return
     }
 
-    // For trainer courses, get the first group ID
-    const isTrainer = course?.courseType === "trainer"
-    let groupId = 1
+    // Handle both: employee object (from old inline dialog) and raw ID (from AddLearnerDialogs)
+    const employeeId = typeof employeeOrId === 'object' ? employeeOrId.id : employeeOrId
+    const employeeName = typeof employeeOrId === 'object' ? employeeOrId.name : String(employeeOrId)
 
-    if (isTrainer && groups.length > 0) {
-      groupId = parseInt(String(groups[0].id).replace("g", ""))
+    // For trainer courses, use the provided groupId or fallback to first group
+    const isTrainer = course?.courseType === "trainer"
+    let finalGroupId = groupId
+
+    if (isTrainer && !finalGroupId) {
+      // Only fallback to first group if no groupId was provided
+      if (groups.length > 0) {
+        const groupIdStr = String(groups[0].id)
+        finalGroupId = parseInt(groupIdStr.replace('g', ''))
+      } else {
+        finalGroupId = 1
+      }
     }
+
+    console.log(`📝 Enrolling ${employeeName} to group:`, finalGroupId)
 
     setIsEnrollingEmployee(true)
     try {
-      await onEnrollEmployee(employee.id, groupId)
+      await onEnrollEmployee(employeeId, finalGroupId)
       setLearnersCommandOpen(false)
       setSearchQuery("")
       setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
@@ -345,14 +383,16 @@ export function LearnersTab({
             </EmptyMedia>
             <EmptyTitle>No Learners Enrolled</EmptyTitle>
             <EmptyDescription className="max-w-xs text-pretty">
-              Add learners to attend this course.
+              {isDepartmentHead && profile?.deptDat 
+                ? `No learners from your department (${profile.deptDat}) are enrolled in this course.`
+                : "Add learners to attend this course."}
             </EmptyDescription>
           </EmptyHeader>
-          {isAdmin && course && availableEmployees.length > 0 && (
+          {canManageLearners && course && availableEmployees.length > 0 && (
             <EmptyContent>
               <Button
                 variant="outline"
-                onClick={() => setLearnersCommandOpen(true)}
+                onClick={() => setAddLearnerOpen(true)}
                 disabled={isEnrolling}
               >
                 <HugeiconsIcon
@@ -373,7 +413,18 @@ export function LearnersTab({
               <div>
                 <h4 className="flex items-center gap-2 text-xl font-semibold">
                   Enrolled Learners
+
+                  {isApprover && !isDepartmentHead && profile?.team && (
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      Team: {profile.team}
+                    </Badge>
+                  )}
                 </h4>
+                {isDepartmentHead && profile?.deptDat && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Showing learners from your department ({activeEnrollments.length} total)
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {/* Updated Search Bar with InputGroup */}
@@ -396,12 +447,12 @@ export function LearnersTab({
                   </InputGroupAddon>
                 </InputGroup>
 
-                {/* Add Employee Button - Directly opens dialog */}
-                {isAdmin && course && availableEmployees.length > 0 && (
+                {/* Add Employee Button - Opens the AddLearnerDialogs */}
+                {canManageLearners && course && availableEmployees.length > 0 && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setLearnersCommandOpen(true)}
+                    onClick={() => setAddLearnerOpen(true)}
                     disabled={isEnrolling}
                   >
                     <HugeiconsIcon
@@ -426,7 +477,9 @@ export function LearnersTab({
                 <p className="mt-2 text-sm text-muted-foreground">
                   {enrollmentSearchTerm
                     ? "No matching learners found"
-                    : "No learners enrolled in this course yet"}
+                    : isDepartmentHead && profile?.deptDat
+                      ? `No learners from your department (${profile.deptDat}) are enrolled in this course yet`
+                      : "No learners enrolled in this course yet"}
                 </p>
               </div>
             ) : viewMode === "table" ? (
@@ -459,7 +512,7 @@ export function LearnersTab({
                       <TableHead className="text-xs font-medium">
                         Enrolled At
                       </TableHead>
-                      {isAdmin && (
+                      {canManageLearners && (
                         <TableHead className="text-center text-xs font-medium">
                           Action
                         </TableHead>
@@ -535,7 +588,7 @@ export function LearnersTab({
                                 )
                               : "-"}
                           </TableCell>
-                          {isAdmin && (
+                          {canManageLearners && (
                             <TableCell className="text-center">
                               <Button
                                 type="button"
@@ -621,7 +674,7 @@ export function LearnersTab({
                                 </Badge>
                               </div>
                             </div>
-                            {isAdmin && (
+                            {canManageLearners && (
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -672,100 +725,27 @@ export function LearnersTab({
         </div>
       )}
 
-      {/* Add Employee Command Dialog */}
-      {isAdmin && course && (
-        <CommandDialog
-          open={learnersCommandOpen}
-          onOpenChange={setLearnersCommandOpen}
-        >
-          <Command className="gap-3" shouldFilter={false}>
-            <CommandInput
-              placeholder="Search employees by name, department or team..."
-              value={searchQuery}
-              onValueChange={(value) => {
-                setSearchQuery(value)
-                setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
-              }}
-            />
-            <CommandList
-              ref={commandListRef}
-              onScroll={handleScroll}
-              className="max-h-[400px] overflow-y-auto"
-            >
-              <CommandEmpty>
-                {searchQuery && displayedLearners.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    No employees found matching "{searchQuery}"
-                  </div>
-                ) : displayedLearners.length === 0 && !searchQuery ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    All available employees are already enrolled
-                  </div>
-                ) : null}
-              </CommandEmpty>
-              <CommandGroup className="gap-2">
-                {visibleLearners.map((learner) => (
-                  <CommandItem
-                    key={learner.id}
-                    onSelect={() => handleEnrollEmployee(learner)}
-                    className="flex items-center justify-between"
-                    disabled={isEnrolling || isEnrollingEmployee}
-                  >
-                    <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage src={learner.avatar} alt={learner.name} />
-                      <AvatarFallback className="rounded-lg">
-                        {getInitials(learner.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">
-                        {learner.name}
-                      </span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {learner.department} • {learner.team}
-                      </span>
-                    </div>
-                    <CommandShortcut>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                      >
-                        <HugeiconsIcon
-                          icon={PlusSignIcon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                      </Button>
-                    </CommandShortcut>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-
-              {hasMoreLearners && (
-                <div className="border-t p-4">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                      <span>Loading more employees...</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      Showing {visibleLearners.length} of{" "}
-                      {displayedLearners.length} employees
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {!hasMoreLearners && displayedLearners.length > 0 && (
-                <div className="border-t p-3 text-center text-xs text-muted-foreground">
-                  Showing all {displayedLearners.length} employees
-                </div>
-              )}
-            </CommandList>
-          </Command>
-        </CommandDialog>
+      {/* Add Learner Dialogs */}
+      {canManageLearners && course && (
+        <AddLearnerDialogs
+          course={course}
+          enrollments={enrollments}
+          allEmployees={availableEmployees}
+          groups={groups}
+          open={addLearnerOpen}
+          onOpenChange={setAddLearnerOpen}
+          onEnrollEmployee={handleEnrollEmployee}
+          onRefreshEnrollments={onRefreshEnrollments}
+          onAddComplete={() => {
+            // Refresh enrollments after adding
+            if (course?.id) {
+              fetch_courseEnrollments(course.id)
+            }
+            if (onRefreshEnrollments) {
+              onRefreshEnrollments()
+            }
+          }}
+        />
       )}
     </TabsContent>
   )

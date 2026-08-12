@@ -1,5 +1,7 @@
 INSERT IGNORE INTO role (role_name) VALUES ('Admin');
 INSERT IGNORE INTO role (role_name) VALUES ('Approver');
+INSERT IGNORE INTO role (role_name) VALUES ('Division_Head');
+INSERT IGNORE INTO role (role_name) VALUES ('Department_Head');
 INSERT IGNORE INTO role (role_name) VALUES ('Learner');
 
 INSERT IGNORE INTO employees (

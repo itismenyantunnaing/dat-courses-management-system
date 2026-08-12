@@ -396,7 +396,7 @@ export function ChangeGroupDialogs({
                 </div>
               </div>
 
-              {/* Select Group */}
+              {/* Select Group - Shows all groups including full ones */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
                   Select New Group <span className="text-destructive">*</span>
@@ -431,25 +431,18 @@ export function ChangeGroupDialogs({
                         </div>
                       ) : (
                         (() => {
+                          // Show ALL groups except the ones employees are currently in
                           const availableGroups = course.groups?.filter((g) => {
                             const groupId = parseInt(g.id)
                             if (isTemporaryGroupId(g.id)) return false
+                            // Don't show groups that employees are already in
                             if (
                               selectedEmployeesForChange.some(
                                 (e) => e.courseGroupId === groupId
                               )
                             )
                               return false
-                            const groupEmployees = enrollments.filter(
-                              (e) =>
-                                e.courseGroupId === groupId &&
-                                e.enrollmentStatus !== "CANCELLED"
-                            )
-                            const isFull =
-                              g.capacity !== undefined &&
-                              groupEmployees.length >=
-                                ((g.capacity as number) || 0)
-                            return !isFull
+                            return true
                           })
 
                           if (
@@ -458,8 +451,7 @@ export function ChangeGroupDialogs({
                           ) {
                             return (
                               <div className="px-2 py-4 text-center text-sm text-yellow-600">
-                                ⚠️ No available groups. All other groups are
-                                full.
+                                ⚠️ No other groups available.
                               </div>
                             )
                           }
@@ -476,45 +468,42 @@ export function ChangeGroupDialogs({
                             const remaining = capacity - currentCount
                             const totalSelected =
                               selectedEmployeesForChange.length
-                            const willFit =
-                              remaining >= totalSelected || capacity === 0
+                            
+                            // Check if group is full
+                            const isFull = capacity > 0 && remaining < totalSelected
 
                             return (
                               <SelectItem
                                 key={group.id}
                                 value={group.id}
-                                disabled={!willFit && capacity > 0}
+                                disabled={isFull}
+                                className={cn(
+                                  isFull && "opacity-60 cursor-not-allowed"
+                                )}
                               >
                                 <div className="flex w-full items-center justify-between">
-                                  <span>{group.name}</span>
+                                  <span className={cn(
+                                    isFull && "text-muted-foreground"
+                                  )}>
+                                    {group.name}
+                                  </span>
                                   <span className="text-xs text-muted-foreground">
-                                    {currentCount}/
-                                    {capacity === 0 ? "∞" : capacity} members
-                                    {totalSelected > 0 && (
-                                      <span
-                                        className={cn(
-                                          "ml-2",
-                                          willFit
-                                            ? "text-green-600"
-                                            : "text-red-500"
-                                        )}
-                                      >
-                                        {willFit
-                                          ? `✓ ${totalSelected} will fit`
-                                          : `✗ Only ${remaining} spots left`}
-                                      </span>
-                                    )}
-                                    {remaining > 0 &&
-                                      remaining <= 3 &&
-                                      capacity > 0 && (
-                                        <span className="ml-1 text-yellow-600">
-                                          ({remaining} spot
-                                          {remaining > 1 ? "s" : ""} left)
-                                        </span>
-                                      )}
-                                    {remaining === 0 && capacity > 0 && (
-                                      <span className="ml-1 text-red-500">
+                                    ({currentCount}/
+                                    {capacity === 0 ? "∞" : capacity} members)
+                                    {isFull ? (
+                                      <span className="ml-2 text-red-500 font-medium">
                                         (Full)
+                                      </span>
+                                    ) : (
+                                      capacity > 0 && (
+                                        <span className="ml-2 text-green-600">
+                                          {remaining} spot{remaining > 1 ? "s" : ""} available
+                                        </span>
+                                      )
+                                    )}
+                                    {capacity === 0 && (
+                                      <span className="ml-2 text-blue-500">
+                                        (Unlimited)
                                       </span>
                                     )}
                                   </span>

@@ -491,7 +491,7 @@ export const approverData: SidebarConfig = {
 
 // Helper function to get sidebar config based on user role
 export function getSidebarConfig(
-  role: "admin" | "learner" | "approver"
+  role: "admin" | "learner" | "approver" | "department_head" | "division_head"
 ): SidebarConfig {
   switch (role) {
     case "admin":
@@ -499,6 +499,8 @@ export function getSidebarConfig(
     case "learner":
       return learnerData
     case "approver":
+    case "department_head":
+    case "division_head":
       return approverData
     default:
       return adminData

@@ -70,8 +70,8 @@ export function SendMailDialog({
   defaultEmail = "default@company.com",
 }: SendMailDialogProps) {
   // Get data from store
-  const { 
-    employee_data, 
+  const {
+    employee_data,
     fetch_EmployeeData,
     systemConfig,
     fetch_SystemConfig,
@@ -95,7 +95,7 @@ export function SendMailDialog({
   const [isSending, setIsSending] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingInitial, setIsLoadingInitial] = useState(false)
-  
+
   // Pagination state for employee search
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -169,7 +169,7 @@ export function SendMailDialog({
     )
   }
 
-  
+
 
   // Get all filtered data (for group selection and total count)
   const getAllFilteredData = useCallback(() => {
@@ -236,19 +236,29 @@ export function SendMailDialog({
   // Get visible data based on pagination (only for employee tab)
   const getVisibleData = useCallback(() => {
     const allData = getAllFilteredData()
-    
+
     // For non-employee tabs (division, department, team), show all data
     if (searchTab !== "employee") {
       return allData
     }
-    
-    // For employee tab, apply pagination
+
+    // For employee tab, if there's a search query, show all matches (no pagination)
+    if (searchQuery.trim().length > 0) {
+      return allData
+    }
+
+    // Apply pagination only when no search query (showing all employees)
     return allData.slice(0, visibleCount)
-  }, [getAllFilteredData, searchTab, visibleCount])
+  }, [getAllFilteredData, searchTab, visibleCount, searchQuery])
+
+  // Update hasMoreEntries to account for searchx
+
 
   const filteredData = getVisibleData()
   const allFilteredData = getAllFilteredData()
-  const hasMoreEntries = searchTab === "employee" && visibleCount < allFilteredData.length
+  const hasMoreEntries = searchTab === "employee" &&
+    searchQuery.trim().length === 0 &&
+    visibleCount < allFilteredData.length
 
   // Get display employees (max 6)
   const displayEmployees = selectedEmployees.slice(0, MAX_SELECTED)
@@ -383,6 +393,7 @@ export function SendMailDialog({
 
   // Reset pagination when search query or tab changes
   useEffect(() => {
+    // Reset pagination when search query or tab changes
     setVisibleCount(ITEMS_PER_PAGE)
     isLoadingMoreRef.current = false
     // Reset scroll position
@@ -391,18 +402,19 @@ export function SendMailDialog({
     }
   }, [searchQuery, searchTab])
 
+
   // Handle scroll to load more (only for employee tab)
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    // Only enable infinite scroll for employee tab
-    if (searchTab !== "employee") return
-    
+    // Only enable infinite scroll for employee tab and when no search query
+    if (searchTab !== "employee" || searchQuery.trim().length > 0) return
+
     const target = e.currentTarget
     const bottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 50
-    
+
     if (bottom && hasMoreEntries && !isLoadingMoreRef.current && !isLoading) {
       isLoadingMoreRef.current = true
       setIsLoadingMore(true)
-      
+
       setTimeout(() => {
         setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, allFilteredData.length))
         setIsLoadingMore(false)
@@ -411,7 +423,7 @@ export function SendMailDialog({
         }, 100)
       }, 300)
     }
-  }, [hasMoreEntries, isLoading, allFilteredData.length, searchTab])
+  }, [hasMoreEntries, isLoading, allFilteredData.length, searchTab, searchQuery])
 
   const isFormValid =
     selectedEmails.length > 0 &&
@@ -745,7 +757,7 @@ export function SendMailDialog({
             />
           </div>
 
-          <CommandList 
+          <CommandList
             ref={commandListRef}
             onScroll={handleScroll}
             className="max-h-[400px] overflow-y-auto"
@@ -756,7 +768,7 @@ export function SendMailDialog({
             {searchTab === "employee" && (
               <CommandGroup>
                 {filteredData.map((employee) => {
-             
+
                   const isSelected = selectedEmployees.some(
                     (selected) => selected.id === employee.id
                   )
@@ -806,7 +818,7 @@ export function SendMailDialog({
                     </CommandItem>
                   )
                 })}
-                
+
                 {/* Loading more indicator for employee tab */}
                 {hasMoreEntries && (
                   <div className="border-t pt-2 mt-2">
@@ -821,15 +833,26 @@ export function SendMailDialog({
                     </div>
                   </div>
                 )}
-                
+
                 {/* All loaded indicator */}
-                {!hasMoreEntries && allFilteredData.length > 0 && (
+                {!hasMoreEntries && allFilteredData.length > 0 && searchQuery.trim().length === 0 && (
                   <div className="border-t pt-2 mt-2">
                     <p className="py-2 text-center text-xs text-muted-foreground">
                       Showing all {allFilteredData.length} employees
                     </p>
                   </div>
                 )}
+
+                {/* Search results count */}
+                {searchQuery.trim().length > 0 && allFilteredData.length > 0 && (
+                  <div className="border-t pt-2 mt-2">
+                    <p className="py-2 text-center text-xs text-muted-foreground">
+                      Found {allFilteredData.length} employee{allFilteredData.length !== 1 ? 's' : ''} matching "{searchQuery}"
+                    </p>
+                  </div>
+                )}
+
+
               </CommandGroup>
             )}
 

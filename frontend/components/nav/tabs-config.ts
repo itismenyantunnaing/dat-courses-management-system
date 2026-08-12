@@ -264,31 +264,62 @@ export const allTabs = [
           profile_photo_path: "",
         }))
 
-        const BATCH_SIZE = 50
+        // const BATCH_SIZE = 50
+        // let importedCount = 0
+        // const failedRecords: { id: string; name: string }[] = []
+
+        // for (let i = 0; i < employeeDtos.length; i += BATCH_SIZE) {
+        //   const batch = employeeDtos.slice(i, i + BATCH_SIZE)
+        //   try {
+        //     await store.bulkCreate_EmployeeData(batch)
+        //     importedCount += batch.length
+        //   } catch (error) {
+        //     for (let j = 0; j < batch.length; j++) {
+        //       try {
+        //         await store.bulkCreate_EmployeeData([batch[j]])
+        //         importedCount++
+        //       } catch (retryError) {
+        //         failedRecords.push({
+        //           id: batch[j].id || "MISSING",
+        //           name: batch[j].name || "MISSING",
+        //         })
+        //       }
+        //     }
+        //   }
+        // }
+
+        // const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
+
         let importedCount = 0
         const failedRecords: { id: string; name: string }[] = []
 
-        for (let i = 0; i < employeeDtos.length; i += BATCH_SIZE) {
-          const batch = employeeDtos.slice(i, i + BATCH_SIZE)
-          try {
-            await store.bulkCreate_EmployeeData(batch)
-            importedCount += batch.length
-          } catch (error) {
-            for (let j = 0; j < batch.length; j++) {
-              try {
-                await store.bulkCreate_EmployeeData([batch[j]])
-                importedCount++
-              } catch (retryError) {
-                failedRecords.push({
-                  id: batch[j].id || "MISSING",
-                  name: batch[j].name || "MISSING",
-                })
-              }
+        try {
+          // Send ALL employees in one API call
+          await store.bulkCreate_EmployeeData(employeeDtos)
+          importedCount = employeeDtos.length
+        } catch (error) {
+          console.error('❌ Bulk import failed:', error)
+          alert(`Bulk import of ${employeeDtos.length} employees failed. Trying one by one...`)
+
+          // Fallback: try one by one if bulk fails
+          for (let j = 0; j < employeeDtos.length; j++) {
+            try {
+              await store.bulkCreate_EmployeeData([employeeDtos[j]])
+              importedCount++
+            } catch (retryError) {
+              console.debug(
+                `   ⚠️ Employee ${j + 1} (${employeeDtos[j].id || "NO_ID"}) failed`
+              )
+              failedRecords.push({
+                id: employeeDtos[j].id || "MISSING",
+                name: employeeDtos[j].name || "MISSING",
+              })
             }
           }
         }
 
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
+
 
         // ===== FINAL CONCISE SUMMARY =====
         let resultMsg = `✅ Import complete (${totalTime}s)\n\n`
@@ -1696,7 +1727,7 @@ export const allTabs = [
             employeeJapaneseLevel_Data,
             employee_data,
             japaneseTargetDates_Data,
-             {
+            {
               templatePath: '/templates/current_target_template.xlsx', // 👈 Add this
             }
           )

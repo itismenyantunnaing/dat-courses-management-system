@@ -194,7 +194,7 @@ const BorderedTableHead = ({
 interface ProgressReportRow {
   id: string
   sr: number
-  section: string
+  session: string
   memberName: string
   jlptLevel: string
   certified: string
@@ -610,16 +610,16 @@ export default function SelfStudyProgressReportContainer() {
           progress.completion_status
         )
 
-        // Format section with date
+        // Format session with date
         const formattedDate = formatDate(sessionDate)
-        const sectionDisplay = formattedDate
-          ? `Section ${sessionNo} (${formattedDate})`
-          : `Section ${sessionNo}`
+        const sessionDisplay = formattedDate
+          ? `Session ${sessionNo} (${formattedDate})`
+          : `Session ${sessionNo}`
 
         rows.push({
           id: progress.id || `row-${rows.length}`,
           sr: rows.length + 1,
-          section: sectionDisplay,
+          session: sessionDisplay,
           memberName: employee.employee_name,
           jlptLevel: "",
           certified: "No",
@@ -670,11 +670,11 @@ export default function SelfStudyProgressReportContainer() {
       const searchLower = searchTerm.toLowerCase()
       filtered = reportData.filter((item) => {
         const memberName = (item.memberName || "").toLowerCase()
-        const section = (item.section || "").toLowerCase()
+        const session = (item.session || "").toLowerCase()
         const status = (item.status || "").toLowerCase()
         return (
           memberName.includes(searchLower) ||
-          section.includes(searchLower) ||
+          session.includes(searchLower) ||
           status.includes(searchLower)
         )
       })
@@ -730,7 +730,7 @@ export default function SelfStudyProgressReportContainer() {
 
   // Calculate total columns dynamically based on view mode
   const getTotalColumns = () => {
-    const baseColumns = 4 + 2 + 1 // Sr, Section, Member Name, JLPT Level (2), Status
+    const baseColumns = 4 + 2 + 1 // Sr, Session, Member Name, JLPT Level (2), Status
     const percentColumns = viewMode === VIEW_MODES.SESSION ? 1 : 2 // Session: 1 (Current), Overall: 2 (Actual + Target)
     const dataColumns = STUDY_COLUMNS.length * 2 // Each column has Current + Target
     return baseColumns + dataColumns + percentColumns
@@ -763,7 +763,7 @@ export default function SelfStudyProgressReportContainer() {
             <InputGroup className="max-w-[400px] flex-1">
               <InputGroupInput
                 ref={searchInputRef}
-                placeholder="Search by member, section, or status..."
+                placeholder="Search by member, session, or status..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -836,7 +836,7 @@ export default function SelfStudyProgressReportContainer() {
                   className="align-middle whitespace-nowrap"
                   rowSpan={2}
                 >
-                  Section
+                  Session
                 </BorderedTableHead>
                 <BorderedTableHead
                   className="align-middle whitespace-nowrap"
@@ -973,7 +973,7 @@ export default function SelfStudyProgressReportContainer() {
                       </BorderedTableCell>
                       <BorderedTableCell>
                         <Badge variant="outline" className="font-normal">
-                          {item.section}
+                          {item.session}
                         </Badge>
                       </BorderedTableCell>
                       <BorderedTableCell>

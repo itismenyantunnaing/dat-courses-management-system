@@ -195,8 +195,7 @@ export function CoursesContainer({
 
 
 
-  const canEditTrainerCourses = userRole === "admin"
-  const isLearner = userRole === "learner" || userRole === "approver"
+  const isAdmin = userRole === "admin"
 
   // Get current user's enrolled course IDs
   const { enrollments, getUserId } = mainStore()
@@ -598,7 +597,7 @@ export function CoursesContainer({
   }
 
   // Learner view
-  if (isLearner) {
+  if (!isAdmin) {
     return (
       <div className="flex flex-col gap-4 py-4">
         <CardContent className="px-4">
@@ -883,7 +882,7 @@ export function CoursesContainer({
           </>
         )}
 
-        {isFormVisible && !selectedCourse && canEditTrainerCourses && (
+        {isFormVisible && !selectedCourse && isAdmin && (
           <div className="mt-6">
             <Trainer_CourseForm
               mode={editingCourse ? "edit" : "add"}

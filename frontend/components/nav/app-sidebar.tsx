@@ -24,7 +24,7 @@ export function AppSidebar({
 }: {
   onTabChange?: (tab: string) => void
   activeTab?: string
-  userRole?: "admin" | "learner" | "approver"
+  userRole?: "admin" | "learner" | "approver" | "department_head" | "division_head"
 } & React.ComponentProps<typeof Sidebar>) {
   // Get data based on user role
   const data = getSidebarConfig(userRole)

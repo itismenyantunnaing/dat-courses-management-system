@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx (or wherever your dashboard component is)
 "use client"
 
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -26,7 +27,7 @@ import { NotificationsDrawer } from "@/components/drawers/notifications-drawer"
 import { SendMailDialog } from "@/components/dialogs/sendMail-dialog"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MailSend02Icon, NotificationIcon } from "@hugeicons/core-free-icons"
+import { MailSend02Icon, NotificationIcon, Download02Icon } from "@hugeicons/core-free-icons"
 import AdminDashboardContainer from "@/components/Dashboard/adminDashboard-container"
 import ApproverDashboardContainer from "@/components/Dashboard/approverDashboard-container"
 import LearnerDashboardContainer from "@/components/Dashboard/learnerDashboard-container"
@@ -37,6 +38,7 @@ import { webScoketStore } from "@/store/websocketStore"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import type { SessionData } from "@/types/session"
+import { Download } from "lucide-react" // or use any icon you prefer
 
 interface DashboardClientProps {
   userData: SessionData
@@ -49,6 +51,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
   const [isProfileLoaded, setIsProfileLoaded] = useState(false)
   const [sendMailOpen, setSendMailOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
   const [selectedCertificateId, setSelectedCertificateId] = useState<number | null>(null)
@@ -58,7 +61,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const { setSession, fetch_EmployeeProfile, profile, unreadCount: dbUnreadCount, fetch_UnreadCount } = mainStore()
   const { connect } = webScoketStore()
 
-  //  Subscribe to WebSocket store for real-time updates (only for connection status and notifications list)
+  // Subscribe to WebSocket store for real-time updates
   const isConnected = webScoketStore((state) => state.isConnected)
   const notifications = webScoketStore((state) => state.notifications)
 
@@ -81,13 +84,11 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   useEffect(() => {
     if (isProfileLoaded && profile?.id) {
       connect();
-      // Fetch unread count from database
       fetch_UnreadCount(profile.id);
     }
   }, [isProfileLoaded, profile?.id, connect, fetch_UnreadCount]);
 
-
-  //  Refetch database unread count ONLY when a NEW WebSocket notification arrives
+  // Refetch database unread count ONLY when a NEW WebSocket notification arrives
   useEffect(() => {
     if (profile?.id && notifications.length > previousNotificationsLength.current) {
       fetch_UnreadCount(profile.id);
@@ -115,10 +116,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     if (notifications.length > 0) {
       const latest = notifications[0]
       if (latest && !latest.read) {
-        // Check if there's a navigation target
         const hasNavigationTarget = latest.courseId || latest.certificateId;
 
-        // Base toast options
         const toastOptions: any = {
           description: latest.message,
           duration: 5000,
@@ -129,8 +128,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             border: '1px solid #e94560',
             borderRadius: '12px',
             padding: '16px',
-            width: '480px', // Increased width
-            maxWidth: '90vw', // Responsive max width
+            width: '480px',
+            maxWidth: '90vw',
           },
           cancel: {
             label: 'Dismiss',
@@ -140,15 +139,11 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           }
         };
 
-        // Only add action (View button) if there's a navigation target
         if (hasNavigationTarget) {
           toastOptions.action = {
             label: 'View',
             onClick: () => {
-              // Mark as read
               webScoketStore.getState().markAsRead(latest.id);
-
-              // Navigate
               if (latest.courseId) {
                 setSelectedCourseId(latest.courseId);
                 setActiveTab('courses');
@@ -162,7 +157,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           };
         }
 
-        // Show toast with the message
         toast[latest.type === 'error' ? 'error' :
           latest.type === 'success' ? 'success' :
             latest.type === 'warning' ? 'warning' : 'info'](
@@ -172,7 +166,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       }
     }
   }, [notifications]);
-
 
   useEffect(() => {
     if (profile?.status === "default") {
@@ -198,54 +191,71 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     )
   }, [user_role, isProfileLoaded])
 
-  //  Use database unread count
   const totalUnreadCount = dbUnreadCount || 0;
 
-  //  Only clear selected IDs when changing tabs, but preserve them when switching to the relevant tab
   useEffect(() => {
-    // When switching to courses tab, use the pending course ID if it exists
-    if (activeTab === 'courses' && pendingCertificateId) {
-      // This is for courses, we don't have pending course ID in this example
-      // But keep the pattern consistent
-    }
-
-    // When switching to certificate tabs, use the pending certificate ID
     if ((activeTab === 'japanese-certificates' || activeTab === 'certificates-requests') && pendingCertificateId) {
       setSelectedCertificateId(pendingCertificateId)
-      setPendingCertificateId(null) // Clear after setting
+      setPendingCertificateId(null)
     }
   }, [activeTab, pendingCertificateId])
 
-  // Handle notification actions
   const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
     if (action === 'view-course') {
       setSelectedCourseId(id)
       setActiveTab('courses')
     } else if (action === 'view-certificate') {
-      // Store the certificate ID and switch to the appropriate tab
       const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests'
-
-      // Set the pending ID first
       setPendingCertificateId(id)
-      // Clear any existing selected ID to force a refresh
       setSelectedCertificateId(null)
-      // Switch to the tab
       setActiveTab(targetTab)
-
       console.log(`🔔 Navigating to ${targetTab} with certificate ID:`, id)
     }
   }
 
-  // Handle tab change for certificates
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
-
-    // If switching away from certificate tabs, clear the selection
     if (tab !== 'japanese-certificates' && tab !== 'certificates-requests') {
       setSelectedCertificateId(null)
       setPendingCertificateId(null)
     }
   }
+
+  // ========== EXPORT FUNCTION ==========
+const handleExportTemplate = async () => {
+  try {
+    setIsExporting(true);
+    
+    // Simple export with default values
+    const response = await fetch('/api/excel/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}), // Uses default TEMPLATE_UPDATES
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      toast.error('Failed to export: ' + (error.error || 'Unknown error'));
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `skills_template_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('Template downloaded successfully!');
+  } catch (error) {
+    toast.error('Failed to download template');
+  } finally {
+    setIsExporting(false);
+  }
+};
 
   const getCurrentLabel = () => {
     switch (activeTab) {
@@ -375,7 +385,18 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                {/*  Notification Bell with Database Unread Count */}
+                {/* Export Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportTemplate}
+                  disabled={isExporting}
+                  className="gap-2"
+                >
+                  {isExporting ? 'Downloading...' : 'Export Template'}
+                </Button>
+
+                {/* Notification Bell */}
                 <div className="relative">
                   <Button
                     variant="outline"
@@ -388,7 +409,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                       strokeWidth={2}
                       className="h-5 w-5"
                     />
-                    {/*  Unread count badge from database only */}
                     {totalUnreadCount > 0 && (
                       <Badge
                         variant="destructive"
@@ -398,8 +418,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                       </Badge>
                     )}
                   </Button>
-
-                  {/*  Connection status indicator */}
                   <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${isConnected ? 'bg-green-500' : 'bg-red-500'
                     }`} />
                 </div>
@@ -431,7 +449,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         </SidebarInset>
       </SidebarProvider>
 
-      {/* Notifications Drawer - Pass WebSocket notifications */}
+      {/* Notifications Drawer */}
       <NotificationsDrawer
         open={notificationDrawerOpen}
         onOpenChange={setNotificationDrawerOpen}
@@ -444,34 +462,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         onOpenChange={setSendMailOpen}
         defaultEmail={profile?.email || ""}
       />
-        {/* Forced Password Change Dialog for New Users */}
-      {/* <Dialog
-        open={isChangePasswordOpen}
-        onOpenChange={(open) => {
-          // Prevent closing if user status is still "default"
-          if (userData.status === "default" && !open) return
-          setIsChangePasswordOpen(open)
-        }}
-      >
-        <DialogContent
-          className="sm:max-w-[425px]"
-          onPointerDownOutside={(e) => {
-            // Prevent closing by clicking outside if user status is still "default"
-            if (userData.status === "default") e.preventDefault()
-          }}
-          onEscapeKeyDown={(e) => {
-            // Prevent closing by pressing escape if user status is still "default"
-            if (userData.status === "default") e.preventDefault()
-          }}
-        >
-          <ChangePassword
-            flow="change"
-            step="old-password"
-            force={true}
-            onClose={() => setIsChangePasswordOpen(false)}
-          />
-        </DialogContent>
-      </Dialog> */}
     </>
   )
 }

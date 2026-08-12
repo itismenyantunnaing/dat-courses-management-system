@@ -70,10 +70,14 @@ interface CertificateRequest {
     avatar?: string
     id: string
     teamName?: string
+    departmentName?: string
+    divisionName?: string
   }
   submittedDate: string
   employeeId: string
   teamName?: string
+  departmentName?: string
+  divisionName?: string
   email?: string
 }
 
@@ -201,8 +205,13 @@ export function CertificatesRequestsContainer({
   const [approveDrawerOpen, setApproveDrawerOpen] = useState(false)
   const [denyDrawerOpen, setDenyDrawerOpen] = useState(false)
   const { fetch_AllCertificates, allCertificates, profile } = mainStore()
-  const isApprover = profile?.role?.toLowerCase() === "approver"
-  const isAdmin = profile?.role?.toLowerCase() === "admin"
+  
+  // Determine user role
+  const userRole = profile?.role?.toLowerCase() || ""
+  const isApprover = userRole === "approver"
+  const isDepartmentHead = userRole === "department_head"
+  const isDivisionHead = userRole === "division_head"
+  const isAdmin = userRole === "admin"
 
   // Transform allCertificates to CertificateRequest format
   const transformedCertificates: CertificateRequest[] = allCertificates.map(
@@ -218,12 +227,16 @@ export function CertificatesRequestsContainer({
         avatar: cert.profilePhotoPath || "",
         id: cert.employeeId || "",
         teamName: cert.teamName,
+        departmentName: cert.departmentName,
+        divisionName: cert.divisionName,
       },
       submittedDate: cert.createdAt
         ? cert.createdAt.toISOString()
         : new Date().toISOString(),
       employeeId: cert.employeeId || "",
       teamName: cert.teamName,
+      departmentName: cert.departmentName,
+      divisionName: cert.divisionName,
       email: cert.email,
     })
   )
@@ -232,13 +245,32 @@ export function CertificatesRequestsContainer({
   const getTotalCount = () => {
     let filtered = transformedCertificates
 
+    // Filter by team for approver
     if (isApprover && profile?.team) {
       filtered = filtered.filter((cert) => {
         const certTeam = cert.employee.teamName || cert.teamName || ""
         const approverTeam = profile.team || ""
         return certTeam.toLowerCase() === approverTeam.toLowerCase()
       })
-    } else if (!isApprover && !isAdmin) {
+    }
+    // Filter by department for department_head
+    else if (isDepartmentHead && profile?.deptDat) {
+      filtered = filtered.filter((cert) => {
+        const certDept = cert.employee.departmentName || cert.departmentName || ""
+        const deptHeadDept = profile.deptDat || ""
+        return certDept.toLowerCase() === deptHeadDept.toLowerCase()
+      })
+    }
+    // Filter by division for division_head
+    else if (isDivisionHead && profile?.division) {
+      filtered = filtered.filter((cert) => {
+        const certDivision = cert.employee.divisionName || cert.divisionName || ""
+        const divisionHeadDivision = profile.division || ""
+        return certDivision.toLowerCase() === divisionHeadDivision.toLowerCase()
+      })
+    }
+    // Admin sees all
+    else if (!isAdmin && !isApprover && !isDepartmentHead && !isDivisionHead) {
       return 0
     }
 
@@ -249,13 +281,32 @@ export function CertificatesRequestsContainer({
   const getStatusCount = (status: string) => {
     let filtered = transformedCertificates
 
+    // Filter by team for approver
     if (isApprover && profile?.team) {
       filtered = filtered.filter((cert) => {
         const certTeam = cert.employee.teamName || cert.teamName || ""
         const approverTeam = profile.team || ""
         return certTeam.toLowerCase() === approverTeam.toLowerCase()
       })
-    } else if (!isApprover && !isAdmin) {
+    }
+    // Filter by department for department_head
+    else if (isDepartmentHead && profile?.deptDat) {
+      filtered = filtered.filter((cert) => {
+        const certDept = cert.employee.departmentName || cert.departmentName || ""
+        const deptHeadDept = profile.deptDat || ""
+        return certDept.toLowerCase() === deptHeadDept.toLowerCase()
+      })
+    }
+    // Filter by division for division_head
+    else if (isDivisionHead && profile?.division) {
+      filtered = filtered.filter((cert) => {
+        const certDivision = cert.employee.divisionName || cert.divisionName || ""
+        const divisionHeadDivision = profile.division || ""
+        return certDivision.toLowerCase() === divisionHeadDivision.toLowerCase()
+      })
+    }
+    // Admin sees all
+    else if (!isAdmin && !isApprover && !isDepartmentHead && !isDivisionHead) {
       return 0
     }
 
@@ -272,7 +323,6 @@ export function CertificatesRequestsContainer({
       hasProcessedSelectedIdRef.current = false
     }
   }, [selectedCertificateId])
-
 
   // Effect to find and open the certificate when selectedCertificateId is provided
   useEffect(() => {
@@ -314,10 +364,6 @@ export function CertificatesRequestsContainer({
       )
       if (refreshedCertificate) {
         handleCertificateClick(refreshedCertificate)
-      } else {
-        console.error(
-          `Certificate with ID ${selectedCertificateId} not found after refresh`
-        )
       }
       hasProcessedSelectedIdRef.current = true
     })
@@ -360,22 +406,38 @@ export function CertificatesRequestsContainer({
   const getFilteredCertificates = () => {
     let filtered = transformedCertificates
 
+    // Filter by role
     if (isApprover && profile?.team) {
       filtered = filtered.filter((cert) => {
         const certTeam = cert.employee.teamName || cert.teamName || ""
         const approverTeam = profile.team || ""
         return certTeam.toLowerCase() === approverTeam.toLowerCase()
       })
+    } else if (isDepartmentHead && profile?.deptDat) {
+      filtered = filtered.filter((cert) => {
+        const certDept = cert.employee.departmentName || cert.departmentName || ""
+        const deptHeadDept = profile.deptDat || ""
+        return certDept.toLowerCase() === deptHeadDept.toLowerCase()
+      })
+    } else if (isDivisionHead && profile?.division) {
+      filtered = filtered.filter((cert) => {
+        const certDivision = cert.employee.divisionName || cert.divisionName || ""
+        const divisionHeadDivision = profile.division || ""
+        return certDivision.toLowerCase() === divisionHeadDivision.toLowerCase()
+      })
     } else if (isAdmin) {
+      // Admin sees all
       filtered = transformedCertificates
-    } else if (!isApprover) {
+    } else {
       filtered = []
     }
 
+    // Filter by status tab
     if (statusTab !== "all") {
       filtered = filtered.filter((cert) => cert.status === statusTab)
     }
 
+    // Filter by search term
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase()
       filtered = filtered.filter((cert) => {
@@ -385,6 +447,8 @@ export function CertificatesRequestsContainer({
         const email = cert.employee.email.toLowerCase()
         const employeeId = cert.employee.id.toLowerCase()
         const teamName = cert.employee.teamName?.toLowerCase() || ""
+        const departmentName = cert.employee.departmentName?.toLowerCase() || ""
+        const divisionName = cert.employee.divisionName?.toLowerCase() || ""
         const status = cert.status.toLowerCase()
 
         return (
@@ -394,6 +458,8 @@ export function CertificatesRequestsContainer({
           email.includes(searchLower) ||
           employeeId.includes(searchLower) ||
           teamName.includes(searchLower) ||
+          departmentName.includes(searchLower) ||
+          divisionName.includes(searchLower) ||
           status.includes(searchLower)
         )
       })
@@ -526,6 +592,20 @@ export function CertificatesRequestsContainer({
     return `No ${statusLabel.toLowerCase()} certificate requests found`
   }
 
+  // Get role-based access message
+  const getAccessDeniedMessage = () => {
+    if (isApprover) {
+      return `You can only view certificate requests from your team: ${profile?.team || "No team assigned"}`
+    }
+    if (isDepartmentHead) {
+      return `You can only view certificate requests from your department: ${profile?.deptDat || "No department assigned"}`
+    }
+    if (isDivisionHead) {
+      return `You can only view certificate requests from your division: ${profile?.division || "No division assigned"}`
+    }
+    return "You don't have permission to view certificate requests."
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -536,7 +616,7 @@ export function CertificatesRequestsContainer({
     )
   }
 
-  if (!isApprover && !isAdmin) {
+  if (!isAdmin && !isApprover && !isDepartmentHead && !isDivisionHead) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="text-center">
@@ -546,7 +626,7 @@ export function CertificatesRequestsContainer({
             You don't have permission to view certificate requests.
           </p>
           <p className="text-sm text-muted-foreground">
-            This page is only accessible to Approvers.
+            This page is only accessible to Admins, Approvers, Department Heads, and Division Heads.
           </p>
         </div>
       </div>
@@ -557,6 +637,17 @@ export function CertificatesRequestsContainer({
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
         <CardContent className="px-0">
+          {/* Role-based info banner */}
+          {(isApprover || isDepartmentHead || isDivisionHead) && (
+            <div className="mx-4 mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+              <span className="font-medium">
+                {isApprover && `👥 Viewing certificates for team: ${profile?.team || "N/A"}`}
+                {isDepartmentHead && `🏢 Viewing certificates for department: ${profile?.deptDat || "N/A"}`}
+                {isDivisionHead && `📊 Viewing certificates for division: ${profile?.division || "N/A"}`}
+              </span>
+            </div>
+          )}
+
           {/* Tabs */}
           <div className="mb-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
             {/* Tabs */}

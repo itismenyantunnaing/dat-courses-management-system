@@ -33,12 +33,19 @@ export const employeeProfileStore = (set: StoreSet, get: StoreGet): EmployeeProf
       });
 
       if (!response.ok) {
+        // Handle 403/401 specifically
+        if (response.status === 403 || response.status === 401) {
+          // Call logout server action
+          const { logout } = await import('@/app/actions/auth');
+          await logout(); // This will clear the session and redirect
+          throw new Error('Session expired. Please login again.');
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
 
-      const profile: EmployeeProfile = data ;
+      const profile: EmployeeProfile = data;
 
       set(() => ({ profile: profile, isLoading: false }));
     } catch (error) {

@@ -18,6 +18,7 @@ export interface AttendanceResponse {
     sessionDate: string;
     attendanceStatus: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
     registeredAt: string;
+    groupId?: number; // Add groupId to track which group the attendance belongs to
 }
 
 export interface AttendanceRequest {
@@ -59,13 +60,12 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
     error: null as string | null,
     success: false,
 
-    // Fetch enrollments for a course group
+    // Fetch enrollments for a course group - MERGE instead of REPLACE
     fetchCourseEnrollments: async (courseId: number, groupId: number) => {
         set((state: Course_StoreType) => ({ 
             ...state, 
             isLoading: true, 
-            error: null,
-            enrollments: [] 
+            error: null
         }));
         
         try {
@@ -79,15 +79,34 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const data = await response.json();
+            const enrollmentsData = data.enrollments || data || [];
+
+            // MERGE: Keep existing enrollments and add/update new ones
+            const currentEnrollments = get().enrollments || [];
+            
+            // Create a map of existing enrollments by id for deduplication
+            const enrollmentMap = new Map();
+            currentEnrollments.forEach((enrollment: Enrollment) => {
+                enrollmentMap.set(enrollment.id, enrollment);
+            });
+            
+            // Add/update new enrollments
+            enrollmentsData.forEach((enrollment: Enrollment) => {
+                enrollmentMap.set(enrollment.id, enrollment);
+            });
+            
+            const mergedEnrollments = Array.from(enrollmentMap.values());
+            
+            console.log(`📊 Enrollments merged: ${mergedEnrollments.length} total (${enrollmentsData.length} new from group ${groupId})`);
 
             set((state: Course_StoreType) => ({ 
                 ...state, 
-                enrollments: data,
+                enrollments: mergedEnrollments,
                 isLoading: false,
                 error: null
             }));
 
-            return data;
+            return mergedEnrollments;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch enrollments';
             console.error('❌ Error fetching enrollments:', errorMessage);
@@ -95,21 +114,19 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             set((state: Course_StoreType) => ({ 
                 ...state, 
                 isLoading: false,
-                error: errorMessage,
-                enrollments: []
+                error: errorMessage
             }));
             
             throw error;
         }
     },
 
-    // Fetch attendance for a course group
+    // Fetch attendance for a course group - MERGE instead of REPLACE
     fetchAttendance: async (courseId: number, groupId: number) => {
         set((state: Course_StoreType) => ({ 
             ...state, 
             isLoading: true, 
-            error: null,
-            attendances: [] 
+            error: null
         }));
         
         try {
@@ -123,18 +140,45 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const data = await response.json();
-
-            // Handle different response formats
             const attendanceData = data.attendance || data || [];
+
+            // Add groupId to each attendance record for tracking
+            const attendanceWithGroupId = attendanceData.map((attendance: AttendanceResponse) => ({
+                ...attendance,
+                groupId: groupId // Add groupId to track which group this belongs to
+            }));
+
+            // MERGE: Keep existing attendances and add/update new ones
+            const currentAttendances = get().attendances || [];
             
+            // Create a map of existing attendances by id for deduplication
+            const attendanceMap = new Map();
+            currentAttendances.forEach((attendance: AttendanceResponse) => {
+                attendanceMap.set(attendance.id, attendance);
+            });
+            
+            // Add/update new attendances
+            attendanceWithGroupId.forEach((attendance: AttendanceResponse) => {
+                attendanceMap.set(attendance.id, attendance);
+            });
+            
+            const mergedAttendances = Array.from(attendanceMap.values());
+            
+            console.log(`📊 Attendance merged: ${mergedAttendances.length} total (${attendanceData.length} new from group ${groupId})`);
+            console.log(`📊 Attendance by group:`, mergedAttendances.reduce((acc: any, att: AttendanceResponse) => {
+                const gId = att.groupId || 'unknown';
+                acc[gId] = (acc[gId] || 0) + 1;
+                return acc;
+            }, {}));
+
             set((state: Course_StoreType) => ({ 
                 ...state, 
-                attendances: attendanceData,
+                attendances: mergedAttendances,
                 isLoading: false,
                 error: null
             }));
 
-            return attendanceData;
+            return mergedAttendances;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch attendance';
             console.error('❌ Error fetching attendance:', errorMessage);
@@ -142,8 +186,7 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             set((state: Course_StoreType) => ({ 
                 ...state, 
                 isLoading: false,
-                error: errorMessage,
-                attendances: []
+                error: errorMessage
             }));
             
             throw error;
@@ -175,13 +218,34 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const data = await response.json();
-
             const attendanceData = data.attendance || data;
+            
+            // Add groupId to the new attendance record
+            const attendanceWithGroupId = {
+                ...attendanceData,
+                groupId: groupId
+            };
+
             const currentAttendances = get().attendances;
+            
+            // Check if attendance already exists (update instead of add)
+            const existingIndex = currentAttendances.findIndex(
+                (att: AttendanceResponse) => att.id === attendanceWithGroupId.id
+            );
+            
+            let updatedAttendances;
+            if (existingIndex >= 0) {
+                // Update existing
+                updatedAttendances = [...currentAttendances];
+                updatedAttendances[existingIndex] = attendanceWithGroupId;
+            } else {
+                // Add new
+                updatedAttendances = [attendanceWithGroupId, ...currentAttendances];
+            }
             
             set((state: Course_StoreType) => ({ 
                 ...state, 
-                attendances: [attendanceData, ...currentAttendances],
+                attendances: updatedAttendances,
                 isLoading: false,
                 error: null,
                 success: true
@@ -228,13 +292,19 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const data = await response.json();
-
             const updatedAttendance = data.attendance || data;
+            
+            // Preserve groupId
+            const updatedAttendanceWithGroupId = {
+                ...updatedAttendance,
+                groupId: groupId
+            };
+            
             const currentAttendances = get().attendances;
             
             // Update the attendance in the list
             const updatedAttendances = currentAttendances.map((att: AttendanceResponse) => 
-                att.id === updatedAttendance.id ? updatedAttendance : att
+                att.id === updatedAttendanceWithGroupId.id ? updatedAttendanceWithGroupId : att
             );
             
             set((state: Course_StoreType) => ({ 
@@ -278,6 +348,34 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
         set((state: Course_StoreType) => ({ 
             ...state, 
             error: null 
+        }));
+    },
+
+    // Clear attendance for a specific group (useful when refreshing)
+    clearAttendanceForGroup: (groupId: number) => {
+        const currentAttendances = get().attendances || [];
+        const filteredAttendances = currentAttendances.filter(
+            (att: AttendanceResponse) => att.groupId !== groupId
+        );
+        
+        set((state: Course_StoreType) => ({ 
+            ...state, 
+            attendances: filteredAttendances
+        }));
+    },
+
+    // Clear enrollments for a specific group
+    clearEnrollmentsForGroup: (groupId: number) => {
+        // Note: Enrollments don't have groupId in the current type
+        // You might want to filter by courseGroupId instead
+        const currentEnrollments = get().enrollments || [];
+        const filteredEnrollments = currentEnrollments.filter(
+            (enrollment: Enrollment) => enrollment.courseGroupId !== groupId
+        );
+        
+        set((state: Course_StoreType) => ({ 
+            ...state, 
+            enrollments: filteredEnrollments
         }));
     }
 });

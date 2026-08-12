@@ -45,7 +45,10 @@ const convertEmployeeToMentionedLearner = (employee: any) => ({
   department: employee.dept_dat || employee.department || "",
   team: employee.team || "",
   status: (employee.status || employee.emp_status || "active") as
-    "active" | "pending" | "completed" | "inactive",
+    | "active"
+    | "pending"
+    | "completed"
+    | "inactive",
   addedAt: new Date(),
 })
 
@@ -59,7 +62,11 @@ export function CourseDetail({
 }: CourseDetailProps) {
   const isAdmin = userRole === "admin"
   const isLearner = userRole === "learner"
-  const isApprover = userRole === "approver"
+  const isApprover = userRole === "approver" ||
+    userRole === "division_head" ||
+    userRole === "department_head"
+
+  const canRequestGroupChange = isLearner || isApprover
 
   const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false)
   const [isEnrolling, setIsEnrolling] = useState(false)
@@ -72,6 +79,7 @@ export function CourseDetail({
   const [isRequestingGroupChange, setIsRequestingGroupChange] = useState(false)
   const [isProcessingRequest, setIsProcessingRequest] = useState(false)
   const [activeTab, setActiveTab] = useState("information")
+  const [loadingAttendanceGroups, setLoadingAttendanceGroups] = useState<Record<number, boolean>>({})
 
   // Attendance state
   const [attendanceStatuses, setAttendanceStatuses] = useState<
@@ -162,6 +170,7 @@ export function CourseDetail({
     const firstSession = sortedSessions[0]
     if (!firstSession || !firstSession.date) return false
 
+
     const sessionDate = new Date(firstSession.date)
     // Use TESTING_DATE if provided, otherwise use current date
     const currentDate = TESTING_DATE ? new Date(TESTING_DATE) : new Date()
@@ -187,7 +196,7 @@ export function CourseDetail({
   const isChangeGroupRequestDisabled = React.useMemo(() => {
     if (!isUserEnrolled) return true
     if (!course.groups || course.groups.length <= 1) return true
-    if (currentUserEnrollment?.groupChangeStatus === "PENDING") return true
+    // if (currentUserEnrollment?.groupChangeStatus === "PENDING") return true
     if (isFirstSessionStartedOrPassed) return true
     return false
   }, [
@@ -196,6 +205,8 @@ export function CourseDetail({
     currentUserEnrollment,
     isFirstSessionStartedOrPassed,
   ])
+
+
 
   // Get tooltip text for disabled buttons (kept for reference but no longer used)
   const getChangeGroupTooltip = () => {
@@ -219,7 +230,48 @@ export function CourseDetail({
     return "Request to change your group"
   }
 
-  // 🆕 Handle enrolling employee from LearnersTab
+  // Helper function to refresh attendance for all groups
+  const refreshAllGroupAttendance = async () => {
+    if (!course.id || course.courseType !== "trainer") return
+    if (!course.groups || course.groups.length === 0) return
+
+    try {
+      // Set loading state for all groups
+      const groupIds = course.groups.map((group: any) => parseInt(group.id)).filter((id: number) => !isNaN(id))
+      setLoadingAttendanceGroups(prev => {
+        const newState = { ...prev }
+        groupIds.forEach(id => {
+          newState[id] = true
+        })
+        return newState
+      })
+
+      // Fetch attendance for each group in parallel
+      const attendancePromises = course.groups.map((group: any) => {
+        const groupId = parseInt(group.id)
+        if (isNaN(groupId)) return Promise.resolve()
+        return fetchAttendance(parseInt(course.id), groupId)
+      })
+
+      await Promise.all(attendancePromises)
+      console.log(`✅ Attendance loaded for ${course.groups.length} groups`)
+    } catch (error) {
+      console.error("Error loading attendance for groups:", error)
+    } finally {
+      // Clear loading state
+      setLoadingAttendanceGroups(prev => {
+        const newState = { ...prev }
+        course.groups.forEach((group: any) => {
+          const id = parseInt(group.id)
+          if (!isNaN(id)) {
+            delete newState[id]
+          }
+        })
+        return newState
+      })
+    }
+  }
+
   const handleEnrollEmployee = async (
     employeeId: string | number,
     groupId?: number
@@ -229,15 +281,52 @@ export function CourseDetail({
       return
     }
 
-    // If no groupId provided and it's a trainer course, get the first group
-    let targetGroupId = groupId || 1
-    if (
-      course.courseType === "trainer" &&
-      course.groups &&
-      course.groups.length > 0
-    ) {
+    // Check if employee is already enrolled
+    const existingEnrollment = enrollments.find(
+      (e: any) => e.employeeId === employeeId && e.enrollmentStatus !== "CANCELLED"
+    )
+
+    if (existingEnrollment) {
+      // If already enrolled, offer to change group instead
+      const confirmChange = confirm(
+        `This employee is already enrolled in "${existingEnrollment.courseGroupName || 'Group ' + existingEnrollment.courseGroupId}". Would you like to change their group instead?`
+      )
+
+      if (confirmChange && existingEnrollment.id) {
+        // Change their group using adminChangeGroup
+        try {
+          const targetGroupId = groupId || parseInt(String(course.groups?.[0]?.id || "1").replace("g", ""))
+          const result = await adminChangeGroup(existingEnrollment.id, targetGroupId)
+          if (result.success) {
+            alert(`✅ Employee moved to Group ${targetGroupId} successfully!`)
+            if (course.id) {
+              await fetch_courseEnrollments(course.id)
+              await refreshAllGroupAttendance()
+            }
+          } else {
+            alert(result.message || "Failed to change group")
+          }
+        } catch (error) {
+          console.error("Error changing group:", error)
+          alert("Failed to change group")
+        }
+        return
+      }
+      return
+    }
+
+    // Use the provided groupId or fallback to first group only if not provided
+    let targetGroupId = groupId
+
+    if (!targetGroupId && course.courseType === "trainer" && course.groups && course.groups.length > 0) {
       targetGroupId = parseInt(String(course.groups[0].id).replace("g", ""))
     }
+
+    if (!targetGroupId) {
+      targetGroupId = 1
+    }
+
+    console.log(`📝 Enrolling employee to group:`, targetGroupId)
 
     setIsEnrolling(true)
     try {
@@ -245,15 +334,9 @@ export function CourseDetail({
 
       if (result.success) {
         alert(`✅ Employee enrolled successfully!`)
-        // Refresh enrollments
         if (course.id) {
           await fetch_courseEnrollments(course.id)
-        }
-        if (course.courseType === "trainer" && course.groups?.[0]?.id) {
-          await fetchAttendance(
-            parseInt(course.id),
-            parseInt(course.groups[0].id)
-          )
+          await refreshAllGroupAttendance()
         }
       } else {
         alert(result.message || "Failed to enroll employee")
@@ -282,12 +365,7 @@ export function CourseDetail({
         // Refresh enrollments
         if (course.id) {
           await fetch_courseEnrollments(course.id)
-        }
-        if (course.courseType === "trainer" && course.groups?.[0]?.id) {
-          await fetchAttendance(
-            parseInt(course.id),
-            parseInt(course.groups[0].id)
-          )
+          await refreshAllGroupAttendance()
         }
       } else {
         alert(result.message || "Failed to unenroll employee")
@@ -347,12 +425,7 @@ export function CourseDetail({
         alert(result.message || "Group change request approved successfully!")
         if (course.id) {
           await fetch_courseEnrollments(course.id)
-        }
-        if (course.courseType === "trainer" && course.groups?.[0]?.id) {
-          await fetchAttendance(
-            parseInt(course.id),
-            parseInt(course.groups[0].id)
-          )
+          await refreshAllGroupAttendance()
         }
       } else {
         alert(result.message || "Failed to approve group change request")
@@ -403,6 +476,7 @@ export function CourseDetail({
       if (result.success) {
         if (course.id) {
           await fetch_courseEnrollments(course.id)
+          await refreshAllGroupAttendance()
         }
         alert("Group changed successfully!")
       } else {
@@ -418,28 +492,13 @@ export function CourseDetail({
   const handleRefresh = async () => {
     if (course.id) {
       await fetch_courseEnrollments(course.id)
-      if (course.courseType === "trainer" && course.groups?.[0]?.id) {
-        await fetchAttendance(
-          parseInt(course.id),
-          parseInt(course.groups[0].id)
-        )
-      }
+      await refreshAllGroupAttendance()
     }
   }
 
-  // Load attendance when course loads and a group is selected
+  // Load attendance for all groups when course loads
   useEffect(() => {
-    const loadAttendance = async () => {
-      if (!course.id || course.courseType !== "trainer") return
-      const groupId = course.groups?.[0]?.id
-      if (!groupId) return
-      try {
-        await fetchAttendance(parseInt(course.id), parseInt(groupId))
-      } catch (error) {
-        console.error("Error loading attendance:", error)
-      }
-    }
-    loadAttendance()
+    refreshAllGroupAttendance()
   }, [course.id, course.groups])
 
   useEffect(() => {
@@ -554,6 +613,9 @@ export function CourseDetail({
         console.log("✅ Attendance created:", result)
       }
 
+      // Refresh attendance for all groups after change
+      await refreshAllGroupAttendance()
+
       setSavedAttendance((prev) => ({ ...prev, [key]: true }))
 
       setTimeout(() => {
@@ -595,6 +657,7 @@ export function CourseDetail({
       if (result.success) {
         alert(result.message || "Successfully enrolled in the course!")
         await fetch_courseEnrollments(course.id)
+        await refreshAllGroupAttendance()
 
         if (onRegister) {
           onRegister(course)
@@ -629,6 +692,7 @@ export function CourseDetail({
         alert(result.message || "Successfully unenrolled from the course")
         setCurrentUserEnrollment(null)
         await fetch_courseEnrollments(course.id)
+        await refreshAllGroupAttendance()
 
         if (onRegister) {
           onRegister(course)
@@ -784,8 +848,8 @@ export function CourseDetail({
               </TabsList>
             </div>
             <div className="flex items-center gap-2">
-              {/* Learner - Request Change Group Button - Hidden when disabled */}
-              {isLearner &&
+              {/* equest Change Group Button - Hidden when disabled */}
+              {canRequestGroupChange &&
                 course.status !== "completed" &&
                 !isChangeGroupRequestDisabled && (
                   <Button
@@ -835,7 +899,7 @@ export function CourseDetail({
                           const isFull =
                             group.capacity !== undefined &&
                             groupEmployees.length >=
-                              ((group.capacity as number) || 0)
+                            ((group.capacity as number) || 0)
 
                           return (
                             <option
@@ -954,6 +1018,7 @@ export function CourseDetail({
                 savingAttendance={savingAttendance}
                 savedAttendance={savedAttendance}
                 onAttendanceChange={handleAttendanceChange}
+                loadingAttendanceGroups={loadingAttendanceGroups}
               />
             )}
 
@@ -976,7 +1041,7 @@ export function CourseDetail({
               <GroupChangeTab
                 course={course}
                 currentUserEnrollment={currentUserEnrollment}
-                onRequestGroupChange={() => {}}
+                onRequestGroupChange={() => { }}
               />
             )}
 
@@ -989,6 +1054,7 @@ export function CourseDetail({
                 onApprove={handleApproveRequest}
                 onReject={handleRejectRequest}
                 isProcessing={isProcessingRequest}
+                course={course}
               />
             )}
 
@@ -998,7 +1064,7 @@ export function CourseDetail({
               userRole={userRole}
               profile={profile}
               enrollmentSearchTerm=""
-              onSearchChange={() => {}}
+              onSearchChange={() => { }}
               course={course}
               allEmployees={allEmployees}
               groups={course.groups || []}
@@ -1029,6 +1095,7 @@ export function CourseDetail({
         onGroupChangeComplete={() => {
           if (course.id) {
             fetch_courseEnrollments(course.id)
+            refreshAllGroupAttendance()
           }
         }}
       />
@@ -1042,6 +1109,7 @@ export function CourseDetail({
         onGroupChangeComplete={() => {
           if (course.id) {
             fetch_courseEnrollments(course.id)
+            refreshAllGroupAttendance()
           }
         }}
         currentUserEnrollment={currentUserEnrollment}

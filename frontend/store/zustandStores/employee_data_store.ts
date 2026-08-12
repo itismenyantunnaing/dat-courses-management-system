@@ -452,6 +452,29 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
             employeeData = [];
           }
         }
+
+        if (userRole === "department_head") {
+          const userDepartment = currentProfile.deptDat;
+          if (userDepartment) {
+            employeeData = employeeData.filter(
+              (employee: Employee) => employee.dept_dat === userDepartment
+            );
+          } else {
+            employeeData = [];
+          }
+        }
+
+        if (userRole === "division_head") {
+          const userDivision = currentProfile.divName;
+          if (userDivision) {
+            employeeData = employeeData.filter(
+              (employee: Employee) => employee.div_name === userDivision
+            );
+          } else {
+            employeeData = [];
+          }
+        }
+
       }
 
       set(() => ({ employee_data: employeeData }));
@@ -494,7 +517,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
     try {
       const token = getAuthToken();
-      
+
       const response = await fetch(`${apiUrl}/api/employees`, {
         method: 'POST',
         headers: {
@@ -507,12 +530,12 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Error response:', errorText);
-        
+
         if (response.status === 401) {
           await logout();
           return 'Session expired. Please login again.';
         }
-        
+
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
@@ -644,7 +667,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
     try {
       const token = getAuthToken();
-      
+
       const response = await fetch(`${apiUrl}/api/employees/${id}`, {
         method: 'PUT',
         headers: {
@@ -657,12 +680,12 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ API Error:', errorText);
-        
+
         if (response.status === 401) {
           await logout();
           return 'Session expired. Please login again.';
         }
-        
+
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 

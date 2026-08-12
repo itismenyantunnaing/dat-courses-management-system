@@ -78,14 +78,8 @@ interface ChangeGroupDialogsProps {
   onOpenChange: (open: boolean) => void
   onGroupChangeComplete?: () => void
   currentUserEnrollment?: any
-  onRequestGroupChange?: (groupId: string) => void  // Make it optional with ?
-  isRequesting?: boolean  // Add this
-}
-
-interface GroupChangeTabProps {
-  course: any
-  currentUserEnrollment: any
-  onRequestGroupChange: (groupId: string) => void
+  onRequestGroupChange?: (groupId: string) => void
+  isRequesting?: boolean
 }
 
 const getGroupChangeStatusColor = (status: string) => {
@@ -159,12 +153,10 @@ export function ChangeGroupRequestDialogs({
       return
     }
 
-    // Call the parent's function
     if (onRequestGroupChange) {
       onRequestGroupChange(selectedRequestGroupId)
     }
   }
-
 
   const [selectedEmployeesForChange, setSelectedEmployeesForChange] = useState<
     EnrolledEmployee[]
@@ -178,7 +170,6 @@ export function ChangeGroupRequestDialogs({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
 
-  // Get the store functions
   const { adminChangeGroup, fetch_courseEnrollments } = mainStore()
 
   const getUniqueGroups = () => {
@@ -200,7 +191,6 @@ export function ChangeGroupRequestDialogs({
       .sort((a, b) => Number(a.id) - Number(b.id))
   }
 
-  // Set default tab to Group 1 when dialog opens
   useEffect(() => {
     if (searchOpen) {
       const groups = getUniqueGroups()
@@ -250,7 +240,6 @@ export function ChangeGroupRequestDialogs({
     setProgress({ current: 0, total: 0 })
   }
 
-  // Handle the actual group change - Individual API calls
   const handleGroupChange = async () => {
     if (selectedEmployeesForChange.length === 0 || !selectedGroupForChange) {
       return
@@ -265,12 +254,10 @@ export function ChangeGroupRequestDialogs({
     try {
       const newGroupId = parseInt(selectedGroupForChange)
 
-      // Loop through each employee and change their group individually
       for (let i = 0; i < selectedEmployeesForChange.length; i++) {
         const employee = selectedEmployeesForChange[i]
 
         try {
-          // Call the individual adminChangeGroup API
           const result = await adminChangeGroup(employee.id, newGroupId)
 
           if (result.success) {
@@ -283,11 +270,9 @@ export function ChangeGroupRequestDialogs({
           failedEmployees.push(employee.employeeName)
         }
 
-        // Update progress
         setProgress({ current: i + 1, total: selectedEmployeesForChange.length })
       }
 
-      // Show results
       let message = ""
       if (successEmployees.length > 0) {
         message += `✅ Successfully moved ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
@@ -304,17 +289,14 @@ export function ChangeGroupRequestDialogs({
         alert(message)
       }
 
-      // Refresh enrollments data
       if (course.id) {
         await fetch_courseEnrollments(course.id)
       }
 
-      // Call the callback if provided
       if (onGroupChangeComplete) {
         onGroupChangeComplete()
       }
 
-      // Reset and close if all succeeded
       if (failedEmployees.length === 0) {
         resetChangeGroupDialog()
       }
@@ -328,9 +310,27 @@ export function ChangeGroupRequestDialogs({
     }
   }
 
+  // Helper function to get group capacity info
+  const getGroupCapacityInfo = (groupId: string) => {
+    const group = course.groups?.find((g: any) => g.id === groupId)
+    if (!group) return null
+
+    const groupIdNum = parseInt(groupId)
+    const groupEmployees = enrollments.filter(
+      (e) =>
+        e.courseGroupId === groupIdNum &&
+        e.enrollmentStatus !== "CANCELLED"
+    )
+    const capacity = group.capacity || 0
+    const currentCount = groupEmployees.length
+    const remaining = capacity - currentCount
+    const isFull = capacity > 0 && remaining <= 0
+
+    return { capacity, currentCount, remaining, isFull }
+  }
+
   return (
     <>
-      {/* Change Group Dialog */}
       <Dialog
         open={open}
         onOpenChange={(open) => {
@@ -357,14 +357,20 @@ export function ChangeGroupRequestDialogs({
 
           <div className="flex-1 overflow-y-auto px-6 py-2">
             <div className="space-y-4">
-              {/* Select Employees Field */}
+              {/* Current Group */}
               <div className="space-y-2">
+                <Label>Current Group</Label>
                 <div className="rounded-lg border bg-muted/30 p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-lg font-semibold text-primary">
                         {currentUserEnrollment?.courseGroupName || "N/A"}
                       </p>
+                      {currentUserEnrollment && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Employee ID: {currentUserEnrollment.employeeId || "N/A"}
+                        </p>
+                      )}
                     </div>
                     <Badge
                       variant="outline"
@@ -380,10 +386,9 @@ export function ChangeGroupRequestDialogs({
                     </Badge>
                   </div>
                 </div>
-
               </div>
 
-              {/* Select Group */}
+              {/* Select New Group with Capacity */}
               <div className="space-y-2">
                 {currentUserEnrollment?.groupChangeStatus !== "PENDING" ? (
                   <div className="space-y-4">
@@ -399,9 +404,15 @@ export function ChangeGroupRequestDialogs({
                         </SelectTrigger>
                         <SelectContent>
                           {course.groups?.map((group: any) => {
-                            const groupId = parseInt(group.id)
+                            const groupId = group.id
+                            const groupIdNum = parseInt(groupId)
                             const isCurrentGroup =
-                              groupId === currentUserEnrollment?.courseGroupId
+                              groupIdNum === currentUserEnrollment?.courseGroupId
+
+                            const capacityInfo = getGroupCapacityInfo(groupId)
+                            const isFull = capacityInfo?.isFull || false
+                            const currentCount = capacityInfo?.currentCount || 0
+                            const capacity = capacityInfo?.capacity || 0
 
                             return (
                               <SelectItem
@@ -410,10 +421,28 @@ export function ChangeGroupRequestDialogs({
                                 disabled={isCurrentGroup}
                               >
                                 <div className="flex w-full items-center justify-between">
-                                  <span>
-                                    {group.name}
-                                    {isCurrentGroup && " (Current)"}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span>
+                                      {group.name}
+                                      {isCurrentGroup && " (Current)"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <span className="text-muted-foreground">
+                                      {currentCount}/{capacity === 0 ? "∞" : capacity}
+                                    </span>
+                                    {isFull && capacity > 0 && (
+                                      <Badge variant="destructive" className="text-[10px]">
+                                        Full
+                                      </Badge>
+                                    )}
+
+                                    {capacity === 0 && (
+                                      <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700">
+                                        Unlimited
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </div>
                               </SelectItem>
                             )
@@ -421,18 +450,30 @@ export function ChangeGroupRequestDialogs({
                         </SelectContent>
                       </Select>
                       {selectedRequestGroupId && (
-                        <p className="text-xs text-muted-foreground">
-                          You are requesting to move to:{" "}
+                        <div className="rounded-lg border bg-blue-50 p-2 text-xs text-blue-700">
+                          <span className="font-medium">Requesting to move to:</span>{" "}
                           {
                             course.groups?.find(
                               (g: any) => g.id === selectedRequestGroupId
                             )?.name
                           }
-                        </p>
+                          {(() => {
+                            const info = getGroupCapacityInfo(selectedRequestGroupId)
+                            if (info) {
+                              return (
+                                <span className="ml-2 text-muted-foreground">
+                                  ({info.currentCount}/{info.capacity === 0 ? "∞" : info.capacity} members
+                                  {info.isFull && info.capacity > 0 && " - Full"}
+                                  {!info.isFull && info.capacity > 0 && ` - ${info.remaining} spots available`}
+                                  {info.capacity === 0 && " - Unlimited"})
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                        </div>
                       )}
                     </div>
-
-
                   </div>
                 ) : (
                   <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-center">
@@ -489,69 +530,6 @@ export function ChangeGroupRequestDialogs({
                   </div>
                 )}
               </div>
-
-              {/* Summary */}
-              {selectedEmployeesForChange.length > 0 &&
-                selectedGroupForChange && (
-                  <div className="rounded-lg border bg-muted/30 p-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <HugeiconsIcon
-                          icon={UserGroupIcon}
-                          strokeWidth={1.5}
-                          className="h-4 w-4 text-muted-foreground"
-                        />
-                        <span className="font-medium">
-                          {selectedEmployeesForChange.length} employee
-                          {selectedEmployeesForChange.length > 1
-                            ? "s"
-                            : ""}{" "}
-                          will be moved
-                        </span>
-                        <span className="text-muted-foreground">→</span>
-                        <span className="font-medium text-primary">
-                          {course.groups?.find(
-                            (g) => g.id === selectedGroupForChange
-                          )?.name || selectedGroupForChange}
-                        </span>
-                      </div>
-                      {!isSubmitting && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedEmployeesForChange([])
-                            setSelectedGroupForChange("")
-                          }}
-                          className="h-7 px-2 text-xs"
-                        >
-                          <HugeiconsIcon
-                            icon={CancelIcon}
-                            strokeWidth={2}
-                            className="mr-1 h-3 w-3"
-                          />
-                          Change Selection
-                        </Button>
-                      )}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {selectedEmployeesForChange.slice(0, 5).map((emp) => (
-                        <Badge
-                          key={emp.id}
-                          variant="secondary"
-                          className="text-[10px]"
-                        >
-                          {emp.employeeName}
-                        </Badge>
-                      ))}
-                      {selectedEmployeesForChange.length > 5 && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          +{selectedEmployeesForChange.length - 5} more
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
             </div>
           </div>
 
@@ -564,27 +542,29 @@ export function ChangeGroupRequestDialogs({
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleRequest}
-              disabled={!selectedRequestGroupId || isRequesting}
-              className="flex-1 gap-2"
-            >
-              {isRequesting ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
-                  Submitting Request...
-                </>
-              ) : (
-                <>
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    strokeWidth={2}
-                    className="h-4 w-4"
-                  />
-                  Submit Group Change Request
-                </>
-              )}
-            </Button>
+            {currentUserEnrollment?.groupChangeStatus !== "PENDING" &&
+              <Button
+                onClick={handleRequest}
+                disabled={!selectedRequestGroupId || isRequesting}
+                className="flex-1 gap-2"
+              >
+                {isRequesting ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
+                    Submitting Request...
+                  </>
+                ) : (
+                  <>
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                    Submit Group Change Request
+                  </>
+                )}
+              </Button>
+            }
 
           </DialogFooter>
         </DialogContent>

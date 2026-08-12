@@ -201,7 +201,7 @@ export function LoginForm({
                     onChange={(e) =>
                       setCredentials({
                         ...credentials,
-                        staff_Id: e.target.value,
+                        staff_Id: e.target.value.trim(),
                       })
                     }
                     placeholder="Enter your staff id"

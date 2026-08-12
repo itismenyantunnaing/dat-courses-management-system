@@ -584,6 +584,24 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
     (groupId: string) => {
       if (groups.length <= 1) return
 
+      // Check if there are enrolled employees in this group
+      const enrolledCount = getGroupEnrolledCount(groupId)
+
+      if (enrolledCount > 0) {
+        alert(`Cannot delete this group because it has ${enrolledCount} enrolled employee(s). Please remove all enrolled employees first.`)
+        return
+      }
+
+      // Show confirmation alert before deletion
+      const groupToDelete = groups.find(g => g.id === groupId)
+      if (!groupToDelete) return
+
+      const confirmed = window.confirm(
+        `Are you sure you want to delete group "${groupToDelete.name || 'Unnamed Group'}"?`
+      )
+
+      if (!confirmed) return
+
       const totalCapacity = groups.reduce((sum, g) => {
         if (g.capacity !== undefined && g.capacity !== null) {
           return sum + g.capacity
@@ -655,8 +673,9 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
         onGroupRemoved(groupId, recalculatedGroups)
       }
     },
-    [groups, activeGroupTab, onUpdateGroups, onSetActiveGroupTab, getNewActiveTabAfterRemoval, onGroupRemoved]
+    [groups, activeGroupTab, onUpdateGroups, onSetActiveGroupTab, getNewActiveTabAfterRemoval, onGroupRemoved, getGroupEnrolledCount]
   )
+
 
   const updateGroup = useCallback(
     (groupId: string, field: string, value: any) => {

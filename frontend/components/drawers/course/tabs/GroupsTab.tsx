@@ -1,4 +1,3 @@
-// components/course/tabs/GroupsTab.tsx
 "use client"
 
 import React from "react"
@@ -6,12 +5,7 @@ import { TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Tabs as TabsComponent,
-  TabsList as TabsListComponent,
-  TabsTrigger as TabsTriggerComponent,
-  TabsContent as TabsContentComponent,
-} from "@/components/ui/tabs"
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +20,7 @@ import {
   Alert01Icon,
   Tick02Icon,
   ChevronDownIcon,
+  LoaderCircle,
 } from "@hugeicons/core-free-icons"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -41,6 +36,7 @@ interface GroupsTabProps {
   attendanceStatuses: Record<string, string>
   savingAttendance: Record<string, boolean>
   savedAttendance: Record<string, boolean>
+  loadingAttendanceGroups?: Record<number, boolean>
   onAttendanceChange: (
     sessionId: string,
     employeeId: string,
@@ -86,19 +82,51 @@ export function GroupsTab({
   attendanceStatuses,
   savingAttendance,
   savedAttendance,
+  loadingAttendanceGroups = {},
   onAttendanceChange,
 }: GroupsTabProps) {
+  // Check if user is admin
   const isAdmin = userRole === "admin"
+
+  // Check if user is an approver (includes Approver, Division_Head, Department_Head)
+  const isApprover = userRole === "approver" ||
+    userRole === "division_head" ||
+    userRole === "department_head"
+
+  // Check if user is a learner
   const isLearner = userRole === "learner"
-  const isApprover = userRole === "approver"
-  // const TESTING_DATE = new Date()
-  const TESTING_DATE = new Date("2026-07-29")
+  
+  // Check if user is Department_Head specifically
+  const isDepartmentHead = userRole === "department_head"
+  const isDivisionHead = userRole === "division_head"
+
+  // Check if user has admin or approver permissions (can see all groups)
+  const canViewAllGroups = isAdmin || isApprover
+
+  const TESTING_DATE = new Date()
+  // const TESTING_DATE = new Date("2026-08-13")
 
   const getEmployeesByGroup = (groupId: number) => {
-    return enrollments.filter(
+    let employees = enrollments.filter(
       (emp) =>
         emp.courseGroupId === groupId && emp.enrollmentStatus !== "CANCELLED"
     )
+    
+    // For Department_Head, filter by department
+    if (isDepartmentHead && profile?.deptDat) {
+      employees = employees.filter(
+        (emp) => emp.departmentName === profile.deptDat
+      )
+    }
+
+    // if (isDivisionHead && profile) {
+    //   employees = employees.filter(
+    //     (emp) => emp.departmentName === profile.deptDat
+    //   )
+    // }
+    
+    
+    return employees
   }
 
   const getUniqueStatuses = (employees: any[]) => {
@@ -144,20 +172,48 @@ export function GroupsTab({
     return sessionDate.getTime() > currentDate.getTime()
   }
 
+  // Check if a group has any employees from the department
+  const hasDepartmentEmployees = (groupId: number) => {
+    if (!isDepartmentHead || !profile?.deptDat) return true
+    
+    const groupEmployees = enrollments.filter(
+      (emp) =>
+        emp.courseGroupId === groupId && 
+        emp.enrollmentStatus !== "CANCELLED" &&
+        emp.departmentName === profile.deptDat
+    )
+    
+    return groupEmployees.length > 0
+  }
+
   return (
     <TabsContent value="groups" className="pt-4">
       <div className="space-y-6">
         {course.groups
           .filter((group: any) => {
-            if (isAdmin || isApprover) return true
+            // Admin can see all groups
+            if (isAdmin) return true
+            
+            // Department_Head: only show groups that have at least one employee from their department
+            if (isDepartmentHead) {
+              const groupId = parseInt(group.id)
+              return hasDepartmentEmployees(groupId)
+            }
+            
+            // Approver (non-department_head) can see all groups
+            if (isApprover) return true
+
+            // Learners can only see their enrolled group
             if (isLearner && currentUserEnrollment) {
               return parseInt(group.id) === currentUserEnrollment.courseGroupId
             }
             return false
           })
           .map((group: any, index: number) => {
-            const groupEmployees = getEmployeesByGroup(parseInt(group.id))
+            const groupId = parseInt(group.id)
+            const groupEmployees = getEmployeesByGroup(groupId)
             const uniqueStatuses = getUniqueStatuses(groupEmployees)
+            const isLoadingAttendance = loadingAttendanceGroups[groupId] || false
 
             // Check if first session is upcoming
             const firstSessionUpcoming = isFirstSessionUpcoming(group.sessions)
@@ -178,6 +234,7 @@ export function GroupsTab({
                         <span>
                           <span className="font-medium">Enrolled:</span>{" "}
                           {groupEmployees.length}
+                        
                         </span>
                         <span>
                           <span className="font-medium">Sessions:</span>{" "}
@@ -197,13 +254,25 @@ export function GroupsTab({
                         )}
                       </div>
                     </div>
-                    <Badge
-                      variant={
-                        group.status === "ACTIVE" ? "default" : "secondary"
-                      }
-                    >
-                      {group.status || "Active"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {isLoadingAttendance && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <HugeiconsIcon
+                            icon={LoaderCircle}
+                            strokeWidth={2}
+                            className="h-3 w-3 animate-spin"
+                          />
+                          Loading...
+                        </Badge>
+                      )}
+                      <Badge
+                        variant={
+                          group.status === "ACTIVE" ? "default" : "secondary"
+                        }
+                      >
+                        {group.status || "Active"}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
 
@@ -217,9 +286,13 @@ export function GroupsTab({
                         className="h-4 w-4"
                       />
                       Sessions & Attendance ({group.sessions.length})
+                      {isLoadingAttendance && (
+                        <span className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                      )}
                     </h5>
 
-                    {(userRole === "learner" || isAdmin || isApprover) && (
+                    {/* Show sessions for all users with access */}
+                    {(isLearner || canViewAllGroups) && (
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {group.sessions.map((session: any, idx: number) => {
                           const sessionId = session.id
@@ -233,20 +306,21 @@ export function GroupsTab({
                             : false
                           const isToday = sessionDate
                             ? sessionDate.toDateString() ===
-                              currentDate.toDateString()
+                            currentDate.toDateString()
                             : false
                           const isPast = sessionDate
                             ? sessionDate.getTime() < currentDate.getTime() &&
-                              !isToday
+                            !isToday
                             : false
                           const isOverdue = isPast && !isToday
 
+                          // Only restrict editing for future sessions
+                          const isSessionLocked = isFutureSession
+
+                          // Allow editing for all users (admins, approvers, learners) except for future sessions
                           const canEditAttendance =
-                            isAdmin ||
-                            (userRole === "learner" && (isToday || isPast))
-                          const isSessionLocked =
-                            userRole === "learner" &&
-                            (isFutureSession || isOverdue)
+                            !isFutureSession && // Can edit if not future
+                            (isAdmin || isApprover || isLearner) // All roles can edit
 
                           return (
                             <Card
@@ -254,17 +328,17 @@ export function GroupsTab({
                               className={cn(
                                 "border-muted bg-muted/5",
                                 isFutureSession &&
-                                  userRole === "learner" &&
-                                  "opacity-70",
+                                (isLearner || isApprover) &&
+                                "opacity-70",
                                 isOverdue &&
-                                  userRole === "learner" &&
-                                  "border-red-200 bg-red-50/5",
+                                isLearner &&
+                                "border-red-200 bg-red-50/5",
                                 isOverdue &&
-                                  isAdmin &&
-                                  "border-orange-200 bg-orange-50/5",
+                                isAdmin &&
+                                "border-orange-200 bg-orange-50/5",
                                 isFutureSession &&
-                                  isAdmin &&
-                                  "border-blue-200 bg-blue-50/5"
+                                isAdmin &&
+                                "border-blue-200 bg-blue-50/5"
                               )}
                             >
                               <div className="p-3">
@@ -308,146 +382,157 @@ export function GroupsTab({
                                     )}
                                   </div>
                                 </div>
-                                {isSessionLocked && userRole === "learner" && (
+                                {isSessionLocked && (
                                   <div className="mb-2 flex items-center gap-1 text-xs">
-                                    {isFutureSession ? (
-                                      <span className="flex items-center gap-1 text-blue-500">
-                                        <HugeiconsIcon
-                                          icon={Calendar03Icon}
-                                          strokeWidth={2}
-                                          className="h-3 w-3"
-                                        />
-                                        Coming Soon
-                                      </span>
-                                    ) : isOverdue ? (
-                                      <span className="flex items-center gap-1 text-red-500">
-                                        <HugeiconsIcon
-                                          icon={Alert01Icon}
-                                          strokeWidth={2}
-                                          className="h-3 w-3"
-                                        />
-                                        Locked
-                                      </span>
-                                    ) : null}
+                                    <span className="flex items-center gap-1 text-blue-500">
+                                      <HugeiconsIcon
+                                        icon={Calendar03Icon}
+                                        strokeWidth={2}
+                                        className="h-3 w-3"
+                                      />
+                                      Coming Soon - Attendance will be available when session starts
+                                    </span>
                                   </div>
                                 )}
 
                                 {/* Attendance Table - Hidden if first session is upcoming */}
-                                {!firstSessionUpcoming && (
-                                  <div className="overflow-x-auto">
-                                    {groupEmployees.length > 0 ? (
-                                      <table className="w-full text-sm">
-                                        <thead>
-                                          <tr className="border-b">
-                                            <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                                              Employee
-                                            </th>
-                                            <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                                              Department
-                                            </th>
-                                            <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
-                                              Status
-                                            </th>
-                                            {!isApprover && (
+                                {!firstSessionUpcoming ? (
+                                  isLoadingAttendance ? (
+                                    <div className="flex items-center justify-center py-8">
+                                      <div className="text-center">
+                                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+                                        <p className="mt-2 text-sm text-muted-foreground">
+                                          Loading attendance data...
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-x-auto">
+                                      {groupEmployees.length > 0 ? (
+                                        <table className="w-full text-sm">
+                                          <thead>
+                                            <tr className="border-b">
+                                              <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                                                Employee
+                                              </th>
+                                              <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                                                Department
+                                              </th>
+                                              <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                                                Status
+                                              </th>
                                               <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
                                                 Action
                                               </th>
-                                            )}
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {groupEmployees
-                                            .filter((employee) => {
-                                              if (userRole === "learner") {
-                                                return (
-                                                  employee.employeeId ===
-                                                  currentUserId
-                                                )
-                                              }
-                                              if (
-                                                userRole === "approver" &&
-                                                profile?.team
-                                              ) {
-                                                return (
-                                                  employee.teamName ===
-                                                  profile.team
-                                                )
-                                              }
-                                              return true
-                                            })
-                                            .map((employee) => {
-                                              const attendance =
-                                                getAttendanceForSession(
-                                                  parseInt(sessionId),
-                                                  employee.id
-                                                )
-                                              const key = `${sessionId}-${employee.id}`
-                                              const currentStatus =
-                                                attendanceStatuses[key] ||
-                                                attendance?.attendanceStatus ||
-                                                ""
-                                              const isSaving =
-                                                savingAttendance[key] || false
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {groupEmployees
+                                              .filter((employee) => {
+                                                // Learners can only see themselves
+                                                if (isLearner) {
+                                                  return (
+                                                    employee.employeeId ===
+                                                    currentUserId
+                                                  )
+                                                }
+                                                // Department_Head: only see employees from their department
+                                                if (isDepartmentHead && profile?.deptDat) {
+                                                  return (
+                                                    employee.departmentName === profile.deptDat
+                                                  )
+                                                }
+                                                // Approver (non-department_head) can see all
+                                                if (isApprover) {
+                                                  return true
+                                                }
+                                                // Admins can see all
+                                                if (isAdmin) {
+                                                  return true
+                                                }
+                                                return false
+                                              })
+                                              .map((employee) => {
+                                                const attendance =
+                                                  getAttendanceForSession(
+                                                    parseInt(sessionId),
+                                                    employee.id
+                                                  )
+                                                const key = `${sessionId}-${employee.id}`
+                                                const currentStatus =
+                                                  attendanceStatuses[key] ||
+                                                  attendance?.attendanceStatus ||
+                                                  ""
+                                                const isSaving =
+                                                  savingAttendance[key] || false
 
-                                              const canEdit =
-                                                isAdmin ||
-                                                (userRole === "learner" &&
-                                                  canEditAttendance &&
-                                                  employee.employeeId ===
-                                                    currentUserId)
+                                                // Check if user can edit this specific employee's attendance
+                                                const canEdit =
+                                                  canEditAttendance && (
+                                                    // Admin can edit all
+                                                    isAdmin ||
+                                                    // Department_Head can edit employees in their department
+                                                    (isDepartmentHead && 
+                                                     profile?.deptDat &&
+                                                     employee.departmentName === profile.deptDat) ||
+                                                    // Approver (non-department_head) can ONLY edit their own attendance
+                                                    (isApprover && !isDepartmentHead &&
+                                                      employee.employeeId === currentUserId) ||
+                                                    // Learner can only edit their own
+                                                    (isLearner &&
+                                                      employee.employeeId === currentUserId)
+                                                  )
 
-                                              return (
-                                                <tr
-                                                  key={employee.id}
-                                                  className="border-b border-muted/50"
-                                                >
-                                                  <td className="px-2 py-2">
-                                                    <div className="flex items-center gap-2">
-                                                      <Avatar className="h-6 w-6">
-                                                        <AvatarImage
-                                                          src={
-                                                            employee.pfImage ||
-                                                            ""
-                                                          }
-                                                        />
-                                                        <AvatarFallback className="text-[10px]">
-                                                          {getInitials(
-                                                            employee.employeeName
+                                                return (
+                                                  <tr
+                                                    key={employee.id}
+                                                    className="border-b border-muted/50"
+                                                  >
+                                                    <td className="px-2 py-2">
+                                                      <div className="flex items-center gap-2">
+                                                        <Avatar className="h-6 w-6">
+                                                          <AvatarImage
+                                                            src={
+                                                              employee.pfImage ||
+                                                              ""
+                                                            }
+                                                          />
+                                                          <AvatarFallback className="text-[10px]">
+                                                            {getInitials(
+                                                              employee.employeeName
+                                                            )}
+                                                          </AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-xs font-medium">
+                                                          {truncateText(
+                                                            employee.employeeName,
+                                                            20
                                                           )}
-                                                        </AvatarFallback>
-                                                      </Avatar>
-                                                      <span className="text-xs font-medium">
-                                                        {truncateText(
-                                                          employee.employeeName,
-                                                          20
-                                                        )}
-                                                      </span>
-                                                    </div>
-                                                  </td>
-                                                  <td className="px-2 py-2 text-xs text-muted-foreground">
-                                                    {truncateText(
-                                                      employee.departmentName,
-                                                      20
-                                                    )}
-                                                  </td>
-                                                  <td className="px-2 py-2">
-                                                    {attendance &&
-                                                    attendance.attendanceStatus ? (
-                                                      <Badge className="border-green-200 bg-green-100 text-[10px] text-green-700">
-                                                        {getAttendanceLabel(
-                                                          attendance.attendanceStatus
-                                                        )}
-                                                      </Badge>
-                                                    ) : (
-                                                      <span className="text-xs text-muted-foreground">
-                                                        {isFutureSession &&
-                                                        userRole === "learner"
-                                                          ? "Pending"
-                                                          : "Not recorded"}
-                                                      </span>
-                                                    )}
-                                                  </td>
-                                                  {!isApprover && (
+                                                        </span>
+                                                      </div>
+                                                    </td>
+                                                    <td className="px-2 py-2 text-xs text-muted-foreground">
+                                                      {truncateText(
+                                                        employee.departmentName,
+                                                        20
+                                                      )}
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                      {attendance &&
+                                                        attendance.attendanceStatus ? (
+                                                        <Badge className="border-green-200 bg-green-100 text-[10px] text-green-700">
+                                                          {getAttendanceLabel(
+                                                            attendance.attendanceStatus
+                                                          )}
+                                                        </Badge>
+                                                      ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                          {isFutureSession
+                                                            ? "Pending"
+                                                            : "Not recorded"}
+                                                        </span>
+                                                      )}
+                                                    </td>
                                                     <td className="px-2 py-2">
                                                       {canEdit ? (
                                                         <div className="flex items-center gap-2">
@@ -456,9 +541,9 @@ export function GroupsTab({
                                                               className={cn(
                                                                 "flex h-7 w-[130px] items-center justify-between rounded-md border bg-background px-2 text-xs",
                                                                 isSaving &&
-                                                                  "cursor-not-allowed opacity-50",
+                                                                "cursor-not-allowed opacity-50",
                                                                 isSessionLocked &&
-                                                                  "cursor-not-allowed opacity-50"
+                                                                "cursor-not-allowed opacity-50"
                                                               )}
                                                               disabled={
                                                                 isSaving ||
@@ -468,8 +553,8 @@ export function GroupsTab({
                                                               <span>
                                                                 {currentStatus
                                                                   ? getAttendanceLabel(
-                                                                      currentStatus
-                                                                    )
+                                                                    currentStatus
+                                                                  )
                                                                   : "Select status"}
                                                               </span>
                                                               <HugeiconsIcon
@@ -496,16 +581,14 @@ export function GroupsTab({
                                                                         employee.id.toString(),
                                                                         option.value,
                                                                         employee.id,
-                                                                        parseInt(
-                                                                          group.id
-                                                                        )
+                                                                        groupId
                                                                       )
                                                                     }
                                                                     className={cn(
                                                                       "text-xs",
                                                                       currentStatus ===
-                                                                        option.value &&
-                                                                        "bg-accent"
+                                                                      option.value &&
+                                                                      "bg-accent"
                                                                     )}
                                                                   >
                                                                     <span className="mr-2">
@@ -518,16 +601,16 @@ export function GroupsTab({
                                                                     }
                                                                     {currentStatus ===
                                                                       option.value && (
-                                                                      <HugeiconsIcon
-                                                                        icon={
-                                                                          Tick02Icon
-                                                                        }
-                                                                        strokeWidth={
-                                                                          2
-                                                                        }
-                                                                        className="ml-auto h-3 w-3"
-                                                                      />
-                                                                    )}
+                                                                        <HugeiconsIcon
+                                                                          icon={
+                                                                            Tick02Icon
+                                                                          }
+                                                                          strokeWidth={
+                                                                            2
+                                                                          }
+                                                                          className="ml-auto h-3 w-3"
+                                                                        />
+                                                                      )}
                                                                   </DropdownMenuItem>
                                                                 )
                                                               )}
@@ -536,8 +619,8 @@ export function GroupsTab({
                                                           {isSaving ? (
                                                             <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-primary"></span>
                                                           ) : savedAttendance[
-                                                              key
-                                                            ] ? (
+                                                            key
+                                                          ] ? (
                                                             <span className="text-green-500">
                                                               ✓
                                                             </span>
@@ -547,23 +630,27 @@ export function GroupsTab({
                                                         <span className="text-xs text-muted-foreground">
                                                           {isFutureSession
                                                             ? "Coming Soon"
-                                                            : isOverdue
-                                                              ? "Locked"
-                                                              : "No access"}
+                                                            : ""}
                                                         </span>
                                                       )}
                                                     </td>
-                                                  )}
-                                                </tr>
-                                              )
-                                            })}
-                                        </tbody>
-                                      </table>
-                                    ) : (
-                                      <div className="py-6 text-center text-sm text-muted-foreground">
-                                        No employees enrolled in this group yet.
-                                      </div>
-                                    )}
+                                                  </tr>
+                                                )
+                                              })}
+                                          </tbody>
+                                        </table>
+                                      ) : (
+                                        <div className="py-6 text-center text-sm text-muted-foreground">
+                                          {isDepartmentHead 
+                                            ? "No employees from your department are enrolled in this group yet."
+                                            : "No employees enrolled in this group yet."}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                ) : (
+                                  <div className="py-6 text-center text-sm text-muted-foreground">
+                                    Attendance tracking will be available after the first session starts.
                                   </div>
                                 )}
                               </div>
@@ -573,128 +660,6 @@ export function GroupsTab({
                       </div>
                     )}
                   </div>
-
-                  {/* Enrolled Employees for this Group */}
-                  {/* {groupEmployees.length > 0 && (isAdmin || isApprover) && (
-                    <div>
-                      <div className="mb-3 flex items-center justify-between">
-                        <h5 className="flex items-center gap-2 text-sm font-medium">
-                          <HugeiconsIcon
-                            icon={User02Icon}
-                            strokeWidth={1.5}
-                            className="h-4 w-4"
-                          />
-                          Enrolled Employees (
-                          {isApprover && profile?.team
-                            ? groupEmployees.filter(
-                                (e) => e.teamName === profile.team
-                              ).length
-                            : groupEmployees.length}
-                          )
-                        </h5>
-                        {isApprover && profile?.team && (
-                          <Badge
-                            variant="outline"
-                            className="border-blue-200 bg-blue-50 text-[10px] text-blue-600"
-                          >
-                            Team: {profile.team}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <TabsComponent
-                        defaultValue={uniqueStatuses[0]?.toLowerCase() || "all"}
-                        className="mb-4"
-                      >
-                        <TabsListComponent className="mb-3">
-                          {uniqueStatuses.map((status) => {
-                            const statusEmployees = getEmployeesByStatus(
-                              groupEmployees,
-                              status
-                            )
-                            const filteredEmployees =
-                              isApprover && profile?.team
-                                ? statusEmployees.filter(
-                                    (e) => e.teamName === profile.team
-                                  )
-                                : statusEmployees
-
-                            return (
-                              filteredEmployees.length > 0 && (
-                                <TabsTriggerComponent
-                                  key={status}
-                                  value={status.toLowerCase()}
-                                  className="text-xs"
-                                >
-                                  {capitalizeFirstLetter(status)} (
-                                  {filteredEmployees.length})
-                                </TabsTriggerComponent>
-                              )
-                            )
-                          })}
-                        </TabsListComponent>
-
-                        {uniqueStatuses.map((status) => {
-                          const statusEmployees = getEmployeesByStatus(
-                            groupEmployees,
-                            status
-                          )
-                          const filteredEmployees =
-                            isApprover && profile?.team
-                              ? statusEmployees.filter(
-                                  (e) => e.teamName === profile.team
-                                )
-                              : statusEmployees
-
-                          return (
-                            filteredEmployees.length > 0 && (
-                              <TabsContentComponent
-                                key={status}
-                                value={status.toLowerCase()}
-                              >
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                  {filteredEmployees.map((employee) => (
-                                    <div
-                                      key={employee.id}
-                                      className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
-                                    >
-                                      <Avatar className="h-10 w-10 shrink-0">
-                                        <AvatarImage
-                                          src={employee.pfImage || ""}
-                                        />
-                                        <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
-                                          {getInitials(employee.employeeName)}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <div className="min-w-0 flex-1">
-                                        <p
-                                          className="truncate text-sm font-medium"
-                                          title={employee.employeeName}
-                                        >
-                                          {employee.employeeName}
-                                        </p>
-                                        <p
-                                          className="truncate text-xs text-muted-foreground"
-                                          title={`${employee.departmentName} • ${employee.teamName}`}
-                                        >
-                                          {truncateText(
-                                            employee.departmentName,
-                                            25
-                                          )}
-                                          {employee.teamName &&
-                                            ` • ${truncateText(employee.teamName, 20)}`}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </TabsContentComponent>
-                            )
-                          )
-                        })}
-                      </TabsComponent>
-                    </div>
-                  )} */}
                 </CardContent>
               </div>
             )
@@ -705,6 +670,12 @@ export function GroupsTab({
             <p className="text-muted-foreground">
               You are not enrolled in any group for this course.
             </p>
+          </div>
+        )}
+        
+        {isDepartmentHead && course.groups && course.groups.length > 0 && (
+          <div className="py-4 text-center text-sm text-muted-foreground">
+            Showing groups with employees from your department ({profile?.deptDat || "Unknown Department"})
           </div>
         )}
       </div>

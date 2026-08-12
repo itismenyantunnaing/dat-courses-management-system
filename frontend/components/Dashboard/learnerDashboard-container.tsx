@@ -200,6 +200,7 @@ export default function LearnerDashboardContainer({
     loadData()
   }, [fetchEmployeeCourseStats, fetchEmployeeAttendance, profile?.id, fetchAllUpcomingSessions, fetchEmployeeTargetLevel])
 
+
   // Fetch enrollments for the current user to get enrollment IDs
   useEffect(() => {
     const fetchEnrollments = async () => {
