@@ -12,4 +12,5 @@ public class EmployeeTargetLevelDTO {
     private String employeeId;
     private String targetJlptNatLevel;
     private LocalDate targetDate;
+    private String jlptHighestLevel;  // New field added
 }

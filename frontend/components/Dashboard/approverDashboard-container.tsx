@@ -187,8 +187,16 @@ export default function ApproverDashboardContainer() {
     courseCategory_data,
     fetchCourseStats,
     courseStats,
+
+    // for Certificate Statistics 
     fetchTeamCertificateStats,
     teamCertificateStats,
+    fetchDepartmentCertificateStats,
+    departmentCertificateStats,
+    fetchDivisionCertificateStats,
+    divisionCertificateStats,
+
+    // for Attendance
     fetchDailyAttendance,
     dailyAttendance,
 
@@ -196,7 +204,6 @@ export default function ApproverDashboardContainer() {
     activeLearnersCount
   } = mainStore()
 
-  // Load data
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
@@ -209,7 +216,21 @@ export default function ApproverDashboardContainer() {
         await fetch_courseCategories()
         await fetchCourseStats()
         await fetchRiskData()
-        await fetchTeamCertificateStats()
+
+        // Fetch certificate stats based on role
+        const userRole = profile?.role?.toLowerCase() || ""
+        if (userRole === "admin") {
+          await fetchTeamCertificateStats()
+          await fetchDepartmentCertificateStats()
+          await fetchDivisionCertificateStats()
+        } else if (userRole === "division_head") {
+          await fetchDivisionCertificateStats()
+        } else if (userRole === "department_head") {
+          await fetchDepartmentCertificateStats()
+        } else if (userRole === "approver") {
+          await fetchTeamCertificateStats()
+        }
+
         await fetchDailyAttendance()
         await fetchActiveLearnerCount()
       } catch (error) {
@@ -222,7 +243,124 @@ export default function ApproverDashboardContainer() {
     loadData()
   }, [])
 
-  console.log(activeLearnersCount)
+  // Filter courseStats based on user role
+  const filteredCourseStats = useMemo(() => {
+    // Check if we have courseStats
+    if (!courseStats) {
+      return []
+    }
+
+    // If courseStats is not an array but has the nested structure
+    if (!Array.isArray(courseStats) && courseStats?.divisions) {
+
+      // Get user properties - using camelCase as they appear in your profile
+      const userRole = profile?.role?.toLowerCase() || ""
+      const userTeam = profile?.team?.toLowerCase() || ""
+      const userDept = profile?.deptDat?.toLowerCase() || ""
+      const userDiv = profile?.divName?.toLowerCase() || ""
+
+      let allCourses: any[] = []
+
+      // For Department Head: Use department.courses directly
+      if (userRole === "department_head") {
+
+
+        courseStats.divisions.forEach((division: any) => {
+          division.departments?.forEach((department: any) => {
+            const deptName = department.departmentName?.toLowerCase() || ""
+            if (deptName === userDept) {
+              if (department.courses && department.courses.length > 0) {
+                department.courses.forEach((course: any) => {
+                  allCourses.push({
+                    ...course,
+                    divisionName: division.divisionName,
+                    departmentName: department.departmentName,
+                  })
+                })
+              }
+            }
+          })
+        })
+
+        return allCourses
+      }
+
+      // For Division Head: Use division.courses directly
+      if (userRole === "division_head") {
+
+        courseStats.divisions.forEach((division: any) => {
+          const divName = division.divisionName?.toLowerCase() || ""
+          if (divName === userDiv) {
+            if (division.courses && division.courses.length > 0) {
+              division.courses.forEach((course: any) => {
+                allCourses.push({
+                  ...course,
+                  divisionName: division.divisionName,
+                  divisionId: division.divisionId,
+                })
+              })
+            }
+          }
+        })
+
+        return allCourses
+      }
+
+      // For Approver: Use team.courses
+      if (userRole === "approver") {
+
+        courseStats.divisions.forEach((division: any) => {
+          division.departments?.forEach((department: any) => {
+            department.teams?.forEach((team: any) => {
+              const teamName = team.teamName?.toLowerCase() || ""
+              if (teamName === userTeam) {
+                if (team.courses && team.courses.length > 0) {
+                  team.courses.forEach((course: any) => {
+                    allCourses.push({
+                      ...course,
+                      divisionName: division.divisionName,
+                      departmentName: department.departmentName,
+                      teamName: team.teamName,
+                    })
+                  })
+                }
+              }
+            })
+          })
+        })
+
+        return allCourses
+      }
+
+      // For Admin: Use department.courses
+      if (userRole === "admin") {
+
+        courseStats.divisions.forEach((division: any) => {
+          division.departments?.forEach((department: any) => {
+            if (department.courses && department.courses.length > 0) {
+              department.courses.forEach((course: any) => {
+                allCourses.push({
+                  ...course,
+                  divisionName: division.divisionName,
+                  departmentName: department.departmentName,
+                })
+              })
+            }
+          })
+        })
+
+        return allCourses
+      }
+
+      // Default: return empty
+      return []
+    } else if (Array.isArray(courseStats)) {
+      return courseStats
+    } else {
+      return []
+    }
+  }, [courseStats, profile])
+
 
   // Combine course categories with useMemo
   const combinedCourseCategories = useMemo(() => {
@@ -242,7 +380,7 @@ export default function ApproverDashboardContainer() {
     }
   }, [combinedCourseCategories])
 
-  // Extract course group attendance data from dailyAttendance filtered by team
+  // Extract course group attendance data from dailyAttendance filtered by role
   const courseGroupAttendanceData = useMemo(() => {
     const result: Record<string, {
       courseName: string,
@@ -250,34 +388,283 @@ export default function ApproverDashboardContainer() {
       dailyAttendance: Array<{ date: string; attendance: number; presentCount: number; totalStudents: number }>
     }> = {}
 
-    if (dailyAttendance && Array.isArray(dailyAttendance) && dailyAttendance.length > 0) {
-      dailyAttendance.forEach((dept: any) => {
-        if (dept.teams && Array.isArray(dept.teams) && dept.teams.length > 0) {
-          dept.teams.forEach((team: any) => {
-            // Only include data for the user's team
-            if (team.teamName === profile?.team) {
-              if (team.courses && Array.isArray(team.courses) && team.courses.length > 0) {
-                team.courses.forEach((course: any) => {
-                  if (course.groups && Array.isArray(course.groups) && course.groups.length > 0) {
-                    course.groups.forEach((group: any) => {
-                      const key = `${course.courseName}_${group.groupName}`
-                      result[key] = {
-                        courseName: course.courseName,
-                        groupName: group.groupName,
-                        dailyAttendance: group.dailyAttendance || []
-                      }
-                    })
-                  }
-                })
-              }
-            }
-          })
-        }
-      })
+    if (!dailyAttendance || !Array.isArray(dailyAttendance) || dailyAttendance.length === 0) {
+      return result
     }
 
+    const userRole = profile?.role?.toLowerCase() || ""
+    const userTeam = profile?.team?.toLowerCase() || ""
+    const userDept = profile?.deptDat?.toLowerCase() || ""
+    const userDiv = profile?.divName?.toLowerCase() || ""
+
+
+    let processedCount = 0
+
+    // For Department Head: Aggregate data across all teams in the department
+    if (userRole === "department_head") {
+
+      // Create a map to aggregate data by course + group
+      const aggregatedMap: Record<string, {
+        courseName: string,
+        groupName: string,
+        dailyAttendanceMap: Record<string, {
+          date: string,
+          presentCount: number,
+          absentCount: number,
+          excusedCount: number,
+          lateCount: number,
+          totalStudents: number,
+          attendance: number
+        }>
+      }> = {}
+
+      dailyAttendance.forEach((division: any) => {
+        division.departments?.forEach((department: any) => {
+          const deptName = department.departmentName?.toLowerCase() || ""
+
+          // Only process the user's department
+          if (deptName !== userDept) {
+            return
+          }
+
+
+          department.teams?.forEach((team: any) => {
+
+            team.courses?.forEach((course: any) => {
+              const courseName = course.courseName || ""
+
+              course.groups?.forEach((group: any) => {
+                const groupName = group.groupName || ""
+                const key = `${courseName}_${groupName}`
+
+                // Initialize if not exists
+                if (!aggregatedMap[key]) {
+                  aggregatedMap[key] = {
+                    courseName: courseName,
+                    groupName: groupName,
+                    dailyAttendanceMap: {}
+                  }
+                }
+
+                // Aggregate daily attendance data
+                group.dailyAttendance?.forEach((day: any) => {
+                  const date = day.date || ""
+
+                  if (!aggregatedMap[key].dailyAttendanceMap[date]) {
+                    aggregatedMap[key].dailyAttendanceMap[date] = {
+                      date: date,
+                      presentCount: 0,
+                      absentCount: 0,
+                      excusedCount: 0,
+                      lateCount: 0,
+                      totalStudents: 0,
+                      attendance: 0
+                    }
+                  }
+
+                  // Sum up the counts
+                  aggregatedMap[key].dailyAttendanceMap[date].presentCount += day.presentCount || 0
+                  aggregatedMap[key].dailyAttendanceMap[date].absentCount += day.absentCount || 0
+                  aggregatedMap[key].dailyAttendanceMap[date].excusedCount += day.excusedCount || 0
+                  aggregatedMap[key].dailyAttendanceMap[date].lateCount += day.lateCount || 0
+                  aggregatedMap[key].dailyAttendanceMap[date].totalStudents += day.totalStudents || 0
+                })
+              })
+            })
+          })
+        })
+      })
+
+      // Convert aggregated map to result format
+      Object.keys(aggregatedMap).forEach((key) => {
+        const data = aggregatedMap[key]
+        const dailyAttendanceData = Object.values(data.dailyAttendanceMap).map((day: any) => ({
+          date: day.date,
+          presentCount: day.presentCount,
+          absentCount: day.absentCount,
+          excusedCount: day.excusedCount,
+          lateCount: day.lateCount,
+          totalStudents: day.totalStudents,
+          attendance: day.totalStudents > 0 ? Math.round((day.presentCount / day.totalStudents) * 100) : 0
+        }))
+
+        // Sort by date
+        dailyAttendanceData.sort((a, b) => {
+          const dateA = new Date(a.date)
+          const dateB = new Date(b.date)
+          return dateA.getTime() - dateB.getTime()
+        })
+
+        result[key] = {
+          courseName: data.courseName,
+          groupName: data.groupName,
+          dailyAttendance: dailyAttendanceData
+        }
+        processedCount++
+      })
+
+      return result
+    }
+
+    // For Division Head: Aggregate data across all departments and teams in the division
+    if (userRole === "division_head") {
+
+      // Create a map to aggregate data by course + group
+      const aggregatedMap: Record<string, {
+        courseName: string,
+        groupName: string,
+        dailyAttendanceMap: Record<string, {
+          date: string,
+          presentCount: number,
+          absentCount: number,
+          excusedCount: number,
+          lateCount: number,
+          totalStudents: number,
+          attendance: number
+        }>
+      }> = {}
+
+      dailyAttendance.forEach((division: any) => {
+        const divName = division.divisionName?.toLowerCase() || ""
+
+        // Only process the user's division
+        if (divName !== userDiv) {
+          return
+        }
+
+
+        division.departments?.forEach((department: any) => {
+
+          department.teams?.forEach((team: any) => {
+
+            team.courses?.forEach((course: any) => {
+              const courseName = course.courseName || ""
+
+              course.groups?.forEach((group: any) => {
+                const groupName = group.groupName || ""
+                const key = `${courseName}_${groupName}`
+
+                // Initialize if not exists
+                if (!aggregatedMap[key]) {
+                  aggregatedMap[key] = {
+                    courseName: courseName,
+                    groupName: groupName,
+                    dailyAttendanceMap: {}
+                  }
+                }
+
+                // Aggregate daily attendance data
+                group.dailyAttendance?.forEach((day: any) => {
+                  const date = day.date || ""
+
+                  if (!aggregatedMap[key].dailyAttendanceMap[date]) {
+                    aggregatedMap[key].dailyAttendanceMap[date] = {
+                      date: date,
+                      presentCount: 0,
+                      absentCount: 0,
+                      excusedCount: 0,
+                      lateCount: 0,
+                      totalStudents: 0,
+                      attendance: 0
+                    }
+                  }
+
+                  // Sum up the counts
+                  aggregatedMap[key].dailyAttendanceMap[date].presentCount += day.presentCount || 0
+                  aggregatedMap[key].dailyAttendanceMap[date].absentCount += day.absentCount || 0
+                  aggregatedMap[key].dailyAttendanceMap[date].excusedCount += day.excusedCount || 0
+                  aggregatedMap[key].dailyAttendanceMap[date].lateCount += day.lateCount || 0
+                  aggregatedMap[key].dailyAttendanceMap[date].totalStudents += day.totalStudents || 0
+                })
+              })
+            })
+          })
+        })
+      })
+
+      // Convert aggregated map to result format
+      Object.keys(aggregatedMap).forEach((key) => {
+        const data = aggregatedMap[key]
+        const dailyAttendanceData = Object.values(data.dailyAttendanceMap).map((day: any) => ({
+          date: day.date,
+          presentCount: day.presentCount,
+          absentCount: day.absentCount,
+          excusedCount: day.excusedCount,
+          lateCount: day.lateCount,
+          totalStudents: day.totalStudents,
+          attendance: day.totalStudents > 0 ? Math.round((day.presentCount / day.totalStudents) * 100) : 0
+        }))
+
+        // Sort by date
+        dailyAttendanceData.sort((a, b) => {
+          const dateA = new Date(a.date)
+          const dateB = new Date(b.date)
+          return dateA.getTime() - dateB.getTime()
+        })
+
+        result[key] = {
+          courseName: data.courseName,
+          groupName: data.groupName,
+          dailyAttendance: dailyAttendanceData
+        }
+        processedCount++
+      })
+
+      return result
+    }
+
+    // For Admin, Approver: Use the existing filtering logic (no aggregation)
+    dailyAttendance.forEach((division: any) => {
+      const divName = division.divisionName?.toLowerCase() || ""
+
+      // For Admin: process all divisions
+      // For Approver: process all divisions but filter by team later
+
+      division.departments?.forEach((department: any) => {
+        const deptName = department.departmentName?.toLowerCase() || ""
+
+        department.teams?.forEach((team: any) => {
+          const teamName = team.teamName?.toLowerCase() || ""
+
+          // For Approver: only process their team
+          if (userRole === "approver" && teamName !== userTeam) {
+            return
+          }
+
+          team.courses?.forEach((course: any) => {
+            const courseName = course.courseName || ""
+
+            course.groups?.forEach((group: any) => {
+              const groupName = group.groupName || ""
+              const key = `${courseName}_${groupName}`
+
+              const dailyAttendanceData = group.dailyAttendance?.map((day: any) => ({
+                date: day.date || "",
+                presentCount: day.presentCount || 0,
+                absentCount: day.absentCount || 0,
+                excusedCount: day.excusedCount || 0,
+                lateCount: day.lateCount || 0,
+                totalStudents: day.totalStudents || 1,
+                attendance: day.presentPercentage || 0,
+              })) || []
+
+              if (dailyAttendanceData.length > 0) {
+                result[key] = {
+                  courseName: courseName,
+                  groupName: groupName,
+                  dailyAttendance: dailyAttendanceData
+                }
+                processedCount++
+              }
+            })
+          })
+        })
+      })
+    })
+
     return result
-  }, [dailyAttendance, profile?.team])
+  }, [dailyAttendance, profile])
+
 
   // Create course group options for attendance dropdown from dailyAttendance
   const attendanceCourseGroupOptions = useMemo(() => {
@@ -302,21 +689,90 @@ export default function ApproverDashboardContainer() {
     }
   }, [attendanceCourseGroupOptions]);
 
-  // Get available certification types from teamCertificateStats for the user's team
+  // Get certificate stats based on user role
+  const certificateStats = useMemo(() => {
+    const userRole = profile?.role?.toLowerCase() || ""
+
+    if (userRole === "admin") {
+      return teamCertificateStats
+    } else if (userRole === "division_head") {
+      return divisionCertificateStats
+    } else if (userRole === "department_head") {
+      return departmentCertificateStats
+    } else if (userRole === "approver") {
+      return teamCertificateStats
+    }
+    return teamCertificateStats
+  }, [profile, teamCertificateStats, departmentCertificateStats, divisionCertificateStats])
+
+  // Get available certification types
   const availableCertTypes = useMemo(() => {
-    if (!teamCertificateStats || !teamCertificateStats.statistics || !profile?.team) {
+    if (!certificateStats || !certificateStats.statistics) {
       return []
     }
 
-    // Get the stats for the user's team
-    const teamStats = teamCertificateStats.statistics[profile.team]
-    if (!teamStats) {
-      return []
+    const userRole = profile?.role?.toLowerCase() || ""
+    const stats = certificateStats.statistics
+
+    let certData: any = null
+
+    if (userRole === "approver" && profile?.team) {
+      // Teams: { teamName: { certType: { level: count } } }
+      certData = stats[profile.team]
+    } else if (userRole === "department_head" && profile?.deptDat) {
+      // Departments: { departmentName: { teamName: { certType: { level: count } } } }
+      const deptData = stats[profile.deptDat]
+      if (deptData) {
+        // Combine all teams' certificate data in the department
+        certData = {}
+        Object.values(deptData).forEach((teamData: any) => {
+          Object.entries(teamData).forEach(([certType, levels]) => {
+            if (!certData[certType]) {
+              certData[certType] = {}
+            }
+            Object.entries(levels as Record<string, number>).forEach(([level, count]) => {
+              certData[certType][level] = (certData[certType][level] || 0) + count
+            })
+          })
+        })
+      }
+    } else if (userRole === "division_head" && profile?.divName) {
+      // Divisions: { divisionName: { departmentName: { teamName: { certType: { level: count } } } } }
+      const divData = stats[profile.divName]
+      if (divData) {
+        // Combine all departments and teams' certificate data in the division
+        certData = {}
+        Object.values(divData).forEach((deptData: any) => {
+          Object.values(deptData).forEach((teamData: any) => {
+            Object.entries(teamData).forEach(([certType, levels]) => {
+              if (!certData[certType]) {
+                certData[certType] = {}
+              }
+              Object.entries(levels as Record<string, number>).forEach(([level, count]) => {
+                certData[certType][level] = (certData[certType][level] || 0) + count
+              })
+            })
+          })
+        })
+      }
+    } else if (userRole === "admin") {
+      // Admin: Combine all teams
+      certData = {}
+      Object.values(stats).forEach((teamData: any) => {
+        Object.entries(teamData).forEach(([certType, levels]) => {
+          if (!certData[certType]) {
+            certData[certType] = {}
+          }
+          Object.entries(levels as Record<string, number>).forEach(([level, count]) => {
+            certData[certType][level] = (certData[certType][level] || 0) + count
+          })
+        })
+      })
     }
 
-    // Return the certification types available for this team
-    return Object.keys(teamStats)
-  }, [teamCertificateStats, profile?.team])
+    return certData ? Object.keys(certData) : []
+  }, [certificateStats, profile])
+
 
   // Set default certification type when data loads
   useEffect(() => {
@@ -325,15 +781,15 @@ export default function ApproverDashboardContainer() {
     }
   }, [availableCertTypes])
 
-  // Memoize filtered course data
+  // Memoize filtered course data based on selected category
   const filteredCourseData = useMemo(() => {
-    if (!courseStats || !Array.isArray(courseStats)) return []
-    if (!selectedCategory) return courseStats
+    if (!filteredCourseStats || !Array.isArray(filteredCourseStats)) return []
+    if (!selectedCategory) return filteredCourseStats
 
-    return courseStats.filter(
+    return filteredCourseStats.filter(
       (course) => course.category?.toLowerCase() === selectedCategory?.toLowerCase()
     )
-  }, [courseStats, selectedCategory])
+  }, [filteredCourseStats, selectedCategory])
 
   // Get attendance data for selected course group from dailyAttendance
   const getAttendanceData = () => {
@@ -400,20 +856,69 @@ export default function ApproverDashboardContainer() {
   const filteredAttendanceData = getAttendanceData()
 
 
-  // Get filtered certification data for the user's team
+
+  // Get filtered certification data
   const filteredCertificationData = useMemo(() => {
-    if (!teamCertificateStats || !teamCertificateStats.statistics || !profile?.team) {
+    if (!certificateStats || !certificateStats.statistics || !selectedCertType) {
       return []
     }
 
-    // Get the stats for the user's team
-    const teamStats = teamCertificateStats.statistics[profile.team]
-    if (!teamStats) {
-      return []
+    const userRole = profile?.role?.toLowerCase() || ""
+    const stats = certificateStats.statistics
+
+    let certData: any = null
+
+    if (userRole === "approver" && profile?.team) {
+      // Teams: { teamName: { certType: { level: count } } }
+      const teamData = stats[profile.team]
+      if (teamData) {
+        certData = teamData[selectedCertType]
+      }
+    } else if (userRole === "department_head" && profile?.deptDat) {
+      // Departments: { departmentName: { teamName: { certType: { level: count } } } }
+      const deptData = stats[profile.deptDat]
+      if (deptData) {
+        // Combine all teams' certificate data for the selected cert type
+        const combined: Record<string, number> = {}
+        Object.values(deptData).forEach((teamData: any) => {
+          if (teamData[selectedCertType]) {
+            Object.entries(teamData[selectedCertType]).forEach(([level, count]) => {
+              combined[level] = (combined[level] || 0) + count
+            })
+          }
+        })
+        certData = combined
+      }
+    } else if (userRole === "division_head" && profile?.divName) {
+      // Divisions: { divisionName: { departmentName: { teamName: { certType: { level: count } } } } }
+      const divData = stats[profile.divName]
+      if (divData) {
+        // Combine all departments and teams' certificate data for the selected cert type
+        const combined: Record<string, number> = {}
+        Object.values(divData).forEach((deptData: any) => {
+          Object.values(deptData).forEach((teamData: any) => {
+            if (teamData[selectedCertType]) {
+              Object.entries(teamData[selectedCertType]).forEach(([level, count]) => {
+                combined[level] = (combined[level] || 0) + count
+              })
+            }
+          })
+        })
+        certData = combined
+      }
+    } else if (userRole === "admin") {
+      // Admin: Combine all teams
+      const combined: Record<string, number> = {}
+      Object.values(stats).forEach((teamData: any) => {
+        if (teamData[selectedCertType]) {
+          Object.entries(teamData[selectedCertType]).forEach(([level, count]) => {
+            combined[level] = (combined[level] || 0) + count
+          })
+        }
+      })
+      certData = combined
     }
 
-    // Get the specific certification type data
-    const certData = teamStats[selectedCertType]
     if (!certData) {
       return []
     }
@@ -424,69 +929,208 @@ export default function ApproverDashboardContainer() {
       value: typeof value === 'number' ? value : 0,
       fill: COLORS[index % COLORS.length]
     }))
-  }, [teamCertificateStats, selectedCertType, profile?.team])
+  }, [certificateStats, selectedCertType, profile])
 
-  // Memoize stats calculations
-  const stats = useMemo(() => {
-    const rawData = courseGroupAttendanceData[selectedAttendanceCourseGroup]
-    let allAttendanceData: { date: string; attendance: number }[] = []
 
-    if (rawData && rawData.dailyAttendance) {
-      allAttendanceData = rawData.dailyAttendance
-        .filter((item: any) => item && typeof item.attendance === 'number' && !isNaN(item.attendance))
-        .map((item: any) => ({
-          date: item.date || '',
-          attendance: item.attendance || 0
-        }))
+
+  // Calculate average attendance based on user role
+  const avgAttendance = useMemo(() => {
+
+    if (!dailyAttendance || !Array.isArray(dailyAttendance) || dailyAttendance.length === 0) {
+      return 0
     }
 
-    let avgAttendance = 0
-    if (allAttendanceData.length > 0) {
-      const sum = allAttendanceData.reduce((acc, curr) => acc + (curr.attendance || 0), 0)
-      avgAttendance = Math.round(sum / allAttendanceData.length)
+    const userRole = profile?.role?.toLowerCase() || ""
+    const userTeam = profile?.team?.toLowerCase() || ""
+    const userDept = profile?.deptDat?.toLowerCase() || ""
+    const userDiv = profile?.divName?.toLowerCase() || ""
+
+
+    // Helper function to calculate average from items
+    const calculateAverage = (items: any[], field: string = 'averageAttendance') => {
+      if (!items || items.length === 0) return 0
+      const total = items.reduce((sum: number, item: any) => {
+        const val = item[field] || 0
+        return sum + val
+      }, 0)
+      return total / items.length
     }
 
-    const avgProgress = mockTeamStudyProgress.length > 0
-      ? Math.round(mockTeamStudyProgress.reduce((acc, curr) => acc + (curr.progress || 0), 0) / mockTeamStudyProgress.length)
-      : 0
+    // Helper function to get attendance value (from API or calculated)
+    const getAttendanceValue = (item: any, childItems: any[] | null = null) => {
+      // If API has a value greater than 0, use it
+      if (item.averageAttendance && item.averageAttendance > 0) {
+        return item.averageAttendance
+      }
 
-    return { avgAttendance, avgProgress }
-  }, [courseGroupAttendanceData, selectedAttendanceCourseGroup])
+      // If API returns 0 or null, try to calculate from children
+      if (childItems && childItems.length > 0) {
+        return calculateAverage(childItems)
+      }
 
-  // Filter at-risk employees by team
+      return 0
+    }
+
+    // Admin: Average of all division averageAttendance
+    if (userRole === "admin") {
+      if (dailyAttendance.length === 0) return 0
+
+      const total = dailyAttendance.reduce((sum: number, div: any) => {
+        const avg = getAttendanceValue(div, div.departments)
+        return sum + avg
+      }, 0)
+
+      const avg = Math.round(total / dailyAttendance.length)
+      return avg
+    }
+
+    // Division Head: Use division's averageAttendance
+    if (userRole === "division_head") {
+      const division = dailyAttendance.find(
+        (d: any) => d.divisionName?.toLowerCase() === userDiv
+      )
+
+      if (division) {
+        const avg = getAttendanceValue(division, division.departments)
+        const roundedAvg = Math.round(avg)
+        return roundedAvg
+      }
+      return 0
+    }
+
+    // Department Head: Use department's averageAttendance
+    if (userRole === "department_head") {
+      for (const division of dailyAttendance) {
+        const department = division.departments?.find(
+          (d: any) => d.departmentName?.toLowerCase() === userDept
+        )
+        if (department) {
+          const avg = getAttendanceValue(department, department.teams)
+          const roundedAvg = Math.round(avg)
+          return roundedAvg
+        }
+      }
+      return 0
+    }
+
+    // Approver: Use team's averageAttendance
+    if (userRole === "approver") {
+      for (const division of dailyAttendance) {
+        for (const department of (division.departments || [])) {
+          const team = department.teams?.find(
+            (t: any) => t.teamName?.toLowerCase() === userTeam
+          )
+          if (team) {
+            const avg = Math.round(team.averageAttendance || 0)
+            return avg
+          }
+        }
+      }
+      return 0
+    }
+
+    // Default: return 0
+    return 0
+  }, [dailyAttendance, profile])
+
+  // Filter at-risk employees based on user role
   const filteredAtRiskEmployees = useMemo(() => {
     if (!riskData || !riskData.atRiskStudents) {
       return []
     }
 
-    // Filter to only show employees from the user's team
-    return riskData.atRiskStudents.filter(
-      (employee: RiskDTO) => employee.team === profile?.team
-    )
-  }, [riskData, profile?.team])
+    const userRole = profile?.role?.toLowerCase() || ""
+    const userTeam = profile?.team?.toLowerCase() || ""
+    const userDept = profile?.deptDat?.toLowerCase() || ""
+    const userDiv = profile?.divName?.toLowerCase() || ""
+
+
+    // Approver: Show only employees from their team
+    if (userRole === "approver") {
+      return riskData.atRiskStudents.filter(
+        (employee: RiskDTO) => employee.team?.toLowerCase() === userTeam
+      )
+    }
+
+    // Department Head: Show only employees from their department
+    if (userRole === "department_head") {
+      return riskData.atRiskStudents.filter(
+        (employee: RiskDTO) => employee.department?.toLowerCase() === userDept
+      )
+    }
+
+    // Division Head: Show only employees from their division
+    if (userRole === "division_head") {
+      return riskData.atRiskStudents.filter(
+        (employee: RiskDTO) => employee.division?.toLowerCase() === userDiv
+      )
+    }
+
+    // Default: Return all (or empty based on your preference)
+    return riskData.atRiskStudents
+  }, [riskData, profile])
 
   // Memoize at-risk count (filtered by team)
   const atRiskCount = useMemo(() => {
     return filteredAtRiskEmployees.length
   }, [filteredAtRiskEmployees])
 
-  // Calculate overall completion rate from courseStats
-  const overallCompletionRate = useMemo(() => {
-    if (!courseStats || !Array.isArray(courseStats) || courseStats.length === 0) {
+  // Calculate completion rate based on user role
+  const completionRate = useMemo(() => {
+    if (!courseStats || !courseStats.divisions) return 0
+
+    const userRole = profile?.role?.toLowerCase() || ""
+    const userTeam = profile?.team?.toLowerCase() || ""
+    const userDept = profile?.deptDat?.toLowerCase() || ""
+    const userDiv = profile?.divName?.toLowerCase() || ""
+
+    // For Admin: Average of all division completion rates
+    if (userRole === "admin") {
+      const divisions = courseStats.divisions || []
+      if (divisions.length === 0) return 0
+      const total = divisions.reduce((sum: number, div: any) => sum + (div.averageCompletionRate || 0), 0)
+      return Math.round(total / divisions.length)
+    }
+
+    // For Division Head: Use the division's averageCompletionRate
+    if (userRole === "division_head") {
+      const division = courseStats.divisions.find(
+        (d: any) => d.divisionName?.toLowerCase() === userDiv
+      )
+      return Math.round(division?.averageCompletionRate || 0)
+    }
+
+    // For Department Head: Use the department's averageCompletionRate
+    if (userRole === "department_head") {
+      for (const division of courseStats.divisions) {
+        const department = division.departments?.find(
+          (d: any) => d.departmentName?.toLowerCase() === userDept
+        )
+        if (department) {
+          return Math.round(department.averageCompletionRate || 0)
+        }
+      }
       return 0
     }
 
-    // Sum all completion rates
-    const totalCompletionRate = courseStats.reduce((sum: number, stat: any) => {
-      return sum + (stat.completionRate || 0)
-    }, 0)
+    // For Approver: Use the team's averageCompletionRate
+    if (userRole === "approver") {
+      for (const division of courseStats.divisions) {
+        for (const department of (division.departments || [])) {
+          const team = department.teams?.find(
+            (t: any) => t.teamName?.toLowerCase() === userTeam
+          )
+          if (team) {
+            return Math.round(team.averageCompletionRate || 0)
+          }
+        }
+      }
+      return 0
+    }
 
-    // Calculate average
-    const average = totalCompletionRate / courseStats.length
-
-    // Round to nearest integer
-    return Math.round(average)
-  }, [courseStats])
+    // Default: return 0
+    return 0
+  }, [courseStats, profile])
 
   // If loading, show loading state
   if (isLoading) {
@@ -507,8 +1151,8 @@ export default function ApproverDashboardContainer() {
       {/* Stats Row - Updated with real data */}
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard
-          title="Total Team Members"
-          value={employee_data?.filter((employee: Employee) => employee.team === profile?.team)?.length || 0}
+          title="Total Members"
+          value={activeLearnersCount?.totalEmployees || 0}
           icon={UserGroupIcon}
           description="Active in the system"
         />
@@ -520,15 +1164,35 @@ export default function ApproverDashboardContainer() {
         />
         <StatCard
           title="Average Attendance"
-          value={`${stats.avgAttendance}%`}
+          value={`${avgAttendance}%`}
           icon={CheckmarkCircle01Icon}
-          description="Team average"
+          description={
+            profile?.role?.toLowerCase() === "admin"
+              ? "Across all divisions"
+              : profile?.role?.toLowerCase() === "division_head"
+                ? `Attendance rate by division`
+                : profile?.role?.toLowerCase() === "department_head"
+                  ? `Attendance rate by department`
+                  : profile?.role?.toLowerCase() === "approver"
+                    ? `Attendance rate by team`
+                    : "Team attendance rate"
+          }
         />
         <StatCard
-          title="Completion Rate"
-          value={`${overallCompletionRate}%`}
+          title="Course Completion Rate"
+          value={`${completionRate}%`}
           icon={ChampionIcon}
-          description="Overall course completion"
+          description={
+            profile?.role?.toLowerCase() === "admin"
+              ? "Average course completion across all divisions"
+              : profile?.role?.toLowerCase() === "division_head"
+                ? `Average course completion by division`
+                : profile?.role?.toLowerCase() === "department_head"
+                  ? `Average course completion by department`
+                  : profile?.role?.toLowerCase() === "approver"
+                    ? `Average course completion by team`
+                    : "Overall course completion rate"
+          }
         />
         {/* <StatCard
           title="Employees at Risk"
@@ -538,13 +1202,16 @@ export default function ApproverDashboardContainer() {
         /> */}
       </div>
 
-      {/* Course Statistics - Category Select (Same as Admin) */}
+      {/* Course Statistics - Category Select (Filtered by Role) */}
       <Card className="col-span-full">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Course Statistics</CardTitle>
             <CardDescription>
-              Enrollment and completion by course
+              {profile?.role === "approver" && `Enrollment and completion for ${profile?.team || "your team"}`}
+              {profile?.role === "department_head" && `Enrollment and completion for ${profile?.dept_dat || "your department"}`}
+              {profile?.role === "division_head" && `Enrollment and completion for ${profile?.div_name || "your division"}`}
+              {!profile?.role && "Enrollment and completion by course"}
             </CardDescription>
           </div>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -563,38 +1230,44 @@ export default function ApproverDashboardContainer() {
           </Select>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={courseChartConfig}
-            className="h-[400px] w-full"
-          >
-            <BarChart
-              accessibilityLayer
-              data={filteredCourseData}
-              margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
-              width={800}
-              height={400}
+          {filteredCourseData.length === 0 ? (
+            <div className="flex h-[400px] items-center justify-center text-muted-foreground">
+              No course data available for your {profile?.role === "approver" ? "team" : profile?.role === "department_head" ? "department" : "division"}
+            </div>
+          ) : (
+            <ChartContainer
+              config={courseChartConfig}
+              className="h-[400px] w-full"
             >
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="name"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-                angle={-45}
-                textAnchor="end"
-                height={100}
-                interval={0}
-              />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <BarChart
+                accessibilityLayer
+                data={filteredCourseData}
+                margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+                width={800}
+                height={400}
+              >
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  tickMargin={10}
+                  axisLine={false}
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                  interval={0}
+                />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 
-              <Bar dataKey="enrolled" fill="#8EC5FF" radius={4}>
-                <LabelList dataKey="enrolled" content={renderCustomLabel} />
-              </Bar>
-              <Bar dataKey="completed" fill="#2B7FFF" radius={4}>
-                <LabelList dataKey="completed" content={renderCustomLabel} />
-              </Bar>
-            </BarChart>
-          </ChartContainer>
+                <Bar dataKey="enrolled" fill="#8EC5FF" radius={4}>
+                  <LabelList dataKey="enrolled" content={renderCustomLabel} />
+                </Bar>
+                <Bar dataKey="completed" fill="#2B7FFF" radius={4}>
+                  <LabelList dataKey="completed" content={renderCustomLabel} />
+                </Bar>
+              </BarChart>
+            </ChartContainer>
+          )}
         </CardContent>
         <CardFooter className="flex-col items-center gap-2 text-sm">
           <div className="flex gap-2 leading-none font-medium">
@@ -603,7 +1276,16 @@ export default function ApproverDashboardContainer() {
               strokeWidth={2}
               className="h-4 w-4 text-green-600"
             />
-            Enrollment up by 5.2% this month
+            {filteredCourseData.length > 0 && (
+              <>
+                Showing filtered course data by{" "}
+                {profile?.role?.toLowerCase() === "admin" && "all departments"}
+                {profile?.role?.toLowerCase() === "approver" && `team: ${profile?.team || "your team"}`}
+                {profile?.role?.toLowerCase() === "department_head" && `department: ${profile?.deptDat || "your department"}`}
+                {profile?.role?.toLowerCase() === "division_head" && `division: ${profile?.divName || "your division"}`}
+                {!profile?.role && "your role"}
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2 leading-none text-muted-foreground">
             <div className="flex items-center gap-1">
@@ -624,7 +1306,14 @@ export default function ApproverDashboardContainer() {
           <div className="grid flex-1 gap-1">
             <CardTitle>Attendance Analysis</CardTitle>
             <CardDescription>
-              Daily attendance breakdown for {profile?.team || "your team"}
+              {profile?.role?.toLowerCase() === "admin"
+                ? "Daily attendance breakdown across all teams"
+                : profile?.role?.toLowerCase() === "division_head"
+                  ? `Daily attendance breakdown for ${profile?.divName || "your division"}`
+                  : profile?.role?.toLowerCase() === "department_head"
+                    ? `Daily attendance breakdown for ${profile?.deptDat || "your department"}`
+                    : `Daily attendance breakdown for ${profile?.team || "your team"}`
+              }
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -803,7 +1492,16 @@ export default function ApproverDashboardContainer() {
                   strokeWidth={2}
                   className="h-4 w-4 text-green-600"
                 />
-                {profile?.team} attendance breakdown
+                {profile?.role?.toLowerCase() === "admin"
+                  ? "All teams attendance breakdown"
+                  : profile?.role?.toLowerCase() === "division_head"
+                    ? `${profile?.divName || "Division"} attendance breakdown`
+                    : profile?.role?.toLowerCase() === "department_head"
+                      ? `${profile?.deptDat || "Department"} attendance breakdown`
+                      : profile?.role?.toLowerCase() === "approver"
+                        ? `${profile?.team || "Team"} attendance breakdown`
+                        : "Attendance breakdown"
+                }
               </div>
             )}
           </div>
@@ -940,7 +1638,12 @@ export default function ApproverDashboardContainer() {
             <div>
               <CardTitle>Certification Progress</CardTitle>
               <CardDescription>
-                Certification completion status for {profile?.team || "your team"}
+                Certification completion status for {profile?.role?.toLowerCase() === "division_head"
+                  ? profile?.divName || "your division"
+                  : profile?.role?.toLowerCase() === "department_head"
+                    ? profile?.deptDat || "your department"
+                    : profile?.team || "your team"
+                }
               </CardDescription>
             </div>
             <Select
@@ -1038,6 +1741,7 @@ export default function ApproverDashboardContainer() {
                 <thead>
                   <tr className="border-b text-left text-sm font-medium text-muted-foreground">
                     <th className="pr-4 pb-2">Name</th>
+                    <th className="pr-4 pb-2">Division</th>
                     <th className="pr-4 pb-2">Department</th>
                     <th className="pr-4 pb-2">Team</th>
                     <th className="pr-4 pb-2">Course</th>
@@ -1050,6 +1754,11 @@ export default function ApproverDashboardContainer() {
                     <tr key={index} className="border-b last:border-0">
                       <td className="py-2 pr-4 text-sm font-medium">
                         {employee.name}
+                      </td>
+                      <td className="py-2 pr-4 text-sm text-muted-foreground">
+                        <span className="block max-w-[150px] truncate" title={employee.division}>
+                          {employee.division}
+                        </span>
                       </td>
                       <td className="py-2 pr-4 text-sm text-muted-foreground">
                         <span className="block max-w-[150px] truncate" title={employee.department}>

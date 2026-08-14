@@ -16,33 +16,28 @@ public interface EmployeeCertificateRepository extends JpaRepository<EmployeeCer
     
     List<EmployeeCertificate> findByEmployee(Employee employee);
     
-    // Change parameter types from String to CertificateType
     EmployeeCertificate findByEmployeeAndCertificateTypeAndJapaneseLevel(
         Employee employee, 
         CertificateType certificateType, 
         String japaneseLevel
     );
     
-    // Change parameter type from String to CertificateType
     boolean existsByEmployeeAndCertificateTypeAndJapaneseLevel(
         Employee employee, 
         CertificateType certificateType, 
         String japaneseLevel
     );
     
-    // Change parameter type from String to VerificationStatus
     List<EmployeeCertificate> findByVerificationStatus(VerificationStatus status);
     
-    // Optional: If you need to find by string status
     List<EmployeeCertificate> findByVerificationStatusIgnoreCase(String status);
 
-     @Query("SELECT ec.certificateType, ec.japaneseLevel, COUNT(ec) " +
+    @Query("SELECT ec.certificateType, ec.japaneseLevel, COUNT(ec) " +
            "FROM EmployeeCertificate ec " +
            "WHERE ec.verificationStatus = 'APPROVED' " +
            "GROUP BY ec.certificateType, ec.japaneseLevel")
     List<Object[]> countVerifiedCertificatesByTypeAndLevel();
     
-    // Query for team-wise verified certificates count
     @Query("SELECT e.team.teamName, ec.certificateType, ec.japaneseLevel, COUNT(ec) " +
            "FROM EmployeeCertificate ec " +
            "JOIN ec.employee e " +
@@ -50,12 +45,60 @@ public interface EmployeeCertificateRepository extends JpaRepository<EmployeeCer
            "AND e.team.id IS NOT NULL " +
            "GROUP BY e.team.teamName, ec.certificateType, ec.japaneseLevel")
     List<Object[]> countVerifiedCertificatesByTeamTypeAndLevel();
+
+    @Query("SELECT e.team.departmentDat.deptName, ec.certificateType, ec.japaneseLevel, COUNT(ec) " +
+           "FROM EmployeeCertificate ec " +
+           "JOIN ec.employee e " +
+           "WHERE ec.verificationStatus = 'APPROVED' " +
+           "AND e.team.departmentDat.id IS NOT NULL " +
+           "AND e.team.departmentDat.isDeleted = false " +
+           "GROUP BY e.team.departmentDat.deptName, ec.certificateType, ec.japaneseLevel")
+    List<Object[]> countVerifiedCertificatesByDepartmentTypeAndLevel();
+
+    @Query("SELECT e.team.departmentDat.division.divisionName, ec.certificateType, ec.japaneseLevel, COUNT(ec) " +
+           "FROM EmployeeCertificate ec " +
+           "JOIN ec.employee e " +
+           "WHERE ec.verificationStatus = 'APPROVED' " +
+           "AND e.team.departmentDat.division.id IS NOT NULL " +
+           "AND e.team.departmentDat.division.isDeleted = false " +
+           "GROUP BY e.team.departmentDat.division.divisionName, ec.certificateType, ec.japaneseLevel")
+    List<Object[]> countVerifiedCertificatesByDivisionTypeAndLevel();
     
-    // Count total employees
+    // Department with Team breakdown
+    @Query("SELECT e.team.departmentDat.deptName, e.team.teamName, ec.certificateType, ec.japaneseLevel, COUNT(ec) " +
+           "FROM EmployeeCertificate ec " +
+           "JOIN ec.employee e " +
+           "WHERE ec.verificationStatus = 'APPROVED' " +
+           "AND e.team.departmentDat.id IS NOT NULL " +
+           "AND e.team.departmentDat.isDeleted = false " +
+           "AND e.team.isDeleted = false " +
+           "GROUP BY e.team.departmentDat.deptName, e.team.teamName, ec.certificateType, ec.japaneseLevel")
+    List<Object[]> countVerifiedCertificatesByDepartmentTeamTypeAndLevel();
+
+    // Division with Department and Team breakdown (Complete hierarchy)
+    @Query("SELECT e.team.departmentDat.division.divisionName, " +
+           "e.team.departmentDat.deptName, " +
+           "e.team.teamName, " +
+           "ec.certificateType, " +
+           "ec.japaneseLevel, " +
+           "COUNT(ec) " +
+           "FROM EmployeeCertificate ec " +
+           "JOIN ec.employee e " +
+           "WHERE ec.verificationStatus = 'APPROVED' " +
+           "AND e.team.departmentDat.division.id IS NOT NULL " +
+           "AND e.team.departmentDat.division.isDeleted = false " +
+           "AND e.team.departmentDat.isDeleted = false " +
+           "AND e.team.isDeleted = false " +
+           "GROUP BY e.team.departmentDat.division.divisionName, " +
+           "e.team.departmentDat.deptName, " +
+           "e.team.teamName, " +
+           "ec.certificateType, " +
+           "ec.japaneseLevel")
+    List<Object[]> countVerifiedCertificatesByDivisionDepartmentTeamTypeAndLevel();
+    
     @Query("SELECT COUNT(e) FROM Employee e WHERE e.isDeleted = false")
     long countTotalEmployees();
     
-    // Count employees in each team
     @Query("SELECT e.team.teamName, COUNT(e) " +
            "FROM Employee e " +
            "WHERE e.team.id IS NOT NULL " +
@@ -63,9 +106,8 @@ public interface EmployeeCertificateRepository extends JpaRepository<EmployeeCer
            "GROUP BY e.team.teamName")
     List<Object[]> countEmployeesByTeam();
     
-    // Optional: Count employees in a specific team
     @Query("SELECT COUNT(e) FROM Employee e " +
            "WHERE e.team.teamName = :teamName " +
            "AND e.isDeleted = false")
     long countEmployeesByTeamName(@Param("teamName") String teamName);
-} 
+}

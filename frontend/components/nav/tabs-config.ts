@@ -139,7 +139,7 @@ export const allTabs = [
     accept: ".csv,.json,.xlsx,.xls",
     icon: UserGroupIcon,
     maxSize: 500,
-    onImport: async (file: File) => {
+   onImport: async (file: File) => {
       try {
         const startTime = performance.now()
 
@@ -172,9 +172,27 @@ export const allTabs = [
             .filter(Boolean)
         )
 
+        // ===== PROTECT SYSTEM EMPLOYEES FROM DELETION =====
         // Find employees in system that are NOT in Excel
+        // BUT exclude any employee with status === "system"
         const employeesToDelete = currentEmployees.filter(
-          (emp: Employee) => !excelEmployeeIds.has(emp.id)
+          (emp: Employee) => {
+            // Don't delete if status is "system" (case-insensitive check)
+            const isSystemEmployee = emp.status?.toLowerCase() === "system"
+            const isMissingFromExcel = !excelEmployeeIds.has(emp.id)
+            
+            // Only delete if NOT a system employee AND missing from Excel
+            return !isSystemEmployee && isMissingFromExcel
+          }
+        )
+
+        // Count how many system employees were protected
+        const systemEmployeesProtected = currentEmployees.filter(
+          (emp: Employee) => {
+            const isSystemEmployee = emp.status?.toLowerCase() === "system"
+            const isMissingFromExcel = !excelEmployeeIds.has(emp.id)
+            return isSystemEmployee && isMissingFromExcel
+          }
         )
 
         // Find employees in Excel that are NOT in system
@@ -214,6 +232,17 @@ export const allTabs = [
         confirmMsg += `   ➕ Create: ${newEmployees.length}\n`
         confirmMsg += `   📝 Update: ${existingInExcel.length}\n`
 
+        // Show system employees protected
+        if (systemEmployeesProtected.length > 0) {
+          confirmMsg += `\n🛡️ ${systemEmployeesProtected.length} system account(s) protected from deletion:\n`
+          systemEmployeesProtected.slice(0, 5).forEach((emp) => {
+            confirmMsg += `   • ${emp.id} - ${emp.name}\n`
+          })
+          if (systemEmployeesProtected.length > 5) {
+            confirmMsg += `   ... and ${systemEmployeesProtected.length - 5} more\n`
+          }
+        }
+
         if (employeesToDelete.length > 0) {
           confirmMsg += `\n⚠️ ${employeesToDelete.length} employees will be DELETED`
         }
@@ -222,7 +251,7 @@ export const allTabs = [
           return { success: false, message: "Import cancelled" }
         }
 
-        // ===== DELETE EMPLOYEES MISSING FROM EXCEL =====
+        // ===== DELETE EMPLOYEES MISSING FROM EXCEL (EXCLUDING SYSTEM) =====
         let deletedCount = 0
 
         if (employeesToDelete.length > 0) {
@@ -264,32 +293,6 @@ export const allTabs = [
           profile_photo_path: "",
         }))
 
-        // const BATCH_SIZE = 50
-        // let importedCount = 0
-        // const failedRecords: { id: string; name: string }[] = []
-
-        // for (let i = 0; i < employeeDtos.length; i += BATCH_SIZE) {
-        //   const batch = employeeDtos.slice(i, i + BATCH_SIZE)
-        //   try {
-        //     await store.bulkCreate_EmployeeData(batch)
-        //     importedCount += batch.length
-        //   } catch (error) {
-        //     for (let j = 0; j < batch.length; j++) {
-        //       try {
-        //         await store.bulkCreate_EmployeeData([batch[j]])
-        //         importedCount++
-        //       } catch (retryError) {
-        //         failedRecords.push({
-        //           id: batch[j].id || "MISSING",
-        //           name: batch[j].name || "MISSING",
-        //         })
-        //       }
-        //     }
-        //   }
-        // }
-
-        // const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
-
         let importedCount = 0
         const failedRecords: { id: string; name: string }[] = []
 
@@ -320,11 +323,11 @@ export const allTabs = [
 
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
 
-
         // ===== FINAL CONCISE SUMMARY =====
         let resultMsg = `✅ Import complete (${totalTime}s)\n\n`
         resultMsg += `📥 Imported: ${importedCount}/${valid.length}\n`
         resultMsg += `🗑️ Deleted: ${deletedCount}\n`
+        resultMsg += `🛡️ Protected: ${systemEmployeesProtected.length} system account(s)\n`
 
         if (invalid.length > 0) {
           resultMsg += `⚠️ Skipped: ${invalid.length} invalid rows\n`
@@ -351,6 +354,7 @@ export const allTabs = [
             invalid: invalid.length,
             failedRecords: failedRecords.length,
             deletedCount: deletedCount,
+            systemEmployeesProtected: systemEmployeesProtected.length,
             newEmployees: newEmployees.length,
             updatedEmployees: existingInExcel.length,
             employeesToDelete: employeesToDelete.length,
@@ -1298,12 +1302,12 @@ export const allTabs = [
   },
   {
     id: "current_target_data",
-    label: "Current target",
-    importTitle: "Import Current Target Data",
+    label: "JLPT_target_level",
+    importTitle: "Import JLPT Target Level Data",
     importDescription:
-      "Upload current target data file to import into the system.",
-    exportTitle: "Export Current Target Data",
-    exportDescription: "Export current target data from the system.",
+      "Upload JLPT target level data file to import into the system.",
+    exportTitle: "Export JLPT Target Level Data",
+    exportDescription: "Export JLPT target level data from the system.",
     accept: ".csv,.json,.xlsx,.xls",
     icon: TrendingUp,
     maxSize: 500,

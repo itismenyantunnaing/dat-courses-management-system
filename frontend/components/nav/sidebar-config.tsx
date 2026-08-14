@@ -1,32 +1,19 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   DashboardBrowsingIcon,
-  DiplomaIcon,
-  ComputerVideoCallIcon,
   DatabaseIcon,
-  Calendar01Icon,
-  HelpCircleIcon,
-  SettingsIcon,
-  CalendarAnalysisIcon,
-  Task02Icon,
-  ChatFeedback01Icon,
-  Analytics01Icon,
-  GoogleDocIcon,
-  Time04Icon,
   CourseIcon,
   DocumentValidationIcon,
-  Time02Icon,
   ChartHistogramIcon,
-  Chart01Icon,
+  ChartIcon,
   UserGroupIcon,
   CodeIcon,
   TrendingUp,
-  CalendarIcon,
   MonitorDotIcon,
   Certificate01Icon,
-  Comment01Icon,
   Message01Icon,
   Calendar03Icon,
+  LanguageSquareIcon,
 } from "@hugeicons/core-free-icons"
 
 const STROKE_WIDTH = 2
@@ -171,10 +158,15 @@ export const adminData: SidebarConfig = {
           ],
         },
         {
-          title: "Current target",
-          tabId: "current_target_level",
+          title: "JLPT target level",
+          tabId: "jlpt_target_level",
           type: "primary-action",
-          icon: <HugeiconsIcon icon={TrendingUp} strokeWidth={STROKE_WIDTH} />,
+          icon: (
+            <HugeiconsIcon
+              icon={LanguageSquareIcon}
+              strokeWidth={STROKE_WIDTH}
+            />
+          ),
           actions: [
             {
               label: "Import data",
@@ -245,12 +237,7 @@ export const adminData: SidebarConfig = {
           title: "Exam Progress",
           tabId: "exam_progress_report",
           type: "primary-action",
-          icon: (
-            <HugeiconsIcon
-              icon={ChartHistogramIcon}
-              strokeWidth={STROKE_WIDTH}
-            />
-          ),
+          icon: <HugeiconsIcon icon={ChartIcon} strokeWidth={STROKE_WIDTH} />,
           actions: [
             {
               label: "Export data",
@@ -260,10 +247,17 @@ export const adminData: SidebarConfig = {
           ],
         },
         {
-          title: "Self Study Progress",
+          title: "Self-Study Progress",
           tabId: "self_study_progress",
-          type: "primary",
-          icon: <HugeiconsIcon icon={Chart01Icon} strokeWidth={STROKE_WIDTH} />,
+          type: "primary-action",
+          icon: <HugeiconsIcon icon={ChartIcon} strokeWidth={STROKE_WIDTH} />,
+          actions: [
+            {
+              label: "Export data",
+              tabId: "self_study_progress_report",
+              action: "export",
+            },
+          ],
         },
       ],
     },
@@ -275,10 +269,7 @@ export const adminData: SidebarConfig = {
           tabId: "feedback",
           type: "primary-action",
           icon: (
-            <HugeiconsIcon
-              icon={Message01Icon}
-              strokeWidth={STROKE_WIDTH}
-            />
+            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
           ),
           actions: [
             {
@@ -431,8 +422,8 @@ export const approverData: SidebarConfig = {
           icon: <HugeiconsIcon icon={CodeIcon} strokeWidth={STROKE_WIDTH} />,
         },
         {
-          title: "Current target",
-          tabId: "current_target_level",
+          title: "JLPT target level",
+          tabId: "jlpt_target_level",
           type: "primary",
           icon: <HugeiconsIcon icon={TrendingUp} strokeWidth={STROKE_WIDTH} />,
         },
@@ -481,10 +472,7 @@ export const approverData: SidebarConfig = {
           tabId: "feedback",
           type: "primary",
           icon: (
-            <HugeiconsIcon
-              icon={Message01Icon}
-              strokeWidth={STROKE_WIDTH}
-            />
+            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
           ),
         },
       ],

@@ -29,19 +29,19 @@ import { cn } from "@/lib/utils"
 import type { DeptWithCounts } from "@/types/exam_progress_report"
 
 type ColumnConfig = {
-  field: string;
-  header: string;
-  width?: string;
-  isSpecial?: boolean;
+  field: string
+  header: string
+  width?: string
+  isSpecial?: boolean
 }
 
 type ColumnGroupConfig = {
-  id: string;  // Add unique id
-  header: string;
-  colSpan: number;
-  fields: string[];
-  width?: string;
-  isSpecial?: boolean;
+  id: string
+  header: string
+  colSpan: number
+  fields: string[]
+  width?: string
+  isSpecial?: boolean
 }
 
 const columnGroups: ColumnGroupConfig[] = [
@@ -50,14 +50,14 @@ const columnGroups: ColumnGroupConfig[] = [
     header: "Certified",
     colSpan: 5,
     fields: ["N1", "N2", "N3", "N4", "N5"],
-    width: "w-[100px]"
+    width: "w-[100px]",
   },
   {
     id: "not-certified",
     header: "Not Certified",
     colSpan: 1,
     fields: ["None"],
-    width: "w-[100px]"
+    width: "w-[100px]",
   },
   {
     id: "total",
@@ -65,12 +65,17 @@ const columnGroups: ColumnGroupConfig[] = [
     colSpan: 1,
     fields: ["total"],
     width: "w-[150px]",
-    isSpecial: true
-  }
+    isSpecial: true,
+  },
 ]
 
 const columnConfigs: ColumnConfig[] = [
-  { field: "dept_name", header: "By Department", width: "min-w-[200px]", isSpecial: true },
+  {
+    field: "dept_name",
+    header: "By Department",
+    width: "min-w-[200px]",
+    isSpecial: true,
+  },
   { field: "N1", header: "N1", width: "w-[100px]" },
   { field: "N2", header: "N2", width: "w-[100px]" },
   { field: "N3", header: "N3", width: "w-[100px]" },
@@ -80,17 +85,14 @@ const columnConfigs: ColumnConfig[] = [
   { field: "total", header: "Total", width: "w-[150px]", isSpecial: true },
 ]
 
-const dataColumns = columnConfigs.filter(col => !col.isSpecial)
+const dataColumns = columnConfigs.filter((col) => !col.isSpecial)
 
 const BorderedTableCell = ({
   children,
   className = "",
   ...props
 }: React.ComponentProps<typeof TableCell>) => (
-  <TableCell
-    className={cn("border-r border-l", className)}
-    {...props}
-  >
+  <TableCell className={cn("border-r border-l", className)} {...props}>
     {children}
   </TableCell>
 )
@@ -101,19 +103,27 @@ const BorderedTableHead = ({
   colSpan,
   rowSpan,
   ...props
-}: React.ComponentProps<typeof TableHead> & { colSpan?: number; rowSpan?: number }) => (
-  <TableHead className={cn("border-r border-l text-center", className)} colSpan={colSpan} rowSpan={rowSpan} {...props}>
+}: React.ComponentProps<typeof TableHead> & {
+  colSpan?: number
+  rowSpan?: number
+}) => (
+  <TableHead
+    className={cn("border-r border-l text-center", className)}
+    colSpan={colSpan}
+    rowSpan={rowSpan}
+    {...props}
+  >
     {children}
   </TableHead>
 )
 
 interface DepartmentTableProps {
-  searchTerm: string;
-  currentPage: number;
-  itemsPerPage: number;
-  onPageChange: (page: number) => void;
-  onItemsPerPageChange: (value: number) => void;
-  data: DeptWithCounts[];
+  searchTerm: string
+  currentPage: number
+  itemsPerPage: number
+  onPageChange: (page: number) => void
+  onItemsPerPageChange: (value: number) => void
+  data: DeptWithCounts[]
 }
 
 export function DepartmentTable({
@@ -124,37 +134,46 @@ export function DepartmentTable({
   onItemsPerPageChange,
   data,
 }: DepartmentTableProps) {
-
   const calculateRowTotal = (row: DeptWithCounts) => {
     return row.N1 + row.N2 + row.N3 + row.N4 + row.N5 + row.None
   }
 
   const calculateGrandTotals = (data: DeptWithCounts[]) => {
-    if (data.length === 0) return { N1: 0, N2: 0, N3: 0, N4: 0, N5: 0, None: 0, total: 0 }
+    if (data.length === 0)
+      return { N1: 0, N2: 0, N3: 0, N4: 0, N5: 0, None: 0, total: 0 }
 
-    const totals = data.reduce((acc, row) => ({
-      N1: acc.N1 + row.N1,
-      N2: acc.N2 + row.N2,
-      N3: acc.N3 + row.N3,
-      N4: acc.N4 + row.N4,
-      N5: acc.N5 + row.N5,
-      None: acc.None + row.None,
-    }), { N1: 0, N2: 0, N3: 0, N4: 0, N5: 0, None: 0 })
+    const totals = data.reduce(
+      (acc, row) => ({
+        N1: acc.N1 + row.N1,
+        N2: acc.N2 + row.N2,
+        N3: acc.N3 + row.N3,
+        N4: acc.N4 + row.N4,
+        N5: acc.N5 + row.N5,
+        None: acc.None + row.None,
+      }),
+      { N1: 0, N2: 0, N3: 0, N4: 0, N5: 0, None: 0 }
+    )
 
     return {
       ...totals,
-      total: totals.N1 + totals.N2 + totals.N3 + totals.N4 + totals.N5 + totals.None
+      total:
+        totals.N1 + totals.N2 + totals.N3 + totals.N4 + totals.N5 + totals.None,
     }
   }
 
   const filteredData = data.filter((item) => {
-    const matchesSearch = item.dept_name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = item.dept_name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
     return matchesSearch
   })
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage)
+  const paginatedData = filteredData.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  )
   const grandTotal = calculateGrandTotals(filteredData)
 
   const handlePrevious = () => {
@@ -190,24 +209,27 @@ export function DepartmentTable({
 
   return (
     <>
-      <div className="relative overflow-x-auto rounded-md border" style={{ zIndex: 1 }}>
+      <div
+        className="relative overflow-x-auto rounded-md border-y"
+        style={{ zIndex: 1 }}
+      >
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
               <BorderedTableHead
-                className="align-middle whitespace-nowrap text-center min-w-[200px]"
+                className="min-w-[200px] text-center align-middle whitespace-nowrap"
                 rowSpan={2}
               >
-                By Department
+                JLPT Certificates by Department
               </BorderedTableHead>
 
               {columnGroups.map((group) => (
                 <BorderedTableHead
                   key={group.id}
                   className={cn(
-                    "align-middle whitespace-nowrap text-center",
+                    "text-center align-middle whitespace-nowrap",
                     group.width,
-                    group.isSpecial && "border-l border-r"
+                    group.isSpecial && "border-r border-l"
                   )}
                   colSpan={group.isSpecial ? undefined : group.colSpan}
                   rowSpan={group.isSpecial ? 2 : undefined}
@@ -222,7 +244,7 @@ export function DepartmentTable({
                 <BorderedTableHead
                   key={col.field}
                   className={cn(
-                    "align-middle whitespace-nowrap text-center",
+                    "text-center align-middle whitespace-nowrap",
                     col.width
                   )}
                 >
@@ -265,7 +287,8 @@ export function DepartmentTable({
                             className={cn(
                               "text-center",
                               col.width,
-                              col.field === "dept_name" && "font-medium text-left",
+                              col.field === "dept_name" &&
+                                "text-left",
                               col.field === "total" && "font-bold"
                             )}
                           >
@@ -283,7 +306,7 @@ export function DepartmentTable({
                       let value: string | number | undefined
 
                       if (col.field === "dept_name") {
-                        value = "Grand Total"
+                        value = "Total Departments"
                       } else if (col.field === "total") {
                         value = grandTotal.total
                       } else {
@@ -296,7 +319,7 @@ export function DepartmentTable({
                           className={cn(
                             "text-center",
                             col.width,
-                            col.field === "dept_name" && "font-bold text-left"
+                            col.field === "dept_name" && "text-left font-bold"
                           )}
                         >
                           {value}

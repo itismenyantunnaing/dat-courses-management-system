@@ -24,25 +24,39 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { CircleIcon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import type { TeamWithCounts } from "@/types/exam_progress_report"
 
-// Add this helper function
-const parseCommunicationLevel = (level: string): { label: string; description: string } => {
+// Helper function to parse communication level
+const parseCommunicationLevel = (
+  level: string
+): { label: string; description: string } => {
   const descriptions: Record<string, string> = {
     "Level 0 | None": "No communication capability",
-    "Level 1 | G1": "Email writing-Chat with DIR and QA/bug/issues reporting using simple words",
-    "Level 1 | G2": "Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool",
-    "Level 1 | G3": "Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words",
-    "Level 2 | G1": "Email reading/writing/MS team chat, Daily team conversation",
-    "Level 2 | G2": "Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese",
-    "Level 2 | G3": "Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, can Participate/discuss with Japanese Customers",
-    "Level 3": "Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal"
+    "Level 1 | G1":
+      "Email writing-Chat with DIR and QA/bug/issues reporting using simple words",
+    "Level 1 | G2":
+      "Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool",
+    "Level 1 | G3":
+      "Email writing-Chat with DIR, QA/bug/issues reporting, Understand requirements/documents with the supports from interpretation tool, Basic & Internal team daily conversation using simple words",
+    "Level 2 | G1":
+      "Email reading/writing/MS team chat, Daily team conversation",
+    "Level 2 | G2":
+      "Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese",
+    "Level 2 | G3":
+      "Email reading/writing/MS team chat, Daily team conversation, Understand/prepare the documents/requirements in Japanese, can Participate/discuss with Japanese Customers",
+    "Level 3":
+      "Lead Meeting with DIR/Japanese clients, Handle negotiations, Write formal proposal",
   }
-  
+
   // Find matching description
   let description = ""
   for (const [key, value] of Object.entries(descriptions)) {
@@ -51,28 +65,28 @@ const parseCommunicationLevel = (level: string): { label: string; description: s
       break
     }
   }
-  
+
   // Extract label (e.g., "Level 1 | G1" from full string)
   const labelMatch = level.match(/(Level \d+ \| G\d+|Level \d+)/)
   const label = labelMatch ? labelMatch[0] : level
-  
+
   return { label, description }
 }
 
 type ColumnConfig = {
-  field: string;
-  header: string;
-  width?: string;
-  isSpecial?: boolean;
-  tooltip?: string;
+  field: string
+  header: string
+  width?: string
+  isSpecial?: boolean
+  tooltip?: string
 }
 
 type ColumnGroupConfig = {
-  id: string;
-  header: string;
-  colSpan: number;
-  fields: string[];
-  width?: string;
+  id: string
+  header: string
+  colSpan: number
+  fields: string[]
+  width?: string
 }
 
 const formatDate = (date: string | null | undefined): string => {
@@ -82,158 +96,277 @@ const formatDate = (date: string | null | undefined): string => {
 
 const extractCommLevels = (data: TeamWithCounts[]): string[] => {
   if (!data || data.length === 0) {
-    return ["Level 0 | None", "Level 1 | G1", "Level 1 | G2", "Level 1 | G3", "Level 2 | G1", "Level 2 | G2", "Level 2 | G3", "Level 3"]
+    return [
+      "Level 0 | None",
+      "Level 1 | G1",
+      "Level 1 | G2",
+      "Level 1 | G3",
+      "Level 2 | G1",
+      "Level 2 | G2",
+      "Level 2 | G3",
+      "Level 3",
+    ]
   }
-  const firstRow = data[0];
-  const levels: string[] = [];
-  let index = 0;
+  const firstRow = data[0]
+  const levels: string[] = []
+  let index = 0
   while (true) {
-    const key = `current_comm_${index}`;
-    if (key in firstRow) { levels.push(key); index++; } else { break; }
+    const key = `current_comm_${index}`
+    if (key in firstRow) {
+      levels.push(key)
+      index++
+    } else {
+      break
+    }
   }
   if (levels.length === 0) {
-    return ["Level 0 | None", "Level 1 | G1", "Level 1 | G2", "Level 1 | G3", "Level 2 | G1", "Level 2 | G2", "Level 2 | G3", "Level 3"]
+    return [
+      "Level 0 | None",
+      "Level 1 | G1",
+      "Level 1 | G2",
+      "Level 1 | G3",
+      "Level 2 | G1",
+      "Level 2 | G2",
+      "Level 2 | G3",
+      "Level 3",
+    ]
   }
-  return levels;
+  return levels
 }
 
-const getColumnGroups = (target1Date?: string | null, target2Date?: string | null, commLevels: string[] = []): ColumnGroupConfig[] => {
+const getColumnGroups = (
+  target1Date?: string | null,
+  target2Date?: string | null,
+  commLevels: string[] = []
+): ColumnGroupConfig[] => {
   const date1 = target1Date ? formatDate(target1Date) : "Target 1"
   const date2 = target2Date ? formatDate(target2Date) : "Target 2"
-  const levels = commLevels.length > 0 ? commLevels : ["Level 0 | None", "Level 1 | G1", "Level 1 | G2", "Level 1 | G3", "Level 2 | G1", "Level 2 | G2", "Level 2 | G3", "Level 3"]
+  const levels =
+    commLevels.length > 0
+      ? commLevels
+      : [
+          "Level 0 | None",
+          "Level 1 | G1",
+          "Level 1 | G2",
+          "Level 1 | G3",
+          "Level 2 | G1",
+          "Level 2 | G2",
+          "Level 2 | G3",
+          "Level 3",
+        ]
   return [
-    { id: "current", header: "Current", colSpan: levels.length, fields: levels.map((_, index) => `current_comm_${index}`), width: "w-[120px]" },
-    { id: "target1", header: date1, colSpan: levels.length, fields: levels.map((_, index) => `target1_comm_${index}`), width: "w-[120px]" },
-    { id: "target2", header: date2, colSpan: levels.length, fields: levels.map((_, index) => `target2_comm_${index}`), width: "w-[120px]" }
+    {
+      id: "current",
+      header: "Current",
+      colSpan: levels.length,
+      fields: levels.map((_, index) => `current_comm_${index}`),
+      width: "w-[120px]",
+    },
+    {
+      id: "target1",
+      header: date1,
+      colSpan: levels.length,
+      fields: levels.map((_, index) => `target1_comm_${index}`),
+      width: "w-[120px]",
+    },
+    {
+      id: "target2",
+      header: date2,
+      colSpan: levels.length,
+      fields: levels.map((_, index) => `target2_comm_${index}`),
+      width: "w-[120px]",
+    },
   ]
 }
 
 const getColumnConfigs = (data: TeamWithCounts[]): ColumnConfig[] => {
-  const columns: ColumnConfig[] = [{ field: "team_name", header: "By Team", width: "min-w-[200px]", isSpecial: true }]
-  const commFields = extractCommLevels(data);
-  const defaultLevels = ["Level 0 | None", "Level 1 | G1", "Level 1 | G2", "Level 1 | G3", "Level 2 | G1", "Level 2 | G2", "Level 2 | G3", "Level 3"];
-  const levels = commFields.length > 0 ? commFields : defaultLevels;
-  
+  const columns: ColumnConfig[] = [
+    {
+      field: "team_name",
+      header: "By Team",
+      width: "min-w-[200px]",
+      isSpecial: true,
+    },
+  ]
+  const commFields = extractCommLevels(data)
+  const defaultLevels = [
+    "Level 0 | None",
+    "Level 1 | G1",
+    "Level 1 | G2",
+    "Level 1 | G3",
+    "Level 2 | G1",
+    "Level 2 | G2",
+    "Level 2 | G3",
+    "Level 3",
+  ]
+  const levels = commFields.length > 0 ? commFields : defaultLevels
+
   // Use unique keys by combining period + index
   levels.forEach((field, index) => {
-    const label = defaultLevels[index] || field;
-    const parsed = parseCommunicationLevel(label);
-    columns.push({ 
+    const label = defaultLevels[index] || field
+    const parsed = parseCommunicationLevel(label)
+    columns.push({
       field: `current_${index}`,
-      header: parsed.label, 
+      header: parsed.label,
       width: "w-[80px]",
-      tooltip: parsed.description
+      tooltip: parsed.description,
     })
   })
-  
+
   levels.forEach((field, index) => {
-    const label = defaultLevels[index] || field;
-    const parsed = parseCommunicationLevel(label);
-    columns.push({ 
+    const label = defaultLevels[index] || field
+    const parsed = parseCommunicationLevel(label)
+    columns.push({
       field: `target1_${index}`,
-      header: parsed.label, 
+      header: parsed.label,
       width: "w-[80px]",
-      tooltip: parsed.description
+      tooltip: parsed.description,
     })
   })
-  
+
   levels.forEach((field, index) => {
-    const label = defaultLevels[index] || field;
-    const parsed = parseCommunicationLevel(label);
-    columns.push({ 
+    const label = defaultLevels[index] || field
+    const parsed = parseCommunicationLevel(label)
+    columns.push({
       field: `target2_${index}`,
-      header: parsed.label, 
+      header: parsed.label,
       width: "w-[80px]",
-      tooltip: parsed.description
+      tooltip: parsed.description,
     })
   })
-  
+
   return columns
 }
 
 const BorderedTableCell = ({ children, className = "", ...props }: any) => (
-  <TableCell className={cn("border-r border-l", className)} {...props}>{children}</TableCell>
+  <TableCell className={cn("border-r border-l", className)} {...props}>
+    {children}
+  </TableCell>
 )
 
-const BorderedTableHead = ({ children, className = "", colSpan, rowSpan, ...props }: any) => (
-  <TableHead className={cn("border-r border-l text-center", className)} colSpan={colSpan} rowSpan={rowSpan} {...props}>
+const BorderedTableHead = ({
+  children,
+  className = "",
+  colSpan,
+  rowSpan,
+  ...props
+}: any) => (
+  <TableHead
+    className={cn("border-r border-l text-center", className)}
+    colSpan={colSpan}
+    rowSpan={rowSpan}
+    {...props}
+  >
     {children}
   </TableHead>
 )
 
 interface TeamCommunicationTableProps {
-  searchTerm: string; 
-  currentPage: number; 
-  itemsPerPage: number; 
-  onPageChange: (page: number) => void; 
-  onItemsPerPageChange: (value: number) => void; 
-  selectedDeptId?: number | null;
-  data: TeamWithCounts[];
-  target1Date?: string | null;
-  target2Date?: string | null;
+  searchTerm: string
+  currentPage: number
+  itemsPerPage: number
+  onPageChange: (page: number) => void
+  onItemsPerPageChange: (value: number) => void
+  selectedDeptId?: number | null
+  data: TeamWithCounts[]
+  target1Date?: string | null
+  target2Date?: string | null
 }
 
 export function TeamCommunicationTable({
-  searchTerm, 
-  currentPage, 
-  itemsPerPage, 
-  onPageChange, 
-  onItemsPerPageChange, 
+  searchTerm,
+  currentPage,
+  itemsPerPage,
+  onPageChange,
+  onItemsPerPageChange,
   selectedDeptId,
-  data, 
+  data,
   target1Date,
   target2Date,
 }: TeamCommunicationTableProps) {
-
   const commFields = extractCommLevels(data)
   const columnGroups = getColumnGroups(target1Date, target2Date, commFields)
   const columnConfigs = getColumnConfigs(data)
-  const dataColumns = columnConfigs.filter(col => !col.isSpecial)
+  const dataColumns = columnConfigs.filter((col) => !col.isSpecial)
 
   const calculateGrandTotals = (data: TeamWithCounts[]) => {
     if (data.length === 0) return {}
     const initAcc: any = {}
-    const firstRow = data[0];
-    const commKeys = Object.keys(firstRow).filter(key => key.startsWith('current_comm_') || key.startsWith('target1_comm_') || key.startsWith('target2_comm_'));
-    commKeys.forEach(key => { initAcc[key] = 0; })
-    return data.reduce((acc, row) => { commKeys.forEach(key => { acc[key] = (acc[key] || 0) + (row[key as keyof TeamWithCounts] as number || 0) }); return acc }, initAcc)
+    const firstRow = data[0]
+    const commKeys = Object.keys(firstRow).filter(
+      (key) =>
+        key.startsWith("current_comm_") ||
+        key.startsWith("target1_comm_") ||
+        key.startsWith("target2_comm_")
+    )
+    commKeys.forEach((key) => {
+      initAcc[key] = 0
+    })
+    return data.reduce((acc, row) => {
+      commKeys.forEach((key) => {
+        acc[key] =
+          (acc[key] || 0) + ((row[key as keyof TeamWithCounts] as number) || 0)
+      })
+      return acc
+    }, initAcc)
   }
 
   const filteredData = data.filter((item) => {
-    const matchesSearch = item.team_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false
+    const matchesSearch =
+      item.team_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false
     const matchesDept = selectedDeptId ? item.deptId === selectedDeptId : true
     return matchesSearch && matchesDept
   })
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage)
+  const paginatedData = filteredData.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  )
   const grandTotal = calculateGrandTotals(filteredData)
 
-  const handlePrevious = () => { if (currentPage > 1) onPageChange(currentPage - 1) }
-  const handleNext = () => { if (currentPage < totalPages) onPageChange(currentPage + 1) }
+  const handlePrevious = () => {
+    if (currentPage > 1) onPageChange(currentPage - 1)
+  }
+  const handleNext = () => {
+    if (currentPage < totalPages) onPageChange(currentPage + 1)
+  }
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = []
     const maxVisible = 5
-    if (totalPages <= maxVisible) { for (let i = 1; i <= totalPages; i++) pages.push(i) }
-    else if (currentPage <= 3) { for (let i = 1; i <= 4; i++) pages.push(i); pages.push("..."); pages.push(totalPages) }
-    else if (currentPage >= totalPages - 2) { pages.push(1); pages.push("..."); for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i) }
-    else { pages.push(1); pages.push("..."); for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i); pages.push("..."); pages.push(totalPages) }
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 4; i++) pages.push(i)
+      pages.push("...")
+      pages.push(totalPages)
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1)
+      pages.push("...")
+      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i)
+    } else {
+      pages.push(1)
+      pages.push("...")
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
+      pages.push("...")
+      pages.push(totalPages)
+    }
     return pages
   }
 
   // Map column configs to actual data values
   const getValueForColumn = (row: TeamWithCounts, col: ColumnConfig) => {
     // Map the unique key back to actual data field
-    if (col.field.startsWith('current_')) {
-      const index = parseInt(col.field.split('_')[1])
+    if (col.field.startsWith("current_")) {
+      const index = parseInt(col.field.split("_")[1])
       return row[`current_comm_${index}`]
-    } else if (col.field.startsWith('target1_')) {
-      const index = parseInt(col.field.split('_')[1])
+    } else if (col.field.startsWith("target1_")) {
+      const index = parseInt(col.field.split("_")[1])
       return row[`target1_comm_${index}`]
-    } else if (col.field.startsWith('target2_')) {
-      const index = parseInt(col.field.split('_')[1])
+    } else if (col.field.startsWith("target2_")) {
+      const index = parseInt(col.field.split("_")[1])
       return row[`target2_comm_${index}`]
     }
     return row[col.field as keyof TeamWithCounts]
@@ -241,29 +374,52 @@ export function TeamCommunicationTable({
 
   return (
     <TooltipProvider>
-      <div className="relative overflow-x-auto rounded-md border" style={{ zIndex: 1 }}>
+      <div
+        className="relative overflow-x-auto rounded-md border-y"
+        style={{ zIndex: 1 }}
+      >
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <BorderedTableHead className="align-middle whitespace-nowrap text-center min-w-[200px]" rowSpan={2}>
+              <BorderedTableHead
+                className="min-w-[200px] text-center align-middle whitespace-nowrap"
+                rowSpan={2}
+              >
                 Team's Communication Improvement
               </BorderedTableHead>
               {columnGroups.map((group) => (
-                <BorderedTableHead key={group.id} className={cn("align-middle whitespace-nowrap text-center", group.width)} colSpan={group.colSpan}>
+                <BorderedTableHead
+                  key={group.id}
+                  className={cn(
+                    "text-center align-middle whitespace-nowrap",
+                    group.width
+                  )}
+                  colSpan={group.colSpan}
+                >
                   {group.header}
                 </BorderedTableHead>
               ))}
             </TableRow>
             <TableRow className="bg-muted/50">
               {dataColumns.map((col) => (
-                <BorderedTableHead key={col.field} className={cn("align-middle whitespace-nowrap text-center", col.width)}>
+                <BorderedTableHead
+                  key={col.field}
+                  className={cn(
+                    "text-center align-middle whitespace-nowrap",
+                    col.width
+                  )}
+                >
                   <div className="flex items-center justify-center gap-1">
                     <span>{col.header}</span>
                     {col.tooltip && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="cursor-help">
-                            <HugeiconsIcon icon={CircleIcon} strokeWidth={2} className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                            <HugeiconsIcon
+                              icon={CircleIcon}
+                              strokeWidth={2}
+                              className="h-3 w-3 text-muted-foreground hover:text-foreground"
+                            />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
@@ -280,7 +436,10 @@ export function TeamCommunicationTable({
           <TableBody>
             {paginatedData.length === 0 ? (
               <TableRow>
-                <BorderedTableCell colSpan={columnConfigs.length} className="py-8 text-center text-muted-foreground">
+                <BorderedTableCell
+                  colSpan={columnConfigs.length}
+                  className="py-8 text-center text-muted-foreground"
+                >
                   No teams found
                 </BorderedTableCell>
               </TableRow>
@@ -290,45 +449,69 @@ export function TeamCommunicationTable({
                   return (
                     <TableRow key={row.team_name || index}>
                       {columnConfigs.map((col) => {
-                        const value: string | number | undefined = getValueForColumn(row, col)
+                        const value: string | number | undefined =
+                          getValueForColumn(row, col)
                         return (
-                          <BorderedTableCell key={col.field} className={cn("text-center", col.width, col.isSpecial && "font-medium text-left")}>
-                            {value !== undefined && value !== null ? value : '-'}
+                          <BorderedTableCell
+                            key={col.field}
+                            className={cn(
+                              "text-center",
+                              col.width,
+                              col.isSpecial && "text-left"
+                            )}
+                          >
+                            {value !== undefined && value !== null
+                              ? value
+                              : "-"}
                           </BorderedTableCell>
                         )
                       })}
                     </TableRow>
                   )
                 })}
-                {filteredData.length > 0 && Object.keys(grandTotal).length > 0 && (
-                  <TableRow className="bg-muted/30 font-bold">
-                    {columnConfigs.map((col) => {
-                      let value: string | number | undefined
-                      if (col.isSpecial) {
-                        value = col.field === "team_name" ? "Grand Total" : grandTotal[col.field as keyof typeof grandTotal]
-                      } else {
-                        // Map the unique key back to actual data field for grand total
-                        if (col.field.startsWith('current_')) {
-                          const index = parseInt(col.field.split('_')[1])
-                          value = grandTotal[`current_comm_${index}`]
-                        } else if (col.field.startsWith('target1_')) {
-                          const index = parseInt(col.field.split('_')[1])
-                          value = grandTotal[`target1_comm_${index}`]
-                        } else if (col.field.startsWith('target2_')) {
-                          const index = parseInt(col.field.split('_')[1])
-                          value = grandTotal[`target2_comm_${index}`]
+                {filteredData.length > 0 &&
+                  Object.keys(grandTotal).length > 0 && (
+                    <TableRow className="bg-muted/30 font-bold">
+                      {columnConfigs.map((col) => {
+                        let value: string | number | undefined
+                        if (col.isSpecial) {
+                          value =
+                            col.field === "team_name"
+                              ? "Total Teams"
+                              : grandTotal[col.field as keyof typeof grandTotal]
                         } else {
-                          value = grandTotal[col.field as keyof typeof grandTotal]
+                          // Map the unique key back to actual data field for grand total
+                          if (col.field.startsWith("current_")) {
+                            const index = parseInt(col.field.split("_")[1])
+                            value = grandTotal[`current_comm_${index}`]
+                          } else if (col.field.startsWith("target1_")) {
+                            const index = parseInt(col.field.split("_")[1])
+                            value = grandTotal[`target1_comm_${index}`]
+                          } else if (col.field.startsWith("target2_")) {
+                            const index = parseInt(col.field.split("_")[1])
+                            value = grandTotal[`target2_comm_${index}`]
+                          } else {
+                            value =
+                              grandTotal[col.field as keyof typeof grandTotal]
+                          }
                         }
-                      }
-                      return (
-                        <BorderedTableCell key={col.field} className={cn("text-center", col.width, col.isSpecial && "font-bold text-left")}>
-                          {value !== undefined && value !== null ? value : '-'}
-                        </BorderedTableCell>
-                      )
-                    })}
-                  </TableRow>
-                )}
+                        return (
+                          <BorderedTableCell
+                            key={col.field}
+                            className={cn(
+                              "text-center",
+                              col.width,
+                              col.isSpecial && "text-left font-bold"
+                            )}
+                          >
+                            {value !== undefined && value !== null
+                              ? value
+                              : "-"}
+                          </BorderedTableCell>
+                        )
+                      })}
+                    </TableRow>
+                  )}
               </>
             )}
           </TableBody>
@@ -338,8 +521,13 @@ export function TeamCommunicationTable({
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Rows per page</span>
-          <Select value={itemsPerPage.toString()} onValueChange={(value) => onItemsPerPageChange(Number(value))}>
-            <SelectTrigger className="w-[70px]"><SelectValue /></SelectTrigger>
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={(value) => onItemsPerPageChange(Number(value))}
+          >
+            <SelectTrigger className="w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent align="start">
               <SelectGroup>
                 <SelectItem value="15">15</SelectItem>
@@ -350,24 +538,38 @@ export function TeamCommunicationTable({
           </Select>
         </div>
         <div className="text-sm text-muted-foreground">
-          Showing {filteredData.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredData.length)} of {filteredData.length} teams
+          Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
+          {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
+          {filteredData.length} teams
         </div>
         <Pagination className="mx-0 w-auto">
           <PaginationContent>
             <PaginationItem>
-              <PaginationPrevious 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); handlePrevious() }} 
-                className={currentPage === 1 || filteredData.length === 0 ? "pointer-events-none opacity-50" : ""} 
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handlePrevious()
+                }}
+                className={
+                  currentPage === 1 || filteredData.length === 0
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
               />
             </PaginationItem>
             {getPageNumbers().map((page, index) => (
               <PaginationItem key={index}>
-                {page === "..." ? <span className="px-2">...</span> : (
-                  <PaginationLink 
-                    href="#" 
-                    isActive={currentPage === page} 
-                    onClick={(e) => { e.preventDefault(); onPageChange(page as number) }}
+                {page === "..." ? (
+                  <span className="px-2">...</span>
+                ) : (
+                  <PaginationLink
+                    href="#"
+                    isActive={currentPage === page}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      onPageChange(page as number)
+                    }}
                   >
                     {page}
                   </PaginationLink>
@@ -375,10 +577,17 @@ export function TeamCommunicationTable({
               </PaginationItem>
             ))}
             <PaginationItem>
-              <PaginationNext 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); handleNext() }} 
-                className={currentPage === totalPages || filteredData.length === 0 ? "pointer-events-none opacity-50" : ""} 
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleNext()
+                }}
+                className={
+                  currentPage === totalPages || filteredData.length === 0
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
               />
             </PaginationItem>
           </PaginationContent>

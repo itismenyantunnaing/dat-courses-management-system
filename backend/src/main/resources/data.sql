@@ -23,9 +23,9 @@ INSERT IGNORE INTO employees (
     certificate_updates,
     email_notifications
 ) VALUES (
-    'EMP002',
+    'EMP001',
     'Admin',
-    'kyawphoneygn@gmail.com',
+    'admin@gmail.com',
     '$2a$10$zeb9o8Yf8aRpPnK29sjJoukzQkh.YSH2.3cTJ/6iiwPM.MfyxCtwu',
     'system', 
     '',

@@ -638,7 +638,7 @@ export default function LearnerDashboardContainer({
           />
           <StatCard
             title="JLPT Level"
-            value={employeeTargetLevel?.targetJlptNatLevel || "None"}
+            value={employeeTargetLevel?.jlptHighestLevel || "None"}
             icon={ChampionIcon}
             description={employeeTargetLevel?.targetJlptNatLevel ?
               `Target: ${employeeTargetLevel.targetJlptNatLevel} by ${employeeTargetLevel.targetDate ? new Date(employeeTargetLevel.targetDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Not set'}`

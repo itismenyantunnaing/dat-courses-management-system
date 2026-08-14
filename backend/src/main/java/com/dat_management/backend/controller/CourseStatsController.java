@@ -7,6 +7,8 @@ import com.dat_management.backend.dto.EmployeeCourseSummaryDtos.EmployeeCourseSu
 import com.dat_management.backend.dto.EmployeeProgressDtos.EmployeeProgressResponseDTO;
 import com.dat_management.backend.dto.EmployeeTargetLevelDTO;
 import com.dat_management.backend.dto.MonthlyAttendanceDtos.DepartmentMonthlyAttendanceDTO;
+import com.dat_management.backend.dto.MonthlyAttendanceDtos.DivisionMonthlyAttendanceDTO;
+import com.dat_management.backend.dto.OrganizationalStatsDtos.OrganizationalStatsResponseDTO;
 import com.dat_management.backend.dto.RiskDtos.RiskResponseDTO;
 import com.dat_management.backend.dto.UpcomingSessionResponse;
 import com.dat_management.backend.service.CourseStatsService;
@@ -15,6 +17,7 @@ import com.dat_management.backend.service.EmployeeProgressService;
 import com.dat_management.backend.service.ActiveLearnerService;
 import com.dat_management.backend.service.CourseAttendanceService;
 import com.dat_management.backend.service.EmployeeTargetService;
+import com.dat_management.backend.service.OrganizationalStatsService;
 import com.dat_management.backend.service.RiskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,17 +44,24 @@ public class CourseStatsController {
     private final DashboardService dashboardService;
     private final EmployeeTargetService employeeTargetService;
 
-    @GetMapping
+    private final OrganizationalStatsService statsService;
+
+	@GetMapping
     public ResponseEntity<List<CourseStatsDTO>> getCourseStats() {
         List<CourseStatsDTO> stats = courseStatsService.getCourseStats();
         return ResponseEntity.ok(stats);
     }
 
-    @GetMapping("/daily-attendance")
-    public ResponseEntity<List<DepartmentMonthlyAttendanceDTO>> getDailyAttendanceByDepartment() {
-        List<DepartmentMonthlyAttendanceDTO> attendance = courseAttendanceService.getDailyAttendanceByDepartment();
-        return ResponseEntity.ok(attendance);
+    @GetMapping("/organizational")
+    public ResponseEntity<OrganizationalStatsResponseDTO> getOrganizationalStats() {
+        return ResponseEntity.ok(statsService.getOrganizationalStats());
     }
+
+   @GetMapping("/daily-attendance")
+public ResponseEntity<List<DivisionMonthlyAttendanceDTO>> getDailyAttendanceByDivision() {
+    List<DivisionMonthlyAttendanceDTO> attendance = courseAttendanceService.getDailyAttendanceByDivision();
+    return ResponseEntity.ok(attendance);
+}
 
     @GetMapping("/risk")
     public ResponseEntity<RiskResponseDTO> getAtRiskStudents() {

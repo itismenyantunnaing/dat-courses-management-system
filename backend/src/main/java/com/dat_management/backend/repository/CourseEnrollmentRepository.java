@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Set;
 
 public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollment, Integer> {
 
@@ -174,4 +175,35 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
             """)
     List<Object[]> findUpcomingSelfStudySessions(
             @Param("employeeId") String employeeId);
+    
+     @Query("SELECT COUNT(e) FROM CourseEnrollment e WHERE e.course.id = :courseId AND e.employee.id IN :employeeIds")
+    Long countByCourseIdAndEmployeeIdIn(@Param("courseId") Integer courseId, @Param("employeeIds") Set<String> employeeIds);
+    
+    // NEW: Get enrollments for specific employees (String IDs)
+    @Query("SELECT e FROM CourseEnrollment e WHERE e.course.id = :courseId AND e.employee.id IN :employeeIds")
+    List<CourseEnrollment> findByCourseIdAndEmployeeIdIn(@Param("courseId") Integer courseId, @Param("employeeIds") Set<String> employeeIds);
+
+    @Query("SELECT e FROM CourseEnrollment e " +
+           "WHERE e.enrollmentStatus = 'APPROVED' " +
+           "AND e.course.isDeleted = false " +
+           "AND e.employee.team.departmentDat.division.id = :divisionId")
+    List<CourseEnrollment> findAllApprovedActiveEnrollmentsByDivisionId(@Param("divisionId") Integer divisionId);
+    
+    @Query("SELECT e FROM CourseEnrollment e " +
+           "WHERE e.enrollmentStatus = 'APPROVED' " +
+           "AND e.course.isDeleted = false " +
+           "AND e.employee.team.departmentDat.id = :departmentId")
+    List<CourseEnrollment> findAllApprovedActiveEnrollmentsByDepartmentId(@Param("departmentId") Integer departmentId);
+    
+    @Query("SELECT e FROM CourseEnrollment e " +
+           "WHERE e.enrollmentStatus = 'APPROVED' " +
+           "AND e.course.isDeleted = false " +
+           "AND e.employee.team.id = :teamId")
+    List<CourseEnrollment> findAllApprovedActiveEnrollmentsByTeamId(@Param("teamId") Integer teamId);
+    
+    @Query("SELECT e FROM CourseEnrollment e " +
+           "WHERE e.enrollmentStatus = 'APPROVED' " +
+           "AND e.course.isDeleted = false " +
+           "AND e.employee.id = :employeeId")
+    List<CourseEnrollment> findAllApprovedActiveEnrollmentsByEmployeeId(@Param("employeeId") String employeeId);
 }

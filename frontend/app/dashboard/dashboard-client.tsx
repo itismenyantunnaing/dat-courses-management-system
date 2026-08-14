@@ -27,7 +27,11 @@ import { NotificationsDrawer } from "@/components/drawers/notifications-drawer"
 import { SendMailDialog } from "@/components/dialogs/sendMail-dialog"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MailSend02Icon, NotificationIcon, Download02Icon } from "@hugeicons/core-free-icons"
+import {
+  MailSend02Icon,
+  NotificationIcon,
+  Download02Icon,
+} from "@hugeicons/core-free-icons"
 import AdminDashboardContainer from "@/components/Dashboard/adminDashboard-container"
 import ApproverDashboardContainer from "@/components/Dashboard/approverDashboard-container"
 import LearnerDashboardContainer from "@/components/Dashboard/learnerDashboard-container"
@@ -92,10 +96,10 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Connect to WebSocket when profile is loaded and user is authenticated
   useEffect(() => {
     if (isProfileLoaded && profile?.id) {
-      connect();
-      fetch_UnreadCount(profile.id);
+      connect()
+      fetch_UnreadCount(profile.id)
     }
-  }, [isProfileLoaded, profile?.id, connect, fetch_UnreadCount]);
+  }, [isProfileLoaded, profile?.id, connect, fetch_UnreadCount])
 
   // Refetch database unread count ONLY when a NEW WebSocket notification arrives
   useEffect(() => {
@@ -128,20 +132,20 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     if (notifications.length > 0) {
       const latest = notifications[0]
       if (latest && !latest.read) {
-        const hasNavigationTarget = latest.courseId || latest.certificateId;
+        const hasNavigationTarget = latest.courseId || latest.certificateId
 
         const toastOptions: any = {
           description: latest.message,
           duration: 5000,
           position: "top-center",
           style: {
-            background: '#1a1a2e',
-            color: '#ffffff',
-            border: '1px solid #e94560',
-            borderRadius: '12px',
-            padding: '16px',
-            width: '480px',
-            maxWidth: '90vw',
+            background: "#1a1a2e",
+            color: "#ffffff",
+            border: "1px solid #e94560",
+            borderRadius: "12px",
+            padding: "16px",
+            width: "480px",
+            maxWidth: "90vw",
           },
           cancel: {
             label: "Dismiss",
@@ -155,7 +159,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           toastOptions.action = {
             label: "View",
             onClick: () => {
-              webScoketStore.getState().markAsRead(latest.id);
+              webScoketStore.getState().markAsRead(latest.id)
               if (latest.courseId) {
                 setSelectedCourseId(latest.courseId)
                 setActiveTab("courses")
@@ -198,34 +202,55 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
   const user_role = profile?.role ? userRole : "learner"
 
-  useEffect(() => {
-    if (!isProfileLoaded || !user_role) return
+useEffect(() => {
+  if (!isProfileLoaded || !user_role) return
 
-    setActiveTab(
-      user_role === "admin"
-        ? "admin-dashboard"
-        : user_role === "approver"
-          ? "approver-dashboard"
-          : "learner-dashboard"
-    )
-  }, [user_role, isProfileLoaded])
+  const normalizedRole = user_role.toLowerCase()
+  let tab = "learner-dashboard"
+
+  switch (normalizedRole) {
+    case "admin":
+      tab = "admin-dashboard"
+      break
+    case "approver":
+    case "department_head":
+    case "division_head":
+      tab = "approver-dashboard"
+      break
+    default:
+      tab = "learner-dashboard"
+      break
+  }
+
+  setActiveTab(tab)
+}, [user_role, isProfileLoaded])
 
   //  Use database unread count
   const totalUnreadCount = dbUnreadCount || 0
 
   useEffect(() => {
-    if ((activeTab === 'japanese-certificates' || activeTab === 'certificates-requests') && pendingCertificateId) {
+    if (
+      (activeTab === "japanese-certificates" ||
+        activeTab === "certificates-requests") &&
+      pendingCertificateId
+    ) {
       setSelectedCertificateId(pendingCertificateId)
       setPendingCertificateId(null)
     }
   }, [activeTab, pendingCertificateId])
 
-  const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
-    if (action === 'view-course') {
+  const handleNotificationAction = (
+    action: "view-course" | "view-certificate",
+    id: number
+  ) => {
+    if (action === "view-course") {
       setSelectedCourseId(id)
-      setActiveTab('courses')
-    } else if (action === 'view-certificate') {
-      const targetTab = user_role === 'learner' ? 'japanese-certificates' : 'certificates-requests'
+      setActiveTab("courses")
+    } else if (action === "view-certificate") {
+      const targetTab =
+        user_role === "learner"
+          ? "japanese-certificates"
+          : "certificates-requests"
       setPendingCertificateId(id)
       setSelectedCertificateId(null)
       setActiveTab(targetTab)
@@ -235,47 +260,47 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
-    if (tab !== 'japanese-certificates' && tab !== 'certificates-requests') {
+    if (tab !== "japanese-certificates" && tab !== "certificates-requests") {
       setSelectedCertificateId(null)
       setPendingCertificateId(null)
     }
   }
 
   // ========== EXPORT FUNCTION ==========
-const handleExportTemplate = async () => {
-  try {
-    setIsExporting(true);
-    
-    // Simple export with default values
-    const response = await fetch('/api/excel/export', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}), // Uses default TEMPLATE_UPDATES
-    });
+  const handleExportTemplate = async () => {
+    try {
+      setIsExporting(true)
 
-    if (!response.ok) {
-      const error = await response.json();
-      toast.error('Failed to export: ' + (error.error || 'Unknown error'));
-      return;
+      // Simple export with default values
+      const response = await fetch("/api/excel/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}), // Uses default TEMPLATE_UPDATES
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        toast.error("Failed to export: " + (error.error || "Unknown error"))
+        return
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `skills_template_${new Date().toISOString().split("T")[0]}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      toast.success("Template downloaded successfully!")
+    } catch (error) {
+      toast.error("Failed to download template")
+    } finally {
+      setIsExporting(false)
     }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `skills_template_${new Date().toISOString().split('T')[0]}.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    toast.success('Template downloaded successfully!');
-  } catch (error) {
-    toast.error('Failed to download template');
-  } finally {
-    setIsExporting(false);
   }
-};
 
   const getCurrentLabel = () => {
     switch (activeTab) {
@@ -289,8 +314,8 @@ const handleExportTemplate = async () => {
         return "Employees"
       case "courses":
         return "Courses"
-      case "current_target_level":
-        return "Target Level for JLPT"
+      case "jlpt_target_level":
+        return "JLPT Target Level"
       case "seminar":
         return "Seminar Management"
       case "exams":
@@ -347,7 +372,7 @@ const handleExportTemplate = async () => {
     { value: "exams", component: ExamsContainer },
     { value: "feedback", component: FeedbackContainer },
     { value: "skills", component: SkillContainer },
-    { value: "current_target_level", component: CurrentTargetContainer },
+    { value: "jlpt_target_level", component: CurrentTargetContainer },
     { value: "holidays", component: HolidaysContainer },
     { value: "audit_logs", component: AuditLogsContainer },
     { value: "exam_progress_report", component: ExamProgressReportContainer },
@@ -410,7 +435,7 @@ const handleExportTemplate = async () => {
               </div>
               <div className="flex items-center gap-2">
                 {/* Export Button */}
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={handleExportTemplate}
@@ -418,7 +443,7 @@ const handleExportTemplate = async () => {
                   className="gap-2"
                 >
                   {isExporting ? 'Downloading...' : 'Export Template'}
-                </Button>
+                </Button> */}
 
                 {/* Notification Bell */}
                 <div className="relative">
@@ -442,8 +467,11 @@ const handleExportTemplate = async () => {
                       </Badge>
                     )}
                   </Button>
-                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${isConnected ? 'bg-green-500' : 'bg-red-500'
-                    }`} />
+                  <div
+                    className={`absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-white ${
+                      isConnected ? "bg-green-500" : "bg-red-500"
+                    }`}
+                  />
                 </div>
 
                 {user_role !== "learner" && (

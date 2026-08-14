@@ -21,14 +21,14 @@ import java.util.stream.Collectors;
 @Transactional
 public class EmployeeService {
 
-    private final EmployeeRepository      employeeRepository;
-    private final TeamRepository          teamRepository;
+    private final EmployeeRepository employeeRepository;
+    private final TeamRepository teamRepository;
     private final DepartmentDirRepository departmentDirRepository;
     private final DepartmentDatRepository departmentDatRepository;
-    private final DivisionRepository      divisionRepository;
-    private final RoleRepository          roleRepository;
-    private final PasswordEncoder         passwordEncoder;
-    private final SkillSetService         skillSetService;
+    private final DivisionRepository divisionRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final SkillSetService skillSetService;
 
     // ── Mapping ──────────────────────────────────────────────────────────────
     public Employee getEmployeeById(String id) {
@@ -158,8 +158,7 @@ public class EmployeeService {
                         : null)
                 .build();
 
-        EmployeeWithSkillsResponseDTO skillInfo =
-            skillSetService.getEmployeeWithAllSkills(employee.getId());
+        EmployeeWithSkillsResponseDTO skillInfo = skillSetService.getEmployeeWithAllSkills(employee.getId());
 
         dto.setLanguageSkill(skillInfo.getLanguageSkill());
         dto.setManagementSkill(skillInfo.getManagementSkill());
@@ -202,8 +201,7 @@ public class EmployeeService {
             } catch (Exception ex) {
                 failed.add(Map.of(
                         "id", dto.getId() != null ? dto.getId() : "(unknown)",
-                        "reason", ex.getMessage() != null ? ex.getMessage() : "Unknown error"
-                ));
+                        "reason", ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
             }
         }
 
@@ -212,8 +210,7 @@ public class EmployeeService {
                 "successCount", created.size(),
                 "failedCount", failed.size(),
                 "created", created,
-                "failed", failed
-        );
+                "failed", failed);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -225,9 +222,12 @@ public class EmployeeService {
             throw new IllegalArgumentException("Missing name");
         }
         // if (employeeRepository.existsByIdAndIsDeletedFalse(dto.getId())) {
-        //     throw new IllegalArgumentException("Staff ID already exists");
+        // throw new IllegalArgumentException("Staff ID already exists");
         // }
 
+        if (employeeRepository.existsByIdAndIsDeletedFalse(dto.getId())) {
+            dto.setRoleName(employeeRepository.findByIdAndIsDeletedFalse(dto.getId()).get().getRole().getRoleName());
+        }
         Employee e = new Employee();
         e.setId(dto.getId());
         applyDTO(e, dto);
@@ -266,6 +266,8 @@ public class EmployeeService {
     public void softDelete(String id) {
         Employee e = employeeRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + id));
+        if (e.getStatus().equals("system"))
+            throw new RuntimeException("Cannot delete system employee");
         e.setIsDeleted(true);
         employeeRepository.save(e);
     }
@@ -308,14 +310,22 @@ public class EmployeeService {
         e.setNotiSetting(dto.getNotiSetting() != null ? dto.getNotiSetting() : false);
         e.setDob(dto.getDob());
         e.setProfilePhotoPath(dto.getProfilePhotoPath());
+        if (dto.getTeamName() == null || dto.getTeamName().isBlank()) {
+            dto.setTeamName(dto.getDepartmentDatName());
+        }
 
+        if (dto.getRoleName() == null || dto.getRoleName().isBlank() || (!dto.getRoleName().equals("Admin") &&
+                !dto.getRoleName().equals("Approver") &&
+                !dto.getRoleName().equals("Division_Head") &&
+                !dto.getRoleName().equals("Department_Head"))) {
+            dto.setRoleName("Learner");
+        }
         // Team resolution: prefer name-based cascade, fallback to raw team_id
         if (dto.getTeamName() != null && !dto.getTeamName().isBlank()) {
             Team resolvedTeam = resolveOrCreateTeamChain(
                     dto.getDivisionName(),
                     dto.getDepartmentDatName(),
-                    dto.getTeamName()
-            );
+                    dto.getTeamName());
             if (resolvedTeam != null) {
                 e.setTeam(resolvedTeam);
             }

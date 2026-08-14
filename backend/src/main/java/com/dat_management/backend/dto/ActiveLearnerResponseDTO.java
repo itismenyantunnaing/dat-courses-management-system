@@ -9,5 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ActiveLearnerResponseDTO {
     private Integer totalActiveLearners;
+    private Integer totalEmployees;
     private String status;
 }

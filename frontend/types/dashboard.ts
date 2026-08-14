@@ -95,6 +95,7 @@ export interface RiskLevelDTO {
 export interface ActiveLearnerResponseDTO {
   totalActiveLearners: number;
   activeLearnersCount: number;
+  totalEmployees: number;
 }
 
 // ==============================

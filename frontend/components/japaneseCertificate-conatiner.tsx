@@ -34,7 +34,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { JapaneseCertificate } from "@/types/certificate"
 import { CertificateCard } from "../components/cards/certificate-card"
-import { NewCertificateDrawer } from "../components/drawers/certificate/newCertificate-drawer"
+import { NewCertificateDrawer } from "./drawers/certificate/createCertificate-drawer"
 import { CertificateDetailDrawer } from "../components/drawers/certificate/certificateDetail-drawer"
 import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"

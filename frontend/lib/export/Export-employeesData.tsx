@@ -148,8 +148,8 @@ export const exportEmployeesToExcel = async (
                 workbook.creator = 'Employee Management System';
                 workbook.created = new Date();
 
-                // Copy the worksheet with the same name
-                const sheetName = templateWorksheet.name || 'Employees';
+                // ✅ SET SHEET NAME TO "Employee_data"
+                const sheetName = 'Employee_data';
                 worksheet = workbook.addWorksheet(sheetName, {
                     properties: { tabColor: { argb: 'FF4472C4' } }
                 });
@@ -324,7 +324,8 @@ export const exportEmployeesToExcel = async (
             workbook.creator = 'Employee Management System';
             workbook.created = new Date();
 
-            worksheet = workbook.addWorksheet('Employees', {
+            // ✅ SET SHEET NAME TO "Employee_data"
+            worksheet = workbook.addWorksheet('Employee_data', {
                 properties: { tabColor: { argb: 'FF4472C4' } }
             });
 
