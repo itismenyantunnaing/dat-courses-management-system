@@ -26,6 +26,8 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   riskData: null,
   overallCertificateStats: null,
   teamCertificateStats: null,
+  departmentCertificateStats: null,
+  divisionCertificateStats: null,
   employeeCourseStats: null,
   employeeProgress: null,
   employeeCourseSummary: [],
@@ -40,17 +42,14 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   // for Admin and Approver dashboard
 
   fetchActiveLearnerCount: async () => {
-    const currentState = get();
+
     const profile = get().profile
 
-    // Don't fetch if already loading
-    if (currentState.isLoading) return;
-    
 
     set(() => ({ isLoading: true, error: null }));
     let response;
     try {
-      if (profile.role.toLowerCase() === "approver" && profile.id) {
+      if ((profile.role.toLowerCase() === "approver" || profile.role.toLowerCase() === "department_head" || profile.role.toLowerCase() === "division_head") && profile.id) {
         response = await fetch(`${apiUrl}/api/course-stats/active-learners?employeeId=${profile.id}`);
       } else {
         response = await fetch(`${apiUrl}/api/course-stats/active-learners`);
@@ -76,20 +75,26 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   fetchCourseStats: async () => {
-    const currentState = get();
-    // Don't fetch if already loading
-    if (currentState.isLoading) return;
+
+    const profile = get().profile
+
 
     set(() => ({ isLoading: true, error: null }));
 
+    let response;
+
     try {
-      const response = await fetch(`${apiUrl}/api/course-stats`);
+      if ((profile.role.toLowerCase() === "approver" || profile.role.toLowerCase() === "department_head" || profile.role.toLowerCase() === "division_head") && profile.id) {
+        response = await fetch(`${apiUrl}/api/course-stats/organizational`);
+      } else {
+        response = await fetch(`${apiUrl}/api/course-stats`);
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: CourseStatsDTO[] = await response.json();
+      const data = await response.json();
       set(() => ({
         courseStats: data,
         isLoading: false
@@ -105,9 +110,6 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   fetchDailyAttendance: async () => {
-    const currentState = get();
-
-    if (currentState.isLoading) return;
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -134,9 +136,6 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   fetchRiskData: async () => {
-    const currentState = get();
-
-    if (currentState.isLoading) return;
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -163,9 +162,9 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   fetchOverallCertificateStats: async () => {
-    const currentState = get();
 
-    if (currentState.isLoading) return;
+
+
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -192,9 +191,6 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   fetchTeamCertificateStats: async () => {
-    const currentState = get();
-
-    if (currentState.isLoading) return;
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -220,13 +216,61 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // for learner dashboard
+  fetchDepartmentCertificateStats: async () => {
+    set(() => ({ isLoading: true, error: null }));
 
+    try {
+      const response = await fetch(`${apiUrl}/api/certificate-statistics/departments`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      set(() => ({
+        departmentCertificateStats: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching department certificate statistics:', error);
+      set(() => ({
+        departmentCertificateStats: null,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch department certificate statistics'
+      }));
+    }
+  },
+
+  fetchDivisionCertificateStats: async () => {
+    set(() => ({ isLoading: true, error: null }));
+
+    try {
+      const response = await fetch(`${apiUrl}/api/certificate-statistics/divisions`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      set(() => ({
+        divisionCertificateStats: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching division certificate statistics:', error);
+      set(() => ({
+        divisionCertificateStats: null,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch division certificate statistics'
+      }));
+    }
+  },
+
+
+  // for learner dashboard
   // for top four parts in UI and  Overall Attendance section
   fetchEmployeeCourseStats: async (employeeId: string) => {
-    const currentState = get();
 
-    if (currentState.isLoading) return;
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -254,9 +298,7 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // for Daily/Current Attendance
   fetchEmployeeAttendance: async (employeeId: string) => {
-    const currentState = get();
 
-    if (currentState.isLoading) return;
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -284,9 +326,6 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
 
 
   fetchAllEmployeesCourseSummary: async () => {
-    const currentState = get();
-
-    if (currentState.isLoading) return;
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -315,8 +354,8 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // all today and upcoming sessions
   fetchAllUpcomingSessions: async (employeeId: string) => {
-    const currentState = get();
-    if (currentState.isLoading) return;
+
+
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -345,8 +384,7 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
 
   // today and only one upcoming session
   fetchUpcomingSessions: async (employeeId: string) => {
-    const currentState = get();
-    if (currentState.isLoading) return;
+
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -373,8 +411,7 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   fetchEmployeeTargetLevel: async (employeeId: string) => {
-    const currentState = get();
-    if (currentState.isLoading) return;
+
 
     set(() => ({ isLoading: true, error: null }));
 
@@ -387,19 +424,8 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Check if response has content before parsing JSON
-      const contentLength = response.headers.get('content-length');
-      if (contentLength === '0' || !contentLength) {
-        // Empty response - set to null
-        set(() => ({
-          employeeTargetLevel: null,
-          isLoading: false
-        }));
-        return;
-      }
-
       // Try to parse JSON
-      const data: EmployeeTargetLevelDTO = await response.json();
+      const data = await response.json();
       set(() => ({
         employeeTargetLevel: data,
         isLoading: false
@@ -421,6 +447,8 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
       riskData: null,
       overallCertificateStats: null,
       teamCertificateStats: null,
+      departmentCertificateStats: null,
+      divisionCertificateStats: null,
       employeeCourseStats: null,
       employeeAttendance: null,
       employeeCourseSummary: [],

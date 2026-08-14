@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   CERTIFICATE_TYPES,
@@ -26,7 +27,7 @@ import { CertificateForm } from "@/components/drawers/certificate/certificateFor
 import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"
 import Image from "next/image"
-import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Cancel01Icon, ImageNotFound01Icon } from "@hugeicons/core-free-icons"
 
 interface ApproveCertificateDrawerProps {
   open: boolean
@@ -59,6 +60,9 @@ const getStatusBadge = (status: string) => {
   }
 }
 
+// Character limit constant
+const MAX_REMARK_LENGTH = 500
+
 export function ApproveCertificateDrawer({
   open,
   onOpenChange,
@@ -81,6 +85,11 @@ export function ApproveCertificateDrawer({
     (state) => state.reject_CertificateData
   )
 
+  // Calculate remaining characters
+  const remainingChars = MAX_REMARK_LENGTH - remark.length
+  const isNearLimit = remainingChars <= 50
+  const isOverLimit = remark.length > MAX_REMARK_LENGTH
+
   // Reset states when drawer opens
   useEffect(() => {
     if (open && certificate) {
@@ -88,6 +97,11 @@ export function ApproveCertificateDrawer({
       setImageError(false)
     }
   }, [open, certificate])
+
+  // Handle remark change - allow typing beyond limit but show warning
+  const handleRemarkChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setRemark(e.target.value)
+  }
 
   const handleApprove = async () => {
     if (!certificate) {
@@ -201,6 +215,7 @@ export function ApproveCertificateDrawer({
   const submittedDate = certificate.createdAt
     ? certificate.createdAt.toISOString()
     : new Date().toISOString()
+
   return (
     <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
       <DrawerContent
@@ -244,8 +259,12 @@ export function ApproveCertificateDrawer({
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-muted/50">
-                  <div className="text-center">
-                    <div className="mb-2 text-4xl">📄</div>
+                  <div className="flex flex-col items-center justify-center gap-2">
+                      <HugeiconsIcon
+                        icon={ImageNotFound01Icon}
+                        strokeWidth={2}
+                        className="h-8 w-8 text-muted-foreground"
+                      />
                     <p className="text-sm text-muted-foreground">
                       No Image Available
                     </p>
@@ -298,22 +317,46 @@ export function ApproveCertificateDrawer({
                 </div>
               </div>
 
-              {/* Remark Field */}
-              <div className="space-y-2">
-                <Label htmlFor="remark" className="text-sm font-medium">
-                  Remark
-                  <span className="font-normal text-muted-foreground">
-                    (Optional for approval, required for denial)
+              {/* Remark Field with Character Counter using Field component */}
+              <Field data-invalid={isOverLimit}>
+                <div className="flex items-center justify-between">
+                  <FieldLabel
+                    htmlFor="remark"
+                    className="text-sm font-medium text-primary"
+                  >
+                    Remark
+                    <span className="font-normal text-muted-foreground">
+                      (Optional for approval, required for denial)
+                    </span>
+                  </FieldLabel>
+                  <span
+                    className={`text-xs font-medium ${
+                      isOverLimit
+                        ? "text-destructive"
+                        : isNearLimit
+                          ? "text-yellow-600"
+                          : "text-muted-foreground"
+                    }`}
+                  >
+                    {remark.length}/{MAX_REMARK_LENGTH}
                   </span>
-                </Label>
+                </div>
                 <Textarea
                   id="remark"
                   placeholder="Add any remarks or notes about this certificate request..."
                   value={remark}
-                  onChange={(e) => setRemark(e.target.value)}
-                  className="min-h-[100px] resize-none"
+                  onChange={handleRemarkChange}
+                  className={`min-h-[100px] resize-none ${
+                    isOverLimit ? "border-destructive" : ""
+                  }`}
+                  aria-invalid={isOverLimit}
                 />
-              </div>
+                {isOverLimit && (
+                  <FieldDescription className="text-destructive">
+                    Character limit exceeded. Please shorten your remark.
+                  </FieldDescription>
+                )}
+              </Field>
             </div>
           </div>
         </div>
@@ -324,7 +367,7 @@ export function ApproveCertificateDrawer({
               <Button
                 className="flex-1 bg-red-600 text-white hover:bg-red-700"
                 onClick={handleDeny}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isOverLimit}
               >
                 {isSubmitting ? "Processing..." : "Deny"}
               </Button>

@@ -285,11 +285,6 @@ export function RolePermissionsDialog({
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
               {!selectedRoleId && !currentRole && (
                 <>
-                  <HugeiconsIcon
-                    icon={ShieldUserIcon}
-                    strokeWidth={2}
-                    className="h-5 w-5 text-gray-500"
-                  />
                   Role Permissions
                 </>
               )}

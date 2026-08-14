@@ -4,6 +4,7 @@ import com.dat_management.backend.entity.Notification.NotificationType;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +23,7 @@ import com.dat_management.backend.entity.EmployeeJapaneseProfile;
 import com.dat_management.backend.entity.Team;
 import com.dat_management.backend.repository.EmployeeCertificateRepository;
 import com.dat_management.backend.repository.EmployeeJapaneseProfileRepository;
+import com.dat_management.backend.repository.NotificationRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,9 +35,18 @@ public class CertificateService {
     private final EmployeeJapaneseProfileRepository japaneseProfileRepository;
     private final CertificateFileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
 
     @Value("${file.max-size:5242880}")
     private long maxFileSize;
+
+    private static final Map<String, Integer> JLPT_RANKING = Map.of(
+        "N5", 1,
+        "N4", 2,
+        "N3", 3,
+        "N2", 4,
+        "N1", 5
+    );
 
     // Convert Entity to DTO
     private CertificateResponseDto toDto(EmployeeCertificate certificate) {
@@ -119,29 +130,44 @@ public class CertificateService {
         };
     }
 
-    private void updateApprovedJapaneseProfile(Employee employee, CertificateType certificateType,
-            String japaneseLevel) {
-        EmployeeJapaneseProfile profile = japaneseProfileRepository.findByEmployeeId(employee.getId())
-                .orElseGet(() -> {
-                    EmployeeJapaneseProfile newProfile = new EmployeeJapaneseProfile();
-                    newProfile.setEmployee(employee);
-                    return newProfile;
-                });
+    private void updateApprovedJapaneseProfile(Employee employee, CertificateType certificateType, String japaneseLevel) {
+    EmployeeJapaneseProfile profile = japaneseProfileRepository.findByEmployeeId(employee.getId())
+            .orElseGet(() -> {
+                EmployeeJapaneseProfile newProfile = new EmployeeJapaneseProfile();
+                newProfile.setEmployee(employee);
+                return newProfile;
+            });
 
-        String level = japaneseLevel == null ? null : japaneseLevel.trim();
-        if (certificateType == CertificateType.JLPT) {
+    String level = japaneseLevel == null ? null : japaneseLevel.trim();
+    
+    // Only update JLPT level if it's a JLPT certificate
+    if (certificateType == CertificateType.JLPT) {
+        String currentLevel = profile.getJlptHighestLevel();
+        
+        // Update only if new level is higher or no current level exists
+        if (isHigherLevel(level, currentLevel)) {
             profile.setJlptHighestLevel(level);
-        } else {
+        }
+        // Always set the exam type
+        profile.setJlptNatTest(EmployeeJapaneseProfile.JapaneseExamType.JLPT);
+    } else {
+        // For other certificate types (NAT_TEST, TOP_J, BJT, OTHER)
+        String currentLevel = profile.getOtherJapaneseLevel();
+        
+        // You might want similar logic for other certificate levels
+        // Or just update directly if you don't track other levels
+        if (isHigherLevel(level, currentLevel)) {
             profile.setOtherJapaneseLevel(level);
         }
-
+        
         EmployeeJapaneseProfile.JapaneseExamType examType = mapJapaneseExamType(certificateType);
         if (examType != null) {
             profile.setJlptNatTest(examType);
         }
-
-        japaneseProfileRepository.save(profile);
     }
+
+    japaneseProfileRepository.save(profile);
+}
 
     @Transactional
     public void updateApprovedJapaneseProfile(Employee employee, String certificateType, String japaneseLevel) {
@@ -339,9 +365,12 @@ public class CertificateService {
         String ownerId = certificate.getEmployee().getId();
         String currentUserId = currentUser.getId();
 
+        notificationRepository.nullifyCertificateReference(id);
+        
         if (!ownerId.equals(currentUserId)) {
             throw new RuntimeException("You can only delete your own certificates.");
         }
+
 
         if (certificate.getFilePath() != null) {
             fileStorageService.deleteFile(certificate.getFilePath());
@@ -374,5 +403,19 @@ public class CertificateService {
         }
 
         return toDto(certificate);
+    }
+
+    private boolean isHigherLevel(String newLevel, String currentLevel) {
+        if (newLevel == null || currentLevel == null) {
+            return newLevel != null; // If new is not null but current is null, it's higher
+        }
+        
+        Integer newRank = JLPT_RANKING.get(newLevel.toUpperCase());
+        Integer currentRank = JLPT_RANKING.get(currentLevel.toUpperCase());
+        
+        if (newRank == null) return false; // Invalid level
+        if (currentRank == null) return true; // Current is invalid, so new is higher
+        
+        return newRank > currentRank;
     }
 }

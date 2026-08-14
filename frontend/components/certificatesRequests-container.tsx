@@ -264,10 +264,10 @@ export function CertificatesRequestsContainer({
       })
     }
     // Filter by division for division_head
-    else if (isDivisionHead && profile?.division) {
+    else if (isDivisionHead && profile?.divName) {
       filtered = filtered.filter((cert) => {
         const certDivision = cert.employee.divisionName || cert.divisionName || ""
-        const divisionHeadDivision = profile.division || ""
+        const divisionHeadDivision = profile.divName || ""
         return certDivision.toLowerCase() === divisionHeadDivision.toLowerCase()
       })
     }
@@ -303,7 +303,7 @@ export function CertificatesRequestsContainer({
     else if (isDivisionHead && profile?.division) {
       filtered = filtered.filter((cert) => {
         const certDivision = cert.employee.divisionName || cert.divisionName || ""
-        const divisionHeadDivision = profile.division || ""
+        const divisionHeadDivision = profile.divName || ""
         return certDivision.toLowerCase() === divisionHeadDivision.toLowerCase()
       })
     }
@@ -421,10 +421,10 @@ export function CertificatesRequestsContainer({
         const deptHeadDept = profile.deptDat || ""
         return certDept.toLowerCase() === deptHeadDept.toLowerCase()
       })
-    } else if (isDivisionHead && profile?.division) {
+    } else if (isDivisionHead && profile?.divName) {
       filtered = filtered.filter((cert) => {
         const certDivision = cert.employee.divisionName || cert.divisionName || ""
-        const divisionHeadDivision = profile.division || ""
+        const divisionHeadDivision = profile.divName || ""
         return certDivision.toLowerCase() === divisionHeadDivision.toLowerCase()
       })
     } else if (isAdmin) {
@@ -639,17 +639,7 @@ export function CertificatesRequestsContainer({
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
         <CardContent className="px-0">
-          {/* Role-based info banner */}
-          {(isApprover || isDepartmentHead || isDivisionHead) && (
-            <div className="mx-4 mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-              <span className="font-medium">
-                {isApprover && `👥 Viewing certificates for team: ${profile?.team || "N/A"}`}
-                {isDepartmentHead && `🏢 Viewing certificates for department: ${profile?.deptDat || "N/A"}`}
-                {isDivisionHead && `📊 Viewing certificates for division: ${profile?.division || "N/A"}`}
-              </span>
-            </div>
-          )}
-
+    
           {/* Tabs */}
           <div className="mb-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
             {/* Tabs */}

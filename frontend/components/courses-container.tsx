@@ -110,8 +110,14 @@ export function CoursesContainer({
   const [activeTab, setActiveTab] = useState<string>("all")
   const [isLoadingCourses, setIsLoadingCourses] = useState(true)
   const [hasProcessedSelectedId, setHasProcessedSelectedId] = useState(false)
+  // Add a state to track the course being edited
+  const [editingCourseRef, setEditingCourseRef] = useState<Course | null>(null)
   // Search input ref for keyboard shortcut
   const searchInputRef = useRef<HTMLInputElement>(null)
+  // Flag to track if we're coming from a successful save
+  const [isSuccessfullySaved, setIsSuccessfullySaved] = useState(false)
+      const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
 
   // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -126,7 +132,6 @@ export function CoursesContainer({
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-
   // Fetch courses and categories from API on mount
   useEffect(() => {
     const loadData = async () => {
@@ -137,8 +142,6 @@ export function CoursesContainer({
     }
     loadData()
   }, [fetchAll_CourseData, fetch_courseCategories])
-
-
 
   useEffect(() => {
     if (selectedCourseId) {
@@ -158,7 +161,7 @@ export function CoursesContainer({
 
     // Find the course (convert ID to string for comparison)
     const courseIdStr = selectedCourseId.toString()
-    const foundCourse = courses.find((c : Course) => c.id === courseIdStr)
+    const foundCourse = courses.find((c: Course) => c.id === courseIdStr)
 
     if (foundCourse) {
       // Found the course - open it in detail view
@@ -185,15 +188,13 @@ export function CoursesContainer({
     console.warn(`Course with ID ${selectedCourseId} not found. Refreshing...`)
     fetchAll_CourseData().then(() => {
       // After refresh, check again
-      const refreshedCourse = courses.find((c : Course) => c.id === courseIdStr)
+      const refreshedCourse = courses.find((c: Course) => c.id === courseIdStr)
       if (refreshedCourse) {
         setSelectedCourse(refreshedCourse)
-      } 
+      }
       setHasProcessedSelectedId(true)
     })
   }, [selectedCourseId, courses, isLoadingCourses, hasProcessedSelectedId, activeTab, fetchAll_CourseData])
-
-
 
   const isAdmin = userRole === "admin"
 
@@ -213,7 +214,7 @@ export function CoursesContainer({
   // Get counts for each tab (admin)
   const getAdminTabCounts = useMemo(() => {
     const all = courses.length
-    const draft = courses.filter((c: Course)  => c.status === "draft").length
+    const draft = courses.filter((c: Course) => c.status === "draft").length
     const active = courses.filter(
       (c: Course) => c.status === "active" || c.status === "upcoming"
     ).length
@@ -279,28 +280,71 @@ export function CoursesContainer({
   }
 
   const handleEdit = (course: Course) => {
+    setEditingCourseRef(course)
     setSelectedCourse(null)
     setEditingCourse(course)
     setIsFormVisible(true)
+    setIsSuccessfullySaved(false)
   }
 
   const handleNewCourse = () => {
     setSelectedCourse(null)
     setEditingCourse(null)
     setIsFormVisible(true)
+    setIsSuccessfullySaved(false)
   }
 
-  const handleCancel = () => {
+  // Function to close form without confirmation (used after successful save)
+  const closeForm = () => {
     resetForm()
     setIsSubmitting(false)
+    setIsSuccessfullySaved(false)
+
+    // If we were editing a course, go back to the course detail
+    if (editingCourseRef) {
+      setSelectedCourse(editingCourseRef)
+      setEditingCourseRef(null)
+    }
   }
 
+  // Handle cancel with confirmation
+ const handleCancel = () => {
+  // Skip confirmation if we just saved successfully
+  if (isSuccessfullySaved) {
+    closeForm();
+    return;
+  }
+
+  // ✅ NEW: Check if there are actual unsaved changes
+  if (hasUnsavedChanges) {
+    const confirmCancel = window.confirm(
+      `You have unsaved changes. Are you sure you want to cancel editing "${editingCourse?.title || 'this course'}"? Your changes will be lost.`
+    );
+
+    if (!confirmCancel) {
+      return; // User cancelled the cancellation
+    }
+  }
+
+  closeForm();
+  setHasUnsavedChanges(false); // Reset the flag
+
+  // If we were creating a new course, show a brief notification
+  if (!editingCourseRef) {
+    alert("Course creation cancelled");
+  }
+};
 
   const handleDeleteCourse = async () => {
     if (editingCourse) {
       const result = await delete_CourseData(editingCourse.id)
       if (result.success) {
         resetForm()
+        setIsSuccessfullySaved(false)
+        setEditingCourseRef(null)
+        setSelectedCourse(null)
+        setIsFormVisible(false)
+        await fetchAll_CourseData()
       } else {
         alert(result.message || "Failed to delete course")
       }
@@ -352,7 +396,6 @@ export function CoursesContainer({
               group.capacity === "unlimited"
                 ? null
                 : Number(group.capacity) || null,
-            // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
             start_date:
               group.startDate instanceof Date
                 ? formatLocalDateForAPI(group.startDate)
@@ -375,7 +418,6 @@ export function CoursesContainer({
                     id: parseInt(existingSession.id),
                   }),
                   session_no: sIndex + 1,
-                  // ✅ FIXED: Use formatLocalDateForAPI instead of toISOString
                   session_date:
                     session.date instanceof Date
                       ? formatLocalDateForAPI(session.date)
@@ -427,7 +469,7 @@ export function CoursesContainer({
       // Create the base course data
       const courseData: any = {
         course_name: data.title,
-        course_category_id: Number(categoryId), // ← Use categoryId directly
+        course_category_id: Number(categoryId),
         trainer_name: data.trainerName || null,
         self_study_type: data.selfStudyType || null,
         target_level: data.targetLevel || null,
@@ -448,6 +490,7 @@ export function CoursesContainer({
             : data.registrationDeadline || null,
         status: backendStatus,
       }
+
       // ============ ADD DEFAULT GROUP 1 FOR SELF-STUDY ============
       if (
         data.courseType === "self-study" &&
@@ -457,7 +500,6 @@ export function CoursesContainer({
         const existingGroup = editingCourse?.groups?.[0]
         const existingSessions = editingCourse?.self_study_sessions || []
 
-        // For self-study, start and end dates are dynamic per learner
         courseData.start_date = null
         courseData.end_date = null
 
@@ -471,7 +513,7 @@ export function CoursesContainer({
             end_date: null,
             sessions_per_week: [],
             group_status: "OPEN",
-            sessions: [], // Self-study courses do not need trainer sessions in the dummy group
+            sessions: [],
           },
         ]
       }
@@ -480,7 +522,6 @@ export function CoursesContainer({
       if (newGroups && data.courseType === "trainer") {
         courseData.groups = newGroups
 
-        // Set course start and end dates from groups
         const allStartDates = newGroups
           .map((g: any) => g.start_date)
           .filter((d: any) => d)
@@ -501,14 +542,12 @@ export function CoursesContainer({
         courseData.self_study_sessions = newSelfStudySessions
       }
 
-
       let result
       if (editingCourse) {
         // ============ UPDATE MODE ============
 
         // For self-study, we need to handle the update carefully
         if (data.courseType === "self-study") {
-          // First, clear existing self-study sessions
           const clearPayload: any = {
             ...courseData,
             self_study_sessions: [],
@@ -516,14 +555,13 @@ export function CoursesContainer({
               ? [
                 {
                   ...courseData.groups[0],
-                  sessions: [], // Clear sessions in the group too
+                  sessions: [],
                 },
               ]
               : undefined,
           }
 
           await update_CourseData(editingCourse.id, clearPayload)
-          // Small delay to ensure transaction completes
           await new Promise((resolve) => setTimeout(resolve, 100))
         }
 
@@ -579,9 +617,14 @@ export function CoursesContainer({
       }
 
       if (result.success) {
-        handleCancel()
+        // Set the flag to skip confirmation
+        setIsSuccessfullySaved(true)
+        
+        // Close the form without confirmation
+        closeForm()
+        
+        // Refresh data
         await fetchAll_CourseData()
-        // Refresh enrollments if needed
         if (editingCourse) {
           await fetch_courseEnrollments(editingCourse.id)
         }
@@ -892,6 +935,8 @@ export function CoursesContainer({
               onCancel={handleCancel}
               onDelete={handleDeleteCourse}
               isSubmitting={isSubmitting || isCreating || isUpdating}
+               onChanges={setHasUnsavedChanges}
+                disableSubmit={editingCourse ? !hasUnsavedChanges : false}
             />
           </div>
         )}

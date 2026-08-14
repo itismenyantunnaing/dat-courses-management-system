@@ -44,7 +44,12 @@ public class EmployeeTargetService {
                 return null;
             }
 
-            return getTargetLevel(profile, targetTerm);
+            EmployeeTargetLevelDTO dto = getTargetLevel(profile, targetTerm);
+            
+            // Set the highest JLPT level from the profile
+            dto.setJlptHighestLevel(profile.getJlptHighestLevel());
+            
+            return dto;
             
         } catch (Exception e) {
             log.error("Error getting target level for employee {}: {}", employeeId, e.getMessage(), e);

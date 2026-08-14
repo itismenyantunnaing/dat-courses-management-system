@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -52,6 +51,7 @@ import {
   Cancel01Icon,
   Loading03Icon,
   Calendar03Icon,
+  Upload05Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -61,6 +61,7 @@ import { cn } from "@/lib/utils"
 import { EditHolidayDrawer } from "@/components/drawers/holidays/editHoliday-drawer"
 import { Holiday } from "@/types/holiday"
 import { CreateHolidayDrawer } from "./drawers/holidays/createHoliday-drawer"
+import { ImportDialog } from "@/components/dialogs/import-dialog"
 import {
   Select,
   SelectTrigger,
@@ -173,6 +174,9 @@ export function HolidaysContainer({
   const [isNewHolidayDrawerOpen, setIsNewHolidayDrawerOpen] = useState(false)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   const [selectedHoliday, setSelectedHoliday] = useState<Holiday | null>(null)
+
+  // State for import dialog
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   // Use store directly - no local state duplication
   const { fetch_HolidayData, holiday_data, delete_HolidayData } = mainStore()
@@ -419,7 +423,7 @@ export function HolidaysContainer({
                   />
                 </InputGroupAddon>
                 <InputGroupAddon align="inline-end">
-                  <Kbd>⌘K</Kbd>
+                  <Kbd>Ctrl + K</Kbd>
                 </InputGroupAddon>
               </InputGroup>
               <div className="flex flex-wrap gap-2">
@@ -680,18 +684,27 @@ export function HolidaysContainer({
                     Clear Search
                   </Button>
                 ) : (
-                  <Button
-                    variant="default"
-                    onClick={handleNewHoliday}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    <HugeiconsIcon
-                      icon={CalendarAdd01Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                    Add Holiday
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="default"
+                      onClick={() => setImportDialogOpen(true)}
+                    >
+                      <HugeiconsIcon
+                        icon={Upload05Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                      Import Excel file
+                    </Button>
+                    <Button variant="outline" onClick={handleNewHoliday}>
+                      <HugeiconsIcon
+                        icon={CalendarAdd01Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                      Add New Holiday
+                    </Button>
+                  </div>
                 )}
               </EmptyContent>
             </Empty>
@@ -737,10 +750,17 @@ export function HolidaysContainer({
         holiday={selectedHoliday}
         onSuccess={handleHolidayUpdated}
       />
+
       <CreateHolidayDrawer
         open={isNewHolidayDrawerOpen}
         onOpenChange={setIsNewHolidayDrawerOpen}
         onSuccess={handleHolidayCreated}
+      />
+
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        label="holidays"
       />
     </>
   )

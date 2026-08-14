@@ -28,4 +28,37 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     @Query("SELECT e.team.id FROM Employee e WHERE e.id = :employeeId")
     Optional<String> findTeamIdByEmployeeId(@Param("employeeId") String employeeId);
+
+    @Query("SELECT e FROM Employee e WHERE e.team.id = :teamId AND e.isDeleted = false")
+    List<Employee> findByTeamIdAndIsDeletedFalse(@Param("teamId") Integer teamId);
+
+     @Query("SELECT e FROM Employee e " +
+           "LEFT JOIN FETCH e.role " +
+           "LEFT JOIN FETCH e.team " +
+           "LEFT JOIN FETCH e.team.departmentDat " +
+           "LEFT JOIN FETCH e.team.departmentDat.division " +
+           "WHERE e.id = :employeeId")
+    Optional<Employee> findByIdWithRelationships(@Param("employeeId") String employeeId);
+    
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.empStatus = 'active' AND e.isDeleted = false")
+    Long countActiveEmployees();
+    
+    @Query("SELECT COUNT(e) FROM Employee e " +
+           "WHERE e.empStatus = 'active' " +
+           "AND e.isDeleted = false " +
+           "AND e.team.departmentDat.division.id = :divisionId")
+    Long countActiveEmployeesByDivisionId(@Param("divisionId") Integer divisionId);
+    
+    @Query("SELECT COUNT(e) FROM Employee e " +
+           "WHERE e.empStatus = 'active' " +
+           "AND e.isDeleted = false " +
+           "AND e.team.departmentDat.id = :departmentId")
+    Long countActiveEmployeesByDepartmentId(@Param("departmentId") Integer departmentId);
+    
+    @Query("SELECT COUNT(e) FROM Employee e " +
+           "WHERE e.empStatus = 'active' " +
+           "AND e.isDeleted = false " +
+           "AND e.team.id = :teamId")
+    Long countActiveEmployeesByTeamId(@Param("teamId") Integer teamId);
+    
 }

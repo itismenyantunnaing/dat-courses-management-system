@@ -25,8 +25,8 @@ public class CourseAttendanceService {
     private final CourseGroupRepository courseGroupRepository;
 
     @Transactional(readOnly = true)
-    public List<DepartmentMonthlyAttendanceDTO> getDailyAttendanceByDepartment() {
-        log.info("========== STARTING DAILY ATTENDANCE BY DEPARTMENT ==========");
+    public List<DivisionMonthlyAttendanceDTO> getDailyAttendanceByDivision() {
+        log.info("========== STARTING DAILY ATTENDANCE BY DIVISION ==========");
         
         List<Course> trainerCourses = courseRepository.findByIsDeletedFalse().stream()
             .filter(course -> course.getCourseCategory().getCourseType() == CourseCategory.CourseType.TRAINER_PROVIDED)
@@ -39,20 +39,20 @@ public class CourseAttendanceService {
             return new ArrayList<>();
         }
         
-        Map<String, Map<String, List<CourseGroupData>>> departmentTeamMap = new LinkedHashMap<>();
+        Map<String, Map<String, Map<String, List<CourseGroupData>>>> divisionDeptTeamMap = new LinkedHashMap<>();
         
         for (Course course : trainerCourses) {
             log.info("Processing course: {}", course.getCourseName());
-            processCourse(course, departmentTeamMap);
+            processCourse(course, divisionDeptTeamMap);
         }
         
-        List<DepartmentMonthlyAttendanceDTO> result = convertToDTO(departmentTeamMap);
+        List<DivisionMonthlyAttendanceDTO> result = convertToDTOWithAverages(divisionDeptTeamMap);
         
-        log.info("Completed daily attendance by department. Found {} departments", result.size());
+        log.info("Completed daily attendance by division. Found {} divisions", result.size());
         return result;
     }
 
-    private void processCourse(Course course, Map<String, Map<String, List<CourseGroupData>>> departmentTeamMap) {
+    private void processCourse(Course course, Map<String, Map<String, Map<String, List<CourseGroupData>>>> divisionDeptTeamMap) {
         List<CourseGroup> groups = courseGroupRepository.findByCourseId(course.getId());
         
         if (groups.isEmpty()) {
@@ -61,12 +61,12 @@ public class CourseAttendanceService {
         }
         
         for (CourseGroup group : groups) {
-            processGroup(course, group, departmentTeamMap);
+            processGroup(course, group, divisionDeptTeamMap);
         }
     }
 
     private void processGroup(Course course, CourseGroup group, 
-                              Map<String, Map<String, List<CourseGroupData>>> departmentTeamMap) {
+                              Map<String, Map<String, Map<String, List<CourseGroupData>>>> divisionDeptTeamMap) {
         // Get all sessions for this group
         List<CourseSession> sessions = courseSessionRepository
             .findByCourseGroupIdOrderBySessionNoAsc(group.getId());
@@ -84,8 +84,8 @@ public class CourseAttendanceService {
             return;
         }
         
-        // Group enrollments by department and team
-        Map<String, Map<String, List<CourseEnrollment>>> departmentTeamEnrollmentMap = new LinkedHashMap<>();
+        // Group enrollments by division, department and team
+        Map<String, Map<String, Map<String, List<CourseEnrollment>>>> divisionDeptTeamEnrollmentMap = new LinkedHashMap<>();
         
         for (CourseEnrollment enrollment : enrollments) {
             Employee employee = enrollment.getEmployee();
@@ -97,56 +97,70 @@ public class CourseAttendanceService {
             DepartmentDat department = team.getDepartmentDat();
             if (department == null) continue;
             
+            String divisionName = department.getDivision() != null ? 
+                department.getDivision().getDivisionName() : "Unknown";
             String deptName = department.getDeptName();
             String teamName = team.getTeamName();
             
-            departmentTeamEnrollmentMap
+            divisionDeptTeamEnrollmentMap
+                .computeIfAbsent(divisionName, k -> new LinkedHashMap<>())
                 .computeIfAbsent(deptName, k -> new LinkedHashMap<>())
                 .computeIfAbsent(teamName, k -> new ArrayList<>())
                 .add(enrollment);
         }
         
-        // For each department and team, calculate attendance separately
-        for (Map.Entry<String, Map<String, List<CourseEnrollment>>> deptEntry : departmentTeamEnrollmentMap.entrySet()) {
-            String deptName = deptEntry.getKey();
-            Map<String, List<CourseEnrollment>> teamMap = deptEntry.getValue();
+        // For each division, department and team, calculate attendance separately
+        for (Map.Entry<String, Map<String, Map<String, List<CourseEnrollment>>>> divisionEntry : divisionDeptTeamEnrollmentMap.entrySet()) {
+            String divisionName = divisionEntry.getKey();
+            Map<String, Map<String, List<CourseEnrollment>>> deptMap = divisionEntry.getValue();
             
-            for (Map.Entry<String, List<CourseEnrollment>> teamEntry : teamMap.entrySet()) {
-                String teamName = teamEntry.getKey();
-                List<CourseEnrollment> teamEnrollments = teamEntry.getValue();
+            for (Map.Entry<String, Map<String, List<CourseEnrollment>>> deptEntry : deptMap.entrySet()) {
+                String deptName = deptEntry.getKey();
+                Map<String, List<CourseEnrollment>> teamMap = deptEntry.getValue();
                 
-                // Calculate daily attendance specifically for this team's students
-                List<DailyAttendanceDetailDTO> dailyAttendance = 
-                    calculateDailyAttendanceForEnrollments(group, sessions, teamEnrollments);
-                
-                if (!dailyAttendance.isEmpty()) {
-                    String courseName = course.getCourseName();
-                    String groupName = group.getGroupName();
+                for (Map.Entry<String, List<CourseEnrollment>> teamEntry : teamMap.entrySet()) {
+                    String teamName = teamEntry.getKey();
+                    List<CourseEnrollment> teamEnrollments = teamEntry.getValue();
                     
-                    CourseGroupData groupData = new CourseGroupData(
-                        courseName,
-                        groupName,
-                        dailyAttendance
-                    );
+                    // Calculate daily attendance specifically for this team's students
+                    List<DailyAttendanceDetailDTO> dailyAttendance = 
+                        calculateDailyAttendanceForEnrollments(group, sessions, teamEnrollments);
                     
-                    departmentTeamMap
-                        .computeIfAbsent(deptName, k -> new LinkedHashMap<>())
-                        .computeIfAbsent(teamName, k -> new ArrayList<>())
-                        .add(groupData);
+                    if (!dailyAttendance.isEmpty()) {
+                        String courseName = course.getCourseName();
+                        String groupName = group.getGroupName();
+                        
+                        // Calculate group average attendance
+                        Double groupAverage = dailyAttendance.stream()
+                            .map(DailyAttendanceDetailDTO::presentPercentage)
+                            .filter(Objects::nonNull)
+                            .mapToDouble(Double::doubleValue)
+                            .average()
+                            .orElse(0.0);
+                        
+                        CourseGroupData groupData = new CourseGroupData(
+                            courseName,
+                            groupName,
+                            dailyAttendance,
+                            groupAverage  // Added
+                        );
+                        
+                        divisionDeptTeamMap
+                            .computeIfAbsent(divisionName, k -> new LinkedHashMap<>())
+                            .computeIfAbsent(deptName, k -> new LinkedHashMap<>())
+                            .computeIfAbsent(teamName, k -> new ArrayList<>())
+                            .add(groupData);
+                    }
                 }
             }
         }
     }
 
-    /**
-     * Calculate daily attendance specifically for a set of enrollments
-     */
     private List<DailyAttendanceDetailDTO> calculateDailyAttendanceForEnrollments(
             CourseGroup group,
             List<CourseSession> sessions,
             List<CourseEnrollment> enrollments) {
         
-        // Get all unique dates from sessions
         Set<LocalDate> uniqueDates = new TreeSet<>();
         for (CourseSession session : sessions) {
             uniqueDates.add(session.getSessionDate());
@@ -156,7 +170,6 @@ public class CourseAttendanceService {
         int totalStudents = enrollments.size();
         
         for (LocalDate date : uniqueDates) {
-            // Get sessions for this specific date
             List<CourseSession> sessionsOnDate = courseSessionRepository
                 .findByCourseGroupIdAndSessionDate(group.getId(), date);
             
@@ -166,48 +179,38 @@ public class CourseAttendanceService {
             int totalLate = 0;
             int totalExcused = 0;
             
-            // Count attendance for each enrollment on this date
             for (CourseEnrollment enrollment : enrollments) {
                 for (CourseSession session : sessionsOnDate) {
-                    // Count PRESENT
-                    long presentCount = attendanceRecordRepository
+                    totalPresent += attendanceRecordRepository
                         .countByEnrollmentIdAndAttendanceStatusAndSessionId(
                             enrollment.getId(),
                             AttendanceRecord.AttendanceStatus.PRESENT,
                             session.getId()
                         );
-                    totalPresent += presentCount;
                     
-                    // Count ABSENT
-                    long absentCount = attendanceRecordRepository
+                    totalAbsent += attendanceRecordRepository
                         .countByEnrollmentIdAndAttendanceStatusAndSessionId(
                             enrollment.getId(),
                             AttendanceRecord.AttendanceStatus.ABSENT,
                             session.getId()
                         );
-                    totalAbsent += absentCount;
                     
-                    // Count LATE
-                    long lateCount = attendanceRecordRepository
+                    totalLate += attendanceRecordRepository
                         .countByEnrollmentIdAndAttendanceStatusAndSessionId(
                             enrollment.getId(),
                             AttendanceRecord.AttendanceStatus.LATE,
                             session.getId()
                         );
-                    totalLate += lateCount;
                     
-                    // Count EXCUSED
-                    long excusedCount = attendanceRecordRepository
+                    totalExcused += attendanceRecordRepository
                         .countByEnrollmentIdAndAttendanceStatusAndSessionId(
                             enrollment.getId(),
                             AttendanceRecord.AttendanceStatus.EXCUSED,
                             session.getId()
                         );
-                    totalExcused += excusedCount;
                 }
             }
             
-            // Calculate percentages
             int totalPossible = totalStudents * totalSessionsOnDate;
             double presentPercentage = 0.0;
             double absentPercentage = 0.0;
@@ -221,7 +224,6 @@ public class CourseAttendanceService {
                 excusedPercentage = (double) totalExcused / totalPossible * 100;
             }
             
-            // Format date as "MMM D" (e.g., "Jul 6")
             String formattedDate = formatDate(date);
             
             dailyAttendanceList.add(new DailyAttendanceDetailDTO(
@@ -236,70 +238,120 @@ public class CourseAttendanceService {
                 totalExcused,
                 totalStudents
             ));
-            
-            log.debug("Date: {}, Present: {}%, Absent: {}%, Late: {}%, Excused: {}%", 
-                formattedDate, 
-                Math.round(presentPercentage * 100.0) / 100.0,
-                Math.round(absentPercentage * 100.0) / 100.0,
-                Math.round(latePercentage * 100.0) / 100.0,
-                Math.round(excusedPercentage * 100.0) / 100.0);
         }
         
         return dailyAttendanceList;
     }
 
-    private List<DepartmentMonthlyAttendanceDTO> convertToDTO(
-            Map<String, Map<String, List<CourseGroupData>>> departmentTeamMap) {
+    // NEW: Updated conversion method with averages
+    private List<DivisionMonthlyAttendanceDTO> convertToDTOWithAverages(
+            Map<String, Map<String, Map<String, List<CourseGroupData>>>> divisionDeptTeamMap) {
         
-        List<DepartmentMonthlyAttendanceDTO> result = new ArrayList<>();
+        List<DivisionMonthlyAttendanceDTO> result = new ArrayList<>();
         
-        for (Map.Entry<String, Map<String, List<CourseGroupData>>> deptEntry : departmentTeamMap.entrySet()) {
-            String deptName = deptEntry.getKey();
-            Map<String, List<CourseGroupData>> teamMap = deptEntry.getValue();
+        for (Map.Entry<String, Map<String, Map<String, List<CourseGroupData>>>> divisionEntry : divisionDeptTeamMap.entrySet()) {
+            String divisionName = divisionEntry.getKey();
+            Map<String, Map<String, List<CourseGroupData>>> deptMap = divisionEntry.getValue();
             
-            List<TeamMonthlyAttendanceDTO> teamDTOs = new ArrayList<>();
+            List<DepartmentMonthlyAttendanceDTO> deptDTOs = new ArrayList<>();
             
-            for (Map.Entry<String, List<CourseGroupData>> teamEntry : teamMap.entrySet()) {
-                String teamName = teamEntry.getKey();
-                List<CourseGroupData> groupDataList = teamEntry.getValue();
+            for (Map.Entry<String, Map<String, List<CourseGroupData>>> deptEntry : deptMap.entrySet()) {
+                String deptName = deptEntry.getKey();
+                Map<String, List<CourseGroupData>> teamMap = deptEntry.getValue();
                 
-                Map<String, List<CourseGroupData>> courseMap = groupDataList.stream()
-                    .collect(Collectors.groupingBy(CourseGroupData::courseName));
+                List<TeamMonthlyAttendanceDTO> teamDTOs = new ArrayList<>();
                 
-                List<CourseMonthlyAttendanceDTO> courseDTOs = new ArrayList<>();
-                
-                for (Map.Entry<String, List<CourseGroupData>> courseEntry : courseMap.entrySet()) {
-                    String courseName = courseEntry.getKey();
-                    List<CourseGroupData> courseGroupData = courseEntry.getValue();
+                for (Map.Entry<String, List<CourseGroupData>> teamEntry : teamMap.entrySet()) {
+                    String teamName = teamEntry.getKey();
+                    List<CourseGroupData> groupDataList = teamEntry.getValue();
                     
-                    Map<String, List<DailyAttendanceDetailDTO>> groupAttendanceMap = new LinkedHashMap<>();
-                    for (CourseGroupData data : courseGroupData) {
-                        groupAttendanceMap.put(data.groupName(), data.dailyAttendance());
-                    }
+                    Map<String, List<CourseGroupData>> courseMap = groupDataList.stream()
+                        .collect(Collectors.groupingBy(CourseGroupData::courseName));
                     
-                    List<GroupMonthlyAttendanceDTO> groupDTOs = new ArrayList<>();
-                    for (Map.Entry<String, List<DailyAttendanceDetailDTO>> groupEntry : groupAttendanceMap.entrySet()) {
-                        groupDTOs.add(new GroupMonthlyAttendanceDTO(
-                            groupEntry.getKey(),
-                            groupEntry.getValue()
+                    List<CourseMonthlyAttendanceDTO> courseDTOs = new ArrayList<>();
+                    
+                    for (Map.Entry<String, List<CourseGroupData>> courseEntry : courseMap.entrySet()) {
+                        String courseName = courseEntry.getKey();
+                        List<CourseGroupData> courseGroupData = courseEntry.getValue();
+                        
+                        Map<String, List<DailyAttendanceDetailDTO>> groupAttendanceMap = new LinkedHashMap<>();
+                        Map<String, Double> groupAverageMap = new LinkedHashMap<>();  // NEW: Store group averages
+                        
+                        for (CourseGroupData data : courseGroupData) {
+                            groupAttendanceMap.put(data.groupName(), data.dailyAttendance());
+                            groupAverageMap.put(data.groupName(), data.groupAverage());
+                        }
+                        
+                        List<GroupMonthlyAttendanceDTO> groupDTOs = new ArrayList<>();
+                        for (Map.Entry<String, List<DailyAttendanceDetailDTO>> groupEntry : groupAttendanceMap.entrySet()) {
+                            String groupName = groupEntry.getKey();
+                            List<DailyAttendanceDetailDTO> dailyAttendance = groupEntry.getValue();
+                            Double groupAverage = groupAverageMap.get(groupName);
+                            
+                            groupDTOs.add(new GroupMonthlyAttendanceDTO(
+                                groupName,
+                                groupAverage,  // Added
+                                dailyAttendance
+                            ));
+                        }
+                        
+                        // Calculate course average (average of all group averages)
+                        Double courseAverage = groupDTOs.stream()
+                            .map(GroupMonthlyAttendanceDTO::averageAttendance)
+                            .filter(Objects::nonNull)
+                            .mapToDouble(Double::doubleValue)
+                            .average()
+                            .orElse(0.0);
+                        
+                        courseDTOs.add(new CourseMonthlyAttendanceDTO(
+                            courseName,
+                            courseAverage,  // Added
+                            groupDTOs
                         ));
                     }
                     
-                    courseDTOs.add(new CourseMonthlyAttendanceDTO(
-                        courseName,
-                        groupDTOs
+                    // Calculate team average (average of all course averages)
+                    Double teamAverage = courseDTOs.stream()
+                        .map(CourseMonthlyAttendanceDTO::averageAttendance)
+                        .filter(Objects::nonNull)
+                        .mapToDouble(Double::doubleValue)
+                        .average()
+                        .orElse(0.0);
+                    
+                    teamDTOs.add(new TeamMonthlyAttendanceDTO(
+                        teamName,
+                        teamAverage,  // Added
+                        courseDTOs
                     ));
                 }
                 
-                teamDTOs.add(new TeamMonthlyAttendanceDTO(
-                    teamName,
-                    courseDTOs
+                // Calculate department average (average of all team averages)
+                Double deptAverage = teamDTOs.stream()
+                    .map(TeamMonthlyAttendanceDTO::averageAttendance)
+                    .filter(Objects::nonNull)
+                    .mapToDouble(Double::doubleValue)
+                    .average()
+                    .orElse(0.0);
+                
+                deptDTOs.add(new DepartmentMonthlyAttendanceDTO(
+                    deptName,
+                    deptAverage,  // Added
+                    teamDTOs
                 ));
             }
             
-            result.add(new DepartmentMonthlyAttendanceDTO(
-                deptName,
-                teamDTOs
+            // Calculate division average (average of all department averages)
+            Double divisionAverage = deptDTOs.stream()
+                .map(DepartmentMonthlyAttendanceDTO::averageAttendance)
+                .filter(Objects::nonNull)
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0.0);
+            
+            result.add(new DivisionMonthlyAttendanceDTO(
+                divisionName,
+                divisionAverage,  // Added
+                deptDTOs
             ));
         }
         
@@ -311,7 +363,8 @@ public class CourseAttendanceService {
     private record CourseGroupData(
             String courseName,
             String groupName,
-            List<DailyAttendanceDetailDTO> dailyAttendance
+            List<DailyAttendanceDetailDTO> dailyAttendance,
+            Double groupAverage  // Added
     ) {}
 
     private String formatDate(LocalDate date) {

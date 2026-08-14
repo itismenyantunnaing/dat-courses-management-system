@@ -1,6 +1,9 @@
 # dependencies
 /node_modules
 /.pnp
+/public/courses
+/public/profiles
+/public/uploads
 .pnp.*
 .yarn/*
 !.yarn/patches

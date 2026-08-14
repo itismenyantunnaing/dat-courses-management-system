@@ -22,6 +22,9 @@ public class EnrollmentResponseDTO {
     private Integer departmentId;
     private String departmentName;
 
+    private Integer divisionId;
+    private String divisionName;
+
     private Integer courseGroupId;
     private String courseGroupName;
 

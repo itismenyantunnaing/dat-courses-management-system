@@ -19,6 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Pagination,
@@ -39,20 +47,35 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
   Loading03Icon,
-  Clock01Icon,
-  GraduationCapIcon,
-  AlertCircleIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ViewIcon,
-  EyeOffIcon,
+  FilterMailIcon,
+  Delete02Icon,
+  Chart01Icon,
+  ChartIcon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { mainStore } from "@/store/mainStore"
 import { Course } from "@/types/course"
-import { Label } from "@/components/ui/label"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuShortcut,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
+} from "./ui/dropdown-menu"
 
 const STROKE_WIDTH = 2
 
@@ -160,7 +183,7 @@ const getStatusBadgeClass = (status: string) => {
     case "Active":
       return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950 border-gray-200"
     default:
-      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950"
+      return "bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
   }
 }
 
@@ -227,6 +250,12 @@ interface ProgressReportRow {
   percentCompleteTarget: number
 }
 
+// Filter state type
+type FilterState = {
+  status: string[]
+  viewMode: ViewMode[]
+}
+
 export default function SelfStudyProgressReportContainer() {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -238,8 +267,14 @@ export default function SelfStudyProgressReportContainer() {
   const hasLoadedRef = useRef(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // View mode filter - only one at a time
+  // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODES.SESSION)
+
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    status: [],
+    viewMode: [],
+  })
 
   const {
     courses,
@@ -248,6 +283,48 @@ export default function SelfStudyProgressReportContainer() {
     studyProgress,
     fetchEmployeeTargetLevel,
   } = mainStore()
+
+  // Filter self-study courses - MOVED UP BEFORE uniqueCourses
+  const selfStudyCourses = useMemo(() => {
+    return courses.filter((course: Course) => {
+      const hasSelfStudySessions =
+        course.self_study_sessions && course.self_study_sessions.length > 0
+      const isSelfStudy =
+        course.courseType === "self-study" ||
+        course.selfStudyType === "jlpt" ||
+        course.selfStudyType === "other"
+      return hasSelfStudySessions && isSelfStudy
+    })
+  }, [courses])
+
+  // Check if any filters are active
+  const hasActiveFilters = Object.values(filters).some(
+    (filterArray) => filterArray.length > 0
+  )
+
+  // Get unique status values from report data
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set<string>()
+    reportData.forEach((item) => {
+      if (item.status) {
+        statuses.add(item.status)
+      }
+    })
+    return Array.from(statuses).sort()
+  }, [reportData])
+
+  // Get unique course values - Now selfStudyCourses is defined
+  const uniqueCourses = useMemo(() => {
+    return selfStudyCourses.map((course: Course) => ({
+      id: course.id,
+      title: course.title,
+    }))
+  }, [selfStudyCourses])
+
+  // Check if there's any filter data available
+  const hasStatusData = uniqueStatuses.length > 0
+  const hasCourseData = uniqueCourses.length > 0
+  const hasFilterData = hasStatusData || hasCourseData
 
   // Load courses on mount
   useEffect(() => {
@@ -270,19 +347,6 @@ export default function SelfStudyProgressReportContainer() {
 
     loadCourses()
   }, [fetchAll_CourseData])
-
-  // Filter self-study courses
-  const selfStudyCourses = useMemo(() => {
-    return courses.filter((course: Course) => {
-      const hasSelfStudySessions =
-        course.self_study_sessions && course.self_study_sessions.length > 0
-      const isSelfStudy =
-        course.courseType === "self-study" ||
-        course.selfStudyType === "jlpt" ||
-        course.selfStudyType === "other"
-      return hasSelfStudySessions && isSelfStudy
-    })
-  }, [courses])
 
   // Set default selected course when courses load
   useEffect(() => {
@@ -613,8 +677,8 @@ export default function SelfStudyProgressReportContainer() {
         // Format session with date
         const formattedDate = formatDate(sessionDate)
         const sessionDisplay = formattedDate
-          ? `Session ${sessionNo} (${formattedDate})`
-          : `Session ${sessionNo}`
+          ? `Ses ${sessionNo} (${formattedDate})`
+          : `Ses ${sessionNo}`
 
         rows.push({
           id: progress.id || `row-${rows.length}`,
@@ -660,15 +724,19 @@ export default function SelfStudyProgressReportContainer() {
     setCurrentPage(1)
   }, [studyProgress, selectedCourseId, selfStudyCourses])
 
-  // Filter data based on search term
+  // Filter data based on search term and filters
   useEffect(() => {
-    if (!reportData.length) return
+    if (!reportData.length) {
+      setFilteredData([])
+      return
+    }
 
     let filtered = reportData
 
+    // Apply search filter
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = reportData.filter((item) => {
+      filtered = filtered.filter((item) => {
         const memberName = (item.memberName || "").toLowerCase()
         const session = (item.session || "").toLowerCase()
         const status = (item.status || "").toLowerCase()
@@ -680,9 +748,51 @@ export default function SelfStudyProgressReportContainer() {
       })
     }
 
+    // Apply status filter
+    if (filters.status.length > 0) {
+      filtered = filtered.filter((item) => filters.status.includes(item.status))
+    }
+
+    // Apply view mode filter
+    if (filters.viewMode.length > 0) {
+      filtered = filtered.filter((item) => {
+        // This is a bit tricky since view mode affects how data is displayed, not filtered
+        // For now, we'll just pass through if viewMode filter is applied
+        return true
+      })
+    }
+
     setFilteredData(filtered)
     setCurrentPage(1)
-  }, [searchTerm, reportData])
+  }, [searchTerm, reportData, filters])
+
+  // Helper to toggle filter values
+  const toggleFilter = (field: keyof FilterState, value: string) => {
+    setFilters((prev) => {
+      const current = prev[field]
+      if (current.includes(value)) {
+        return { ...prev, [field]: current.filter((v) => v !== value) }
+      } else {
+        return { ...prev, [field]: [...current, value] }
+      }
+    })
+  }
+
+  // Helper to clear all filters
+  const clearAllFilters = () => {
+    setFilters({
+      status: [],
+      viewMode: [],
+    })
+  }
+
+  // Handle course change from dropdown
+  const handleCourseChange = (value: string) => {
+    setSelectedCourseId(value)
+    setCurrentPage(1)
+    setSearchTerm("")
+    clearAllFilters()
+  }
 
   // Keyboard shortcut for search focus
   useEffect(() => {
@@ -696,6 +806,25 @@ export default function SelfStudyProgressReportContainer() {
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
+
+  // Keyboard shortcut for clearing filters
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (
+        e.key === "Escape" &&
+        !target.closest("input") &&
+        !target.closest("textarea") &&
+        hasActiveFilters
+      ) {
+        e.preventDefault()
+        clearAllFilters()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [hasActiveFilters])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
@@ -738,11 +867,9 @@ export default function SelfStudyProgressReportContainer() {
 
   const totalColumns = getTotalColumns()
 
-  const handleCourseChange = (value: string) => {
-    setSelectedCourseId(value)
-    setCurrentPage(1)
-    setSearchTerm("")
-  }
+  // Check if there's any data to display
+  const hasData = filteredData.length > 0
+  const hasAnyData = reportData.length > 0
 
   if (isLoading) {
     return (
@@ -757,9 +884,9 @@ export default function SelfStudyProgressReportContainer() {
   return (
     <div className="flex flex-col gap-4 pt-4 pb-6">
       <CardContent className="px-0">
-        {/* Header with Title, Search and Course Filter */}
-        <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1 items-center gap-3">
+        {/* Header with Search and Filters - Only show when there's data */}
+        {hasAnyData && (
+          <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
             <InputGroup className="max-w-[400px] flex-1">
               <InputGroupInput
                 ref={searchInputRef}
@@ -778,394 +905,517 @@ export default function SelfStudyProgressReportContainer() {
                 <Kbd>Ctrl + K</Kbd>
               </InputGroupAddon>
             </InputGroup>
-          </div>
 
-          <div className="flex items-center gap-4">
-            {/* View Mode Filter - Select */}
             <div className="flex items-center gap-2">
-              <Select
-                value={viewMode}
-                onValueChange={(value) => setViewMode(value as ViewMode)}
-              >
-                <SelectTrigger className="w-[200px]" id="view-mode">
-                  <SelectValue placeholder="Select view" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value={VIEW_MODES.SESSION}>
-                      Session Breakdown
-                    </SelectItem>
-                    <SelectItem value={VIEW_MODES.OVERALL}>
-                      Overall Progress
-                    </SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Filter Dropdown - Similar to feedback container */}
+              {hasFilterData && (
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="relative h-9 w-9"
+                        >
+                          <HugeiconsIcon
+                            icon={FilterMailIcon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                          {hasActiveFilters && (
+                            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Filter</p>
+                    </TooltipContent>
+                  </Tooltip>
 
-            <Select value={selectedCourseId} onValueChange={handleCourseChange}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select Course" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {selfStudyCourses.map((course: Course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.title}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+                  <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
+                    {/* View Mode Filter */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>View Mode</DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuCheckboxItem
+                            checked={viewMode === VIEW_MODES.SESSION}
+                            onCheckedChange={() => {
+                              setViewMode(VIEW_MODES.SESSION)
+                            }}
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            Session Breakdown
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={viewMode === VIEW_MODES.OVERALL}
+                            onCheckedChange={() => {
+                              setViewMode(VIEW_MODES.OVERALL)
+                            }}
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            Overall Progress
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
 
-        {/* Table with nested headers */}
-        <div className="relative mx-4 overflow-x-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              {/* First header row - Parent headers with colSpan */}
-              <TableRow className="bg-muted/50">
-                <BorderedTableHead
-                  className="align-middle whitespace-nowrap"
-                  rowSpan={2}
-                >
-                  Sr.
-                </BorderedTableHead>
-                <BorderedTableHead
-                  className="align-middle whitespace-nowrap"
-                  rowSpan={2}
-                >
-                  Session
-                </BorderedTableHead>
-                <BorderedTableHead
-                  className="align-middle whitespace-nowrap"
-                  rowSpan={2}
-                >
-                  Member Name
-                </BorderedTableHead>
-                <BorderedTableHead
-                  colSpan={2}
-                  className="align-middle whitespace-nowrap"
-                >
-                  JLPT Level
-                </BorderedTableHead>
-
-                {/* Show either Session or Overall columns based on view mode */}
-                {viewMode === VIEW_MODES.SESSION
-                  ? // Session columns - individual session data
-                    STUDY_COLUMNS.map((column) => (
-                      <BorderedTableHead
-                        key={column.key}
-                        colSpan={2}
-                        className="align-middle whitespace-nowrap"
-                      >
-                        {column.label}
-                      </BorderedTableHead>
-                    ))
-                  : // Overall columns - cumulative totals
-                    STUDY_COLUMNS.map((column) => (
-                      <BorderedTableHead
-                        key={`total-${column.key}`}
-                        colSpan={2}
-                        className="align-middle whitespace-nowrap"
-                      >
-                        Total {column.label}
-                      </BorderedTableHead>
-                    ))}
-
-                {/* % Complete - shows different sub-headers based on view mode */}
-                <BorderedTableHead
-                  className="align-middle whitespace-nowrap"
-                  colSpan={viewMode === VIEW_MODES.SESSION ? 1 : 2}
-                >
-                  % Complete
-                </BorderedTableHead>
-                <BorderedTableHead
-                  className="align-middle whitespace-nowrap"
-                  rowSpan={2}
-                >
-                  Status
-                </BorderedTableHead>
-              </TableRow>
-
-              {/* Second header row - Child headers */}
-              <TableRow className="bg-muted/30">
-                <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                  Certified
-                </BorderedTableHead>
-                <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                  Exam Target
-                </BorderedTableHead>
-
-                {/* Show either Session or Overall column headers based on view mode */}
-                {viewMode === VIEW_MODES.SESSION
-                  ? // Session columns - Current/Target pairs
-                    STUDY_COLUMNS.map((column) => (
-                      <React.Fragment key={column.key}>
-                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                          Current
-                        </BorderedTableHead>
-                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                          Target
-                        </BorderedTableHead>
-                      </React.Fragment>
-                    ))
-                  : // Overall columns - Current/Target pairs
-                    STUDY_COLUMNS.map((column) => (
-                      <React.Fragment key={`total-${column.key}`}>
-                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                          Current
-                        </BorderedTableHead>
-                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                          Target
-                        </BorderedTableHead>
-                      </React.Fragment>
-                    ))}
-
-                {/* % Complete sub-headers - changes based on view mode */}
-                {viewMode === VIEW_MODES.SESSION ? (
-                  // Session view: Only show "Current"
-                  <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                    Current
-                  </BorderedTableHead>
-                ) : (
-                  // Overall view: Show "Actual" and "Target"
-                  <>
-                    <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                      Actual
-                    </BorderedTableHead>
-                    <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                      Target
-                    </BorderedTableHead>
-                  </>
-                )}
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {paginatedData.length === 0 ? (
-                <TableRow>
-                  <BorderedTableCell
-                    colSpan={totalColumns}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    {selfStudyCourses.length === 0 ? (
-                      "No self-study courses available"
-                    ) : searchTerm ? (
-                      <>No results found matching "{searchTerm}"</>
-                    ) : (
-                      "No study progress data available"
+                    {/* Course Filter */}
+                    {hasCourseData && (
+                      <>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            Course
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {uniqueCourses.map((course) => (
+                                <DropdownMenuCheckboxItem
+                                  key={course.id}
+                                  checked={selectedCourseId === course.id}
+                                  onCheckedChange={() => {
+                                    handleCourseChange(course.id)
+                                  }}
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {course.title}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                      </>
                     )}
-                  </BorderedTableCell>
-                </TableRow>
-              ) : (
-                paginatedData.map((item) => {
-                  const isUpcoming = item.status === "Upcoming"
 
-                  return (
-                    <TableRow
-                      key={item.id}
-                      className="transition-colors hover:bg-muted/50"
+                    {/* Status Filter - Only show if there are statuses */}
+                    {hasStatusData && (
+                      <>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            Status
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {uniqueStatuses.map((status) => (
+                                <DropdownMenuCheckboxItem
+                                  key={status}
+                                  checked={filters.status.includes(status)}
+                                  onCheckedChange={() =>
+                                    toggleFilter("status", status)
+                                  }
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {status}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                      </>
+                    )}
+
+                    <DropdownMenuSeparator />
+
+                    {/* Clear Filters Button */}
+                    <DropdownMenuItem
+                      onClick={clearAllFilters}
+                      variant="destructive"
+                      className="gap-2"
                     >
-                      <BorderedTableCell className="text-center">
-                        {item.sr}
-                      </BorderedTableCell>
-                      <BorderedTableCell>
-                        <Badge variant="outline" className="font-normal">
-                          {item.session}
-                        </Badge>
-                      </BorderedTableCell>
-                      <BorderedTableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-primary">
-                              {getInitials(item.memberName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          {item.memberName}
-                        </div>
-                      </BorderedTableCell>
-                      <BorderedTableCell>
-                        <Badge variant="secondary" className="font-mono">
-                          {item.jlptLevel || "-"}
-                        </Badge>
-                      </BorderedTableCell>
-                      <BorderedTableCell>
-                        {item.examTarget || "-"}
-                      </BorderedTableCell>
-
-                      {/* Show either Session or Overall data based on view mode */}
-                      {viewMode === VIEW_MODES.SESSION
-                        ? // Session columns - individual session data
-                          STUDY_COLUMNS.flatMap(({ key }) => {
-                            const currentKey = `${key}Current`
-                            const targetKey = `${key}Target`
-                            return [
-                              <BorderedTableCell
-                                key={`${key}-current`}
-                                className="text-center"
-                              >
-                                {isUpcoming ? "-" : item[currentKey]}
-                              </BorderedTableCell>,
-                              <BorderedTableCell
-                                key={`${key}-target`}
-                                className="text-center"
-                              >
-                                {item[targetKey]}
-                              </BorderedTableCell>,
-                            ]
-                          })
-                        : // Overall columns - CUMULATIVE totals
-                          STUDY_COLUMNS.flatMap(({ key }) => {
-                            const totalCurrentKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Current`
-                            const totalTargetKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Target`
-                            return [
-                              <BorderedTableCell
-                                key={`total-${key}-current`}
-                                className="text-center font-semibold text-primary"
-                              >
-                                {isUpcoming ? "-" : item[totalCurrentKey]}
-                              </BorderedTableCell>,
-                              <BorderedTableCell
-                                key={`total-${key}-target`}
-                                className="text-center font-semibold text-primary"
-                              >
-                                {item[totalTargetKey]}
-                              </BorderedTableCell>,
-                            ]
-                          })}
-
-                      {/* % Complete - changes based on view mode */}
-                      {viewMode === VIEW_MODES.SESSION ? (
-                        // Session view: Only show "Current"
-                        <BorderedTableCell className="text-center">
-                          {isUpcoming ? "-" : `${item.percentCompleteCurrent}%`}
-                        </BorderedTableCell>
-                      ) : (
-                        // Overall view: Show "Actual" and "Target"
-                        <>
-                          <BorderedTableCell>
-                            {isUpcoming ? (
-                              "-"
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <div className="h-2 min-w-[40px] flex-1 rounded-full bg-muted">
-                                  <div
-                                    className="h-full rounded-full bg-primary transition-all"
-                                    style={{
-                                      width: `${Math.min(item.percentCompleteActual, 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                                <span className="text-sm font-medium tabular-nums">
-                                  {item.percentCompleteActual}%
-                                </span>
-                              </div>
-                            )}
-                          </BorderedTableCell>
-                          <BorderedTableCell className="text-center">
-                            {`${item.percentCompleteTarget}%`}
-                          </BorderedTableCell>
-                        </>
-                      )}
-                      <BorderedTableCell>
-                        <Badge className={getStatusBadgeClass(item.status)}>
-                          {item.status}
-                        </Badge>
-                      </BorderedTableCell>
-                    </TableRow>
-                  )
-                })
+                      <HugeiconsIcon
+                        icon={Delete02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                      Clear All Filters
+                      <DropdownMenuShortcut>
+                        <Kbd>Esc</Kbd>
+                      </DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-            </TableBody>
-          </Table>
-        </div>
+            </div>
+          </div>
+        )}
 
-        {/* Pagination */}
-        {filteredData.length > 0 && (
-          <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-            <Field orientation="horizontal" className="w-fit">
-              <FieldLabel htmlFor="select-rows-per-page">
-                Rows per page
-              </FieldLabel>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={(value) => {
-                  setItemsPerPage(Number(value))
-                  setCurrentPage(1)
-                }}
-              >
-                <SelectTrigger className="w-15" id="select-rows-per-page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
+        {/* Table - Only show when there's data */}
+        {hasData ? (
+          <>
+            <div className="relative mx-4 overflow-x-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  {/* First header row - Parent headers with colSpan */}
+                  <TableRow className="bg-muted/50">
+                    <BorderedTableHead
+                      className="align-middle whitespace-nowrap"
+                      rowSpan={2}
+                    >
+                      Sr.
+                    </BorderedTableHead>
+                    <BorderedTableHead
+                      className="align-middle whitespace-nowrap"
+                      rowSpan={2}
+                    >
+                      Session
+                    </BorderedTableHead>
+                    <BorderedTableHead
+                      className="align-middle whitespace-nowrap"
+                      rowSpan={2}
+                    >
+                      Member Name
+                    </BorderedTableHead>
+                    <BorderedTableHead
+                      colSpan={2}
+                      className="align-middle whitespace-nowrap"
+                    >
+                      JLPT Level
+                    </BorderedTableHead>
 
-            <div className="text-sm text-muted-foreground">
-              Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
-              {filteredData.length} records
+                    {/* Show either Session or Overall columns based on view mode */}
+                    {viewMode === VIEW_MODES.SESSION
+                      ? // Session columns - individual session data
+                        STUDY_COLUMNS.map((column) => (
+                          <BorderedTableHead
+                            key={column.key}
+                            colSpan={2}
+                            className="align-middle whitespace-nowrap"
+                          >
+                            {column.label}
+                          </BorderedTableHead>
+                        ))
+                      : // Overall columns - cumulative totals
+                        STUDY_COLUMNS.map((column) => (
+                          <BorderedTableHead
+                            key={`total-${column.key}`}
+                            colSpan={2}
+                            className="align-middle whitespace-nowrap"
+                          >
+                            Total {column.label}
+                          </BorderedTableHead>
+                        ))}
+
+                    {/* % Complete - shows different sub-headers based on view mode */}
+                    <BorderedTableHead
+                      className="align-middle whitespace-nowrap"
+                      colSpan={viewMode === VIEW_MODES.SESSION ? 1 : 2}
+                    >
+                      % Complete
+                    </BorderedTableHead>
+                    <BorderedTableHead
+                      className="align-middle whitespace-nowrap"
+                      rowSpan={2}
+                    >
+                      Status
+                    </BorderedTableHead>
+                  </TableRow>
+
+                  {/* Second header row - Child headers */}
+                  <TableRow className="bg-muted/30">
+                    <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                      Certified
+                    </BorderedTableHead>
+                    <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                      Exam Target
+                    </BorderedTableHead>
+
+                    {/* Show either Session or Overall column headers based on view mode */}
+                    {viewMode === VIEW_MODES.SESSION
+                      ? // Session columns - Current/Target pairs
+                        STUDY_COLUMNS.map((column) => (
+                          <React.Fragment key={column.key}>
+                            <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                              Current
+                            </BorderedTableHead>
+                            <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                              Target
+                            </BorderedTableHead>
+                          </React.Fragment>
+                        ))
+                      : // Overall columns - Current/Target pairs
+                        STUDY_COLUMNS.map((column) => (
+                          <React.Fragment key={`total-${column.key}`}>
+                            <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                              Current
+                            </BorderedTableHead>
+                            <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                              Target
+                            </BorderedTableHead>
+                          </React.Fragment>
+                        ))}
+
+                    {/* % Complete sub-headers - changes based on view mode */}
+                    {viewMode === VIEW_MODES.SESSION ? (
+                      // Session view: Only show "Current"
+                      <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                        Current
+                      </BorderedTableHead>
+                    ) : (
+                      // Overall view: Show "Actual" and "Target"
+                      <>
+                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                          Actual
+                        </BorderedTableHead>
+                        <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                          Target
+                        </BorderedTableHead>
+                      </>
+                    )}
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {paginatedData.map((item) => {
+                    const isUpcoming = item.status === "Upcoming"
+
+                    return (
+                      <TableRow
+                        key={item.id}
+                        className="transition-colors hover:bg-muted/50"
+                      >
+                        <BorderedTableCell className="text-center">
+                          {item.sr}
+                        </BorderedTableCell>
+                        <BorderedTableCell>{item.session}</BorderedTableCell>
+                        <BorderedTableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="text-xs text-primary">
+                                {getInitials(item.memberName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            {item.memberName}
+                          </div>
+                        </BorderedTableCell>
+                        <BorderedTableCell className="text-center">
+                          {item.jlptLevel || "-"}
+                        </BorderedTableCell>
+                        <BorderedTableCell className="text-center">
+                          {item.examTarget || "-"}
+                        </BorderedTableCell>
+
+                        {/* Show either Session or Overall data based on view mode */}
+                        {viewMode === VIEW_MODES.SESSION
+                          ? // Session columns - individual session data
+                            STUDY_COLUMNS.flatMap(({ key }) => {
+                              const currentKey = `${key}Current`
+                              const targetKey = `${key}Target`
+                              return [
+                                <BorderedTableCell
+                                  key={`${key}-current`}
+                                  className="text-center"
+                                >
+                                  {isUpcoming ? "-" : item[currentKey]}
+                                </BorderedTableCell>,
+                                <BorderedTableCell
+                                  key={`${key}-target`}
+                                  className="text-center"
+                                >
+                                  {item[targetKey]}
+                                </BorderedTableCell>,
+                              ]
+                            })
+                          : // Overall columns - CUMULATIVE totals
+                            STUDY_COLUMNS.flatMap(({ key }) => {
+                              const totalCurrentKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Current`
+                              const totalTargetKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Target`
+                              return [
+                                <BorderedTableCell
+                                  key={`total-${key}-current`}
+                                  className="text-center"
+                                >
+                                  {isUpcoming ? "-" : item[totalCurrentKey]}
+                                </BorderedTableCell>,
+                                <BorderedTableCell
+                                  key={`total-${key}-target`}
+                                  className="text-center"
+                                >
+                                  {item[totalTargetKey]}
+                                </BorderedTableCell>,
+                              ]
+                            })}
+
+                        {/* % Complete - changes based on view mode */}
+                        {viewMode === VIEW_MODES.SESSION ? (
+                          // Session view: Only show "Current"
+                          <BorderedTableCell className="text-center">
+                            {isUpcoming
+                              ? "-"
+                              : `${item.percentCompleteCurrent}%`}
+                          </BorderedTableCell>
+                        ) : (
+                          // Overall view: Show "Actual" and "Target"
+                          <>
+                            <BorderedTableCell>
+                              {isUpcoming ? (
+                                "-"
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 min-w-[40px] flex-1 rounded-full bg-muted">
+                                    <div
+                                      className="h-full rounded-full bg-primary transition-all"
+                                      style={{
+                                        width: `${Math.min(item.percentCompleteActual, 100)}%`,
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium tabular-nums">
+                                    {item.percentCompleteActual}%
+                                  </span>
+                                </div>
+                              )}
+                            </BorderedTableCell>
+                            <BorderedTableCell className="text-center">
+                              {`${item.percentCompleteTarget}%`}
+                            </BorderedTableCell>
+                          </>
+                        )}
+                        <BorderedTableCell>
+                          <Badge className={getStatusBadgeClass(item.status)}>
+                            {item.status}
+                          </Badge>
+                        </BorderedTableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             </div>
 
-            <Pagination className="mx-0 w-auto">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+            {/* Pagination */}
+            {filteredData.length > 0 && (
+              <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="select-rows-per-page">
+                    Rows per page
+                  </FieldLabel>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(value) => {
+                      setItemsPerPage(Number(value))
+                      setCurrentPage(1)
                     }}
-                    className={
-                      currentPage === 1 || filteredData.length === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-                {getPageNumbers(totalPages, currentPage).map((page, index) => (
-                  <PaginationItem key={index}>
-                    {page === "..." ? (
-                      <span className="px-2">...</span>
-                    ) : (
-                      <PaginationLink
+                  >
+                    <SelectTrigger className="w-15" id="select-rows-per-page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectGroup>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
+                  {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
+                  {filteredData.length} records
+                </div>
+
+                <Pagination className="mx-0 w-auto">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
                         href="#"
-                        isActive={currentPage === page}
                         onClick={(e) => {
                           e.preventDefault()
-                          setCurrentPage(page as number)
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
                         }}
-                      >
-                        {page}
-                      </PaginationLink>
+                        className={
+                          currentPage === 1 || filteredData.length === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                    {getPageNumbers(totalPages, currentPage).map(
+                      (page, index) => (
+                        <PaginationItem key={index}>
+                          {page === "..." ? (
+                            <span className="px-2">...</span>
+                          ) : (
+                            <PaginationLink
+                              href="#"
+                              isActive={currentPage === page}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setCurrentPage(page as number)
+                              }}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      )
                     )}
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setCurrentPage((prev) =>
+                            Math.min(prev + 1, totalPages)
+                          )
+                        }}
+                        className={
+                          currentPage === totalPages ||
+                          filteredData.length === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
+        ) : (
+          // Empty state
+          <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <HugeiconsIcon
+                  icon={ChartIcon}
+                  strokeWidth={2}
+                  className="h-12 w-12 text-muted-foreground"
+                />
+              </EmptyMedia>
+              <EmptyTitle>
+                {searchTerm || hasActiveFilters
+                  ? `No Matching Records for ${searchTerm}`
+                  : "No Self-Study Progress Data"}
+              </EmptyTitle>
+              <EmptyDescription className="text-center text-pretty">
+                {searchTerm || hasActiveFilters ? (
+                  <>Try adjusting your search or filters.</>
+                ) : selfStudyCourses.length === 0 ? (
+                  "No self-study courses available. Please add a self-study course first."
+                ) : (
+                  "No study progress data available for the selected course."
+                )}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              {searchTerm ||
+                (hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("")
+                      clearAllFilters()
                     }}
-                    className={
-                      currentPage === totalPages || filteredData.length === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+                  >
+                    Clear
+                  </Button>
+                ))}
+            </EmptyContent>
+          </Empty>
         )}
       </CardContent>
     </div>

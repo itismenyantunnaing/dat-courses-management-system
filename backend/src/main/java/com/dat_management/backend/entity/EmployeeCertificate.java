@@ -62,6 +62,7 @@ public class EmployeeCertificate {
     @JoinColumn(name = "verified_by")
     private Employee verifiedBy;
 
+    @Column(columnDefinition = "TEXT")
     private String remark;
     
     private LocalDateTime verifiedAt;

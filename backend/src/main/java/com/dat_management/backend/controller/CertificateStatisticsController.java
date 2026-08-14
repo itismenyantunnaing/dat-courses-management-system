@@ -1,5 +1,7 @@
 package com.dat_management.backend.controller;
 
+import com.dat_management.backend.dto.CertificateStatisticsDtos.DepartmentCertificateStatisticsDTO;
+import com.dat_management.backend.dto.CertificateStatisticsDtos.DivisionCertificateStatisticsDTO;
 import com.dat_management.backend.dto.CertificateStatisticsDtos.OverallCertificateStatisticsDTO;
 import com.dat_management.backend.dto.CertificateStatisticsDtos.TeamCertificateStatisticsDTO;
 import com.dat_management.backend.service.CertificateStatisticsService;
@@ -32,6 +34,20 @@ public class CertificateStatisticsController {
     public ResponseEntity<TeamCertificateStatisticsDTO> getTeamStatistics() {
         log.info("Received request for team-wise certificate statistics");
         TeamCertificateStatisticsDTO response = statisticsService.getTeamStatistics();
+        return ResponseEntity.ok(response);
+    }
+
+     @GetMapping("/departments")
+    public ResponseEntity<DepartmentCertificateStatisticsDTO> getDepartmentStatistics() {
+        log.info("Received request for department-wise certificate statistics");
+        DepartmentCertificateStatisticsDTO response = statisticsService.getDepartmentStatistics();
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/divisions")
+    public ResponseEntity<DivisionCertificateStatisticsDTO> getDivisionStatistics() {
+        log.info("Received request for division-wise certificate statistics");
+        DivisionCertificateStatisticsDTO response = statisticsService.getDivisionStatistics();
         return ResponseEntity.ok(response);
     }
 }

@@ -10,7 +10,8 @@ public final class RiskDtos {
     public record RiskDTO(
             String name,
             String issue,
-            Double risk,  // ← Changed to Double (now stores percentage)
+            Double risk,  // Stores percentage
+            String division,  // Division field
             String department,
             String team,
             String course
@@ -19,6 +20,7 @@ public final class RiskDtos {
     public record RiskSummaryDTO(
             Integer totalAtRisk,
             IssueBreakdownDTO byIssue,
+            DivisionBreakdownDTO byDivision,  // ← NEW: Division breakdown
             DepartmentBreakdownDTO byDepartment,
             RiskLevelDTO byRiskLevel
     ) {}
@@ -26,6 +28,15 @@ public final class RiskDtos {
     public record IssueBreakdownDTO(
             Integer lowAttendance,
             Integer lowProgress
+    ) {}
+
+    public record DivisionBreakdownDTO(  // ← NEW: Division breakdown DTO
+            List<DivisionRiskDTO> divisions
+    ) {}
+
+    public record DivisionRiskDTO(  // ← NEW: Division risk DTO
+            String divisionName,
+            Integer atRiskCount
     ) {}
 
     public record DepartmentBreakdownDTO(

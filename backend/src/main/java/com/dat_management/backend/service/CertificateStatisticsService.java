@@ -1,7 +1,6 @@
 package com.dat_management.backend.service;
 
-import com.dat_management.backend.dto.CertificateStatisticsDtos.OverallCertificateStatisticsDTO;
-import com.dat_management.backend.dto.CertificateStatisticsDtos.TeamCertificateStatisticsDTO;
+import com.dat_management.backend.dto.CertificateStatisticsDtos.*;
 import com.dat_management.backend.entity.EmployeeCertificate.CertificateType;
 import com.dat_management.backend.repository.EmployeeCertificateRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,6 @@ public class CertificateStatisticsService {
         log.info("Calculating overall certificate statistics");
         Map<String, Map<String, Double>> result = new HashMap<>();
         
-        // Get certificate counts
         List<Object[]> certificateCounts = certificateRepository.countVerifiedCertificatesByTypeAndLevel();
         log.debug("Found {} certificate type-level combinations", certificateCounts.size());
         
@@ -32,10 +30,8 @@ public class CertificateStatisticsService {
             String level = (String) row[1];
             Long count = (Long) row[2];
             
-            // Use count directly as Double
             double countValue = count.doubleValue();
             
-            // Add to result map
             String typeKey = type.name();
             result.computeIfAbsent(typeKey, k -> new HashMap<>())
                   .put(level != null ? level : "UNSPECIFIED", countValue);
@@ -51,7 +47,6 @@ public class CertificateStatisticsService {
         log.info("Calculating team-wise certificate statistics");
         Map<String, Map<String, Map<String, Double>>> result = new HashMap<>();
         
-        // Get certificate counts by team
         List<Object[]> teamCertificateCounts = certificateRepository.countVerifiedCertificatesByTeamTypeAndLevel();
         log.debug("Found {} certificate entries across teams", teamCertificateCounts.size());
         
@@ -61,10 +56,8 @@ public class CertificateStatisticsService {
             String level = (String) row[2];
             Long count = (Long) row[3];
             
-            // Use count directly as Double
             double countValue = count.doubleValue();
             
-            // Add to result map
             String typeKey = type.name();
             result.computeIfAbsent(teamName, k -> new HashMap<>())
                   .computeIfAbsent(typeKey, k -> new HashMap<>())
@@ -77,31 +70,65 @@ public class CertificateStatisticsService {
         return new TeamCertificateStatisticsDTO(result);
     }
     
-    // Optional: Get statistics for a specific team
     @Transactional(readOnly = true)
-    public Map<String, Map<String, Double>> getTeamStatisticsByTeamName(String teamName) {
-        log.info("Calculating certificate statistics for team: {}", teamName);
-        Map<String, Map<String, Double>> result = new HashMap<>();
+    public DepartmentCertificateStatisticsDTO getDepartmentStatistics() {
+        log.info("Calculating department-wise certificate statistics with teams breakdown");
+        Map<String, Map<String, Map<String, Map<String, Double>>>> result = new HashMap<>();
         
-        // Get specific team's certificate counts
-        List<Object[]> teamCertificateCounts = certificateRepository.countVerifiedCertificatesByTeamTypeAndLevel();
+        List<Object[]> deptTeamCounts = certificateRepository.countVerifiedCertificatesByDepartmentTeamTypeAndLevel();
+        log.debug("Found {} certificate entries across departments and teams", deptTeamCounts.size());
         
-        for (Object[] row : teamCertificateCounts) {
-            String currentTeamName = (String) row[0];
-            if (!currentTeamName.equals(teamName)) continue;
+        for (Object[] row : deptTeamCounts) {
+            String departmentName = (String) row[0];
+            String teamName = (String) row[1];
+            CertificateType type = (CertificateType) row[2];
+            String level = (String) row[3];
+            Long count = (Long) row[4];
             
-            CertificateType type = (CertificateType) row[1];
-            String level = (String) row[2];
-            Long count = (Long) row[3];
-            
-            // Use count directly as Double
             double countValue = count.doubleValue();
             
             String typeKey = type.name();
-            result.computeIfAbsent(typeKey, k -> new HashMap<>())
+            result.computeIfAbsent(departmentName, k -> new HashMap<>())
+                  .computeIfAbsent(teamName, k -> new HashMap<>())
+                  .computeIfAbsent(typeKey, k -> new HashMap<>())
                   .put(level != null ? level : "UNSPECIFIED", countValue);
+                  
+            log.debug("Added department-team statistics: {} - {} - {} - {}: {}", 
+                      departmentName, teamName, typeKey, level, countValue);
         }
         
-        return result;
+        return new DepartmentCertificateStatisticsDTO(result);
+    }
+    
+    @Transactional(readOnly = true)
+    public DivisionCertificateStatisticsDTO getDivisionStatistics() {
+        log.info("Calculating division-wise certificate statistics with departments and teams breakdown");
+        Map<String, Map<String, Map<String, Map<String, Map<String, Double>>>>> result = new HashMap<>();
+        
+        List<Object[]> divDeptTeamCounts = certificateRepository.countVerifiedCertificatesByDivisionDepartmentTeamTypeAndLevel();
+        log.debug("Found {} certificate entries across divisions, departments and teams", divDeptTeamCounts.size());
+        
+        for (Object[] row : divDeptTeamCounts) {
+            String divisionName = (String) row[0];
+            String departmentName = (String) row[1];
+            String teamName = (String) row[2];
+            CertificateType type = (CertificateType) row[3];
+            String level = (String) row[4];
+            Long count = (Long) row[5];
+            
+            double countValue = count.doubleValue();
+            
+            String typeKey = type.name();
+            result.computeIfAbsent(divisionName, k -> new HashMap<>())
+                  .computeIfAbsent(departmentName, k -> new HashMap<>())
+                  .computeIfAbsent(teamName, k -> new HashMap<>())
+                  .computeIfAbsent(typeKey, k -> new HashMap<>())
+                  .put(level != null ? level : "UNSPECIFIED", countValue);
+                  
+            log.debug("Added division-department-team statistics: {} - {} - {} - {} - {}: {}", 
+                      divisionName, departmentName, teamName, typeKey, level, countValue);
+        }
+        
+        return new DivisionCertificateStatisticsDTO(result);
     }
 }

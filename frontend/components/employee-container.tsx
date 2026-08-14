@@ -621,15 +621,9 @@ export function EmployeeContainer({
   // Get counts for each tab
   const tabCounts = {
     employees: employee_data.length,
-    divisions:
-      getUniqueValues("div_name").length +
-      (getEmployeesWithEmptyCategory("div_name").length > 0 ? 1 : 0),
-    departments:
-      getUniqueValues("dept_dat").length +
-      (getEmployeesWithEmptyCategory("dept_dat").length > 0 ? 1 : 0),
-    teams:
-      getUniqueValues("team").length +
-      (getEmployeesWithEmptyCategory("team").length > 0 ? 1 : 0),
+    divisions: getUniqueValues("div_name").length,
+    departments: getUniqueValues("dept_dat").length,
+    teams: getUniqueValues("team").length,
   }
 
   const handleNewEmployee = () => {
@@ -1519,80 +1513,88 @@ export function EmployeeContainer({
       return (
         <Breadcrumb>
           <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>
-                <TruncatedText
-                  text={divisionName}
-                  maxLength={maxBreadcrumbLength}
-                />
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator>
-              <HugeiconsIcon
-                icon={DotIcon}
-                strokeWidth={2}
-                className="h-4 w-4"
-              />
-            </BreadcrumbSeparator>
-            <BreadcrumbItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-1 text-sm font-medium hover:text-primary">
+            {divisionName && (
+              <>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>
                     <TruncatedText
-                      text={departmentName}
+                      text={divisionName}
                       maxLength={maxBreadcrumbLength}
                     />
-                    <HugeiconsIcon
-                      icon={ChevronDownIcon}
-                      strokeWidth={2}
-                      className="h-3.5 w-3.5"
-                    />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className={`w-auto max-w-[${DROPDOWN_MAX_WIDTH}]`}
-                >
-                  <DropdownMenuGroup>
-                    {allDepartments.map((dept) => (
-                      <DropdownMenuItem
-                        key={dept}
-                        onClick={() => {
-                          setSelectedItem(dept)
-                          setActiveView("departments")
-                          setIsDrillDown(true)
-                          setDrillDownPage(1)
-                          setDrilldownSearchTerm("")
-                          setSelectedDepartment("All")
-                          setSelectedTeam("All")
-                        }}
-                        className={`max-w-[${DROPDOWN_ITEM_MAX_WIDTH}]`}
-                      >
-                        {dept.length > maxBreadcrumbLength ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>
+                  <HugeiconsIcon
+                    icon={DotIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                </BreadcrumbSeparator>
+              </>
+            )}
+            {departmentName && (
+              <>
+                <BreadcrumbItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex items-center gap-1 text-sm font-medium hover:text-primary">
+                        <TruncatedText
+                          text={departmentName}
+                          maxLength={maxBreadcrumbLength}
+                        />
+                        <HugeiconsIcon
+                          icon={ChevronDownIcon}
+                          strokeWidth={2}
+                          className="h-3.5 w-3.5"
+                        />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className={`w-auto max-w-[${DROPDOWN_MAX_WIDTH}]`}
+                    >
+                      <DropdownMenuGroup>
+                        {allDepartments.map((dept) => (
+                          <DropdownMenuItem
+                            key={dept}
+                            onClick={() => {
+                              setSelectedItem(dept)
+                              setActiveView("departments")
+                              setIsDrillDown(true)
+                              setDrillDownPage(1)
+                              setDrilldownSearchTerm("")
+                              setSelectedDepartment("All")
+                              setSelectedTeam("All")
+                            }}
+                            className={`max-w-[${DROPDOWN_ITEM_MAX_WIDTH}]`}
+                          >
+                            {dept.length > maxBreadcrumbLength ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="block truncate">{dept}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{dept}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
                               <span className="block truncate">{dept}</span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{dept}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <span className="block truncate">{dept}</span>
-                        )}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator>
-              <HugeiconsIcon
-                icon={DotIcon}
-                strokeWidth={2}
-                className="h-4 w-4"
-              />
-            </BreadcrumbSeparator>
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>
+                  <HugeiconsIcon
+                    icon={DotIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                </BreadcrumbSeparator>
+              </>
+            )}
             <BreadcrumbItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1680,36 +1682,44 @@ export function EmployeeContainer({
       return (
         <Breadcrumb>
           <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>
-                <TruncatedText
-                  text={divisionName}
-                  maxLength={maxBreadcrumbLength}
-                />
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator>
-              <HugeiconsIcon
-                icon={DotIcon}
-                strokeWidth={2}
-                className="h-4 w-4"
-              />
-            </BreadcrumbSeparator>
-            <BreadcrumbItem>
-              <BreadcrumbPage>
-                <TruncatedText
-                  text={departmentName}
-                  maxLength={maxBreadcrumbLength}
-                />
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator>
-              <HugeiconsIcon
-                icon={DotIcon}
-                strokeWidth={2}
-                className="h-4 w-4"
-              />
-            </BreadcrumbSeparator>
+            {divisionName && (
+              <>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>
+                    <TruncatedText
+                      text={divisionName}
+                      maxLength={maxBreadcrumbLength}
+                    />
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>
+                  <HugeiconsIcon
+                    icon={DotIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                </BreadcrumbSeparator>
+              </>
+            )}
+            {departmentName && (
+              <>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>
+                    <TruncatedText
+                      text={departmentName}
+                      maxLength={maxBreadcrumbLength}
+                    />
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>
+                  <HugeiconsIcon
+                    icon={DotIcon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                </BreadcrumbSeparator>
+              </>
+            )}
             <BreadcrumbItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -2142,7 +2152,7 @@ export function EmployeeContainer({
                   {isDrillDown && renderBreadcrumb()}
                 </div>
 
-                {/* Search bar for drilldown with Cmd+K */}
+                {/* Search bar for drilldown with shortcut */}
                 <div className="flex items-center gap-2">
                   <InputGroup className="w-full sm:w-120">
                     <InputGroupInput
@@ -2181,7 +2191,7 @@ export function EmployeeContainer({
                       </InputGroupAddon>
                     )}
                     <InputGroupAddon align="inline-end">
-                      <Kbd>⌘K</Kbd>
+                      <Kbd>Ctrl + K</Kbd>
                     </InputGroupAddon>
                   </InputGroup>
                 </div>
