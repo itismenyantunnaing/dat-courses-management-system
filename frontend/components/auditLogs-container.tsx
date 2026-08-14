@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import {
   Table,
   TableBody,
@@ -28,6 +28,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Pagination,
@@ -60,6 +68,8 @@ import {
   SortByDown01Icon,
   SortByUp01Icon,
   RefreshIcon,
+  MonitorDotIcon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import {
@@ -99,21 +109,27 @@ type FilterState = {
   module: string[]
 }
 
-// Action options
-const ACTION_OPTIONS = [
-  { value: "CREATE", label: "Create" },
-  { value: "UPDATE", label: "Update" },
-  { value: "DELETE", label: "Delete" },
-]
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+    />
+  )
+}
 
-// Module options
-const MODULE_OPTIONS = [
-  { value: "EMPLOYEES", label: "Employees" },
-  { value: "COURSES", label: "Courses" },
-  { value: "SKILLS", label: "Skills" },
-  { value: "DEPARTMENTS", label: "Departments" },
-  { value: "SETTINGS", label: "Settings" },
-]
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
+}
 
 // Bordered Table Cell component
 const BorderedTableCell = ({
@@ -213,6 +229,33 @@ export function AuditLogsContainer() {
     (filterArray) => filterArray.length > 0
   )
 
+  // Get unique action values from audit logs
+  const uniqueActions = useMemo(() => {
+    const actions = new Set<string>()
+    auditLogs.forEach((log) => {
+      if (log.action) {
+        actions.add(log.action)
+      }
+    })
+    return Array.from(actions).sort()
+  }, [auditLogs])
+
+  // Get unique module values from audit logs
+  const uniqueModules = useMemo(() => {
+    const modules = new Set<string>()
+    auditLogs.forEach((log) => {
+      if (log.module) {
+        modules.add(log.module)
+      }
+    })
+    return Array.from(modules).sort()
+  }, [auditLogs])
+
+  // Check if there's any filter data available
+  const hasActionData = uniqueActions.length > 0
+  const hasModuleData = uniqueModules.length > 0
+  const hasFilterData = hasActionData || hasModuleData
+
   // Keyboard shortcut for search focus
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -306,6 +349,7 @@ export function AuditLogsContainer() {
 
   // Check if there is any data to display
   const hasData = filteredData.length > 0
+  const hasAnyLogs = auditLogs.length > 0
 
   // Handle items per page change
   const handleItemsPerPageChange = (value: string) => {
@@ -533,505 +577,555 @@ export function AuditLogsContainer() {
     })
   }
 
+  // Handle refresh
+  const handleRefresh = async () => {
+    await fetch_AuditLogsWithFilters(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      currentPage - 1,
+      itemsPerPage
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <LoadingSpinner text="Loading audit logs..." />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
         <CardContent className="px-0">
-          {/* Header and Search Bar */}
-          <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-            <InputGroup className="max-w-sm">
-              <InputGroupInput
-                ref={searchInputRef}
-                placeholder="Search logs..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={isLoading}
-              />
-              <InputGroupAddon>
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  strokeWidth={2}
-                  className="h-4 w-4 text-muted-foreground"
+          {/* Header and Search Bar - Only show when there are logs */}
+          {hasAnyLogs && (
+            <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+              <InputGroup className="max-w-sm">
+                <InputGroupInput
+                  ref={searchInputRef}
+                  placeholder="Search logs..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={isLoading}
                 />
-              </InputGroupAddon>
-              <InputGroupAddon align="inline-end">
-                <Kbd>⌘K</Kbd>
-              </InputGroupAddon>
-            </InputGroup>
+                <InputGroupAddon>
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    strokeWidth={2}
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                </InputGroupAddon>
+                <InputGroupAddon align="inline-end">
+                  <Kbd>⌘K</Kbd>
+                </InputGroupAddon>
+              </InputGroup>
 
-            <div className="flex items-center gap-1.5">
-              {/* Refresh Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={() => {
-                      fetch_AuditLogsWithFilters(
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        currentPage - 1,
-                        itemsPerPage
-                      )
-                    }}
-                    disabled={isLoading}
-                  >
-                    <HugeiconsIcon
-                      icon={RefreshIcon}
-                      strokeWidth={2}
-                      className={cn("h-4 w-4", isLoading && "animate-spin")}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Refresh</p>
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Sort Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={toggleSortOrder}
-                  >
-                    <HugeiconsIcon
-                      icon={
-                        sortOrder === "desc" ? SortByDown01Icon : SortByUp01Icon
-                      }
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {sortOrder === "desc" ? "Newest First" : "Oldest First"}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Filter Dropdown */}
-              <DropdownMenu>
+              <div className="flex items-center gap-1.5">
+                {/* Refresh Button */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="relative h-9 w-9"
-                      >
-                        <HugeiconsIcon
-                          icon={FilterMailIcon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                        {hasActiveFilters && (
-                          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={handleRefresh}
+                      disabled={isLoading}
+                    >
+                      <HugeiconsIcon
+                        icon={RefreshIcon}
+                        strokeWidth={2}
+                        className={cn("h-4 w-4", isLoading && "animate-spin")}
+                      />
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Filter</p>
+                    <p>Refresh</p>
                   </TooltipContent>
                 </Tooltip>
 
-                <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
-                  {/* Action Filter */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Action</DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {ACTION_OPTIONS.map((option) => (
-                          <DropdownMenuCheckboxItem
-                            key={option.value}
-                            checked={filters.action.includes(option.value)}
-                            onCheckedChange={() =>
-                              toggleFilter("action", option.value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {option.label}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  {/* Module Filter */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Module</DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {MODULE_OPTIONS.map((option) => (
-                          <DropdownMenuCheckboxItem
-                            key={option.value}
-                            checked={filters.module.includes(option.value)}
-                            onCheckedChange={() =>
-                              toggleFilter("module", option.value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {option.label}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSeparator />
-
-                  {/* Clear Filters Button */}
-                  <DropdownMenuItem
-                    onClick={clearAllFilters}
-                    variant="destructive"
-                    className="gap-2"
-                  >
-                    <HugeiconsIcon
-                      icon={Delete02Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                    Clear All Filters
-                    <DropdownMenuShortcut>
-                      <Kbd>Esc</Kbd>
-                    </DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {/* Loading State */}
-          {isLoading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                Loading logs...
-              </div>
-            </div>
-          )}
-
-          {/* Table */}
-          <div
-            className="relative mx-4 overflow-x-auto rounded-md border"
-            style={{ zIndex: 1 }}
-          >
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <BorderedTableHead className="w-auto min-w-[32px] align-middle whitespace-nowrap">
-                    <Checkbox
-                      checked={areAllFilteredSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all"
-                      disabled={isLoading || paginatedData.length === 0}
-                    />
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    No
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    Employee
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    Action
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    Description
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    Module
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    Old Value
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    New Value
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    IP Address
-                  </BorderedTableHead>
-                  <BorderedTableHead className="align-middle whitespace-nowrap">
-                    Timestamp
-                  </BorderedTableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {paginatedData.length === 0 && !isLoading ? (
-                  <TableRow>
-                    <BorderedTableCell
-                      colSpan={10}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      {searchTerm || hasActiveFilters ? (
-                        <>
-                          No logs found matching{" "}
-                          {searchTerm && `"${searchTerm}"`}
-                          {searchTerm && hasActiveFilters && " and "}
-                          {hasActiveFilters && "selected filters"}
-                        </>
-                      ) : (
-                        "No audit logs found"
-                      )}
-                    </BorderedTableCell>
-                  </TableRow>
-                ) : (
-                  paginatedData.map((log, index) => {
-                    const isSelected = !!rowSelection[log.id.toString()]
-                    return (
-                      <TableRow
-                        key={log.id}
-                        className={cn(
-                          "cursor-pointer transition-colors hover:bg-muted/50",
-                          isSelected && "bg-muted/50"
-                        )}
-                        onClick={() => handleRowClick(log)}
-                      >
-                        <BorderedTableCell
-                          className="w-10"
-                          selected={isSelected}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() =>
-                              handleRowSelect(log.id.toString())
-                            }
-                            aria-label={`Select log ${log.id}`}
-                          />
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="font-mono text-sm"
-                          selected={isSelected}
-                        >
-                          {startIndex + index + 1}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8 rounded-full">
-                              <AvatarImage
-                                src="/avatars/default.jpg"
-                                alt={log.employeeName || ""}
-                              />
-                              <AvatarFallback className="rounded-full text-xs">
-                                {getInitials(log.employeeName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="text-sm font-medium">
-                                {log.employeeName || "Unknown User"}
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground">
-                                  {log.employeeId}
-                                </span>
-                                {log.employeeRole && (
-                                  <>
-                                    <span className="text-xs text-muted-foreground">
-                                      ·
-                                    </span>
-                                    <Badge
-                                      variant="outline"
-                                      className="h-4 px-1.5 py-0 text-[10px]"
-                                    >
-                                      {log.employeeRole}
-                                    </Badge>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          <Badge className={getActionBadge(log.action)}>
-                            {log.action}
-                          </Badge>
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          <div className="max-w-[200px] truncate text-sm">
-                            {log.description}
-                          </div>
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          <Badge variant="outline" className="text-xs">
-                            {log.module}
-                          </Badge>
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="max-w-[150px] truncate font-mono text-xs"
-                          selected={isSelected}
-                        >
-                          {log.oldValue || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="max-w-[150px] truncate font-mono text-xs"
-                          selected={isSelected}
-                        >
-                          {log.newValue || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="font-mono text-xs"
-                          selected={isSelected}
-                        >
-                          {log.ipAddress}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          className="text-sm"
-                          selected={isSelected}
-                        >
-                          {formatDate(log.createdAt)}
-                        </BorderedTableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Selection Bar */}
-          {isSelectionActive && (
-            <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[400px] -translate-x-1/2">
-              <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={areAllFilteredSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all"
-                    />
-                    <span className="text-sm font-medium whitespace-nowrap">
-                      {selectedCount} log{selectedCount > 1 ? "s are" : " is"}{" "}
-                      selected
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
+                {/* Sort Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleBulkDelete}
-                      disabled={isDeleting}
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={toggleSortOrder}
                     >
                       <HugeiconsIcon
-                        icon={Delete02Icon}
-                        strokeWidth={2}
-                        className="mr-1 h-4 w-4"
-                      />
-                      Delete
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearSelection}
-                      className="px-2"
-                    >
-                      <HugeiconsIcon
-                        icon={Cancel01Icon}
+                        icon={
+                          sortOrder === "desc"
+                            ? SortByDown01Icon
+                            : SortByUp01Icon
+                        }
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
                     </Button>
-                  </div>
-                </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {sortOrder === "desc" ? "Newest First" : "Oldest First"}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Filter Dropdown - Only show when there's filter data */}
+                {hasFilterData && (
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="relative h-9 w-9"
+                          >
+                            <HugeiconsIcon
+                              icon={FilterMailIcon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
+                            {hasActiveFilters && (
+                              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Filter</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
+                      {/* Action Filter - Only show if there are actions */}
+                      {hasActionData && (
+                        <>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              Action
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                {uniqueActions.map((action) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={action}
+                                    checked={filters.action.includes(action)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("action", action)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {action}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        </>
+                      )}
+
+                      {/* Module Filter - Only show if there are modules */}
+                      {hasModuleData && (
+                        <>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              Module
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                {uniqueModules.map((module) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={module}
+                                    checked={filters.module.includes(module)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("module", module)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {module[0].toUpperCase() +
+                                      module.slice(1).toLowerCase()}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      <DropdownMenuItem
+                        onClick={clearAllFilters}
+                        variant="destructive"
+                        className="gap-2"
+                      >
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                        Clear All Filters
+                        <DropdownMenuShortcut>
+                          <Kbd>Esc</Kbd>
+                        </DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
           )}
 
-          {/* Pagination - Only show when there's data */}
-          {hasData && (
-            <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-              <Field orientation="horizontal" className="w-fit">
-                <FieldLabel htmlFor="select-rows-per-page">
-                  Rows per page
-                </FieldLabel>
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={handleItemsPerPageChange}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger className="w-15" id="select-rows-per-page">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="start">
-                    <SelectGroup>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <div className="text-sm text-muted-foreground">
-                Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
-                {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
-                {filteredData.length} logs
-              </div>
-              <Pagination className="mx-0 w-auto">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handlePrevious()
-                      }}
-                      className={
-                        currentPage === 1 ||
-                        filteredData.length === 0 ||
-                        isLoading
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-                  {getPageNumbers(totalPages, currentPage).map(
-                    (page, index) => (
-                      <PaginationItem key={index}>
-                        {page === "..." ? (
-                          <span className="px-2">...</span>
-                        ) : (
-                          <PaginationLink
-                            href="#"
-                            isActive={currentPage === page}
-                            onClick={(e) => {
-                              e.preventDefault()
-                              handleGoToPage(page as number)
-                            }}
+          {/* Table - Only show when there's data */}
+          {hasData ? (
+            <>
+              <div
+                className="relative mx-4 overflow-x-auto rounded-md border"
+                style={{ zIndex: 1 }}
+              >
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <BorderedTableHead className="w-auto min-w-[32px] align-middle whitespace-nowrap">
+                        <Checkbox
+                          checked={areAllFilteredSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                          disabled={isLoading || paginatedData.length === 0}
+                        />
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        No
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        Employee
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        Action
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        Description
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        Module
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        Old Value
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        New Value
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        IP Address
+                      </BorderedTableHead>
+                      <BorderedTableHead className="align-middle whitespace-nowrap">
+                        Timestamp
+                      </BorderedTableHead>
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {paginatedData.map((log, index) => {
+                      const isSelected = !!rowSelection[log.id.toString()]
+                      return (
+                        <TableRow
+                          key={log.id}
+                          className={cn(
+                            "cursor-pointer transition-colors hover:bg-muted/50",
+                            isSelected && "bg-muted/50"
+                          )}
+                          onClick={() => handleRowClick(log)}
+                        >
+                          <BorderedTableCell
+                            className="w-10"
+                            selected={isSelected}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {page}
-                          </PaginationLink>
-                        )}
-                      </PaginationItem>
-                    )
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() =>
+                                handleRowSelect(log.id.toString())
+                              }
+                              aria-label={`Select log ${log.id}`}
+                            />
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            className="font-mono text-sm"
+                            selected={isSelected}
+                          >
+                            {startIndex + index + 1}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8 rounded-full">
+                                <AvatarImage
+                                  src="/avatars/default.jpg"
+                                  alt={log.employeeName || ""}
+                                />
+                                <AvatarFallback className="rounded-full text-xs">
+                                  {getInitials(log.employeeName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="text-sm font-medium">
+                                  {log.employeeName || "Unknown User"}
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-muted-foreground">
+                                    {log.employeeId}
+                                  </span>
+                                  {log.employeeRole && (
+                                    <>
+                                      <span className="text-xs text-muted-foreground">
+                                        ·
+                                      </span>
+                                      <span className="text-xs">
+                                        {log.employeeRole}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            <Badge className={getActionBadge(log.action)}>
+                              {log.action}
+                            </Badge>
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            <div className="truncate text-sm">
+                              {log.description}
+                            </div>
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            <Badge variant="outline" className="text-xs">
+                              {log.module}
+                            </Badge>
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            className="max-w-[150px] truncate font-mono text-xs"
+                            selected={isSelected}
+                          >
+                            {log.oldValue || "-"}
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            className="max-w-[150px] truncate font-mono text-xs"
+                            selected={isSelected}
+                          >
+                            {log.newValue || "-"}
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            className="font-mono text-xs"
+                            selected={isSelected}
+                          >
+                            {log.ipAddress}
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            className="text-sm"
+                            selected={isSelected}
+                          >
+                            {formatDate(log.createdAt)}
+                          </BorderedTableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Selection Bar */}
+              {isSelectionActive && (
+                <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[400px] -translate-x-1/2">
+                  <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={areAllFilteredSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                        <span className="text-sm font-medium whitespace-nowrap">
+                          {selectedCount} log
+                          {selectedCount > 1 ? "s are" : " is"} selected
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleBulkDelete}
+                          disabled={isDeleting}
+                        >
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            strokeWidth={2}
+                            className="mr-1 h-4 w-4"
+                          />
+                          Delete
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearSelection}
+                          className="px-2"
+                        >
+                          <HugeiconsIcon
+                            icon={Cancel01Icon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Pagination */}
+              <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="select-rows-per-page">
+                    Rows per page
+                  </FieldLabel>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={handleItemsPerPageChange}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="w-15" id="select-rows-per-page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectGroup>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
+                  {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
+                  {filteredData.length} logs
+                </div>
+                <Pagination className="mx-0 w-auto">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handlePrevious()
+                        }}
+                        className={
+                          currentPage === 1 ||
+                          filteredData.length === 0 ||
+                          isLoading
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                    {getPageNumbers(totalPages, currentPage).map(
+                      (page, index) => (
+                        <PaginationItem key={index}>
+                          {page === "..." ? (
+                            <span className="px-2">...</span>
+                          ) : (
+                            <PaginationLink
+                              href="#"
+                              isActive={currentPage === page}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleGoToPage(page as number)
+                              }}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      )
+                    )}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleNext()
+                        }}
+                        className={
+                          currentPage === totalPages ||
+                          filteredData.length === 0 ||
+                          isLoading
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </>
+          ) : (
+            // Empty state
+            <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon
+                    icon={MonitorDotIcon}
+                    strokeWidth={2}
+                    className="h-12 w-12 text-muted-foreground"
+                  />
+                </EmptyMedia>
+                <EmptyTitle>
+                  {searchTerm || hasActiveFilters
+                    ? `No Matching Logs`
+                    : "No Audit Logs"}
+                </EmptyTitle>
+                <EmptyDescription className="text-center text-pretty">
+                  {searchTerm || hasActiveFilters ? (
+                    <>Try adjusting your search or filters.</>
+                  ) : (
+                    "When admins interact with the Employee, Course, Skill or Target level change, detailed logs will show up here."
                   )}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handleNext()
-                      }}
-                      className={
-                        currentPage === totalPages ||
-                        filteredData.length === 0 ||
-                        isLoading
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {searchTerm || hasActiveFilters ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("")
+                      clearAllFilters()
+                    }}
+                  >
+                    Clear
+                  </Button>
+                ) : (
+                  <Button
+                    variant="default"
+                    onClick={handleRefresh}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <HugeiconsIcon
+                      icon={RefreshIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
                     />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+                    Check Again
+                  </Button>
+                )}
+              </EmptyContent>
+            </Empty>
           )}
         </CardContent>
       </div>

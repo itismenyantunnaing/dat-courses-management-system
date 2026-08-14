@@ -138,7 +138,6 @@ export interface SkillCategory {
   skill_sub_categories: SkillSubCategory[];
 }
 
-
 export function isYearsHeader(header: string): boolean {
   const lower = header.toLowerCase();
   // Also detect Japanese 年数 (years)
@@ -150,7 +149,6 @@ export function isExperienceHeader(header: string): boolean {
   // Also detect Japanese 経験 (experience)
   return lower.includes('experience') || lower.includes('exp') || header.includes('経験');
 }
-
 
 export const TECHNICAL_ABILITY_CONFIG: SkillCategory[] = [
   {
@@ -225,7 +223,7 @@ export function parseTechnicalHeader(header: string): {
   // If the first part is "technical ability", remove it from category
   if (category === 'technical ability' || category === 'Technical Ability') {
     // Generate a random ID and use "empty-{randomId}" format
-    const randomId = Math.random().toString(36).substring(2, 10); // Generates a random 8-character string
+    const randomId = Math.random().toString(36).substring(2, 10);
     category = parts.length > 4 ? parts[parts.length - 5] : `empty-${randomId}`;
   }
   
@@ -313,9 +311,35 @@ export async function extractEmployeesFromExcel(
 
     // --- PHASE 1: FIND THE BEST SHEET ---
     // Support both English "Original data" and Japanese "元データ" sheet names
+    const ALLOWED_SHEET_NAMES = ["Original data", "original", "Original", "Skill", "Skills", "Skillsets"];
+    
+    // First, try to find a worksheet with an allowed name
     targetWorksheet = workbook.worksheets.find(ws => 
-      ws.name.includes("Original data") || ws.name.includes("Original") || ws.name.includes("元データ")
+      ALLOWED_SHEET_NAMES.some(allowedName => 
+        ws.name.toLowerCase().includes(allowedName.toLowerCase())
+      )
     ) || null;
+
+    // 🚨 If no matching sheet found, show alert and abort
+    if (!targetWorksheet) {
+      // Get all sheet names for the error message
+      const sheetNames = workbook.worksheets.map(ws => ws.name);
+      const availableSheets = sheetNames.length > 0 ? sheetNames.join(', ') : 'No sheets found';
+      
+      // Show alert
+      alert(
+        `Required sheet not found!\n\n` +
+        `Expected sheet names: ${ALLOWED_SHEET_NAMES.join(', ')}\n\n` +
+        `Please ensure your Excel file contains a sheet with one of the expected names and try again.`
+      );
+      
+      return { 
+        success: false, 
+        headers: [], 
+        employees: [], 
+        error: `Required sheet not found. Expected: ${ALLOWED_SHEET_NAMES.join(', ')}. Available: ${availableSheets}` 
+      };
+    }
 
     // Detect if this is a Japanese-format file
     let isJapaneseFormat = false;
@@ -336,6 +360,7 @@ export async function extractEmployeesFromExcel(
       }
     }
 
+    // If no target worksheet found from allowed names, try to find by scanning for ID and Name columns
     if (!targetWorksheet) {
       for (const worksheet of workbook.worksheets) {
         if (worksheet.name.includes("Scoring") || worksheet.name.includes("Category") || worksheet.name.includes("Master")) continue;
@@ -363,8 +388,24 @@ export async function extractEmployeesFromExcel(
       }
     }
 
+    // 🚨 If still no target worksheet found, show alert and abort
     if (!targetWorksheet) {
-      return { success: false, headers: [], employees: [], error: "Could not find a valid data sheet." };
+      const sheetNames = workbook.worksheets.map(ws => ws.name);
+      const availableSheets = sheetNames.length > 0 ? sheetNames.join(', ') : 'No sheets found';
+      
+      alert(
+        `❌ ERROR: Could not find a valid data sheet!\n\n` +
+        `Expected sheet names: ${ALLOWED_SHEET_NAMES.join(', ')}\n\n` +
+        `Available sheets: ${availableSheets}\n\n` +
+        `Please ensure your Excel file contains a sheet with "Original data" or "元データ" and try again.`
+      );
+      
+      return { 
+        success: false, 
+        headers: [], 
+        employees: [], 
+        error: `Could not find a valid data sheet. Available: ${availableSheets}` 
+      };
     }
 
     // --- PHASE 2: DETECT HEADER BLOCK ---
@@ -389,7 +430,16 @@ export async function extractEmployeesFromExcel(
     }
 
     if (anchorRow === -1) {
-      return { success: false, headers: [], employees: [], error: "Could not find ID and Name columns." };
+      alert(
+        `❌ ERROR: Could not find ID and Name columns!\n\n` +
+        `Please ensure your Excel file contains "ID" and "Name" columns in the header row.`
+      );
+      return { 
+        success: false, 
+        headers: [], 
+        employees: [], 
+        error: "Could not find ID and Name columns." 
+      };
     }
 
     const startHeader = Math.max(1, anchorRow - 4);
@@ -547,7 +597,6 @@ export async function extractEmployeesFromExcel(
         const techKeys = Object.keys(employeeData).filter(key => 
           key.includes('Years') || key.includes('experience')
         );
-
       }
 
       if (limit && employees.length >= limit) {
@@ -555,7 +604,6 @@ export async function extractEmployeesFromExcel(
         break;
       }
     }
-
 
     return {
       success: true,
@@ -565,6 +613,9 @@ export async function extractEmployeesFromExcel(
 
   } catch (err) {
     console.error("Extraction error:", err);
+    alert(
+      `❌ Extraction failed: ${err instanceof Error ? err.message : "An unexpected parsing error occurred"}`
+    );
     return {
       success: false,
       headers: [],

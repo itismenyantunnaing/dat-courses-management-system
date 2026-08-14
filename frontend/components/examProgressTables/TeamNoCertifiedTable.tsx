@@ -29,11 +29,24 @@ import { cn } from "@/lib/utils"
 import type { TeamWithCounts } from "@/types/exam_progress_report"
 
 const BorderedTableCell = ({ children, className = "", ...props }: any) => (
-  <TableCell className={cn("border-r border-l", className)} {...props}>{children}</TableCell>
+  <TableCell className={cn("border-r border-l", className)} {...props}>
+    {children}
+  </TableCell>
 )
 
-const BorderedTableHead = ({ children, className = "", colSpan, rowSpan, ...props }: any) => (
-  <TableHead className={cn("border-r border-l text-center", className)} colSpan={colSpan} rowSpan={rowSpan} {...props}>
+const BorderedTableHead = ({
+  children,
+  className = "",
+  colSpan,
+  rowSpan,
+  ...props
+}: any) => (
+  <TableHead
+    className={cn("border-r border-l text-center", className)}
+    colSpan={colSpan}
+    rowSpan={rowSpan}
+    {...props}
+  >
     {children}
   </TableHead>
 )
@@ -44,100 +57,128 @@ const formatDate = (date: string | null | undefined): string => {
 }
 
 interface TeamNoCertifiedTableProps {
-  searchTerm: string; 
-  currentPage: number; 
-  itemsPerPage: number; 
-  onPageChange: (page: number) => void; 
-  onItemsPerPageChange: (value: number) => void; 
-  selectedDeptId?: number | null;
-  data: TeamWithCounts[];
-  target1Date?: string | null;
-  target2Date?: string | null;
+  searchTerm: string
+  currentPage: number
+  itemsPerPage: number
+  onPageChange: (page: number) => void
+  onItemsPerPageChange: (value: number) => void
+  selectedDeptId?: number | null
+  data: TeamWithCounts[]
+  target1Date?: string | null
+  target2Date?: string | null
 }
 
-export function TeamNoCertifiedTable({ 
-  searchTerm, 
-  currentPage, 
-  itemsPerPage, 
-  onPageChange, 
-  onItemsPerPageChange, 
+export function TeamNoCertifiedTable({
+  searchTerm,
+  currentPage,
+  itemsPerPage,
+  onPageChange,
+  onItemsPerPageChange,
   selectedDeptId,
-  data, 
+  data,
   target1Date,
   target2Date,
 }: TeamNoCertifiedTableProps) {
-
-  const filteredData = selectedDeptId ? data.filter(row => row.deptId === selectedDeptId) : data
-  const searchedData = filteredData.filter((item) => item.team_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+  const filteredData = selectedDeptId
+    ? data.filter((row) => row.deptId === selectedDeptId)
+    : data
+  const searchedData = filteredData.filter(
+    (item) =>
+      item.team_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false
+  )
 
   const totalPages = Math.ceil(searchedData.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedData = searchedData.slice(startIndex, startIndex + itemsPerPage)
+  const paginatedData = searchedData.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  )
 
-  const grandTotal = searchedData.reduce((acc, row) => ({
-    current: acc.current + (row.None || 0),
-    target1: acc.target1 + (row.target1_None || 0),
-    target2: acc.target2 + (row.target2_None || 0)
-  }), { current: 0, target1: 0, target2: 0 })
+  const grandTotal = searchedData.reduce(
+    (acc, row) => ({
+      current: acc.current + (row.None || 0),
+      target1: acc.target1 + (row.target1_None || 0),
+      target2: acc.target2 + (row.target2_None || 0),
+    }),
+    { current: 0, target1: 0, target2: 0 }
+  )
 
   const date1 = target1Date ? formatDate(target1Date) : "Target 1"
   const date2 = target2Date ? formatDate(target2Date) : "Target 2"
 
-  const handlePrevious = () => { 
-    if (currentPage > 1) onPageChange(currentPage - 1) 
+  const handlePrevious = () => {
+    if (currentPage > 1) onPageChange(currentPage - 1)
   }
-  
-  const handleNext = () => { 
-    if (currentPage < totalPages) onPageChange(currentPage + 1) 
+
+  const handleNext = () => {
+    if (currentPage < totalPages) onPageChange(currentPage + 1)
   }
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = []
     const maxVisible = 5
-    if (totalPages <= maxVisible) { 
-      for (let i = 1; i <= totalPages; i++) pages.push(i) 
-    } else if (currentPage <= 3) { 
-      for (let i = 1; i <= 4; i++) pages.push(i); 
-      pages.push("..."); 
-      pages.push(totalPages) 
-    } else if (currentPage >= totalPages - 2) { 
-      pages.push(1); 
-      pages.push("..."); 
-      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i) 
-    } else { 
-      pages.push(1); 
-      pages.push("..."); 
-      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i); 
-      pages.push("..."); 
-      pages.push(totalPages) 
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 4; i++) pages.push(i)
+      pages.push("...")
+      pages.push(totalPages)
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1)
+      pages.push("...")
+      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i)
+    } else {
+      pages.push(1)
+      pages.push("...")
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
+      pages.push("...")
+      pages.push(totalPages)
     }
     return pages
   }
 
   return (
     <>
-      <div className="relative overflow-x-auto rounded-md border" style={{ zIndex: 1 }}>
+      <div
+        className="relative overflow-x-auto rounded-md border-y"
+        style={{ zIndex: 1 }}
+      >
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <BorderedTableHead className="align-middle whitespace-nowrap text-center" rowSpan={2}>
+              <BorderedTableHead
+                className="text-center align-middle whitespace-nowrap"
+                rowSpan={2}
+              >
                 No Certified Members
               </BorderedTableHead>
-              <BorderedTableHead className="align-middle whitespace-nowrap text-center" colSpan={3}>
+              <BorderedTableHead
+                className="text-center align-middle whitespace-nowrap"
+                colSpan={3}
+              >
                 To be Certified at
               </BorderedTableHead>
             </TableRow>
             <TableRow className="bg-muted/50">
-              <BorderedTableHead className="text-center">Current</BorderedTableHead>
-              <BorderedTableHead className="text-center">{date1}</BorderedTableHead>
-              <BorderedTableHead className="text-center">{date2}</BorderedTableHead>
+              <BorderedTableHead className="text-center">
+                Current
+              </BorderedTableHead>
+              <BorderedTableHead className="text-center">
+                {date1}
+              </BorderedTableHead>
+              <BorderedTableHead className="text-center">
+                {date2}
+              </BorderedTableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {paginatedData.length === 0 ? (
               <TableRow>
-                <BorderedTableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                <BorderedTableCell
+                  colSpan={4}
+                  className="py-8 text-center text-muted-foreground"
+                >
                   No data found
                 </BorderedTableCell>
               </TableRow>
@@ -146,7 +187,7 @@ export function TeamNoCertifiedTable({
                 {paginatedData.map((row, index) => {
                   return (
                     <TableRow key={row.team_name || index}>
-                      <BorderedTableCell className="font-medium text-left">
+                      <BorderedTableCell className="text-left">
                         {row.team_name}
                       </BorderedTableCell>
                       <BorderedTableCell className="text-center">
@@ -163,16 +204,16 @@ export function TeamNoCertifiedTable({
                 })}
                 {paginatedData.length > 0 && (
                   <TableRow className="bg-muted/30 font-bold">
-                    <BorderedTableCell className="font-bold text-left">
-                      Grand Total
+                    <BorderedTableCell className="text-left font-bold">
+                      Total Teams
                     </BorderedTableCell>
-                    <BorderedTableCell className="text-center">
+                    <BorderedTableCell className="text-center font-bold">
                       {grandTotal.current}
                     </BorderedTableCell>
-                    <BorderedTableCell className="text-center">
+                    <BorderedTableCell className="text-center font-bold">
                       {grandTotal.target1}
                     </BorderedTableCell>
-                    <BorderedTableCell className="text-center">
+                    <BorderedTableCell className="text-center font-bold">
                       {grandTotal.target2}
                     </BorderedTableCell>
                   </TableRow>
@@ -186,8 +227,8 @@ export function TeamNoCertifiedTable({
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Rows per page</span>
-          <Select 
-            value={itemsPerPage.toString()} 
+          <Select
+            value={itemsPerPage.toString()}
             onValueChange={(value) => onItemsPerPageChange(Number(value))}
           >
             <SelectTrigger className="w-[70px]">

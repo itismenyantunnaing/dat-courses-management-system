@@ -48,10 +48,6 @@ export function ImportDialog({
     // Filter tabs based on label
     return importTabs.filter((tab) => {
       if (label === "employees") return tab.id === "employees"
-      if (label === "courses") return tab.id === "courses"
-      if (label === "seminar") return tab.id === "seminar"
-      if (label === "exams") return tab.id === "exams"
-      if (label === "dashboard") return tab.id === "dashboard"
       if (label === "holidays") return tab.id === "holidays"
       return tab.id === label
     })
@@ -177,9 +173,9 @@ export function ImportDialog({
                 selectedFile.name
               ) : (
                 <>
-                  Choose a file or drag & drop it here.
+                  Choose a excel file or drag & drop it here.
                   <br />
-                  Your Excel file tab name has to be <span className="font-bold text-blue-600">{currentTabData?.label}</span>.
+                  Your excel file tab name has to be <span className="font-bold text-blue-600">{currentTabData?.label}</span>.
                 </>
               )}
             </p>
@@ -382,13 +378,14 @@ export function ImportDialog({
           ))}
         </Tabs>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>
+        <DialogFooter className="flex">
+          <Button variant="outline" className="flex-1" onClick={handleCancel}>
             Cancel
           </Button>
           <Button
             onClick={handleImport}
             disabled={!selectedFile || isProcessing}
+            className="flex-1"
           >
             {isProcessing
               ? "Processing..."

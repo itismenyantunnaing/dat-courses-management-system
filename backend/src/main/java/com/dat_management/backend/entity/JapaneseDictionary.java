@@ -14,10 +14,10 @@ public class JapaneseDictionary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "japanese_text", nullable = false)
+    @Column(name = "japanese_text", nullable = false, columnDefinition = "TEXT")
     private String japaneseText;
 
-    @Column(unique = true, name = "english_text", nullable = false)
+    @Column(unique = true, name = "english_text", nullable = false,columnDefinition = "TEXT")
     private String englishText;
 }
 

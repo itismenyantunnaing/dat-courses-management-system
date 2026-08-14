@@ -120,9 +120,9 @@ export function LearnersTab({
   const isDepartmentHead = userRole === "department_head"
   const isApprover = userRole === "approver"
   const isAdmin = userRole === "admin"
-  
-  const canManageLearners = isAdmin 
-  
+
+  const canManageLearners = isAdmin
+
   const [viewMode, setViewMode] = useState<ViewMode>("table")
   const [addLearnerOpen, setAddLearnerOpen] = useState(false)
   const [learnersCommandOpen, setLearnersCommandOpen] = useState(false)
@@ -173,6 +173,7 @@ export function LearnersTab({
     )
   })
 
+
   filteredEnrollments = filteredEnrollments.sort((a, b) => {
     const groupA = a.courseGroupName || ""
     const groupB = b.courseGroupName || ""
@@ -204,14 +205,14 @@ export function LearnersTab({
   // For department_head, only show employees from their department
   const availableEmployees = useMemo(() => {
     let employees = allEmployees.filter((employee) => !enrolledIds.has(employee.id))
-    
+
     // Filter by department for department_head
     if (isDepartmentHead && profile?.deptDat) {
       employees = employees.filter(
         (employee) => employee.department === profile.deptDat
       )
     }
-    
+
     return employees
   }, [allEmployees, enrolledIds, isDepartmentHead, profile?.deptDat])
 
@@ -291,45 +292,25 @@ export function LearnersTab({
       return
     }
 
-    // Handle both: employee object (from old inline dialog) and raw ID (from AddLearnerDialogs)
     const employeeId = typeof employeeOrId === 'object' ? employeeOrId.id : employeeOrId
     const employeeName = typeof employeeOrId === 'object' ? employeeOrId.name : String(employeeOrId)
 
-    // For trainer courses, use the provided groupId or fallback to first group
     const isTrainer = course?.courseType === "trainer"
-    let finalGroupId = groupId
 
-    if (isTrainer && !finalGroupId) {
-      // Only fallback to first group if no groupId was provided
-      if (groups.length > 0) {
-        const groupIdStr = String(groups[0].id)
-        finalGroupId = parseInt(groupIdStr.replace('g', ''))
-      } else {
-        finalGroupId = 1
-      }
+    console.log(`📝 Enrolling ${employeeName} (ID: ${employeeId}) to group:`, groupId)
+
+    if (isTrainer && !groupId) {
+      console.error('No group ID provided for trainer course')
+      alert('Please select a group for this course')
+      return
     }
 
-    console.log(`📝 Enrolling ${employeeName} to group:`, finalGroupId)
-
-    setIsEnrollingEmployee(true)
     try {
-      await onEnrollEmployee(employeeId, finalGroupId)
-      setLearnersCommandOpen(false)
-      setSearchQuery("")
-      setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
-
-      // Refresh enrollments
-      if (course?.id) {
-        await fetch_courseEnrollments(course.id)
-      }
-      if (onRefreshEnrollments) {
-        await onRefreshEnrollments()
-      }
+      await onEnrollEmployee(employeeId, groupId)
+      console.log(`✅ Successfully enrolled ${employeeName}`)
     } catch (error) {
-      console.error("Error enrolling employee:", error)
-      alert("Failed to enroll employee")
-    } finally {
-      setIsEnrollingEmployee(false)
+      console.error(`❌ Error enrolling ${employeeName}:`, error)
+      throw error // Re-throw so AddLearnerDialogs can catch it
     }
   }
 
@@ -383,7 +364,7 @@ export function LearnersTab({
             </EmptyMedia>
             <EmptyTitle>No Learners Enrolled</EmptyTitle>
             <EmptyDescription className="max-w-xs text-pretty">
-              {isDepartmentHead && profile?.deptDat 
+              {isDepartmentHead && profile?.deptDat
                 ? `No learners from your department (${profile.deptDat}) are enrolled in this course.`
                 : "Add learners to attend this course."}
             </EmptyDescription>
@@ -499,6 +480,9 @@ export function LearnersTab({
                         Email
                       </TableHead>
                       <TableHead className="text-xs font-medium">
+                        Division
+                      </TableHead>
+                      <TableHead className="text-xs font-medium">
                         Department
                       </TableHead>
                       <TableHead className="text-xs font-medium">
@@ -526,9 +510,9 @@ export function LearnersTab({
                           (e) => e.courseGroupName === employee.courseGroupName
                         ).length > 0
                           ? filteredEnrollments.findIndex(
-                              (e) =>
-                                e.courseGroupName === employee.courseGroupName
-                            ) % groupColors.length
+                            (e) =>
+                              e.courseGroupName === employee.courseGroupName
+                          ) % groupColors.length
                           : index % groupColors.length
 
                       const isUnenrolling =
@@ -562,6 +546,9 @@ export function LearnersTab({
                             {employee.email || "-"}
                           </TableCell>
                           <TableCell className="text-xs">
+                            {employee.divisionName || "-"}
+                          </TableCell>
+                          <TableCell className="text-xs">
                             {employee.departmentName || "-"}
                           </TableCell>
                           <TableCell className="text-xs">
@@ -583,9 +570,9 @@ export function LearnersTab({
                           <TableCell className="text-xs text-muted-foreground">
                             {employee.enrolledAt
                               ? format(
-                                  new Date(employee.enrolledAt),
-                                  "MMM d, yyyy"
-                                )
+                                new Date(employee.enrolledAt),
+                                "MMM d, yyyy"
+                              )
                               : "-"}
                           </TableCell>
                           {canManageLearners && (
@@ -630,8 +617,8 @@ export function LearnersTab({
                       (e) => e.courseGroupName === employee.courseGroupName
                     ).length > 0
                       ? filteredEnrollments.findIndex(
-                          (e) => e.courseGroupName === employee.courseGroupName
-                        ) % groupColors.length
+                        (e) => e.courseGroupName === employee.courseGroupName
+                      ) % groupColors.length
                       : index % groupColors.length
 
                   const isUnenrolling = isUnenrollingEmployee === employee.id
@@ -710,9 +697,9 @@ export function LearnersTab({
                         <span>
                           {employee.enrolledAt
                             ? format(
-                                new Date(employee.enrolledAt),
-                                "MMM d, yyyy"
-                              )
+                              new Date(employee.enrolledAt),
+                              "MMM d, yyyy"
+                            )
                             : "-"}
                         </span>
                       </div>

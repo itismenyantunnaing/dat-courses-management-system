@@ -148,6 +148,9 @@ public class CourseEnrollmentService {
                 Integer departmentId = null;
                 String departmentName = null;
 
+                Integer divisionId =null;
+                String divisionName=null;
+
                 if (employee.getTeam() != null) {
 
                         teamId = employee.getTeam().getId();
@@ -162,6 +165,11 @@ public class CourseEnrollmentService {
                                 departmentName = employee.getTeam()
                                                 .getDepartmentDat()
                                                 .getDeptName();
+                        }
+
+                        if(employee.getTeam().getDepartmentDat().getDivision() !=null){
+                                divisionId=employee.getTeam().getDepartmentDat().getDivision().getId();
+                                divisionName=employee.getTeam().getDepartmentDat().getDivision().getDivisionName();
                         }
                 }
 
@@ -183,6 +191,8 @@ public class CourseEnrollmentService {
                                 .teamName(teamName)
                                 .departmentId(departmentId)
                                 .departmentName(departmentName)
+                                .divisionId(divisionId)
+                                .divisionName(divisionName)
                                 .courseGroupId(
                                                 enrollment.getCourseGroup() != null
                                                                 ? enrollment.getCourseGroup().getId()

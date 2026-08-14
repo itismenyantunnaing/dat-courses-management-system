@@ -104,8 +104,9 @@ export function CreateHolidayDrawer({
               <Button
                 variant="outline"
                 disabled={isSubmitting}
+                className="flex-1"
               >
-                <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+                Cancel
               </Button>
             </DrawerClose>
             <Button

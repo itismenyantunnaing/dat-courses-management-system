@@ -590,7 +590,6 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
           isUpdating: false,
           error: result.message || 'Failed to update course'
         }))
-        throw new Error(result.message || 'Failed to update course')
       }
 
       let transformedCourse = null

@@ -549,7 +549,7 @@ export function FeedbackContainer() {
                   />
                 </InputGroupAddon>
                 <InputGroupAddon align="inline-end">
-                  <Kbd>⌘K</Kbd>
+                  <Kbd>Ctrl + K</Kbd>
                 </InputGroupAddon>
               </InputGroup>
 
@@ -937,7 +937,7 @@ export function FeedbackContainer() {
                     </div>
                   )}
 
-                  {/* Pagination - Only show when there's data */}
+                  {/* Pagination */}
                   {filteredAndSortedFeedbacks.length > 0 && (
                     <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <Field orientation="horizontal" className="w-fit">
@@ -1043,7 +1043,7 @@ export function FeedbackContainer() {
                     </EmptyMedia>
                     <EmptyTitle>
                       {searchTerm || hasActiveFilters
-                        ? "No Matching Feedback"
+                        ? `No Matching Feedback for ${searchTerm}`
                         : "No Feedback"}
                     </EmptyTitle>
                     <EmptyDescription className="text-center text-pretty">
@@ -1052,7 +1052,7 @@ export function FeedbackContainer() {
                       ) : isLearner ? (
                         "Share your thoughts on courses, management, or the system."
                       ) : (
-                        "No feedback available in the system."
+                        ""
                       )}
                     </EmptyDescription>
                   </EmptyHeader>
@@ -1066,7 +1066,7 @@ export function FeedbackContainer() {
                           clearAllFilters()
                         }}
                       >
-                        Clear Filters
+                        Clear
                       </Button>
                     ) : (
                       canCreateFeedback && (

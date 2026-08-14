@@ -333,7 +333,6 @@ export function CourseDetail({
       const result = await enrollEmployee(course.id, targetGroupId, employeeId)
 
       if (result.success) {
-        alert(`✅ Employee enrolled successfully!`)
         if (course.id) {
           await fetch_courseEnrollments(course.id)
           await refreshAllGroupAttendance()

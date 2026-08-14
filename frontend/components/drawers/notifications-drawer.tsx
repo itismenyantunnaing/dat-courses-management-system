@@ -1,4 +1,3 @@
-// components/drawers/notifications-drawer.tsx
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -12,7 +11,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Cancel01Icon, NotificationIcon } from "@hugeicons/core-free-icons"
+import { Cancel01Icon, NotificationIcon, NotificationOff01Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { mainStore } from "@/store/mainStore"
@@ -214,7 +213,7 @@ export function NotificationsDrawer({
               Notifications
             </DrawerTitle>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             {(unreadCount || 0) > 0 && (
               <Button
                 variant="ghost"
@@ -225,12 +224,13 @@ export function NotificationsDrawer({
                 Mark all as read ({unreadCount})
               </Button>
             )}
+            <DrawerClose asChild>
+              <Button variant="ghost" size="icon">
+                <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+              </Button>
+            </DrawerClose>
           </div>
-          <DrawerClose asChild>
-            <Button variant="ghost" size="icon">
-              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
-            </Button>
-          </DrawerClose>
+
         </DrawerHeader>
 
         {/* Tabs */}
@@ -284,7 +284,7 @@ export function NotificationsDrawer({
           {filteredNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <HugeiconsIcon
-                icon={NotificationIcon}
+                icon={NotificationOff01Icon}
                 strokeWidth={2}
                 className="mb-3 h-12 w-12 text-gray-300"
               />

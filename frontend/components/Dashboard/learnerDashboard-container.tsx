@@ -178,10 +178,11 @@ export default function LearnerDashboardContainer({
 
       setIsLoading(true)
       try {
-        await fetchEmployeeCourseStats(profile.id)
-        await fetchEmployeeAttendance(profile.id)
-        await fetchAllUpcomingSessions(profile.id)
-        await fetchEmployeeTargetLevel(profile.id)
+          await fetchEmployeeCourseStats(profile.id)
+          await fetchEmployeeAttendance(profile.id)
+          await fetchAllUpcomingSessions(profile.id)
+          await fetchEmployeeTargetLevel(profile.id)
+
 
         // Fetch study progress for self-study courses
         const selfStudyCourses = upcomingAllSessionsData.filter(
@@ -638,7 +639,7 @@ export default function LearnerDashboardContainer({
           />
           <StatCard
             title="JLPT Level"
-            value={employeeTargetLevel?.targetJlptNatLevel || "None"}
+            value={employeeTargetLevel?.jlptHighestLevel || "None"}
             icon={ChampionIcon}
             description={employeeTargetLevel?.targetJlptNatLevel ?
               `Target: ${employeeTargetLevel.targetJlptNatLevel} by ${employeeTargetLevel.targetDate ? new Date(employeeTargetLevel.targetDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Not set'}`

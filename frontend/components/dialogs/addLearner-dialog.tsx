@@ -145,7 +145,9 @@ export function AddLearnerDialogs({
   const getUniqueGroups = () => {
     // Get groups from course
     const courseGroups = course.groups || groups || []
-    
+
+    console.log('Raw course groups:', courseGroups)
+
     // Only show groups that exist in the course
     return courseGroups
       .filter((g) => !isTemporaryGroupId(g.id))
@@ -155,16 +157,18 @@ export function AddLearnerDialogs({
         if (typeof group.id === 'string' && group.id.startsWith('g')) {
           groupId = parseInt(group.id.substring(1))
         } else {
-          groupId = parseInt(String(group.id))
+          groupId = typeof group.id === 'string' ? parseInt(group.id) : group.id
         }
-        
+
+        console.log('Parsed group ID:', groupId, 'from:', group.id)
+
         const enrolledInGroup = getEnrolledEmployees(enrollments).filter(
           (emp) => emp.courseGroupId === groupId
         )
         const capacity = group.capacity || 0
         const currentCount = enrolledInGroup.length
         const remaining = capacity === 0 ? Infinity : capacity - currentCount
-        
+
         return {
           id: groupId,
           name: group.name || `Group ${groupId}`,
@@ -175,6 +179,17 @@ export function AddLearnerDialogs({
       })
       .sort((a, b) => a.id - b.id)
   }
+
+  // Auto-select the first group if only one exists
+  useEffect(() => {
+    if (course.courseType === "trainer" && selectedEmployees.length > 0 && !selectedGroup) {
+      const groups = getUniqueGroups()
+      if (groups.length === 1) {
+        console.log('Auto-selecting the only available group:', groups[0].id)
+        setSelectedGroup(String(groups[0].id))
+      }
+    }
+  }, [selectedEmployees, course.courseType, selectedGroup])
 
   // Reset visible count when search changes
   useEffect(() => {
@@ -188,7 +203,7 @@ export function AddLearnerDialogs({
     filteredData = availableEmployees.filter((employee) => {
       const searchLower = searchQuery.toLowerCase().trim()
       if (!searchLower) return true
-      
+
       return (
         employee.name.toLowerCase().includes(searchLower) ||
         employee.email?.toLowerCase().includes(searchLower) ||
@@ -201,7 +216,7 @@ export function AddLearnerDialogs({
   }
 
   const filteredData = getFilteredData()
-  
+
   // Get visible learners with pagination
   const visibleLearners = filteredData.slice(0, visibleLearnersCount)
   const hasMoreLearners = visibleLearnersCount < filteredData.length
@@ -250,102 +265,134 @@ export function AddLearnerDialogs({
     setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
   }
 
-  // Handle the actual enrollment - Individual API calls
+
   const handleEnroll = async () => {
-    if (selectedEmployees.length === 0 || !selectedGroup) {
+  if (selectedEmployees.length === 0) {
+    alert('Please select at least one employee')
+    return
+  }
+
+  // For trainer courses, ensure a group is selected and has capacity
+  if (course.courseType === "trainer" && !selectedGroup) {
+    const groups = getUniqueGroups()
+    if (groups.length === 1) {
+      console.log('Auto-selecting the only group:', groups[0].id)
+      setSelectedGroup(String(groups[0].id))
+      setTimeout(() => {
+        handleEnroll()
+      }, 100)
       return
     }
+    alert('Please select a group for the employees')
+    return
+  }
 
-    setIsSubmitting(true)
-    setProgress({ current: 0, total: selectedEmployees.length })
+  // Check if the selected group has enough capacity
+  if (course.courseType === "trainer" && selectedGroup) {
+    const groupId = parseInt(selectedGroup)
+    const group = getUniqueGroups().find((g) => g.id === groupId)
 
-    const failedEmployees: string[] = []
-    const successEmployees: string[] = []
-
-    try {
-      // Parse the group ID - make sure we're using the correct value
-      const groupId = parseInt(selectedGroup)
-      
-      console.log('📝 Enrolling to group:', groupId)
-
-      // Loop through each employee and enroll them individually
-      for (let i = 0; i < selectedEmployees.length; i++) {
-        const employee = selectedEmployees[i]
-        
-        try {
-          if (onEnrollEmployee) {
-            // Pass the selected group ID
-            await onEnrollEmployee(employee.id, groupId)
-            successEmployees.push(employee.name)
-          } else {
-            throw new Error("Enroll function not available")
-          }
-        } catch (error) {
-          console.error(`❌ Failed to enroll ${employee.name}:`, error)
-          failedEmployees.push(employee.name)
-        }
-
-        // Update progress
-        setProgress({ current: i + 1, total: selectedEmployees.length })
-      }
-
-      // Show results
-      let message = ""
-      if (successEmployees.length > 0) {
-        message += `✅ Successfully enrolled ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
-      }
-      if (failedEmployees.length > 0) {
-        message += `❌ Failed to enroll ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
-      }
-
-      if (failedEmployees.length === 0) {
-        alert(`✅ All ${successEmployees.length} employee(s) enrolled successfully!`)
-      } else if (successEmployees.length === 0) {
-        alert(`❌ Failed to enroll all employees. Please try again.`)
-      } else {
-        alert(message)
-      }
-
-      // Refresh enrollments data
-      if (course.id) {
-        await fetch_courseEnrollments(course.id)
-      }
-
-      if (onRefreshEnrollments) {
-        await onRefreshEnrollments()
-      }
-
-      // Call the callback if provided
-      if (onAddComplete) {
-        onAddComplete()
-      }
-
-      // Reset and close if all succeeded
-      if (failedEmployees.length === 0) {
-        resetDialog()
-      }
-
-    } catch (error: any) {
-      console.error('❌ Error in enrollment process:', error)
-      alert(`❌ Failed to enroll employees: ${error.message || 'Unknown error'}`)
-    } finally {
-      setIsSubmitting(false)
-      setProgress({ current: 0, total: 0 })
+    if (group && group.capacity !== 0 && group.remaining < selectedEmployees.length) {
+      alert(`The selected group only has ${group.remaining} spot${group.remaining > 1 ? 's' : ''} left, but you selected ${selectedEmployees.length} employees. Please select a group with enough capacity.`)
+      return
     }
   }
+
+  setIsSubmitting(true)
+  setProgress({ current: 0, total: selectedEmployees.length })
+
+  const failedEmployees: string[] = []
+  const successEmployees: string[] = []
+
+  try {
+    let groupId: number | undefined = undefined
+
+    if (course.courseType === "trainer" && selectedGroup) {
+      groupId = parseInt(selectedGroup)
+      console.log('📝 Enrolling all selected employees to group:', groupId)
+    } else {
+      console.log('📝 Enrolling to self-study course (no group)')
+    }
+
+    // Process employees with sequential enrollment to avoid race conditions
+    for (let i = 0; i < selectedEmployees.length; i++) {
+      const employee = selectedEmployees[i]
+      console.log(`📝 Attempting to enroll ${employee.name} (${i + 1}/${selectedEmployees.length})`)
+
+      try {
+        if (onEnrollEmployee) {
+          await onEnrollEmployee(employee.id, groupId)
+          successEmployees.push(employee.name)
+          console.log(`✅ Successfully enrolled ${employee.name}`)
+        } else {
+          throw new Error("Enroll function not available")
+        }
+      } catch (error: any) {
+        console.error(`❌ Failed to enroll ${employee.name}:`, error)
+        failedEmployees.push(employee.name)
+        if (error.message) {
+          console.error('Error message:', error.message)
+        }
+      }
+
+      // Update progress
+      setProgress({ current: i + 1, total: selectedEmployees.length })
+
+      // Add small delay between enrollments to avoid rate limiting
+      if (i < selectedEmployees.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+    }
+
+    // Show results - ONLY ONCE at the end
+    if (successEmployees.length > 0 && failedEmployees.length === 0) {
+      alert(`✅ All ${successEmployees.length} employee(s) enrolled successfully!`)
+    } else if (successEmployees.length > 0 && failedEmployees.length > 0) {
+      alert(`✅ Successfully enrolled ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n\n❌ Failed to enroll ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`)
+    } else if (successEmployees.length === 0 && failedEmployees.length > 0) {
+      alert(`❌ Failed to enroll all ${failedEmployees.length} employee(s). Please try again.`)
+    }
+
+    // Refresh enrollments data
+    if (course.id) {
+      await fetch_courseEnrollments(course.id)
+    }
+
+    if (onRefreshEnrollments) {
+      await onRefreshEnrollments()
+    }
+
+    if (onAddComplete) {
+      onAddComplete()
+    }
+
+    // Reset and close if all succeeded
+    if (failedEmployees.length === 0) {
+      resetDialog()
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error in enrollment process:', error)
+    alert(`❌ Failed to enroll employees: ${error.message || 'Unknown error'}`)
+  } finally {
+    setIsSubmitting(false)
+    setProgress({ current: 0, total: 0 })
+  }
+}
+
 
   // Check if selected employees fit in the selected group
   const getGroupAvailability = () => {
     if (!selectedGroup || selectedEmployees.length === 0) return null
-    
+
     const groupId = parseInt(selectedGroup)
     const group = getUniqueGroups().find((g) => g.id === groupId)
-    
+
     if (!group) return null
-    
+
     const remaining = group.capacity === 0 ? Infinity : group.remaining
     const willFit = remaining === Infinity || remaining >= selectedEmployees.length
-    
+
     return {
       remaining,
       willFit,
@@ -433,7 +480,7 @@ export function AddLearnerDialogs({
                     )}
                   </div>
                 </div>
-                
+
                 {availableEmployees.length === 0 && selectedEmployees.length === 0 && (
                   <div className="rounded-lg border-2 border-dashed p-4 text-center">
                     <span className="text-sm text-muted-foreground">
@@ -513,7 +560,7 @@ export function AddLearnerDialogs({
                       className={cn(
                         "w-full",
                         (selectedEmployees.length === 0 || isSubmitting) &&
-                          "cursor-not-allowed opacity-50"
+                        "cursor-not-allowed opacity-50"
                       )}
                     >
                       <SelectValue
@@ -535,7 +582,7 @@ export function AddLearnerDialogs({
                         ) : (
                           (() => {
                             const groups = getUniqueGroups()
-                            
+
                             if (!groups || groups.length === 0) {
                               return (
                                 <div className="px-2 py-4 text-center text-sm text-yellow-600">
@@ -552,13 +599,17 @@ export function AddLearnerDialogs({
                                 <SelectItem
                                   key={group.id}
                                   value={String(group.id)}
-                                  disabled={!willFit && group.capacity !== 0}
+                                  disabled={false} // Always show all groups, even if full
                                 >
                                   <div className="flex w-full items-center justify-between">
-                                    <span>{group.name}</span>
+                                    <span className={cn(
+                                      isFull && "text-muted-foreground"
+                                    )}>
+                                      {group.name}
+                                      {isFull && " (Full)"}
+                                    </span>
                                     <span className="text-xs text-muted-foreground">
-                                      {group.count}/
-                                      {group.capacity === 0 ? "∞" : group.capacity} members
+                                      {group.count}/{group.capacity === 0 ? "∞" : group.capacity} members
                                       {selectedEmployees.length > 0 && (
                                         <span
                                           className={cn(
@@ -570,18 +621,17 @@ export function AddLearnerDialogs({
                                         >
                                           {willFit
                                             ? `✓ ${selectedEmployees.length} will fit`
-                                            : `✗ Only ${group.remaining} spots left`}
+                                            : ``}
                                         </span>
                                       )}
                                       {isFull && (
-                                        <span className="ml-1 text-red-500">
-                                          (Full)
+                                        <span className="ml-1 text-red-500 font-medium">
+                                          (Full - Cannot enroll)
                                         </span>
                                       )}
                                       {!isFull && group.remaining > 0 && group.remaining <= 3 && group.capacity !== 0 && (
                                         <span className="ml-1 text-yellow-600">
-                                          ({group.remaining} spot
-                                          {group.remaining > 1 ? "s" : ""} left)
+                                          ({group.remaining} spot{group.remaining > 1 ? "s" : ""} left)
                                         </span>
                                       )}
                                     </span>
@@ -607,7 +657,7 @@ export function AddLearnerDialogs({
                         : "border-red-200 bg-red-50 text-red-700"
                     )}>
                       <span className="font-medium">
-                        {availability.willFit ? "✓" : "✗"} 
+                        {availability.willFit ? "✓" : "✗"}
                         {" "}{selectedEmployees.length} employee
                         {selectedEmployees.length > 1 ? "s" : ""}
                       </span>
@@ -617,11 +667,7 @@ export function AddLearnerDialogs({
                           (g) => g.id === selectedGroup
                         )?.name || selectedGroup}
                       </span>
-                      {!availability.willFit && availability.capacity !== 0 && (
-                        <span className="ml-1">
-                          (Only {availability.remaining} spot{availability.remaining > 1 ? "s" : ""} available)
-                        </span>
-                      )}
+  
                     </div>
                   )}
                 </div>

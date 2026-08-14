@@ -207,7 +207,7 @@ export default function AdminDashboardContainer() {
 
   const [selectedCategory, setSelectedCategory] =
     useState<string>("JLPT Exam Target")
-  const [selectedAttendanceCourseGroup, setSelectedAttendanceCourseGroup] = useState<string>("All")
+  const [selectedAttendanceCourseGroup, setSelectedAttendanceCourseGroup] = useState<string>("all")
   const [selectedCertType, setSelectedCertType] = useState<string>("JLPT")
   const [timeRange, setTimeRange] = useState<string>("90d")
   const [isLoading, setIsLoading] = useState(true)
@@ -265,7 +265,7 @@ export default function AdminDashboardContainer() {
     }
 
     loadData()
-  }, [fetchAll_CourseData, fetchCourseStats, fetchDailyAttendance, fetchOverallCertificateStats, fetchRiskData, fetch_AllReportData, fetch_EmployeeData, fetch_courseCategories, fetch_dat_departments, fetch_teams])
+  }, [])
 
   // Create department options with "All Departments" prepended
   const departmentOptions = useMemo(() => {
@@ -346,68 +346,85 @@ export default function AdminDashboardContainer() {
       }>
     }> = {}
 
-    if (dailyAttendance && Array.isArray(dailyAttendance) && dailyAttendance.length > 0) {
-      dailyAttendance.forEach((dept: any) => {
-        if (dept.teams && Array.isArray(dept.teams) && dept.teams.length > 0) {
-          dept.teams.forEach((team: any) => {
-            if (team.courses && Array.isArray(team.courses) && team.courses.length > 0) {
-              team.courses.forEach((course: any) => {
-                if (course.groups && Array.isArray(course.groups) && course.groups.length > 0) {
-                  course.groups.forEach((group: any) => {
-                    const key = `${course.courseName}_${group.groupName}`
-
-                    // Initialize if not exists
-                    if (!result[key]) {
-                      result[key] = {
-                        courseName: course.courseName,
-                        groupName: group.groupName,
-                        dailyAttendance: []
-                      }
-                    }
-
-                    // Aggregate attendance by date
-                    if (group.dailyAttendance && Array.isArray(group.dailyAttendance)) {
-                      group.dailyAttendance.forEach((day: any) => {
-                        const existingDay = result[key].dailyAttendance.find(
-                          (item) => item.date === day.date
-                        )
-
-                        if (existingDay) {
-                          // Add to existing date
-                          existingDay.presentCount += day.presentCount || 0
-                          existingDay.absentCount += day.absentCount || 0
-                          existingDay.excusedCount += day.excusedCount || 0
-                          existingDay.lateCount += day.lateCount || 0
-                          existingDay.totalStudents += day.totalStudents || 0
-                        } else {
-                          // Create new date entry
-                          result[key].dailyAttendance.push({
-                            date: day.date,
-                            attendance: day.attendance || 0,
-                            presentCount: day.presentCount || 0,
-                            absentCount: day.absentCount || 0,
-                            excusedCount: day.excusedCount || 0,
-                            lateCount: day.lateCount || 0,
-                            totalStudents: day.totalStudents || 0
-                          })
-                        }
-                      })
-                    }
-                  })
-                }
-              })
-            }
-          })
-        }
-      })
+    if (!dailyAttendance || !Array.isArray(dailyAttendance) || dailyAttendance.length === 0) {
+      console.log("No dailyAttendance data available")
+      return result
     }
 
+    console.log("Processing dailyAttendance data:", dailyAttendance)
+
+    dailyAttendance.forEach((division: any) => {
+      // Handle new data structure: division -> departments -> teams -> courses -> groups
+      if (division.departments && Array.isArray(division.departments)) {
+        division.departments.forEach((department: any) => {
+          if (department.teams && Array.isArray(department.teams)) {
+            department.teams.forEach((team: any) => {
+              if (team.courses && Array.isArray(team.courses)) {
+                team.courses.forEach((course: any) => {
+                  if (course.groups && Array.isArray(course.groups)) {
+                    course.groups.forEach((group: any) => {
+                      const key = `${course.courseName}_${group.groupName}`
+
+                      // Initialize if not exists
+                      if (!result[key]) {
+                        result[key] = {
+                          courseName: course.courseName,
+                          groupName: group.groupName,
+                          dailyAttendance: []
+                        }
+                      }
+
+                      // Aggregate attendance by date
+                      if (group.dailyAttendance && Array.isArray(group.dailyAttendance)) {
+                        group.dailyAttendance.forEach((day: any) => {
+                          const existingDay = result[key].dailyAttendance.find(
+                            (item) => item.date === day.date
+                          )
+
+                          if (existingDay) {
+                            // Add to existing date
+                            existingDay.presentCount += day.presentCount || 0
+                            existingDay.absentCount += day.absentCount || 0
+                            existingDay.excusedCount += day.excusedCount || 0
+                            existingDay.lateCount += day.lateCount || 0
+                            existingDay.totalStudents += day.totalStudents || 0
+                          } else {
+                            // Create new date entry
+                            result[key].dailyAttendance.push({
+                              date: day.date,
+                              attendance: day.attendance || 0,
+                              presentCount: day.presentCount || 0,
+                              absentCount: day.absentCount || 0,
+                              excusedCount: day.excusedCount || 0,
+                              lateCount: day.lateCount || 0,
+                              totalStudents: day.totalStudents || 0
+                            })
+                          }
+                        })
+                      }
+                    })
+                  }
+                })
+              }
+            })
+          }
+        })
+      }
+    })
+
+    console.log("courseGroupAttendanceData result:", Object.keys(result))
     return result
   }, [dailyAttendance])
 
   // Create course group options for attendance dropdown from dailyAttendance
   const attendanceCourseGroupOptions = useMemo(() => {
     const options: { value: string; label: string }[] = []
+
+    // Add "All" option for admin to show all data combined
+    options.push({
+      value: "all",
+      label: "All Course Groups"
+    })
 
     const keys = Object.keys(courseGroupAttendanceData)
     keys.forEach((key) => {
@@ -427,8 +444,9 @@ export default function AdminDashboardContainer() {
       const firstCategory = combinedCourseCategories[0]
       setSelectedCategory(firstCategory.value)
     }
+    // Set default to "All" for admin
     if (attendanceCourseGroupOptions.length > 0) {
-      setSelectedAttendanceCourseGroup(attendanceCourseGroupOptions[0].value)
+      setSelectedAttendanceCourseGroup("all")
     }
   }, [combinedCourseCategories, attendanceCourseGroupOptions]);
 
@@ -609,7 +627,7 @@ export default function AdminDashboardContainer() {
 
   // Get attendance data for selected course group from dailyAttendance - AGGREGATED
   const getAttendanceData = () => {
-    let data: {
+    let allData: {
       date: string;
       attendance?: number;
       presentCount: number;
@@ -619,20 +637,65 @@ export default function AdminDashboardContainer() {
       totalStudents: number;
     }[] = []
 
-    const selectedData = courseGroupAttendanceData[selectedAttendanceCourseGroup]
-    if (selectedData) {
-      data = selectedData.dailyAttendance.map((item: any) => ({
-        date: item.date,
-        presentCount: item.presentCount || 0,
-        absentCount: item.absentCount || 0,
-        excusedCount: item.excusedCount || 0,
-        lateCount: item.lateCount || 0,
-        totalStudents: item.totalStudents || 1,
-      }))
+    // If "All" is selected, aggregate all course groups
+    if (selectedAttendanceCourseGroup === "all") {
+      // Aggregate data across all course groups by date
+      const aggregatedMap: Record<string, {
+        date: string;
+        presentCount: number;
+        absentCount: number;
+        excusedCount: number;
+        lateCount: number;
+        totalStudents: number;
+      }> = {}
+
+      Object.keys(courseGroupAttendanceData).forEach((key) => {
+        const data = courseGroupAttendanceData[key]
+        data.dailyAttendance.forEach((item: any) => {
+          const date = item.date
+          if (!aggregatedMap[date]) {
+            aggregatedMap[date] = {
+              date: date,
+              presentCount: 0,
+              absentCount: 0,
+              excusedCount: 0,
+              lateCount: 0,
+              totalStudents: 0,
+            }
+          }
+          aggregatedMap[date].presentCount += item.presentCount || 0
+          aggregatedMap[date].absentCount += item.absentCount || 0
+          aggregatedMap[date].excusedCount += item.excusedCount || 0
+          aggregatedMap[date].lateCount += item.lateCount || 0
+          aggregatedMap[date].totalStudents += item.totalStudents || 0
+        })
+      })
+
+      allData = Object.values(aggregatedMap)
+    } else {
+      // Get data for specific course group
+      const selectedData = courseGroupAttendanceData[selectedAttendanceCourseGroup]
+      if (selectedData) {
+        allData = selectedData.dailyAttendance.map((item: any) => ({
+          date: item.date,
+          presentCount: item.presentCount || 0,
+          absentCount: item.absentCount || 0,
+          excusedCount: item.excusedCount || 0,
+          lateCount: item.lateCount || 0,
+          totalStudents: item.totalStudents || 1,
+        }))
+      }
     }
 
     // If no data, return empty
-    if (data.length === 0) return data
+    if (allData.length === 0) return allData
+
+    // Sort by date
+    allData.sort((a, b) => {
+      const dateA = new Date(a.date)
+      const dateB = new Date(b.date)
+      return dateA.getTime() - dateB.getTime()
+    })
 
     // Filter by time range - handle date format "Jul 23"
     const referenceDate = new Date()
@@ -643,31 +706,27 @@ export default function AdminDashboardContainer() {
     const startDate = new Date(referenceDate)
     startDate.setDate(startDate.getDate() - daysToSubtract)
 
-    // Check if dates are in the future and adjust year accordingly
     const currentYear = referenceDate.getFullYear()
 
-    // Determine the correct year for each date
-    return data.filter((item) => {
+    return allData.filter((item) => {
       const dateParts = item.date.split(' ')
       if (dateParts.length === 2) {
         const month = dateParts[0]
         const day = parseInt(dateParts[1])
         const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(month)
         if (monthIndex !== -1) {
-          // Try current year first
           let fullDate = new Date(currentYear, monthIndex, day)
-          // If this date is in the future, use last year
           if (fullDate > referenceDate) {
             fullDate = new Date(currentYear - 1, monthIndex, day)
           }
           return fullDate >= startDate
         }
       }
-      // Fallback: try parsing as is
       const date = new Date(item.date)
       return date >= startDate
     })
   }
+
   const filteredAttendanceData = getAttendanceData()
 
   // Calculate attendance trend (percentage change)
@@ -704,7 +763,7 @@ export default function AdminDashboardContainer() {
     // Convert the stat object to array format for pie chart
     return Object.entries(selectedStat).map(([level, value], index) => ({
       name: level,
-      value: typeof value === 'number' ? value : 0, // Convert to percentage
+      value: typeof value === 'number' ? value : 0,
       fill: COLORS[index % COLORS.length]
     }))
   }
@@ -826,14 +885,6 @@ export default function AdminDashboardContainer() {
           </ChartContainer>
         </CardContent>
         <CardFooter className="flex-col items-center gap-2 text-sm">
-          {/* <div className="flex gap-2 leading-none font-medium">
-            <HugeiconsIcon
-              icon={AnalyticsUpIcon}
-              strokeWidth={2}
-              className="h-4 w-4 text-green-600"
-            />
-            Enrollment up by 5.2% this month
-          </div> */}
           <div className="flex items-center gap-2 leading-none text-muted-foreground">
             <div className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-[#8EC5FF]" />
@@ -1233,28 +1284,13 @@ export default function AdminDashboardContainer() {
           </div>
           {filteredAttendanceData.length > 0 && (
             <div className="flex items-center gap-2 leading-none font-medium text-muted-foreground">
-              Showing attendance breakdown for selected course group
+              {selectedAttendanceCourseGroup === "all" 
+                ? "Showing combined attendance for all course groups"
+                : `Showing attendance breakdown for ${courseGroupAttendanceData[selectedAttendanceCourseGroup]?.courseName || selectedAttendanceCourseGroup}`
+              }
             </div>
           )}
         </CardFooter>
-        {/* <CardFooter>
-    <div className="flex w-full flex-col items-center gap-2">
-      {filteredAttendanceData.length < 2 ? (
-        <div className="flex items-center gap-2 leading-none font-medium text-muted-foreground">
-          Insufficient data to calculate trend
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 leading-none font-medium">
-          <HugeiconsIcon
-            icon={AnalyticsUpIcon}
-            strokeWidth={2}
-            className={`h-4 w-4 ${attendanceTrend.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}
-          />
-          Attendance {attendanceTrend.direction === 'up' ? 'up' : 'down'} by {attendanceTrend.value}% this month
-        </div>
-      )}
-    </div>
-  </CardFooter> */}
       </Card>
 
       {/* Certification Progress - Pie Chart with Type Select */}

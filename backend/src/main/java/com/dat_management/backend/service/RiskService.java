@@ -542,25 +542,34 @@ public class RiskService {
     // ==================== HELPER METHODS ====================
 
     private RiskDTO createRiskDTO(Employee employee, Course course, String issue, Double percentage) {
+        String divisionName = null;
         String departmentName = null;
         String teamName = null;
 
         if (employee.getTeam() != null) {
             teamName = employee.getTeam().getTeamName();
+            
+            // Get department
             if (employee.getTeam().getDepartmentDat() != null) {
                 departmentName = employee.getTeam().getDepartmentDat().getDeptName();
+                
+                // Get division from department
+                if (employee.getTeam().getDepartmentDat().getDivision() != null) {
+                    divisionName = employee.getTeam().getDepartmentDat().getDivision().getDivisionName();
+                }
             }
         }
 
         double roundedPercentage = Math.round(percentage * 10.0) / 10.0;
 
-        log.debug("Creating RiskDTO for employee: {}, Issue: {}, Percentage: {}%", 
-            employee.getName(), issue, roundedPercentage);
+        log.debug("Creating RiskDTO for employee: {}, Division: {}, Department: {}, Issue: {}, Percentage: {}%", 
+            employee.getName(), divisionName, departmentName, issue, roundedPercentage);
 
         return new RiskDTO(
             employee.getName(),
             issue,
             roundedPercentage,
+            divisionName,  // ← Division field
             departmentName,
             teamName,
             course.getCourseName()
@@ -584,6 +593,19 @@ public class RiskService {
         }
         IssueBreakdownDTO byIssue = new IssueBreakdownDTO(lowAttendanceCount, lowProgressCount);
         log.info("By Issue - Low Attendance: {}, Low Progress: {}", lowAttendanceCount, lowProgressCount);
+
+        // By division
+        Map<String, Integer> divisionMap = new HashMap<>();
+        for (RiskDTO student : atRiskStudents) {
+            String div = student.division() != null ? student.division() : "Unknown";
+            divisionMap.put(div, divisionMap.getOrDefault(div, 0) + 1);
+        }
+        List<DivisionRiskDTO> divisionList = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : divisionMap.entrySet()) {
+            divisionList.add(new DivisionRiskDTO(entry.getKey(), entry.getValue()));
+            log.info("Division: {} - At Risk: {}", entry.getKey(), entry.getValue());
+        }
+        DivisionBreakdownDTO byDivision = new DivisionBreakdownDTO(divisionList);
 
         // By department
         Map<String, Integer> departmentMap = new HashMap<>();
@@ -614,6 +636,12 @@ public class RiskService {
         RiskLevelDTO byRiskLevel = new RiskLevelDTO(highRisk, mediumRisk, lowRisk);
         log.info("By Risk Level - High: {}, Medium: {}, Low: {}", highRisk, mediumRisk, lowRisk);
 
-        return new RiskSummaryDTO(totalAtRisk, byIssue, byDepartment, byRiskLevel);
+        return new RiskSummaryDTO(
+            totalAtRisk, 
+            byIssue, 
+            byDivision,  // ← Division breakdown added
+            byDepartment, 
+            byRiskLevel
+        );
     }
 }

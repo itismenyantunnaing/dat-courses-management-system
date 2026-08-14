@@ -30,7 +30,6 @@ public class ActiveLearnerService {
     public ActiveLearnerResponseDTO getTotalActiveLearners() {
         log.info("========== STARTING ACTIVE LEARNER CALCULATION ==========");
         LocalDate today = LocalDate.now();
-        // LocalDate today = LocalDate.of(2026, 8, 25); // For testing
         log.info("Using TODAY: {}", today);
 
         // Get all approved active enrollments
@@ -78,7 +77,162 @@ public class ActiveLearnerService {
         log.info("========== RESULTS ==========");
         log.info("Total active learners found: {}", totalActiveLearners);
 
-        return new ActiveLearnerResponseDTO(totalActiveLearners, STATUS_SUCCESS);
+        // For admin (no employeeId provided), get all employees
+        long totalEmployees = employeeRepository.countActiveEmployees();
+        log.info("Total employees in system: {}", totalEmployees);
+
+        return new ActiveLearnerResponseDTO(totalActiveLearners, (int) totalEmployees, STATUS_SUCCESS);
+    }
+
+    @Transactional(readOnly = true)
+    public ActiveLearnerResponseDTO getTotalActiveLearnersByEmployeeId(String employeeId) {
+        log.info("========== STARTING ACTIVE LEARNER CALCULATION FOR EMPLOYEE: {} ==========", employeeId);
+        LocalDate today = LocalDate.now();
+        log.info("Using TODAY: {}", today);
+
+        // Get the employee with their role and organizational relationships
+        Employee employee = employeeRepository.findByIdWithRelationships(employeeId).orElse(null);
+        if (employee == null) {
+            log.warn("Employee {} not found", employeeId);
+            return new ActiveLearnerResponseDTO(0, 0, STATUS_SUCCESS);
+        }
+
+        String roleName = employee.getRole().getRoleName();
+        log.info("Employee {} has role: {}", employeeId, roleName);
+
+        List<CourseEnrollment> enrollments;
+        String scopeDescription;
+        Long totalEmployees = 0L;
+
+        // Determine which enrollments to fetch based on role
+        if ("Division_Head".equalsIgnoreCase(roleName)) {
+            // Get division ID through Team -> DepartmentDat -> Division
+            Integer divisionId = getDivisionIdFromEmployee(employee);
+            if (divisionId == null) {
+                log.warn("Division Head {} has no division assigned", employeeId);
+                return new ActiveLearnerResponseDTO(0, 0, STATUS_SUCCESS);
+            }
+            enrollments = enrollmentRepository.findAllApprovedActiveEnrollmentsByDivisionId(divisionId);
+            scopeDescription = "Division: " + divisionId;
+            log.info("Division Head - Fetching enrollments for division: {}", divisionId);
+            
+            // Get total employees in this division
+            totalEmployees = employeeRepository.countActiveEmployeesByDivisionId(divisionId);
+            log.info("Total employees in division {}: {}", divisionId, totalEmployees);
+            
+        } else if ("Department_Head".equalsIgnoreCase(roleName)) {
+            // Get department ID through Team -> DepartmentDat
+            Integer departmentId = getDepartmentIdFromEmployee(employee);
+            if (departmentId == null) {
+                log.warn("Department Head {} has no department assigned", employeeId);
+                return new ActiveLearnerResponseDTO(0, 0, STATUS_SUCCESS);
+            }
+            enrollments = enrollmentRepository.findAllApprovedActiveEnrollmentsByDepartmentId(departmentId);
+            scopeDescription = "Department: " + departmentId;
+            log.info("Department Head - Fetching enrollments for department: {}", departmentId);
+            
+            // Get total employees in this department
+            totalEmployees = employeeRepository.countActiveEmployeesByDepartmentId(departmentId);
+            log.info("Total employees in department {}: {}", departmentId, totalEmployees);
+            
+        } else if ("Approver".equalsIgnoreCase(roleName) || "Team_Lead".equalsIgnoreCase(roleName)) {
+            // Get team ID
+            Integer teamId = getTeamIdFromEmployee(employee);
+            if (teamId == null) {
+                log.warn("Approver/Team Lead {} has no team assigned", employeeId);
+                return new ActiveLearnerResponseDTO(0, 0, STATUS_SUCCESS);
+            }
+            enrollments = enrollmentRepository.findAllApprovedActiveEnrollmentsByTeamId(teamId);
+            scopeDescription = "Team: " + teamId;
+            log.info("Approver/Team Lead - Fetching enrollments for team: {}", teamId);
+            
+            // Get total employees in this team
+            totalEmployees = employeeRepository.countActiveEmployeesByTeamId(teamId);
+            log.info("Total employees in team {}: {}", teamId, totalEmployees);
+            
+        } else {
+            // For regular employees, just get their own enrollments
+            enrollments = enrollmentRepository.findAllApprovedActiveEnrollmentsByEmployeeId(employeeId);
+            scopeDescription = "Employee: " + employeeId;
+            log.info("Regular Employee - Fetching enrollments for employee: {}", employeeId);
+            
+            // For regular employees, total is just 1 (themselves)
+            totalEmployees = 1L;
+        }
+
+        log.info("Found {} approved enrollments for {}", enrollments.size(), scopeDescription);
+
+        // Set to store unique employee IDs
+        Set<String> activeEmployeeIds = new HashSet<>();
+
+        for (CourseEnrollment enrollment : enrollments) {
+            Course course = enrollment.getCourse();
+            if (course == null) {
+                log.debug("Enrollment {} has no course, skipping", enrollment.getId());
+                continue;
+            }
+
+            CourseCategory.CourseType courseType = course.getCourseCategory().getCourseType();
+            String empId = enrollment.getEmployee().getId();
+            String employeeName = enrollment.getEmployee().getName();
+
+            boolean isActive = false;
+            String reason = "";
+
+            if (courseType == CourseCategory.CourseType.TRAINER_PROVIDED) {
+                // Trainer-Provided Logic: Check group's last session date
+                isActive = isTrainerCourseActive(enrollment, today);
+                reason = isActive ? "Group has future sessions" : "All group sessions ended";
+            } else if (courseType == CourseCategory.CourseType.SELF_STUDY) {
+                // Self-Study Logic: Check student's latest deadline
+                isActive = isSelfStudyCourseActive(enrollment, today);
+                reason = isActive ? "Has active deadlines or no tracking" : "All deadlines passed";
+            }
+
+            if (isActive) {
+                activeEmployeeIds.add(empId);
+                log.info("✅ Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
+                    empId, employeeName, reason, course.getCourseName(), courseType);
+            } else {
+                log.info("❌ Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 
+                    empId, employeeName, reason, course.getCourseName(), courseType);
+            }
+        }
+
+        int totalActiveLearners = activeEmployeeIds.size();
+        log.info("========== RESULTS ==========");
+        log.info("Total active learners for {}: {}", scopeDescription, totalActiveLearners);
+        log.info("Total employees in scope: {}", totalEmployees);
+
+        return new ActiveLearnerResponseDTO(totalActiveLearners, totalEmployees.intValue(), STATUS_SUCCESS);
+    }
+
+    // Helper methods to get IDs from Employee
+    private Integer getDivisionIdFromEmployee(Employee employee) {
+        if (employee.getTeam() != null && employee.getTeam().getDepartmentDat() != null) {
+            Division division = employee.getTeam().getDepartmentDat().getDivision();
+            if (division != null) {
+                return division.getId();
+            }
+        }
+        return null;
+    }
+
+    private Integer getDepartmentIdFromEmployee(Employee employee) {
+        if (employee.getTeam() != null) {
+            DepartmentDat departmentDat = employee.getTeam().getDepartmentDat();
+            if (departmentDat != null) {
+                return departmentDat.getId();
+            }
+        }
+        return null;
+    }
+
+    private Integer getTeamIdFromEmployee(Employee employee) {
+        if (employee.getTeam() != null) {
+            return employee.getTeam().getId();
+        }
+        return null;
     }
 
     private boolean isTrainerCourseActive(CourseEnrollment enrollment, LocalDate today) {
@@ -120,14 +274,8 @@ public class ActiveLearnerService {
         
         if (maxDeadline == null) {
             // No progress records found, but student is enrolled and course is active
-            // Check if course has any sessions with deadlines
-            // If no sessions, consider ACTIVE (just enrolled)
-            log.debug("Self-Study - Enrollment {} has no progress records yet, but course may have sessions", enrollmentId);
-            
-            // Check if there are any self-study sessions for this course
-            // If there are sessions but no progress, the student is still active
-            // (they just haven't started yet)
-            return true; // Enrolled students are active until proven otherwise
+            log.debug("Self-Study - Enrollment {} has no progress records yet, considering ACTIVE", enrollmentId);
+            return true;
         }
 
         LocalDate maxDeadlineDate = maxDeadline.toLocalDate();
@@ -139,72 +287,4 @@ public class ActiveLearnerService {
         
         return isActive;
     }
-
-    @Transactional(readOnly = true)
-public ActiveLearnerResponseDTO getTotalActiveLearnersByEmployeeId(String employeeId) {
-    log.info("========== STARTING ACTIVE LEARNER CALCULATION FOR EMPLOYEE: {} ==========", employeeId);
-    LocalDate today = LocalDate.now();
-    log.info("Using TODAY: {}", today);
-
-    // Get the employee's team ID
-    String teamId = getEmployeeTeamId(employeeId);
-    if (teamId == null) {
-        log.warn("Employee {} not found or has no team", employeeId);
-        return new ActiveLearnerResponseDTO(0, STATUS_SUCCESS);
-    }
-    log.info("Employee {} belongs to Team: {}", employeeId, teamId);
-
-    // Get all approved active enrollments for this team
-    List<CourseEnrollment> enrollments = enrollmentRepository.findAllApprovedActiveEnrollmentsByTeamId(teamId);
-    log.info("Found {} approved enrollments for team {}", enrollments.size(), teamId);
-
-    // Set to store unique employee IDs
-    Set<String> activeEmployeeIds = new HashSet<>();
-
-    for (CourseEnrollment enrollment : enrollments) {
-        Course course = enrollment.getCourse();
-        if (course == null) {
-            log.debug("Enrollment {} has no course, skipping", enrollment.getId());
-            continue;
-        }
-
-        CourseCategory.CourseType courseType = course.getCourseCategory().getCourseType();
-        String empId = enrollment.getEmployee().getId();
-        String employeeName = enrollment.getEmployee().getName();
-
-        boolean isActive = false;
-        String reason = "";
-
-        if (courseType == CourseCategory.CourseType.TRAINER_PROVIDED) {
-            // Trainer-Provided Logic: Check group's last session date
-            isActive = isTrainerCourseActive(enrollment, today);
-            reason = isActive ? "Group has future sessions" : "All group sessions ended";
-        } else if (courseType == CourseCategory.CourseType.SELF_STUDY) {
-            // Self-Study Logic: Check student's latest deadline
-            isActive = isSelfStudyCourseActive(enrollment, today);
-            reason = isActive ? "Has active deadlines or no tracking" : "All deadlines passed";
-        }
-
-        if (isActive) {
-            activeEmployeeIds.add(empId);
-            log.info("✅ Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
-                empId, employeeName, reason, course.getCourseName(), courseType);
-        } else {
-            log.info("❌ Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 
-                empId, employeeName, reason, course.getCourseName(), courseType);
-        }
-    }
-
-    int totalActiveLearners = activeEmployeeIds.size();
-    log.info("========== RESULTS ==========");
-    log.info("Total active learners in team {}: {}", teamId, totalActiveLearners);
-
-    return new ActiveLearnerResponseDTO(totalActiveLearners, STATUS_SUCCESS);
-}
-
-private String getEmployeeTeamId(String employeeId) {
-    // You need to implement this based on your Employee entity/repository
-    // Assuming you have an EmployeeRepository
-    return employeeRepository.findTeamIdByEmployeeId(employeeId).orElse(null);
-}
 }

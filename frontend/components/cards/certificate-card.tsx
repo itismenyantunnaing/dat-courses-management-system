@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { JapaneseCertificate } from "@/types/certificate"
 import { format } from "date-fns"
 import Image from "next/image"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ImageNotFound01Icon } from "@hugeicons/core-free-icons"
 
 interface CertificateCardProps {
   certificate: JapaneseCertificate
@@ -55,8 +57,8 @@ export function CertificateCard({
   const employeeName = certificate.employee?.name || "Unknown User"
   const employeeEmail = certificate.employee?.email || "No email provided"
   const employeeAvatar = certificate.employee?.avatar || ""
-  const submittedDate = certificate.verifiedAt || certificate.createdAt || new Date().toISOString()
-
+  const submittedDate =
+    certificate.verifiedAt || certificate.createdAt || new Date().toISOString()
 
   // Check if certificate has been verified
   const isVerified =
@@ -83,8 +85,12 @@ export function CertificateCard({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-muted/50">
-              <div className="text-center">
-                <div className="mb-2 text-4xl">📄</div>
+              <div className="flex flex-col items-center gap-2 text-center">
+                <HugeiconsIcon
+                  icon={ImageNotFound01Icon}
+                  strokeWidth={2}
+                  className="h-8 w-8 text-muted-foreground"
+                />
                 <p className="text-sm text-muted-foreground">
                   No Image Available
                 </p>
