@@ -225,9 +225,7 @@ export function NotificationsDrawer({
               </Button>
             )}
             <DrawerClose asChild>
-              <Button variant="ghost" size="icon">
                 <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
-              </Button>
             </DrawerClose>
           </div>
 

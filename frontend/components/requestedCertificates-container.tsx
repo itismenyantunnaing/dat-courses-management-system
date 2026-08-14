@@ -717,7 +717,7 @@ export function CertificatesRequestsContainer({
               <InputGroup className="w-[300px]">
                 <InputGroupInput
                   ref={searchInputRef}
-                  placeholder="Search certificate requests..."
+                  placeholder="Search requested certificates..."
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value)

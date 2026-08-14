@@ -420,7 +420,7 @@ export function JapaneseCertificateContainer({
                   strokeWidth={2}
                   className="h-4 w-4"
                 />
-                Upload
+                Upload Certificate
               </Button>
             )}
           </EmptyContent>

@@ -121,14 +121,18 @@ const formatTime = (timestamp: string) => {
 export default function LearnerDashboardContainer({
   onNavigateToCourse,
   onNavigateToCertificate,
-  onNavigateToNotifications
+  onNavigateToNotifications,
 }: LearnerDashboardContainerProps) {
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false)
   const [attendanceError, setAttendanceError] = useState<string | null>(null)
-  const [savedAttendance, setSavedAttendance] = useState<{ [key: string]: boolean }>({})
-  const [savingSessions, setSavingSessions] = useState<{ [key: string]: boolean }>({})
+  const [savedAttendance, setSavedAttendance] = useState<{
+    [key: string]: boolean
+  }>({})
+  const [savingSessions, setSavingSessions] = useState<{
+    [key: string]: boolean
+  }>({})
   const [savedProgress, setSavedProgress] = useState<{ [key: string]: any }>({})
 
   const {
@@ -186,9 +190,9 @@ export default function LearnerDashboardContainer({
         // Fetch study progress for self-study courses
         const selfStudyCourses = upcomingAllSessionsData.filter(
           (session: CourseSession) => session.courseType === "SELF_STUDY"
-        );
+        )
         for (const session of selfStudyCourses) {
-          await fetch_studyProgress(session.courseId);
+          await fetch_studyProgress(session.courseId)
         }
       } catch (error) {
         console.error("Error loading data:", error)
@@ -198,60 +202,71 @@ export default function LearnerDashboardContainer({
     }
 
     loadData()
-  }, [fetchEmployeeCourseStats, fetchEmployeeAttendance, profile?.id, fetchAllUpcomingSessions, fetchEmployeeTargetLevel])
-
+  }, [
+    fetchEmployeeCourseStats,
+    fetchEmployeeAttendance,
+    profile?.id,
+    fetchAllUpcomingSessions,
+    fetchEmployeeTargetLevel,
+  ])
 
   // Fetch enrollments for the current user to get enrollment IDs
   useEffect(() => {
     const fetchEnrollments = async () => {
       if (upcomingAllSessionsData.length > 0) {
         // Get unique course IDs for trainer-provided courses
-        const uniqueCourseIds = new Set<string | number>();
+        const uniqueCourseIds = new Set<string | number>()
         upcomingAllSessionsData.forEach((session: CourseSession) => {
           if (session.courseType === "TRAINER_PROVIDED" && session.courseId) {
-            uniqueCourseIds.add(session.courseId);
+            uniqueCourseIds.add(session.courseId)
           }
-        });
+        })
 
         // Fetch enrollments for each course
         for (const courseId of uniqueCourseIds) {
           try {
-            await fetch_courseEnrollments(courseId);
+            await fetch_courseEnrollments(courseId)
           } catch (error) {
-            console.error(`Failed to fetch enrollments for course ${courseId}:`, error);
+            console.error(
+              `Failed to fetch enrollments for course ${courseId}:`,
+              error
+            )
           }
         }
       }
-    };
+    }
 
-    fetchEnrollments();
-  }, [upcomingAllSessionsData, fetch_courseEnrollments]);
-
+    fetchEnrollments()
+  }, [upcomingAllSessionsData, fetch_courseEnrollments])
 
   // Update saved progress when studyProgress changes
   useEffect(() => {
-    if (studyProgress && studyProgress.progress && Array.isArray(studyProgress.progress)) {
-      const progressMap: { [key: string]: any } = {};
+    if (
+      studyProgress &&
+      studyProgress.progress &&
+      Array.isArray(studyProgress.progress)
+    ) {
+      const progressMap: { [key: string]: any } = {}
       studyProgress.progress.forEach((p: any) => {
         if (p.self_study_session_id) {
-          const key = p.self_study_session_id.toString();
+          const key = p.self_study_session_id.toString()
           progressMap[key] = {
             ...p,
-            id: p.id
-          };
+            id: p.id,
+          }
         }
-      });
-      setSavedProgress(progressMap);
+      })
+      setSavedProgress(progressMap)
     }
-  }, [studyProgress]);
+  }, [studyProgress])
 
   // Helper to get enrollment ID for a course
   const getEnrollmentId = (courseId: number): number | null => {
     const enrollment = enrollments.find(
       (e: any) => e.courseId === courseId && e.employeeId === profile?.id
-    );
-    return enrollment?.id || null;
-  };
+    )
+    return enrollment?.id || null
+  }
 
   // Self-study progress state
   const [selfStudyInputs, setSelfStudyInputs] = useState<{
@@ -266,15 +281,15 @@ export default function LearnerDashboardContainer({
 
   // Initialize session inputs when sessions load
   useEffect(() => {
-    const initialInputs: { [key: number]: any } = {};
+    const initialInputs: { [key: number]: any } = {}
     const selfStudySessions = upcomingAllSessionsData.filter(
       (session: CourseSession) => session.courseType === "SELF_STUDY"
-    );
+    )
 
     selfStudySessions.forEach((session: CourseSession) => {
       // Check if sessionId exists
       if (session.sessionId) {
-        const existingProgress = savedProgress[session.sessionId.toString()];
+        const existingProgress = savedProgress[session.sessionId.toString()]
         if (existingProgress) {
           initialInputs[session.sessionId] = {
             kanjiCount: existingProgress.kanji_count || 0,
@@ -282,7 +297,7 @@ export default function LearnerDashboardContainer({
             grammarCount: existingProgress.grammar_count || 0,
             readingMinutes: existingProgress.reading_minutes || 0,
             listeningMinutes: existingProgress.listening_minutes || 0,
-          };
+          }
         } else {
           initialInputs[session.sessionId] = {
             kanjiCount: 0,
@@ -290,37 +305,38 @@ export default function LearnerDashboardContainer({
             grammarCount: 0,
             readingMinutes: 0,
             listeningMinutes: 0,
-          };
+          }
         }
       }
-    });
-    setSelfStudyInputs(initialInputs);
-  }, [upcomingAllSessionsData, savedProgress]);
-
+    })
+    setSelfStudyInputs(initialInputs)
+  }, [upcomingAllSessionsData, savedProgress])
 
   const handleAttendanceChange = async (session: any, value: string) => {
     // Only proceed if it's a trainer-led session
-    if (session.courseType !== "TRAINER_PROVIDED") return;
+    if (session.courseType !== "TRAINER_PROVIDED") return
 
-    setAttendanceError(null);
-    setIsUpdatingAttendance(true);
+    setAttendanceError(null)
+    setIsUpdatingAttendance(true)
 
-    const key = `${session.sessionId}`;
+    const key = `${session.sessionId}`
 
     try {
       // Get enrollment ID for this course
-      const enrollmentId = getEnrollmentId(session.courseId);
+      const enrollmentId = getEnrollmentId(session.courseId)
 
       if (!enrollmentId) {
-        console.error('No enrollment found for course:', session.courseId);
-        throw new Error(`You are not enrolled in this course. Please contact your administrator.`);
+        console.error("No enrollment found for course:", session.courseId)
+        throw new Error(
+          `You are not enrolled in this course. Please contact your administrator.`
+        )
       }
 
       const attendanceRequest = {
         enrollmentId: enrollmentId,
         courseSessionId: session.sessionId,
-        attendanceStatus: value as 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'
-      };
+        attendanceStatus: value as "PRESENT" | "ABSENT" | "LATE" | "EXCUSED",
+      }
 
       // Check if attendance already exists
       if (session.attendanceId) {
@@ -330,64 +346,68 @@ export default function LearnerDashboardContainer({
           session.groupId,
           session.attendanceId,
           attendanceRequest
-        );
+        )
       } else {
         // Create new attendance
         await createAttendance(
           session.courseId,
           session.groupId,
           attendanceRequest
-        );
+        )
       }
 
       // Show saved indicator
-      setSavedAttendance(prev => ({
+      setSavedAttendance((prev) => ({
         ...prev,
-        [key]: true
-      }));
+        [key]: true,
+      }))
 
       // Auto-hide the saved indicator after 1.5 seconds
       setTimeout(() => {
-        setSavedAttendance(prev => ({
+        setSavedAttendance((prev) => ({
           ...prev,
-          [key]: false
-        }));
-      }, 1500);
+          [key]: false,
+        }))
+      }, 1500)
 
       // Refresh the sessions data to get updated attendance status
-      await fetchAllUpcomingSessions(profile?.id);
-
+      await fetchAllUpcomingSessions(profile?.id)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update attendance';
-      console.error('❌ Error updating attendance:', error);
-      setAttendanceError(errorMessage);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update attendance"
+      console.error("❌ Error updating attendance:", error)
+      setAttendanceError(errorMessage)
     } finally {
-      setIsUpdatingAttendance(false);
+      setIsUpdatingAttendance(false)
     }
   }
 
-  const handleSessionInputChange = (sessionId: number, field: string, value: string) => {
-    const numValue = parseInt(value) || 0;
+  const handleSessionInputChange = (
+    sessionId: number,
+    field: string,
+    value: string
+  ) => {
+    const numValue = parseInt(value) || 0
 
-    setSelfStudyInputs(prev => ({
+    setSelfStudyInputs((prev) => ({
       ...prev,
       [sessionId]: {
         ...prev[sessionId],
-        [field]: numValue
-      }
-    }));
-  };
+        [field]: numValue,
+      },
+    }))
+  }
 
   const handleSaveProgress = async (session: any) => {
-    const sessionId = session.sessionId;
-    const values = selfStudyInputs[sessionId];
+    const sessionId = session.sessionId
+    const values = selfStudyInputs[sessionId]
 
     if (!values) {
-      alert('No progress data to save');
-      return;
+      alert("No progress data to save")
+      return
     }
 
-    const existingProgress = savedProgress[sessionId?.toString()];
+    const existingProgress = savedProgress[sessionId?.toString()]
 
     const progressData = {
       enrollment_id: getEnrollmentId(session.courseId),
@@ -398,7 +418,7 @@ export default function LearnerDashboardContainer({
       reading_minutes: values.readingMinutes || 0,
       listening_minutes: values.listeningMinutes || 0,
       completion_status: "IN_PROGRESS",
-    };
+    }
 
     // Check if all targets are met
     const allTargetsMet =
@@ -406,73 +426,75 @@ export default function LearnerDashboardContainer({
       (values.vocabularyCount || 0) >= (session.vocabularyTarget || 0) &&
       (values.grammarCount || 0) >= (session.grammarTarget || 0) &&
       (values.readingMinutes || 0) >= (session.readingTargetMinutes || 0) &&
-      (values.listeningMinutes || 0) >= (session.listeningTargetMinutes || 0);
+      (values.listeningMinutes || 0) >= (session.listeningTargetMinutes || 0)
 
     if (allTargetsMet) {
-      progressData.completion_status = "COMPLETED";
+      progressData.completion_status = "COMPLETED"
     }
 
-    setSavingSessions(prev => ({
+    setSavingSessions((prev) => ({
       ...prev,
       [sessionId]: true,
-    }));
+    }))
 
     try {
-      let result;
+      let result
       if (!existingProgress) {
-        result = await add_studyProgress(session.courseId, progressData);
+        result = await add_studyProgress(session.courseId, progressData)
       } else {
         result = await update_studyProgress(
           session.courseId,
           existingProgress.id,
           progressData
-        );
+        )
       }
 
       if (result.success) {
         // Refresh study progress
-        await fetch_studyProgress(session.courseId);
+        await fetch_studyProgress(session.courseId)
 
         // Show success message
         if (allTargetsMet) {
-          alert(`🎉 Session completed!`);
+          alert(`🎉 Session completed!`)
         } else {
-          alert(`Progress saved successfully for ${session.courseName}`);
+          alert(`Progress saved successfully for ${session.courseName}`)
         }
       } else {
-        alert(result.message || "Failed to save progress");
+        alert(result.message || "Failed to save progress")
       }
     } catch (error) {
-      console.error('Error saving progress:', error);
-      alert("An error occurred while saving progress");
+      console.error("Error saving progress:", error)
+      alert("An error occurred while saving progress")
     } finally {
-      setSavingSessions(prev => ({
+      setSavingSessions((prev) => ({
         ...prev,
         [sessionId]: false,
-      }));
+      }))
     }
-  };
+  }
 
   // Get session status based on date for self-study sessions
   const getSelfStudySessionStatus = (session: any) => {
-    if (session.courseType !== "SELF_STUDY") return session.status;
+    if (session.courseType !== "SELF_STUDY") return session.status
 
-    const deadline = session.sessionDeadline ? new Date(session.sessionDeadline) : null;
-    if (!deadline) return "PLANNED";
+    const deadline = session.sessionDeadline
+      ? new Date(session.sessionDeadline)
+      : null
+    if (!deadline) return "PLANNED"
 
-    const today = new Date();
-    const isPast = deadline < today;
-    const isToday = deadline.toDateString() === today.toDateString();
+    const today = new Date()
+    const isPast = deadline < today
+    const isToday = deadline.toDateString() === today.toDateString()
 
     if (isPast || isToday) {
-      return "ACTIVE";
+      return "ACTIVE"
     }
-    return "UPCOMING";
-  };
+    return "UPCOMING"
+  }
 
   const getStatusBadge = (status: string, isSelfStudy: boolean = false) => {
     // For self-study, we use the derived status
-    const displayStatus = status;
+    const displayStatus = status
 
     switch (displayStatus) {
       case "ACTIVE":
@@ -499,84 +521,87 @@ export default function LearnerDashboardContainer({
   }
   // Check if attendance can be edited (only for today or past sessions)
   const canEditAttendance = (sessionDate: string) => {
-    if (!sessionDate) return false;
-    const date = new Date(sessionDate);
-    const today = new Date();
-    return date <= today;
-  };
+    if (!sessionDate) return false
+    const date = new Date(sessionDate)
+    const today = new Date()
+    return date <= today
+  }
 
   // Filter sessions to show only one per course
   const filterSessionsPerCourse = (sessions: any[]) => {
-    const courseMap = new Map();
+    const courseMap = new Map()
 
-    sessions.forEach(session => {
+    sessions.forEach((session) => {
       if (!courseMap.has(session.courseId)) {
         courseMap.set(session.courseId, {
           active: null,
           upcoming: null,
-          planned: null
-        });
+          planned: null,
+        })
       }
 
-      const courseSessions = courseMap.get(session.courseId);
+      const courseSessions = courseMap.get(session.courseId)
 
       if (session.status === "ACTIVE" && !courseSessions.active) {
-        courseSessions.active = session;
+        courseSessions.active = session
       }
       if (session.status === "UPCOMING" && !courseSessions.upcoming) {
-        courseSessions.upcoming = session;
+        courseSessions.upcoming = session
       }
       if (session.status === "PLANNED" && !courseSessions.planned) {
-        courseSessions.planned = session;
+        courseSessions.planned = session
       }
-    });
+    })
 
-    const result = [];
+    const result = []
     for (const [courseId, sessions] of courseMap) {
-      if (sessions.active) result.push(sessions.active);
-      if (sessions.upcoming) result.push(sessions.upcoming);
-      if (sessions.planned) result.push(sessions.planned);
+      if (sessions.active) result.push(sessions.active)
+      if (sessions.upcoming) result.push(sessions.upcoming)
+      if (sessions.planned) result.push(sessions.planned)
     }
-    return result;
-  };
+    return result
+  }
 
-  const filteredSessions = filterSessionsPerCourse(upcomingAllSessionsData);
+  const filteredSessions = filterSessionsPerCourse(upcomingAllSessionsData)
 
   // Handle notification actions
-  const handleNotificationAction = (action: 'view-course' | 'view-certificate', id: number) => {
-    if (action === 'view-course') {
+  const handleNotificationAction = (
+    action: "view-course" | "view-certificate",
+    id: number
+  ) => {
+    if (action === "view-course") {
       // Use the navigation callback
       if (onNavigateToCourse) {
-        onNavigateToCourse(id);
+        onNavigateToCourse(id)
       }
-    } else if (action === 'view-certificate') {
+    } else if (action === "view-certificate") {
       // Use the navigation callback
       if (onNavigateToCertificate) {
-        onNavigateToCertificate(id);
+        onNavigateToCertificate(id)
       }
     }
-  };
+  }
 
   // Transform notifications for display in the card - Show ALL types, latest 3, no filtering
   const getDisplayNotifications = () => {
-
     if (!storeNotifications || storeNotifications.length === 0) {
       return []
     }
 
     // Sort notifications by createdAt (newest first)
-    const sortedNotifications = [...storeNotifications].sort((a: any, b: any) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    })
+    const sortedNotifications = [...storeNotifications].sort(
+      (a: any, b: any) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }
+    )
 
     // Take only the latest 3 notifications
     const latestNotifications = sortedNotifications.slice(0, 3)
 
-
     return latestNotifications.map((notif: any) => {
       // Determine if action is needed based on type
       let hasAction = false
-      if (notif.type === 'COURSE' || notif.type === 'CERTIFICATE') {
+      if (notif.type === "COURSE" || notif.type === "CERTIFICATE") {
         hasAction = true
       }
 
@@ -588,7 +613,7 @@ export default function LearnerDashboardContainer({
         type: notif.type,
         courseId: notif.courseId,
         certificateId: notif.certificateId,
-        hasAction
+        hasAction,
       }
     })
   }
@@ -597,7 +622,6 @@ export default function LearnerDashboardContainer({
 
   // Get total count of all notifications
   const totalNotificationsCount = storeNotifications?.length || 0
-
 
   // If loading, show loading state
   if (isLoading) {
@@ -640,9 +664,11 @@ export default function LearnerDashboardContainer({
             title="JLPT Level"
             value={employeeTargetLevel?.jlptHighestLevel || "None"}
             icon={ChampionIcon}
-            description={employeeTargetLevel?.targetJlptNatLevel ?
-              `Target: ${employeeTargetLevel.targetJlptNatLevel} by ${employeeTargetLevel.targetDate ? new Date(employeeTargetLevel.targetDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Not set'}`
-              : ''}
+            description={
+              employeeTargetLevel?.targetJlptNatLevel
+                ? `Target: ${employeeTargetLevel.targetJlptNatLevel} by ${employeeTargetLevel.targetDate ? new Date(employeeTargetLevel.targetDate).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Not set"}`
+                : ""
+            }
           />
         </div>
 
@@ -654,21 +680,23 @@ export default function LearnerDashboardContainer({
               <CardTitle>Overall Attendance</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {employeeCourseStats?.courses?.map((course: EmployeeCourseDetailDTO, index: number) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
+              {employeeCourseStats?.courses?.map(
+                (course: EmployeeCourseDetailDTO, index: number) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium">
+                          {course.courseName}
+                        </span>
+                      </div>
                       <span className="text-sm font-medium">
-                        {course.courseName}
+                        {course.attendance}%
                       </span>
                     </div>
-                    <span className="text-sm font-medium">
-                      {course.attendance}%
-                    </span>
+                    <Progress value={course.attendance} className="h-2" />
                   </div>
-                  <Progress value={course.attendance} className="h-2" />
-                </div>
-              ))}
+                )
+              )}
             </CardContent>
           </Card>
 
@@ -680,27 +708,33 @@ export default function LearnerDashboardContainer({
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {employeeAttendance?.courses?.map((course: any, index: number) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
+              {employeeAttendance?.courses?.map(
+                (course: any, index: number) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium">
+                          {course.courseName}
+                        </span>
+                      </div>
                       <span className="text-sm font-medium">
-                        {course.courseName}
+                        {course.attendance}%
                       </span>
                     </div>
-                    <span className="text-sm font-medium">
-                      {course.attendance}%
-                    </span>
+                    <Progress value={course.attendance} className="h-2" />
                   </div>
-                  <Progress value={course.attendance} className="h-2" />
-                </div>
-              ))}
+                )
+              )}
             </CardContent>
             <CardFooter>
               <div className="flex w-full items-start gap-2 text-sm">
                 <div className="grid gap-2">
                   <div className="flex items-center gap-2 leading-none font-medium">
-                    Average attendance: {Math.round(employeeAttendance?.courses?.averageAttendance || 0)}%
+                    Average attendance:{" "}
+                    {Math.round(
+                      employeeAttendance?.courses?.averageAttendance || 0
+                    )}
+                    %
                   </div>
                 </div>
               </div>
@@ -717,41 +751,52 @@ export default function LearnerDashboardContainer({
             </CardHeader>
             <CardContent className="max-h-[500px] space-y-4 overflow-y-auto">
               {filteredSessions.map((session, index) => {
-                const key = `${session.sessionId}`;
-                const isSaving = isUpdatingAttendance && key === `${session.sessionId}`;
-                const isSaved = savedAttendance[key];
-                const canEdit = canEditAttendance(session.sessionDate);
-                const sessionDate = session.sessionDate ? new Date(session.sessionDate) : null;
-                const isToday = sessionDate ? sessionDate.toDateString() === new Date().toDateString() : false;
+                const key = `${session.sessionId}`
+                const isSaving =
+                  isUpdatingAttendance && key === `${session.sessionId}`
+                const isSaved = savedAttendance[key]
+                const canEdit = canEditAttendance(session.sessionDate)
+                const sessionDate = session.sessionDate
+                  ? new Date(session.sessionDate)
+                  : null
+                const isToday = sessionDate
+                  ? sessionDate.toDateString() === new Date().toDateString()
+                  : false
 
                 // Self-study progress
-                const progress = savedProgress[session.sessionId?.toString()];
-                const isSavingProgress = savingSessions[session.sessionId];
+                const progress = savedProgress[session.sessionId?.toString()]
+                const isSavingProgress = savingSessions[session.sessionId]
                 const inputs = selfStudyInputs[session.sessionId] || {
                   kanjiCount: 0,
                   vocabularyCount: 0,
                   grammarCount: 0,
                   readingMinutes: 0,
                   listeningMinutes: 0,
-                };
+                }
 
                 // Calculate overall progress
-                const overallProgress = progress ? Math.round(
-                  ((progress.kanji_progress_percent || 0) +
-                    (progress.vocabulary_progress_percent || 0) +
-                    (progress.grammar_progress_percent || 0) +
-                    (progress.reading_progress_percent || 0) +
-                    (progress.listening_progress_percent || 0)) / 5
-                ) : 0;
+                const overallProgress = progress
+                  ? Math.round(
+                      ((progress.kanji_progress_percent || 0) +
+                        (progress.vocabulary_progress_percent || 0) +
+                        (progress.grammar_progress_percent || 0) +
+                        (progress.reading_progress_percent || 0) +
+                        (progress.listening_progress_percent || 0)) /
+                        5
+                    )
+                  : 0
 
-                const isCompleted = progress?.completion_status === 'COMPLETED';
+                const isCompleted = progress?.completion_status === "COMPLETED"
 
                 return (
                   <div
                     key={index}
                     className={cn(
                       "rounded-lg border p-4 transition-colors hover:bg-muted/50",
-                      !canEdit && sessionDate && sessionDate > new Date() && "opacity-70"
+                      !canEdit &&
+                        sessionDate &&
+                        sessionDate > new Date() &&
+                        "opacity-70"
                     )}
                   >
                     <div className="flex items-start justify-between">
@@ -778,12 +823,15 @@ export default function LearnerDashboardContainer({
                             </Badge>
                           )}
                           {isCompleted && (
-                            <Badge className="bg-green-500 text-white text-[10px]">
-                              <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="h-3 w-3 mr-1" />
+                            <Badge className="bg-green-500 text-[10px] text-white">
+                              <HugeiconsIcon
+                                icon={CheckmarkCircle01Icon}
+                                strokeWidth={2}
+                                className="mr-1 h-3 w-3"
+                              />
                               Completed
                             </Badge>
                           )}
-
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <HugeiconsIcon
@@ -792,7 +840,9 @@ export default function LearnerDashboardContainer({
                             className="h-3.5 w-3.5"
                           />
                           <span>
-                            {new Date(session.sessionDate || session.sessionDeadline).toLocaleDateString("en-US", {
+                            {new Date(
+                              session.sessionDate || session.sessionDeadline
+                            ).toLocaleDateString("en-US", {
                               month: "short",
                               day: "numeric",
                               year: "numeric",
@@ -800,28 +850,26 @@ export default function LearnerDashboardContainer({
                           </span>
                           {session.courseType === "TRAINER_PROVIDED" &&
                             session.startTime &&
-                            session.endTime &&
-                            <>
-                              <span>•</span>
-                              <HugeiconsIcon
-                                icon={ClockIcon}
-                                strokeWidth={2}
-                                className="h-3.5 w-3.5"
-                              />
-                              <span>
-                                {session.startTime.slice(0, 5)} -{" "}
-                                {session.endTime.slice(0, 5)}
-                              </span>
-                            </>
-                          }
+                            session.endTime && (
+                              <>
+                                <span>•</span>
+                                <HugeiconsIcon
+                                  icon={ClockIcon}
+                                  strokeWidth={2}
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span>
+                                  {session.startTime.slice(0, 5)} -{" "}
+                                  {session.endTime.slice(0, 5)}
+                                </span>
+                              </>
+                            )}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        {session.courseType === "SELF_STUDY" ? (
-                          getStatusBadge(getSelfStudySessionStatus(session))
-                        ) : (
-                          getStatusBadge(session.status)
-                        )}
+                        {session.courseType === "SELF_STUDY"
+                          ? getStatusBadge(getSelfStudySessionStatus(session))
+                          : getStatusBadge(session.status)}
                       </div>
                     </div>
 
@@ -855,15 +903,22 @@ export default function LearnerDashboardContainer({
                                 </SelectTrigger>
                                 <SelectContent>
                                   {ATTENDANCE_OPTIONS.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
+                                    <SelectItem
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       <div className="flex items-center gap-2">
                                         <span
                                           className={cn(
                                             "h-2 w-2 rounded-full",
-                                            option.value === "PRESENT" && "bg-green-500",
-                                            option.value === "ABSENT" && "bg-red-500",
-                                            option.value === "LATE" && "bg-yellow-500",
-                                            option.value === "EXCUSED" && "bg-blue-500"
+                                            option.value === "PRESENT" &&
+                                              "bg-green-500",
+                                            option.value === "ABSENT" &&
+                                              "bg-red-500",
+                                            option.value === "LATE" &&
+                                              "bg-yellow-500",
+                                            option.value === "EXCUSED" &&
+                                              "bg-blue-500"
                                           )}
                                         />
                                         {option.label}
@@ -873,22 +928,28 @@ export default function LearnerDashboardContainer({
                                 </SelectContent>
                               </Select>
                               {isSaving ? (
-                                <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></span>
+                                <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></span>
                               ) : isSaved ? (
                                 <HugeiconsIcon
                                   icon={CheckmarkCircle01Icon}
                                   strokeWidth={2}
                                   className="h-4 w-4 text-green-500"
                                 />
-                              ) : session.attendanceStatus && (
-                                <span className="h-4 w-4"></span>
+                              ) : (
+                                session.attendanceStatus && (
+                                  <span className="h-4 w-4"></span>
+                                )
                               )}
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">
                               {sessionDate && sessionDate > new Date() ? (
                                 <span className="flex items-center gap-1 text-blue-500">
-                                  <HugeiconsIcon icon={CalendarIcon} strokeWidth={2} className="h-3 w-3" />
+                                  <HugeiconsIcon
+                                    icon={CalendarIcon}
+                                    strokeWidth={2}
+                                    className="h-3 w-3"
+                                  />
                                   Available on session day
                                 </span>
                               ) : (
@@ -910,20 +971,40 @@ export default function LearnerDashboardContainer({
                     {/* Self-study session - Progress */}
                     {session.courseType === "SELF_STUDY" && (
                       <div className="mt-4 space-y-3">
-
                         {/* Input fields for progress */}
                         {!isCompleted && (
                           <>
                             <div className="grid grid-cols-5 gap-2">
                               {[
-                                { key: "kanjiCount", label: "Kanji", target: session.kanjiTarget || 0 },
-                                { key: "vocabularyCount", label: "Vocab", target: session.vocabularyTarget || 0 },
-                                { key: "grammarCount", label: "Grammar", target: session.grammarTarget || 0 },
-                                { key: "readingMinutes", label: "Reading (min)", target: session.readingTargetMinutes || 0 },
-                                { key: "listeningMinutes", label: "Listening (min)", target: session.listeningTargetMinutes || 0 },
+                                {
+                                  key: "kanjiCount",
+                                  label: "Kanji",
+                                  target: session.kanjiTarget || 0,
+                                },
+                                {
+                                  key: "vocabularyCount",
+                                  label: "Vocab",
+                                  target: session.vocabularyTarget || 0,
+                                },
+                                {
+                                  key: "grammarCount",
+                                  label: "Grammar",
+                                  target: session.grammarTarget || 0,
+                                },
+                                {
+                                  key: "readingMinutes",
+                                  label: "Reading (min)",
+                                  target: session.readingTargetMinutes || 0,
+                                },
+                                {
+                                  key: "listeningMinutes",
+                                  label: "Listening (min)",
+                                  target: session.listeningTargetMinutes || 0,
+                                },
                               ].map((item) => {
-                                const currentValue = inputs[item.key as keyof typeof inputs] || 0;
-                                const targetValue = item.target;
+                                const currentValue =
+                                  inputs[item.key as keyof typeof inputs] || 0
+                                const targetValue = item.target
 
                                 return (
                                   <div key={item.key} className="space-y-1">
@@ -944,14 +1025,16 @@ export default function LearnerDashboardContainer({
                                         className="h-8 text-center text-xs"
                                         min={0}
                                         max={targetValue || 999}
-                                        disabled={isSavingProgress || isUpdatingProgress}
+                                        disabled={
+                                          isSavingProgress || isUpdatingProgress
+                                        }
                                       />
                                     </div>
                                     <div className="text-center text-[10px] text-muted-foreground">
                                       Target: {targetValue}
                                     </div>
                                   </div>
-                                );
+                                )
                               })}
                             </div>
                             <Button
@@ -962,12 +1045,16 @@ export default function LearnerDashboardContainer({
                             >
                               {isSavingProgress || isUpdatingProgress ? (
                                 <>
-                                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
+                                  <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current"></span>
                                   Saving...
                                 </>
                               ) : (
                                 <>
-                                  <HugeiconsIcon icon={SaveIcon} strokeWidth={2} className="h-4 w-4" />
+                                  <HugeiconsIcon
+                                    icon={SaveIcon}
+                                    strokeWidth={2}
+                                    className="h-4 w-4"
+                                  />
                                   Save Progress
                                 </>
                               )}
@@ -977,7 +1064,7 @@ export default function LearnerDashboardContainer({
                       </div>
                     )}
                   </div>
-                );
+                )
               })}
             </CardContent>
           </Card>
@@ -998,7 +1085,10 @@ export default function LearnerDashboardContainer({
               >
                 All Notifications
                 {totalNotificationsCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs"
+                  >
                     {totalNotificationsCount}
                   </Badge>
                 )}
@@ -1032,7 +1122,7 @@ export default function LearnerDashboardContainer({
                     >
                       {/* System Icon */}
                       <div className="flex-shrink-0 pt-0.5">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
                           <HugeiconsIcon
                             icon={NotificationIcon}
                             strokeWidth={2}
@@ -1057,7 +1147,7 @@ export default function LearnerDashboardContainer({
                               onClick={() => {
                                 // Use the navigation callback
                                 if (onNavigateToCourse) {
-                                  onNavigateToCourse(notification.courseId);
+                                  onNavigateToCourse(notification.courseId)
                                 }
                               }}
                             >
