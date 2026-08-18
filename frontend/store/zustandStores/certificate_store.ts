@@ -51,12 +51,17 @@ const transformCertificate = (cert: any): JapaneseCertificate => {
     employeeId: cert.employeeId || '',
     employeeName: cert.employeeName || '',
     email: cert.email || '',
-    profilePhotoPath: cert.profilePhotoPath,
+    profilePhotoPath: cert.profilePhotoPath || cert.profile_photo_path || null,
     divisionName: cert.divisionName || '',
     departmentName: cert.departmentName || '',
     teamName: cert.teamName || '',
-    verifiedByEmployeeId: cert.verifiedByEmployeeId || null,
-    verifiedByEmployeeName: cert.verifiedByEmployeeName || null,
+    verifiedByEmployeeId: cert.verifiedByEmployeeId || cert.verified_by_employee_id || null,
+    verifiedByEmployeeName: cert.verifiedByEmployeeName || cert.verified_by_employee_name || null,
+    verifiedByProfilePhotoPath:
+      cert.verifiedByProfilePhotoPath ||
+      cert.verified_by_profile_photo_path ||
+      cert.verifiedByAvatar ||
+      null,
     createdAt: cert.createdAt ? new Date(cert.createdAt) : null,
     remark: cert.remark || null,
   };

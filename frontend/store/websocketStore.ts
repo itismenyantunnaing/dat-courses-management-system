@@ -35,6 +35,22 @@ interface NotificationState {
 // Check if in the browser
 const isBrowser = typeof window !== 'undefined';
 
+const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+
+const resolveWebSocketUrl = (): string => {
+  const explicitWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+  if (explicitWsUrl) return explicitWsUrl;
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl) return `${trimTrailingSlash(apiUrl)}/ws`;
+
+  if (isBrowser) {
+    return `${window.location.protocol}//${window.location.hostname}:8080/ws`;
+  }
+
+  return 'http://localhost:8080/ws';
+};
+
 export const webScoketStore = create<NotificationState>((set, get) => ({
   // Initial state
   isConnected: false,
@@ -57,13 +73,12 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
     }
 
     // Create SockJS instance (the transport layer)
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8080/ws';
-    const socket = new SockJS(wsUrl);
+    const wsUrl = resolveWebSocketUrl();
 
     // Create STOMP client
     const client = new Client({
       // Link SockJS to STOMP client
-      webSocketFactory: () => socket,
+      webSocketFactory: () => new SockJS(wsUrl),
 
       // Optional: Add auth headers if needed
       connectHeaders: {
@@ -99,7 +114,7 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
                 id: data.notificationId?.toString() || data.id || Date.now().toString(),
                 message: data.message || 'New notification',
                 title: data.title || 'Notification',
-                type: data.notificationType?.toLowerCase() || 'info',
+                type: data.notificationType?.toLowerCase() || data.type?.toLowerCase() || 'info',
                 timestamp: new Date(data.createdAt || data.timestamp || Date.now()),
                 read: false,
                 courseId: data.courseId || data.referenceId,

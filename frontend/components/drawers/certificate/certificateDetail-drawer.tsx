@@ -125,8 +125,12 @@ export function CertificateDetailDrawer({
   const employeeAvatar = certificate.profilePhotoPath
     ? resolveUploadUrl(certificate.profilePhotoPath)
     : certificate.employee?.avatar || ""
-  const verifiedByAvatar = certificate.verifiedByProfilePhotoPath
-      ? resolveUploadUrl(certificate.verifiedByProfilePhotoPath)
+  const verifiedByPath = (certificate.verifiedByProfilePhotoPath || "").trim()
+  const verifiedByAvatar =
+    verifiedByPath &&
+    verifiedByPath.toLowerCase() !== "null" &&
+    verifiedByPath.toLowerCase() !== "undefined"
+      ? resolveUploadUrl(verifiedByPath)
       : ""
 
   // Get submitted date

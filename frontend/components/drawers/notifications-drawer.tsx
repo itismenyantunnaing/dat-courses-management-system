@@ -19,6 +19,7 @@ import { mainStore } from "@/store/mainStore"
 interface Notification {
   id: number
   message: string
+  createdAt: string
   time: string
   unread: boolean
   type: "COURSE" | "CERTIFICATE" | "JLPT_EXAM"
@@ -154,6 +155,7 @@ export function NotificationsDrawer({
         return {
           id: notif.id,
           message: notif.message || "",
+          createdAt: notif.createdAt || "",
           time: formatTime(notif.createdAt),
           unread: !notif.isRead, // Use the read status from the store
           type: notif.type,
@@ -168,8 +170,8 @@ export function NotificationsDrawer({
         if (!a.unread && b.unread) return 1
 
         // If both have same read status, sort by time (newest first)
-        const timeA = new Date(a.time).getTime() || 0
-        const timeB = new Date(b.time).getTime() || 0
+        const timeA = new Date(a.createdAt).getTime() || 0
+        const timeB = new Date(b.createdAt).getTime() || 0
         return timeB - timeA
       })
   }, [dbNotifications])

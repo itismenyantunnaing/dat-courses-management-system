@@ -168,6 +168,8 @@ const getInitials = (name: string) => {
 const transformToCertificate = (
   cert: CertificateRequest
 ): JapaneseCertificate => {
+  const resolvedAvatar = resolveUploadUrl(cert.employee.avatar) || cert.employee.avatar || ""
+
   return {
     id: cert.id,
     certificateType: cert.certificateType,
@@ -180,7 +182,7 @@ const transformToCertificate = (
     employee: {
       name: cert.employee.name,
       email: cert.employee.email,
-      avatar: cert.employee.avatar,
+      avatar: resolvedAvatar,
     },
     createdAt: new Date(cert.submittedDate),
     employeeName: cert.employee.name,
@@ -226,7 +228,11 @@ export function CertificatesRequestsContainer({
       employee: {
         name: cert.employeeName || "",
         email: cert.email || "",
-        avatar: resolveUploadUrl(cert.profilePhotoPath) || "",
+        avatar:
+          resolveUploadUrl(cert.profilePhotoPath) ||
+          resolveUploadUrl(cert.avatar) ||
+          cert.avatar ||
+          "",
         id: cert.employeeId || "",
         teamName: cert.teamName,
         departmentName: cert.departmentName,
@@ -829,7 +835,10 @@ export function CertificatesRequestsContainer({
                           <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8 rounded-lg">
                               <AvatarImage
-                                src={certificate.employee.avatar}
+                                src={
+                                  resolveUploadUrl(certificate.employee.avatar) ||
+                                  certificate.employee.avatar
+                                }
                                 alt={certificate.employee.name}
                               />
                               <AvatarFallback className="rounded-lg text-xs">

@@ -1,6 +1,6 @@
 package com.dat_management.backend.dto;
 
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import com.dat_management.backend.entity.Notification;
 import com.dat_management.backend.entity.NotificationRecipient;
@@ -19,9 +19,20 @@ public class NotificationResponse {
     Boolean isRead;
     String type;
     String message;
-    LocalDateTime createdAt;
+    String createdAt;
 
     public static NotificationResponse from(Notification notification , NotificationRecipient recipient) {
+        String createdAt = null;
+        if (notification.getCreatedAt() != null) {
+            // Persisted notification timestamps are LocalDateTime (no zone). Convert
+            // using the backend runtime zone so API responses carry an explicit offset.
+            createdAt = notification.getCreatedAt()
+                    .atZone(ZoneId.systemDefault())
+                    .toOffsetDateTime()
+                    .toString();
+        }
+
+
         return NotificationResponse.builder()
                 .id(notification.getId())
                 .employeeId(recipient.getEmployee().getId())
@@ -34,7 +45,7 @@ public class NotificationResponse {
                         : null)
                 .type(notification.getNotificationType().name())
                 .message(notification.getMessage())
-                .createdAt(notification.getCreatedAt())
+                .createdAt(createdAt)
                 .build();
     }
 }
