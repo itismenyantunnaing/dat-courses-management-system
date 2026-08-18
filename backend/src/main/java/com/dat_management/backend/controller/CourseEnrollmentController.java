@@ -12,7 +12,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class CourseEnrollmentController {
 
     private final CourseEnrollmentService service;

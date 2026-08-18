@@ -16,7 +16,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/employee-japanese-profiles")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class EmployeeJapaneseProfileController {
 
     private static final String MODULE = "EMPLOYEE_JAPANESE_PROFILES";

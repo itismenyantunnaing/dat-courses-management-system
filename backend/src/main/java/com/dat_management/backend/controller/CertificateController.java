@@ -10,7 +10,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,7 +31,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/certificates")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class CertificateController {
 
     private final CertificateService certificateService;
@@ -61,15 +59,15 @@ public class CertificateController {
         try {
             Employee employee = getEmployee(employeeId);
             CertificateResponseDto certificate = certificateService.uploadCertificate(
-                employee, certificateType, japaneseLevel, file
+                    employee, certificateType, japaneseLevel, file
             );
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Certificate uploaded successfully");
             response.put("data", certificate);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -89,12 +87,12 @@ public class CertificateController {
         try {
             Employee employee = getEmployee(employeeId);
             List<CertificateResponseDto> certificates = certificateService.getCertificatesByEmployee(employee);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", certificates);
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -110,12 +108,12 @@ public class CertificateController {
         try {
             Employee employee = getEmployee(employeeId);
             CertificateResponseDto certificate = certificateService.getCertificateById(id, employee);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", certificate);
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -131,9 +129,9 @@ public class CertificateController {
         try {
             Employee employee = getEmployee(employeeId);
             CertificateResponseDto certificate = certificateService.getCertificateById(id, employee);
-            
+
             byte[] imageData = certificateFileStorageService.getFile(certificate.getFilePath());
-            
+
             // Determine content type based on file extension
             String filePath = certificate.getFilePath();
             String contentType = "image/jpeg"; // default
@@ -142,15 +140,15 @@ public class CertificateController {
             } else if (filePath.toLowerCase().endsWith(".jpg") || filePath.toLowerCase().endsWith(".jpeg")) {
                 contentType = "image/jpeg";
             }
-            
+
             // Extract filename
             String filename = Paths.get(filePath).getFileName().toString();
-            
+
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                     .body(imageData);
-                    
+
         } catch (Exception e) {
             throw new RuntimeException("Error retrieving image: " + e.getMessage());
         }
@@ -166,15 +164,15 @@ public class CertificateController {
         try {
             Employee employee = getEmployee(employeeId);
             CertificateResponseDto certificate = certificateService.updateCertificate(
-                id, employee, certificateType, japaneseLevel, file
+                    id, employee, certificateType, japaneseLevel, file
             );
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Certificate updated successfully");
             response.put("data", certificate);
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -195,12 +193,12 @@ public class CertificateController {
         try {
             Employee employee = getEmployee(employeeId);
             certificateService.deleteCertificate(id, employee);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Certificate deleted successfully");
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -229,7 +227,7 @@ public class CertificateController {
             response.put("message", "Certificate verified successfully");
             response.put("data", certificate);
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -246,13 +244,13 @@ public class CertificateController {
         try {
             Employee employee = getEmployee(employeeId);
             CertificateResponseDto certificate = certificateService.rejectCertificate(id, employee,remark);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Certificate rejected successfully");
             response.put("data", certificate);
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -267,12 +265,12 @@ public class CertificateController {
         try {
             getEmployee(employeeId); // Just to validate employee exists
             List<CertificateResponseDto> certificates = certificateService.getPendingCertificates();
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", certificates);
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -287,12 +285,12 @@ public class CertificateController {
         try {
             getEmployee(employeeId); // Just to validate employee exists
             List<CertificateResponseDto> certificates = certificateService.getAllCertificates();
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", certificates);
             return ResponseEntity.ok(response);
-            
+
         } catch (RuntimeException e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);

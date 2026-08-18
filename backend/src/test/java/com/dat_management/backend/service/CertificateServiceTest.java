@@ -8,6 +8,7 @@ import com.dat_management.backend.entity.EmployeeCertificate.VerificationStatus;
 import com.dat_management.backend.entity.EmployeeJapaneseProfile;
 import com.dat_management.backend.repository.EmployeeCertificateRepository;
 import com.dat_management.backend.repository.EmployeeJapaneseProfileRepository;
+import com.dat_management.backend.repository.NotificationRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,9 @@ class CertificateServiceTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private NotificationRepository notificationRepository;
 
     @Test
     void uploadCertificate_validImage_savesPendingCertificateAndReturnsDto() throws IOException {
@@ -258,7 +262,7 @@ class CertificateServiceTest {
     }
 
     private CertificateService service() {
-        return new CertificateService(certificateRepository, japaneseProfileRepository, fileStorageService, notificationService);
+        return new CertificateService(certificateRepository, japaneseProfileRepository, fileStorageService, notificationService, notificationRepository);
     }
 
     private static MockMultipartFile imageFile() {

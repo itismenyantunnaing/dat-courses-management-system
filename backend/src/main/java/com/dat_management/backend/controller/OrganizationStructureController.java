@@ -13,7 +13,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,7 +28,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class OrganizationStructureController {
 
     private static final String DIVISIONS_MODULE = "DIVISIONS";
@@ -121,7 +119,7 @@ public class OrganizationStructureController {
 
     @PutMapping("/departments-dat/{id}")
     public ResponseEntity<?> updateDepartmentDat(@PathVariable Integer id,
-            @Valid @RequestBody DepartmentDatRequestDTO dto) {
+                                                 @Valid @RequestBody DepartmentDatRequestDTO dto) {
         return handle(() -> {
             DepartmentDatResponseDTO oldValue = service.getDepartmentDatById(id);
             DepartmentDatResponseDTO updated = service.updateDepartmentDat(id, dto);

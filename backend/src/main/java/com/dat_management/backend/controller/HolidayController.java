@@ -17,7 +17,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/holidays")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class HolidayController {
 
     private final HolidayService holidayService;

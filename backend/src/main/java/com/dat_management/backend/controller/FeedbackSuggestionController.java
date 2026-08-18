@@ -17,7 +17,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/feedback")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class FeedbackSuggestionController {
 
     private final FeedbackSuggestionService feedbackService;
@@ -35,7 +34,7 @@ public class FeedbackSuggestionController {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", e.getMessage());
-            
+
             if (e.getMessage().contains("not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
@@ -67,7 +66,7 @@ public class FeedbackSuggestionController {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", e.getMessage());
-            
+
             if (e.getMessage().contains("not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
@@ -93,7 +92,7 @@ public class FeedbackSuggestionController {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", e.getMessage());
-            
+
             if (e.getMessage().contains("not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
@@ -118,7 +117,7 @@ public class FeedbackSuggestionController {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", e.getMessage());
-            
+
             if (e.getMessage().contains("not found")) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
@@ -140,12 +139,12 @@ public class FeedbackSuggestionController {
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
         response.put("message", "Validation failed");
         response.put("errors", errors);
-        
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 }

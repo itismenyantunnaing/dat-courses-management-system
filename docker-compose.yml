@@ -11,7 +11,13 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "3307:3306"
+      # Bound to localhost only — the backend reaches this over the internal
+      # docker network via the "db" hostname either way, so this mapping only
+      # exists for admins to connect a DB tool (e.g. DBeaver) *from the server
+      # itself* or over an SSH tunnel. Do not change the left side to "3307:3306"
+      # (all interfaces) in production — that would expose the database to
+      # the whole office network.
+      - "127.0.0.1:3307:3306"
     volumes:
       - ./db/init:/docker-entrypoint-initdb.d
       - mysql_data:/var/lib/mysql   # persists data between restarts
@@ -34,6 +40,10 @@ services:
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      # Origins allowed to call the API from a browser. Keeps localhost:3000
+      # working for anyone still running the frontend locally against this
+      # shared backend, and adds the real deployed frontend origin.
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://${SERVER_IP}:3000
       SPRING_MAIL_HOST: ${MAIL_HOST}
       SPRING_MAIL_PORT: ${MAIL_PORT}
       SPRING_MAIL_USERNAME: ${MAIL_USERNAME}

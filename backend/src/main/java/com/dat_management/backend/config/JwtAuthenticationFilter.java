@@ -58,36 +58,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getServletPath();
-
-        logger.info("➡️ REQUEST PATH: {}", path);
-
-        String authHeader = request.getHeader("Authorization");
-        logger.info("➡️ AUTH HEADER: {}", authHeader);
-
         try {
             String jwt = parseJwt(request);
 
             if (jwt == null) {
-                logger.warn("❌ JWT IS NULL");
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            logger.info("➡️ JWT TOKEN: {}", jwt);
-
             if (jwtService.validateToken(jwt)) {
 
                 String userId = jwtService.extractUsername(jwt);
-                logger.info("➡️ EXTRACTED USERID: {}", userId);
 
                 if (userId != null &&
                         SecurityContextHolder.getContext().getAuthentication() == null) {
 
                     UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
-
-                    logger.info("➡️ USER LOADED: {}", userDetails.getUsername());
-                    logger.info("➡️ AUTHORITIES: {}", userDetails.getAuthorities());
 
                     if (jwtService.validateToken(jwt, userDetails)) {
 
@@ -103,31 +89,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         );
 
                         SecurityContextHolder.getContext().setAuthentication(auth);
-
-                        logger.info("✅ AUTH SUCCESSFUL");
                     } else {
-                        logger.error("❌ TOKEN VALIDATION FAILED (userDetails check)");
+                        logger.debug("JWT rejected: token does not match resolved user");
                     }
                 }
             } else {
-                logger.error("❌ TOKEN INVALID");
+                logger.debug("JWT rejected: invalid token");
             }
 
         } catch (ExpiredJwtException e) {
-            logger.error("❌ TOKEN EXPIRED");
+            logger.debug("JWT rejected: expired");
         } catch (Exception e) {
-            logger.error("❌ JWT ERROR: ", e);
+            // Deliberately not logging the exception message/stacktrace here —
+            // JWT parsing exceptions from this library can include the raw
+            // token text, which must never land in logs.
+            logger.debug("JWT rejected: could not be parsed");
         }
-
-        logger.info("➡️ FINAL AUTH: {}", SecurityContextHolder.getContext().getAuthentication());
 
         filterChain.doFilter(request, response);
     }
 
     private boolean shouldSkipAuthentication(String path) {
         return PUBLIC_PATHS.contains(path) ||
-                //path.startsWith("/api/employee-japanese-profiles/") ||
-                //path.startsWith("/api/")||
                 path.startsWith("/css/") ||
                 path.startsWith("/js/") ||
                 path.startsWith("/images/");

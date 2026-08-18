@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/system-config")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 
 public class SystemConfigController {
 

@@ -12,7 +12,6 @@ import java.util.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/japanese_dictionary")
-@CrossOrigin(origins = "*")
 public class JapaneseDictionaryController {
 
     private final JapaneseDictionaryService japaneseDictionaryService;
@@ -42,7 +41,7 @@ public class JapaneseDictionaryController {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", e.getMessage());
-            
+
             if (e.getMessage().contains("already exists")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
@@ -58,7 +57,7 @@ public class JapaneseDictionaryController {
     // UPDATE
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateEntry(
-            @PathVariable Integer id, 
+            @PathVariable Integer id,
             @RequestBody JapaneseDictionary entryDetails) {
         try {
             JapaneseDictionary updatedEntry = japaneseDictionaryService.updateEntry(id, entryDetails);

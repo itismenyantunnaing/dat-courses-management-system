@@ -13,7 +13,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/target-terms")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class TargetTermController {
 
     private final TargetTermService targetTermService;
@@ -22,7 +21,7 @@ public class TargetTermController {
     public List<TargetTermResponse> getAll() {
         return targetTermService.getAll();
     }
- 
+
     @GetMapping("/active")
     public List<TargetTermResponse> getActiveTerms() {
         return targetTermService.getActiveTerms();

@@ -1,6 +1,5 @@
 package com.dat_management.backend.controller;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/groupchange")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class GroupChangeController {
 
     private final CourseEnrollmentService service;

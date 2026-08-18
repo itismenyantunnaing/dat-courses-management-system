@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Slf4j
 public class NotificationController {
     private final NotificationService notificationService;
@@ -50,11 +48,11 @@ public class NotificationController {
     public ResponseEntity<List<NotificationResponse>> getNotifications(
             @RequestParam(required = false) String employeeId,
             @RequestParam(defaultValue = "false") boolean unreadOnly) {
-        
+
         if (employeeId == null || employeeId.isBlank()) {
             return ResponseEntity.ok(List.of());
         }
-        
+
         Employee employee = getEmployee(employeeId);
         List<NotificationResponse> notifications = notificationService.getForEmployee(employee, unreadOnly);
         return ResponseEntity.ok(notifications);
@@ -66,13 +64,13 @@ public class NotificationController {
     @GetMapping("/unread-count")
     public ResponseEntity<Map<String, Long>> unreadCount(
             @RequestParam(required = false) String employeeId) {
-        
+
         Map<String, Long> result = new HashMap<>();
         if (employeeId == null || employeeId.isBlank()) {
             result.put("count", 0L);
             return ResponseEntity.ok(result);
         }
-        
+
         Employee employee = getEmployee(employeeId);
         result.put("count", notificationService.unreadCount(employee));
         return ResponseEntity.ok(result);
@@ -83,9 +81,9 @@ public class NotificationController {
     // ================================================================
     @PutMapping("/{id}/read")
     public ResponseEntity<Void> markRead(
-            @PathVariable Integer id, 
+            @PathVariable Integer id,
             @RequestParam String employeeId) {
-        
+
         Employee employee = getEmployee(employeeId);
         notificationService.markRead(id, employee);
         return ResponseEntity.noContent().build();
@@ -101,5 +99,5 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
-   
+
 }

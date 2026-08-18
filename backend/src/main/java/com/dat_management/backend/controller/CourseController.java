@@ -17,7 +17,6 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class CourseController {
 
     private static final String MODULE = "COURSES";

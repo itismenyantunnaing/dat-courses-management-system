@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/japanese-dashboard")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class JapaneseDashboardController {
 
     private final JapaneseDashboardService dashboardService;

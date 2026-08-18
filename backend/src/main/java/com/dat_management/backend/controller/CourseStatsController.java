@@ -21,7 +21,6 @@ import com.dat_management.backend.service.OrganizationalStatsService;
 import com.dat_management.backend.service.RiskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,7 +32,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/course-stats")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class CourseStatsController {
 
     private final CourseStatsService courseStatsService;

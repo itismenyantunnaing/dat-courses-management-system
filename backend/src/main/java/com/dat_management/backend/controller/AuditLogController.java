@@ -22,7 +22,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/audit-logs")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class AuditLogController {
 
     private final AuditLogService auditLogService;

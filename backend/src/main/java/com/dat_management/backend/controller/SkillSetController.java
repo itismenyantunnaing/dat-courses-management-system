@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/skills")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class SkillSetController {
 
     private static final String MODULE = "SKILLS";
@@ -61,7 +60,7 @@ public class SkillSetController {
 
     @PostMapping("/language/bulk")
     public ResponseEntity<?> saveBulkLanguageSkills(@Valid @RequestBody List<LanguageSkillDto> dtos,
-            BindingResult result) {
+                                                    BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
         }
@@ -197,7 +196,7 @@ public class SkillSetController {
 
     @PostMapping("/management/bulk")
     public ResponseEntity<?> saveBulkManagementSkills(@Valid @RequestBody List<ManagementSkillDto> dtos,
-            BindingResult result) {
+                                                      BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
         }
@@ -333,7 +332,7 @@ public class SkillSetController {
 
     @PostMapping("/development/bulk")
     public ResponseEntity<?> saveBulkDevelopmentSkills(@Valid @RequestBody List<DevelopmentSkillDto> dtos,
-            BindingResult result) {
+                                                       BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
         }
@@ -506,7 +505,7 @@ public class SkillSetController {
 
     @PostMapping("/technical/bulk")
     public ResponseEntity<?> saveBulkTechnicalSkills(@Valid @RequestBody List<TechnicalSkillDto> dtos,
-            BindingResult result) {
+                                                     BindingResult result) {
         if (result.hasErrors()) {
             return getErrorResponse(result);
         }

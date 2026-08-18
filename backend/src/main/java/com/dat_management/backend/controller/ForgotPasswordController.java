@@ -15,11 +15,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class ForgotPasswordController {
 
     private final ForgotPasswordService service;
-    
+
     private final ForgotPasswordService forgotPasswordService;
 
     // STEP 1: Send OTP

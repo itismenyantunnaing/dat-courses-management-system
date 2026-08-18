@@ -20,7 +20,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class EmployeeProfileController {
 
     private final EmployeeProfileService employeeProfileService;
@@ -55,16 +54,8 @@ public class EmployeeProfileController {
             // 1. Update profile image if file is provided
             if (file != null && !file.isEmpty()) {
                 String imagePath = employeeProfileService.storeProfileImage(file, employeeId);
-
-                // storeProfileImage() persists the new path on its OWN copy of the
-                // Employee entity (fetched fresh inside that @Transactional method).
-                // The `employee` object in this method was loaded earlier and is now
-                // stale, so it must be updated here too — otherwise the
-                // employeeRepository.save(employee) call below (which always runs
-                // once any field changed) writes the stale entity back to the DB
-                // and silently reverts profilePhotoPath to its old value, undoing
-                // the write that just happened.
                 employee.setProfilePhotoPath(imagePath);
+
                 response.put("profilePhotoPath", imagePath);
                 updatedFields.put("profilePhotoPath", "Updated"); // FIX: Use the map directly
             }

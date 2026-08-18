@@ -25,9 +25,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/security/api/auth")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true", allowedHeaders = "*", exposedHeaders = {
-                "Authorization", "Content-Type" }, methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT,
-                                RequestMethod.DELETE, RequestMethod.OPTIONS })
 public class AuthRestController {
 
         private final AuthenticationManager authenticationManager;
@@ -37,11 +34,11 @@ public class AuthRestController {
         private final SystemConfigRepository systemConfigRepository;
 
         public AuthRestController(
-                        AuthenticationManager authenticationManager,
-                        JwtService jwtService,
-                        EmployeeRepository userRepository,
-                        PasswordEncoder passwordEncoder,
-                        SystemConfigRepository systemConfigRepository) {
+                AuthenticationManager authenticationManager,
+                JwtService jwtService,
+                EmployeeRepository userRepository,
+                PasswordEncoder passwordEncoder,
+                SystemConfigRepository systemConfigRepository) {
 
                 this.authenticationManager = authenticationManager;
                 this.jwtService = jwtService;
@@ -54,21 +51,21 @@ public class AuthRestController {
         public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
 
                 Employee employee = employeeRepository.findByIdAndIsDeletedFalse(request.getUserId())
-                                .orElse(null);
+                        .orElse(null);
 
                 if (employee == null) {
                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                                        .body(Map.of("message", "Invalid credentials"));
+                                .body(Map.of("message", "Invalid credentials"));
                 }
 
                 // 🔴 1. CHECK ACCOUNT LOCK
                 if (employee.getAccountLockedUntil() != null &&
-                                employee.getAccountLockedUntil().isAfter(LocalDateTime.now())) {
+                        employee.getAccountLockedUntil().isAfter(LocalDateTime.now())) {
 
                         return ResponseEntity.status(HttpStatus.LOCKED)
-                                        .body(Map.of(
-                                                        "message", "Account locked. Try again later.",
-                                                        "lockedUntil", employee.getAccountLockedUntil()));
+                                .body(Map.of(
+                                        "message", "Account locked. Try again later.",
+                                        "lockedUntil", employee.getAccountLockedUntil()));
                 }
 
                 // 🔴 2. CHECK PASSWORD
@@ -87,9 +84,9 @@ public class AuthRestController {
                         employeeRepository.save(employee);
 
                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                                        .body(Map.of(
-                                                        "message", "Invalid password",
-                                                        "attempts", attempts));
+                                .body(Map.of(
+                                        "message", "Invalid password",
+                                        "attempts", attempts));
                 }
 
                 // 🟢 3. SUCCESS LOGIN → RESET SECURITY FIELDS
@@ -99,31 +96,31 @@ public class AuthRestController {
 
                 // 🔵 4. GENERATE TOKEN (your existing logic)
                 Authentication authentication = authenticationManager.authenticate(
-                                new UsernamePasswordAuthenticationToken(
-                                                request.getUserId(),
-                                                request.getPassword()));
+                        new UsernamePasswordAuthenticationToken(
+                                request.getUserId(),
+                                request.getPassword()));
 
                 org.springframework.security.core.userdetails.User springUser = (org.springframework.security.core.userdetails.User) authentication
-                                .getPrincipal();
+                        .getPrincipal();
 
                 String token = jwtService.generateToken(springUser);
 
                 return ResponseEntity.ok(Map.of(
-                                "token", token,
-                                "userId", employee.getId(),
-                                "role", employee.getRole().getRoleName(),
-                                "name", employee.getName(),
-                                "email", employee.getEmail(),
-                                "status", employee.getStatus(),
-                                "message", "Login successful"));
+                        "token", token,
+                        "userId", employee.getId(),
+                        "role", employee.getRole().getRoleName(),
+                        "name", employee.getName(),
+                        "email", employee.getEmail(),
+                        "status", employee.getStatus(),
+                        "message", "Login successful"));
         }
 
         @GetMapping("/me")
         public ResponseEntity<?> me(Authentication authentication) {
 
                 Employee employee = employeeRepository
-                                .findById(authentication.getName())
-                                .orElse(null);
+                        .findById(authentication.getName())
+                        .orElse(null);
 
                 if (employee == null) {
                         return ResponseEntity.notFound().build();
@@ -142,30 +139,30 @@ public class AuthRestController {
 
         @PostMapping("/verify-current-password")
         public ResponseEntity<?> verifyCurrentPassword(
-                        @RequestBody VerifyCurrentPassword request,
-                        Authentication authentication,
-                        HttpSession session) {
+                @RequestBody VerifyCurrentPassword request,
+                Authentication authentication,
+                HttpSession session) {
 
                 Employee employee = employeeRepository.findById(authentication.getName())
-                                .orElseThrow();
+                        .orElseThrow();
 
                 if (!passwordEncoder.matches(request.getCurrentPassword(), employee.getPassword())) {
                         return ResponseEntity.badRequest().body(
-                                        Map.of("verified", false, "message", "Wrong password"));
+                                Map.of("verified", false, "message", "Wrong password"));
                 }
 
                 // 🔥 STORE FLAG
                 session.setAttribute("pwd_verified", true);
 
                 return ResponseEntity.ok(
-                                Map.of("verified", true, "message", "Verified"));
+                        Map.of("verified", true, "message", "Verified"));
         }
 
         @PostMapping("/change-password")
         public ResponseEntity<?> changePassword(
-                        @RequestBody ChangePasswordRequest request,
-                        Authentication authentication,
-                        HttpSession session) {
+                @RequestBody ChangePasswordRequest request,
+                Authentication authentication,
+                HttpSession session) {
 
                 Boolean verified = (Boolean) session.getAttribute("pwd_verified");
 
@@ -178,16 +175,16 @@ public class AuthRestController {
                         var optEmployee = employeeRepository.findById(authentication.getName());
                         if (optEmployee == null || optEmployee.isEmpty() || !"default".equals(optEmployee.get().getStatus())) {
                                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                                                .body(Map.of("message", "Verify current password first"));
+                                        .body(Map.of("message", "Verify current password first"));
                         }
                 }
 
                 Employee employee = employeeRepository.findById(authentication.getName())
-                                .orElseThrow();
+                        .orElseThrow();
 
                 if (!request.getNewPassword().equals(request.getConfirmPassword())) {
                         return ResponseEntity.badRequest()
-                                        .body(Map.of("message", "Passwords do not match"));
+                                .body(Map.of("message", "Passwords do not match"));
                 }
 
                 employee.setPassword(passwordEncoder.encode(request.getNewPassword()));
@@ -198,28 +195,28 @@ public class AuthRestController {
                 session.removeAttribute("pwd_verified");
 
                 return ResponseEntity.ok(
-                                Map.of("message", "Password changed successfully"));
+                        Map.of("message", "Password changed successfully"));
         }
 
         @PostMapping("/logout")
         public ResponseEntity<?> logout() {
 
                 return ResponseEntity.ok(
-                                Map.of(
-                                                "message",
-                                                "Logout successful"));
+                        Map.of(
+                                "message",
+                                "Logout successful"));
         }
 
 
         //Helper method to get max login attempts
         private int getMaxLoginAttempts() {
-            try {
-                SystemConfig config = systemConfigRepository.findById(1L)
-                        .orElseThrow(() -> new RuntimeException("System configuration not found"));
-                return config.getMaxLoginAttempts(); // Default to 5 if not set
-            } catch (Exception e) {
-                // Fallback to default value if config not available
-                return 5;
-            }
+                try {
+                        SystemConfig config = systemConfigRepository.findById(1L)
+                                .orElseThrow(() -> new RuntimeException("System configuration not found"));
+                        return config.getMaxLoginAttempts(); // Default to 5 if not set
+                } catch (Exception e) {
+                        // Fallback to default value if config not available
+                        return 5;
+                }
         }
 }

@@ -19,7 +19,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class EmployeeController {
 
     private static final String MODULE = "EMPLOYEES";
