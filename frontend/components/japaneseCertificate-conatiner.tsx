@@ -25,12 +25,21 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import { Kbd } from "@/components/ui/kbd"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Badge } from "@/components/ui/badge"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
   Loading03Icon,
   Certificate01Icon,
   Upload05Icon,
+  FilterMailIcon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons"
 import { JapaneseCertificate } from "@/types/certificate"
 import { CertificateCard } from "../components/cards/certificate-card"
@@ -39,6 +48,20 @@ import { CertificateDetailDrawer } from "../components/drawers/certificate/certi
 import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuShortcut,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
+} from "./ui/dropdown-menu"
 
 const STROKE_WIDTH = 2
 
@@ -50,6 +73,15 @@ const statusLabels = {
 
 interface JapaneseCertificateContainerProps {
   selectedCertificateId?: string | number | null
+}
+
+type StatusTab = "all" | "approved" | "pending" | "rejected"
+
+// Filter state type
+type FilterState = {
+  status: string[]
+  certificateType: string[]
+  level: string[]
 }
 
 // Spinner component
@@ -86,15 +118,63 @@ export function JapaneseCertificateContainer({
   } = mainStore()
 
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [statusTab, setStatusTab] = useState<StatusTab>("all")
   const [isNewDrawerOpen, setIsNewDrawerOpen] = useState(false)
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false)
   const [editingCertificate, setEditingCertificate] =
     useState<JapaneseCertificate | null>(null)
 
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    status: [],
+    certificateType: [],
+    level: [],
+  })
+
   const searchPlaceholder = "Search certificates..."
   const searchInputRef = useRef<HTMLInputElement>(null)
   const hasProcessedSelectedIdRef = useRef(false)
+
+  // Check if any filters are active
+  const hasActiveFilters = Object.values(filters).some(
+    (filterArray) => filterArray.length > 0
+  )
+
+  // Get unique certificate types, levels, and statuses for filter dropdown
+  const uniqueCertificateTypes = useMemo(() => {
+    const types = new Set<string>()
+    certificateData.forEach((cert) => {
+      if (cert.certificateType) {
+        types.add(cert.certificateType)
+      }
+    })
+    return Array.from(types).sort()
+  }, [certificateData])
+
+  const uniqueLevels = useMemo(() => {
+    const levels = new Set<string>()
+    certificateData.forEach((cert) => {
+      if (cert.japaneseLevel) {
+        levels.add(cert.japaneseLevel)
+      }
+    })
+    return Array.from(levels).sort()
+  }, [certificateData])
+
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set<string>()
+    certificateData.forEach((cert) => {
+      if (cert.verificationStatus) {
+        statuses.add(cert.verificationStatus)
+      }
+    })
+    return Array.from(statuses).sort()
+  }, [certificateData])
+
+  const hasCertificateTypeData = uniqueCertificateTypes.length > 0
+  const hasLevelData = uniqueLevels.length > 0
+  const hasStatusData = uniqueStatuses.length > 0
+  const hasFilterData = hasCertificateTypeData || hasLevelData || hasStatusData
 
   // Reset processed flag when selectedCertificateId changes
   useEffect(() => {
@@ -116,6 +196,25 @@ export function JapaneseCertificateContainer({
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
 
+  // Keyboard shortcut for clearing filters
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (
+        e.key === "Escape" &&
+        !target.closest("input") &&
+        !target.closest("textarea") &&
+        hasActiveFilters
+      ) {
+        e.preventDefault()
+        clearAllFilters()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [hasActiveFilters])
+
   // Fetch certificates on mount
   useEffect(() => {
     const userId = getUserId()
@@ -126,11 +225,6 @@ export function JapaneseCertificateContainer({
 
   // Effect to find and open the certificate when selectedCertificateId is provided
   useEffect(() => {
-    // Only process if:
-    // 1. We have a selectedCertificateId
-    // 2. We're not loading
-    // 3. We haven't processed this ID yet
-    // 4. We have certificates loaded
     if (
       !selectedCertificateId ||
       isLoading ||
@@ -140,25 +234,21 @@ export function JapaneseCertificateContainer({
       return
     }
 
-    // Find the certificate (convert ID to string for comparison)
     const certIdStr = selectedCertificateId.toString()
     const foundCertificate = certificateData.find((c) => c.id === certIdStr)
 
     if (foundCertificate) {
-      // Open the certificate detail drawer
       handleCardClick(foundCertificate)
       hasProcessedSelectedIdRef.current = true
       return
     }
 
-    // If certificate not found, try to refresh data
     console.warn(
       `Certificate with ID ${selectedCertificateId} not found. Refreshing...`
     )
     const userId = getUserId()
     if (userId) {
       fetch_CertificateData(userId).then(() => {
-        // After refresh, check again
         const refreshedCertificate = certificateData.find(
           (c) => c.id === certIdStr
         )
@@ -186,6 +276,68 @@ export function JapaneseCertificateContainer({
     getUserId,
   ])
 
+  // Helper to toggle filter values
+  const toggleFilter = (field: keyof FilterState, value: string) => {
+    setFilters((prev) => {
+      const current = prev[field]
+      if (current.includes(value)) {
+        return { ...prev, [field]: current.filter((v) => v !== value) }
+      } else {
+        return { ...prev, [field]: [...current, value] }
+      }
+    })
+  }
+
+  // Helper to clear all filters
+  const clearAllFilters = () => {
+    setFilters({
+      status: [],
+      certificateType: [],
+      level: [],
+    })
+    setStatusTab("all")
+  }
+
+  // Filter certificates
+  const filteredCertificates = useMemo(() => {
+    const search = searchTerm.toLowerCase()
+    return certificateData.filter((cert) => {
+      // Search filter
+      const matchesSearch =
+        cert.certificateType.toLowerCase().includes(search) ||
+        cert.japaneseLevel.toLowerCase().includes(search) ||
+        (cert.verifiedAt &&
+          format(cert.verifiedAt, "MMM yyyy").toLowerCase().includes(search)) ||
+        cert.verificationStatus?.toLowerCase().includes(search)
+
+      // Status tab filter
+      const matchesStatusTab =
+        statusTab === "all" || cert.verificationStatus === statusTab
+
+      // Status filter (from dropdown)
+      const matchesStatusFilter =
+        filters.status.length === 0 ||
+        filters.status.includes(cert.verificationStatus || "")
+
+      // Certificate type filter
+      const matchesType =
+        filters.certificateType.length === 0 ||
+        filters.certificateType.includes(cert.certificateType)
+
+      // Level filter
+      const matchesLevel =
+        filters.level.length === 0 || filters.level.includes(cert.japaneseLevel)
+
+      return (
+        matchesSearch &&
+        matchesStatusTab &&
+        matchesStatusFilter &&
+        matchesType &&
+        matchesLevel
+      )
+    })
+  }, [certificateData, searchTerm, statusTab, filters])
+
   // Count certificates by status
   const statusCounts = useMemo(() => {
     const counts = {
@@ -202,23 +354,11 @@ export function JapaneseCertificateContainer({
     return counts
   }, [certificateData])
 
-  // Filter certificates
-  const filteredCertificates = useMemo(() => {
-    const search = searchTerm.toLowerCase()
-    return certificateData.filter((cert) => {
-      const matchesSearch =
-        cert.certificateType.toLowerCase().includes(search) ||
-        cert.japaneseLevel.toLowerCase().includes(search) ||
-        (cert.verifiedAt &&
-          format(cert.verifiedAt, "MMM yyyy").toLowerCase().includes(search)) ||
-        cert.verificationStatus?.toLowerCase().includes(search)
-
-      const matchesStatus =
-        statusFilter === "all" || cert.verificationStatus === statusFilter
-
-      return matchesSearch && matchesStatus
-    })
-  }, [certificateData, searchTerm, statusFilter])
+  // Get count for a specific status tab
+  const getStatusTabCount = (status: string) => {
+    if (status === "all") return certificateData.length
+    return statusCounts[status as keyof typeof statusCounts] || 0
+  }
 
   // Handle card click - opens detail drawer
   const handleCardClick = (certificate: JapaneseCertificate) => {
@@ -261,55 +401,84 @@ export function JapaneseCertificateContainer({
 
   const hasCertificates = certificateData.length > 0
 
-  // Generate empty state message based on status counts
-  const getEmptyStateMessage = () => {
-    const parts = []
-    if (statusCounts.pending > 0) {
-      parts.push(
-        `${statusCounts.pending} pending certificate${statusCounts.pending > 1 ? "s" : ""}`
-      )
-    }
-    if (statusCounts.approved > 0) {
-      parts.push(
-        `${statusCounts.approved} approved certificate${statusCounts.approved > 1 ? "s" : ""}`
-      )
-    }
-    if (statusCounts.rejected > 0) {
-      parts.push(
-        `${statusCounts.rejected} rejected certificate${statusCounts.rejected > 1 ? "s" : ""}`
-      )
-    }
-
-    if (parts.length === 0) {
-      return "You don't have any certificates yet."
-    }
-
-    const statusFilterLabel =
-      statusFilter === "all"
-        ? ""
-        : statusFilter === "pending"
-          ? "pending "
-          : statusFilter === "approved"
-            ? "approved "
-            : "rejected "
-
-    if (statusFilter !== "all") {
-      const count = statusCounts[statusFilter as keyof typeof statusCounts]
-      if (count === 0) {
-        return `You have ${parts.join(", ")} but no ${statusFilterLabel}certificates to show.`
-      }
-    }
-
-    return `You have ${parts.join(", ")}.`
-  }
-
   return (
     <div className="p-4">
-      {/* Always show search/filter/button when there are certificates */}
+      {/* Tabs and Search - Only show when there are certificates */}
       {hasCertificates && (
         <div className="mb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 gap-4">
+            {/* Tabs */}
+            <div>
+              <Tabs
+                value={statusTab}
+                onValueChange={(value) => {
+                  setStatusTab(value as StatusTab)
+                  setSearchTerm("")
+                }}
+              >
+                <TabsList className="h-auto">
+                  <TabsTrigger value="all" className="gap-2">
+                    All
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        statusTab === "all"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {getStatusTabCount("all")}
+                    </Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="pending" className="gap-2">
+                    Pending
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        statusTab === "pending"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {getStatusTabCount("pending")}
+                    </Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="approved" className="gap-2">
+                    Approved
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        statusTab === "approved"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {getStatusTabCount("approved")}
+                    </Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="rejected" className="gap-2">
+                    Rejected
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        statusTab === "rejected"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {getStatusTabCount("rejected")}
+                    </Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* Actions - Search, Filter */}
+            <div className="flex items-center gap-2">
               <InputGroup className="max-w-xs flex-1">
                 <InputGroupInput
                   ref={searchInputRef}
@@ -328,24 +497,140 @@ export function JapaneseCertificateContainer({
                   <Kbd>Ctrl + K</Kbd>
                 </InputGroupAddon>
               </InputGroup>
-            </div>
 
-            <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-auto min-w-[130px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent align="center" sideOffset={5}>
-                  <SelectGroup>
-                    <SelectItem value="all">All Status</SelectItem>
-                    {Object.entries(statusLabels).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              {/* Filter Dropdown */}
+              {hasFilterData && (
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="relative h-9 w-9"
+                        >
+                          <HugeiconsIcon
+                            icon={FilterMailIcon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                          {hasActiveFilters && (
+                            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Filter</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
+                    {/* Status Filter */}
+                    {hasStatusData && (
+                      <>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            Status
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {uniqueStatuses.map((status) => (
+                                <DropdownMenuCheckboxItem
+                                  key={status}
+                                  checked={filters.status.includes(status)}
+                                  onCheckedChange={() =>
+                                    toggleFilter("status", status)
+                                  }
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {statusLabels[
+                                    status as keyof typeof statusLabels
+                                  ] || status}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                      </>
+                    )}
+
+                    {/* Certificate Type Filter */}
+                    {hasCertificateTypeData && (
+                      <>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            Certificate Type
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {uniqueCertificateTypes.map((type) => (
+                                <DropdownMenuCheckboxItem
+                                  key={type}
+                                  checked={filters.certificateType.includes(
+                                    type
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleFilter("certificateType", type)
+                                  }
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {type}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                      </>
+                    )}
+
+                    {/* Level Filter */}
+                    {hasLevelData && (
+                      <>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Level</DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {uniqueLevels.map((level) => (
+                                <DropdownMenuCheckboxItem
+                                  key={level}
+                                  checked={filters.level.includes(level)}
+                                  onCheckedChange={() =>
+                                    toggleFilter("level", level)
+                                  }
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {level}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                      </>
+                    )}
+
+                    <DropdownMenuSeparator />
+
+                    {/* Clear Filters Button */}
+                    <DropdownMenuItem
+                      onClick={clearAllFilters}
+                      variant="destructive"
+                      className="gap-2"
+                    >
+                      <HugeiconsIcon
+                        icon={Delete02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                      Clear All Filters
+                      <DropdownMenuShortcut>
+                        <Kbd>Esc</Kbd>
+                      </DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
               <Button
                 variant="default"
                 onClick={() => setIsNewDrawerOpen(true)}
@@ -381,30 +666,29 @@ export function JapaneseCertificateContainer({
               />
             </EmptyMedia>
             <EmptyTitle>
-              {hasCertificates ? "No Matching Certificates" : "No Certificates"}
+              {hasCertificates &&
+              (searchTerm || hasActiveFilters || statusTab === "all")
+                ? `No Matching ${statusTab === "all" ? "" : `${statusTab}`} Certificates for ${searchTerm}`
+                : `No ${statusTab === "all" ? "" : `${statusTab}`} certificates found.`}
             </EmptyTitle>
             <EmptyDescription className="text-center text-pretty">
-              {hasCertificates ? (
-                <>
-                  {getEmptyStateMessage()}
-                  {(searchTerm || statusFilter !== "all") && (
-                    <span className="mt-2 block">
-                      Try adjusting your search or filters.
-                    </span>
-                  )}
-                </>
+              {hasCertificates &&
+              (searchTerm || hasActiveFilters || statusTab !== "all") ? (
+                <>Try adjusting your search or filters.</>
               ) : (
-                "You haven't uploaded any Japanese certificates yet."
+                "Upload your Japanese language certificates to verify your proficiency and complete your profile."
               )}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            {(searchTerm || statusFilter !== "all") && hasCertificates ? (
+            {(searchTerm || hasActiveFilters || statusTab !== "all") &&
+            hasCertificates ? (
               <Button
                 variant="outline"
                 onClick={() => {
                   setSearchTerm("")
-                  setStatusFilter("all")
+                  clearAllFilters()
+                  setStatusTab("all")
                 }}
               >
                 Clear Filters

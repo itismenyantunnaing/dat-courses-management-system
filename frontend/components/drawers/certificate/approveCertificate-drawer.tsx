@@ -75,6 +75,7 @@ export function ApproveCertificateDrawer({
     useState(false)
   const [remark, setRemark] = useState("")
   const [imageError, setImageError] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -95,6 +96,7 @@ export function ApproveCertificateDrawer({
     if (open && certificate) {
       setRemark(certificate.remark || "")
       setImageError(false)
+      setPreviewOpen(false)
     }
   }, [open, certificate])
 
@@ -166,6 +168,12 @@ export function ApproveCertificateDrawer({
     }
   }
 
+  const handleImageClick = () => {
+    if (!imageError) {
+      setPreviewOpen(true)
+    }
+  }
+
   // Add dropdown interaction handlers
   const handleDropdownOpenChange = (isOpen: boolean) => {
     if (dropdownCloseTimer.current) {
@@ -184,6 +192,10 @@ export function ApproveCertificateDrawer({
   }
 
   const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && previewOpen) {
+      setPreviewOpen(false)
+      return
+    }
     if (!newOpen && isInteractingWithDropdown) {
       return
     }
@@ -195,6 +207,10 @@ export function ApproveCertificateDrawer({
   }
 
   const handlePointerDownOutside = (e: Event) => {
+    if (previewOpen) {
+      e.preventDefault()
+      return
+    }
     const target = e.target as HTMLElement
     if (
       target.closest('[role="listbox"]') ||
@@ -217,173 +233,221 @@ export function ApproveCertificateDrawer({
     : new Date().toISOString()
 
   return (
-    <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
-      <DrawerContent
-        className="right-0 left-auto h-full w-full max-w-2xl"
-        onPointerDownOutside={handlePointerDownOutside}
-        onEscapeKeyDown={(e) => {
-          if (isInteractingWithDropdown) {
-            e.preventDefault()
-          }
-        }}
-      >
-        <DrawerHeader className="flex w-full justify-between border-b">
-          <div className="flex items-center justify-between">
-            <DrawerTitle>Review Requested Certificate</DrawerTitle>
-            {/* <DrawerClose asChild>
+    <>
+      <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
+        <DrawerContent
+          className="right-0 left-auto h-full w-full max-w-2xl"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            if (previewOpen) {
+              e.preventDefault()
+              setPreviewOpen(false)
+              return
+            }
+            if (isInteractingWithDropdown) {
+              e.preventDefault()
+            }
+          }}
+        >
+          <DrawerHeader className="flex w-full justify-between border-b">
+            <div className="flex items-center justify-between">
+              <DrawerTitle>Review Requested Certificate</DrawerTitle>
+              {/* <DrawerClose asChild>
             <Button variant="ghost" size="icon" disabled={isSubmitting}>
               <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
             </Button>
           </DrawerClose> */}
-            <Badge
-              className={`${getStatusBadge(status)} px-3 py-1 text-xs font-medium`}
-            >
-              {status[0].toUpperCase() + status.slice(1)}
-            </Badge>
-          </div>
-        </DrawerHeader>
+              <Badge
+                className={`${getStatusBadge(status)} px-3 py-1 text-xs font-medium`}
+              >
+                {status[0].toUpperCase() + status.slice(1)}
+              </Badge>
+            </div>
+          </DrawerHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="space-y-6 px-6 py-4">
-            {/* Certificate Image */}
-            <div className="relative m-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-lg border bg-muted">
-              {!imageError ? (
-                <Image
-                  src={imageUrl}
-                  alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
-                  fill
-                  className="object-cover"
-                  onError={() => setImageError(true)}
-                  unoptimized
-                  sizes="(max-width: 768px) 100vw, 500px"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-muted/50">
-                  <div className="flex flex-col items-center justify-center gap-2">
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-6 px-6 py-4">
+              {/* Certificate Image */}
+              <div
+                className="relative m-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-lg border bg-muted"
+                onClick={handleImageClick}
+              >
+                {!imageError ? (
+                  <Image
+                    src={imageUrl}
+                    alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
+                    fill
+                    className="cursor-zoom-in object-cover transition-transform duration-300 hover:scale-105"
+                    onError={() => setImageError(true)}
+                    unoptimized
+                    sizes="(max-width: 768px) 100vw, 500px"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-muted/50">
+                    <div className="flex flex-col items-center justify-center gap-2">
                       <HugeiconsIcon
                         icon={ImageNotFound01Icon}
                         strokeWidth={2}
                         className="h-8 w-8 text-muted-foreground"
                       />
-                    <p className="text-sm text-muted-foreground">
-                      No Image Available
-                    </p>
+                      <p className="text-sm text-muted-foreground">
+                        No Image Available
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* Certificate Details */}
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold">
-                    {certificate.certificateType}
-                  </h3>
-                  <span>•</span>
-                  <p className="text-sm text-muted-foreground">
-                    {certificate.japaneseLevel}
-                  </p>
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {format(new Date(submittedDate), "MMM d, yyyy")}
-                </span>
+                )}
               </div>
 
-              <Separator />
-
-              {/* Employee Information */}
-              <div>
-                <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-                  Submitted By
-                </h4>
-                <div className="flex items-center gap-2 rounded-lg py-3">
-                  <Avatar className="h-10 w-10 overflow-hidden rounded-full">
-                    <AvatarImage
-                      className="h-10 w-10 overflow-hidden rounded-full"
-                      src={employeeAvatar}
-                      alt={employeeName}
-                    />
-                    <AvatarFallback className="overflow-hidden rounded-full">
-                      {getInitials(employeeName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{employeeName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {employeeEmail}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Remark Field with Character Counter using Field component */}
-              <Field data-invalid={isOverLimit}>
+              {/* Certificate Details */}
+              <div className="mt-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <FieldLabel
-                    htmlFor="remark"
-                    className="text-sm font-medium text-primary"
-                  >
-                    Remark
-                    <span className="font-normal text-muted-foreground">
-                      (Optional for approval, required for denial)
-                    </span>
-                  </FieldLabel>
-                  <span
-                    className={`text-xs font-medium ${
-                      isOverLimit
-                        ? "text-destructive"
-                        : isNearLimit
-                          ? "text-yellow-600"
-                          : "text-muted-foreground"
-                    }`}
-                  >
-                    {remark.length}/{MAX_REMARK_LENGTH}
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold">
+                      {certificate.certificateType}
+                    </h3>
+                    <span>•</span>
+                    <p className="text-sm text-muted-foreground">
+                      {certificate.japaneseLevel}
+                    </p>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {format(new Date(submittedDate), "MMM d, yyyy")}
                   </span>
                 </div>
-                <Textarea
-                  id="remark"
-                  placeholder="Add any remarks or notes about this certificate request..."
-                  value={remark}
-                  onChange={handleRemarkChange}
-                  className={`min-h-[100px] resize-none ${
-                    isOverLimit ? "border-destructive" : ""
-                  }`}
-                  aria-invalid={isOverLimit}
-                />
-                {isOverLimit && (
-                  <FieldDescription className="text-destructive">
-                    Character limit exceeded. Please shorten your remark.
-                  </FieldDescription>
-                )}
-              </Field>
+
+                <Separator />
+
+                {/* Employee Information */}
+                <div>
+                  <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+                    Submitted By
+                  </h4>
+                  <div className="flex items-center gap-2 rounded-lg py-3">
+                    <Avatar className="h-10 w-10 overflow-hidden rounded-full">
+                      <AvatarImage
+                        className="h-10 w-10 overflow-hidden rounded-full"
+                        src={employeeAvatar}
+                        alt={employeeName}
+                      />
+                      <AvatarFallback className="overflow-hidden rounded-full">
+                        {getInitials(employeeName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{employeeName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {employeeEmail}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Remark Field with Character Counter using Field component */}
+                <Field data-invalid={isOverLimit}>
+                  <div className="flex items-center justify-between">
+                    <FieldLabel
+                      htmlFor="remark"
+                      className="text-sm font-medium text-primary"
+                    >
+                      Remark
+                      <span className="font-normal text-muted-foreground">
+                        (Optional for approval, required for denial)
+                      </span>
+                    </FieldLabel>
+                    <span
+                      className={`text-xs font-medium ${
+                        isOverLimit
+                          ? "text-destructive"
+                          : isNearLimit
+                            ? "text-yellow-600"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {remark.length}/{MAX_REMARK_LENGTH}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="remark"
+                    placeholder="Add any remarks or notes about this certificate request..."
+                    value={remark}
+                    onChange={handleRemarkChange}
+                    className={`min-h-[100px] resize-none ${
+                      isOverLimit ? "border-destructive" : ""
+                    }`}
+                    aria-invalid={isOverLimit}
+                  />
+                  {isOverLimit && (
+                    <FieldDescription className="text-destructive">
+                      Character limit exceeded. Please shorten your remark.
+                    </FieldDescription>
+                  )}
+                </Field>
+              </div>
             </div>
           </div>
-        </div>
 
-        <DrawerFooter className="shrink-0 border-t">
-          <div className="flex gap-2">
-            {status !== "rejected" && (
-              <Button
-                className="flex-1 bg-red-600 text-white hover:bg-red-700"
-                onClick={handleDeny}
-                disabled={isSubmitting || isOverLimit}
-              >
-                {isSubmitting ? "Processing..." : "Deny"}
-              </Button>
-            )}
-            {status !== "approved" && (
-              <Button
-                className="flex-1 bg-green-600 text-white hover:bg-green-700"
-                onClick={handleApprove}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Processing..." : "Approve"}
-              </Button>
-            )}
+          <DrawerFooter className="shrink-0 border-t">
+            <div className="flex gap-2">
+              {status !== "rejected" && (
+                <Button
+                  className="flex-1 bg-red-600 text-white hover:bg-red-700"
+                  onClick={handleDeny}
+                  disabled={isSubmitting || isOverLimit}
+                >
+                  {isSubmitting ? "Processing..." : "Deny"}
+                </Button>
+              )}
+              {status !== "approved" && (
+                <Button
+                  className="flex-1 bg-green-600 text-white hover:bg-green-700"
+                  onClick={handleApprove}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Processing..." : "Approve"}
+                </Button>
+              )}
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Image Preview Modal - Simple div overlay */}
+      {previewOpen && (
+        <div
+          className="animate-in/fade-in pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center bg-black/10 p-4 backdrop-blur-xs"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="pointer-events-auto absolute top-4 right-4 z-10"
+            onClick={(e) => {
+              e.stopPropagation()
+              setPreviewOpen(false)
+            }}
+          >
+            <HugeiconsIcon
+              icon={Cancel01Icon}
+              strokeWidth={2}
+              className="h-6 w-6"
+            />
+          </Button>
+
+          <div
+            className="pointer-events-auto relative max-h-[90vh] max-w-[90vw] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              src={imageUrl}
+              alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
+              width={1200}
+              height={900}
+              className="h-auto max-h-[90vh] w-auto max-w-[90vw] object-contain"
+              unoptimized
+            />
           </div>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </div>
+      )}
+    </>
   )
 }

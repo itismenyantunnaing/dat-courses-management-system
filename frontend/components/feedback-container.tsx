@@ -1031,7 +1031,7 @@ export function FeedbackContainer() {
                   )}
                 </>
               ) : (
-                // Empty state - with role-based icon
+                // Empty state
                 <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
@@ -1052,7 +1052,7 @@ export function FeedbackContainer() {
                       ) : isLearner ? (
                         "Share your thoughts on courses, management, or the system."
                       ) : (
-                        ""
+                        "Submitted feedback on courses, management, or the system will appear here."
                       )}
                     </EmptyDescription>
                   </EmptyHeader>

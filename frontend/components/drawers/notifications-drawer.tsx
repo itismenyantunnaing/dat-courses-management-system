@@ -11,7 +11,11 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Cancel01Icon, NotificationIcon, NotificationOff01Icon } from "@hugeicons/core-free-icons"
+import {
+  Cancel01Icon,
+  NotificationIcon,
+  NotificationOff01Icon,
+} from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { mainStore } from "@/store/mainStore"
@@ -213,22 +217,25 @@ export function NotificationsDrawer({
               Notifications
             </DrawerTitle>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-1">
             {(unreadCount || 0) > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleMarkAllAsRead}
-                className="text-sm font-medium text-gray-400 transition-colors hover:text-gray-600"
+                className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-600"
               >
                 Mark all as read ({unreadCount})
               </Button>
             )}
             <DrawerClose asChild>
-                <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                strokeWidth={2}
+                className="h-4 w-4 cursor-pointer"
+              />
             </DrawerClose>
           </div>
-
         </DrawerHeader>
 
         {/* Tabs */}
