@@ -22,7 +22,7 @@ import { CurrentTargetContainer } from "@/components/current-target-container"
 import { ExamProgressReportContainer } from "@/components/examProgress-report-container"
 import { mainStore } from "@/store/mainStore"
 import { JapaneseCertificateContainer } from "@/components/japaneseCertificate-conatiner"
-import { CertificatesRequestsContainer } from "@/components/certificatesRequests-container"
+import { CertificatesRequestsContainer } from "@/components/requestedCertificates-container"
 import { NotificationsDrawer } from "@/components/drawers/notifications-drawer"
 import { SendMailDialog } from "@/components/dialogs/sendMail-dialog"
 import { Button } from "@/components/ui/button"
@@ -165,7 +165,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             onClick: () => {
               webScoketStore.getState().markAsRead(latest.id)
               if (latest.courseId) {
-                fetchAll_CourseData()
+                // fetchAll_CourseData()
                 setSelectedCourseId(latest.courseId)
                 setActiveTab("courses")
               } else if (latest.certificateId) {
@@ -213,8 +213,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
   const user_role = profile?.role ? userRole : "learner"
 
-  useEffect(() => {
-    if (!isProfileLoaded || !user_role) return
+useEffect(() => {
+  if (!isProfileLoaded || !user_role) return
 
     const normalizedRole = user_role.toLowerCase()
     let tab = "learner-dashboard"
@@ -258,6 +258,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       setSelectedCourseId(id)
       setActiveTab("courses")
     } else if (action === "view-certificate") {
+
       const targetTab =
         user_role === "learner"
           ? "japanese-certificates"

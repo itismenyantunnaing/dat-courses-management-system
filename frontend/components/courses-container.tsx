@@ -33,6 +33,9 @@ import { CourseCard } from "../components/cards/course-card"
 import { CourseDetail } from "../components/drawers/course/course-detail"
 import { Trainer_CourseForm } from "./drawers/course/trainer-views/trainer-CourseForm"
 import { mainStore } from "@/store/mainStore"
+// ✅ NEW: subscribe to the websocket notification store so we can react to
+// incoming course notifications and auto-refetch the course list.
+import { webScoketStore } from "@/store/websocketStore"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 
@@ -104,6 +107,9 @@ export function CoursesContainer({
     fetch_courseEnrollments,
   } = mainStore()
 
+  // Form key to force remount
+  const [formKey, setFormKey] = useState(0);
+
   const [searchTerm, setSearchTerm] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
@@ -116,8 +122,15 @@ export function CoursesContainer({
   const searchInputRef = useRef<HTMLInputElement>(null)
   // Flag to track if we're coming from a successful save
   const [isSuccessfullySaved, setIsSuccessfullySaved] = useState(false)
-      const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // ✅ NEW: live notifications from the websocket store
+  const notifications = webScoketStore((state) => state.notifications)
+  // Tracks how many notifications we've already reacted to, so the refetch
+  // effect only fires for NEW notifications - not on mount, not on every
+  // unrelated re-render.
+  const processedNotificationCountRef = useRef(0)
+
 
   // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -142,6 +155,45 @@ export function CoursesContainer({
     }
     loadData()
   }, [fetchAll_CourseData, fetch_courseCategories])
+
+  // ✅ NEW: auto-refetch courses as soon as a NEW course notification
+  // arrives over the websocket (e.g. someone enrolls, a course is
+  // published/updated, a session changes elsewhere). We compare against the
+  // count we last processed so this only runs for genuinely new
+  // notifications, not on mount and not on unrelated re-renders.
+  useEffect(() => {
+    if (notifications.length === 0) {
+      processedNotificationCountRef.current = 0
+      return
+    }
+
+    // Only process if we have new notifications
+    if (notifications.length <= processedNotificationCountRef.current) {
+      return
+    }
+
+    // Get only the new notifications
+    const newNotifications = notifications.slice(
+      0,
+      notifications.length - processedNotificationCountRef.current
+    )
+
+    // Update the count BEFORE processing to prevent re-triggering
+    processedNotificationCountRef.current = notifications.length
+
+    // Check for course-related notifications
+    const hasCourseNotification = newNotifications.some(
+      (n) => n.courseId != null
+    )
+
+    if (hasCourseNotification) {
+      console.log('🔄 Refetching courses due to new notification');
+      fetchAll_CourseData();
+
+      // ✅ Also fetch categories if needed
+      // fetch_courseCategories();
+    }
+  }, [notifications, fetchAll_CourseData])
 
   useEffect(() => {
     if (selectedCourseId) {
@@ -279,65 +331,97 @@ export function CoursesContainer({
     setSelectedCourse(null)
   }
 
-  const handleEdit = (course: Course) => {
-    setEditingCourseRef(course)
-    setSelectedCourse(null)
-    setEditingCourse(course)
-    setIsFormVisible(true)
-    setIsSuccessfullySaved(false)
-    setHasUnsavedChanges(false) // ✅ Start each edit session clean
-  }
+  const handleEdit = async (course: Course) => {
+    // Fetch fresh data from API
+    try {
+      // Option 1: Fetch fresh data
+      await fetchAll_CourseData();
+
+      // Find the updated course in the fresh data
+      const freshCourse = courses.find((c: Course) => c.id === course.id);
+
+      // Use the fresh course if found, otherwise use the provided one
+      const courseToEdit = freshCourse || course;
+
+      setEditingCourseRef(courseToEdit);
+      setSelectedCourse(null);
+      setEditingCourse(courseToEdit);
+      setIsFormVisible(true);
+      setIsSuccessfullySaved(false);
+      setHasUnsavedChanges(false);
+
+      // FORCE REMOUNT: Update key to trigger re-render
+      setFormKey(prev => prev + 1);
+
+    } catch (error) {
+      console.error('Failed to refresh course data:', error);
+      // Fallback: use the provided course
+      setEditingCourseRef(course);
+      setSelectedCourse(null);
+      setEditingCourse(course);
+      setIsFormVisible(true);
+      setIsSuccessfullySaved(false);
+      setHasUnsavedChanges(false);
+      setFormKey(prev => prev + 1);
+    }
+  };
 
   const handleNewCourse = () => {
-    setSelectedCourse(null)
-    setEditingCourse(null)
-    setIsFormVisible(true)
-    setIsSuccessfullySaved(false)
-    setHasUnsavedChanges(false) // ✅ Start each create session clean
-  }
+    setSelectedCourse(null);
+    setEditingCourse(null);
+    setIsFormVisible(true);
+    setIsSuccessfullySaved(false);
+    setHasUnsavedChanges(false);
+    // Force remount for new form
+    setFormKey(prev => prev + 1);
+  };
+
 
   // Function to close form without confirmation (used after successful save)
-  const closeForm = () => {
-    resetForm()
-    setIsSubmitting(false)
-    setIsSuccessfullySaved(false)
-    setHasUnsavedChanges(false) // ✅ Always clear the dirty flag when the form closes
+  const closeForm = (updatedCourse?: Course) => {
+    resetForm();
+    setIsSubmitting(false);
+    setIsSuccessfullySaved(false);
+    setHasUnsavedChanges(false);
+    setFormKey(prev => prev + 1);
 
-    // If we were editing a course, go back to the course detail
-    if (editingCourseRef) {
-      setSelectedCourse(editingCourseRef)
-      setEditingCourseRef(null)
+    if (updatedCourse) {
+      setSelectedCourse(updatedCourse);
+      setEditingCourseRef(null);
+    } else if (editingCourseRef) {
+      setSelectedCourse(editingCourseRef);
+      setEditingCourseRef(null);
     }
-  }
+  };
 
   // Handle cancel with confirmation
- const handleCancel = () => {
-  const wasCreating = !editingCourseRef
+  const handleCancel = () => {
+    const wasCreating = !editingCourseRef
 
-  // Skip confirmation if we just saved successfully
-  if (isSuccessfullySaved) {
-    closeForm();
-    return;
-  }
-
-  // Check if there are actual unsaved changes
-  if (hasUnsavedChanges) {
-    const confirmCancel = window.confirm(
-      `You have unsaved changes. Are you sure you want to cancel editing "${editingCourse?.title || 'this course'}"? Your changes will be lost.`
-    );
-
-    if (!confirmCancel) {
-      return; // User cancelled the cancellation
+    // Skip confirmation if we just saved successfully
+    if (isSuccessfullySaved) {
+      closeForm();
+      return;
     }
-  }
 
-  closeForm(); // Also clears hasUnsavedChanges
+    // Check if there are actual unsaved changes
+    if (hasUnsavedChanges) {
+      const confirmCancel = window.confirm(
+        `You have unsaved changes. Are you sure you want to cancel editing "${editingCourse?.title || 'this course'}"? Your changes will be lost.`
+      );
 
-  // If we were creating a new course, show a brief notification
-  if (wasCreating) {
-    alert("Course creation cancelled");
-  }
-};
+      if (!confirmCancel) {
+        return; // User cancelled the cancellation
+      }
+    }
+
+    closeForm(); // Also clears hasUnsavedChanges
+
+    // If we were creating a new course, show a brief notification
+    if (wasCreating) {
+      alert("Course creation cancelled");
+    }
+  };
 
   const handleDeleteCourse = async () => {
     if (editingCourse) {
@@ -621,19 +705,22 @@ export function CoursesContainer({
       }
 
       if (result.success) {
-        // Set the flag to skip confirmation
-        setIsSuccessfullySaved(true)
-        
-        // Close the form without confirmation
-        closeForm()
-        
-        // Refresh data
-        await fetchAll_CourseData()
+        setIsSuccessfullySaved(true);
+
+        await fetchAll_CourseData();
+
+        // pull fresh data directly from the store, not the stale closure
+        const freshCourses = mainStore.getState().courses;
+        const idToFind = editingCourse ? editingCourse.id : result.data?.id;
+        const freshCourse = freshCourses.find((c: Course) => c.id === idToFind);
+
+        closeForm(freshCourse); // pass the up-to-date course in
+
         if (editingCourse) {
-          await fetch_courseEnrollments(editingCourse.id)
+          await fetch_courseEnrollments(editingCourse.id);
         }
       } else {
-        alert(result.message || "Failed to save course")
+        alert(result.message || "Failed to save course");
       }
     } catch (error) {
       console.error("Failed to save course:", error)
@@ -932,6 +1019,7 @@ export function CoursesContainer({
         {isFormVisible && !selectedCourse && isAdmin && (
           <div className="mt-6">
             <Trainer_CourseForm
+              key={formKey}
               mode={editingCourse ? "edit" : "add"}
               initialData={editingCourse as any}
               initialImage={editingCourse?.imageUrl || null}
@@ -939,8 +1027,8 @@ export function CoursesContainer({
               onCancel={handleCancel}
               onDelete={handleDeleteCourse}
               isSubmitting={isSubmitting || isCreating || isUpdating}
-               onChanges={setHasUnsavedChanges}
-                disableSubmit={editingCourse ? !hasUnsavedChanges : false}
+              onChanges={setHasUnsavedChanges}
+              disableSubmit={editingCourse ? !hasUnsavedChanges : false}
             />
           </div>
         )}

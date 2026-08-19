@@ -189,7 +189,7 @@ public class EmployeeService {
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             e.setPassword(passwordEncoder.encode(dto.getPassword()));
         } else {
-            e.setPassword(passwordEncoder.encode("changeme123"));
+            e.setPassword(passwordEncoder.encode("password"));
         }
 
         return toDTO(employeeRepository.save(e));
@@ -242,7 +242,7 @@ public class EmployeeService {
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             e.setPassword(passwordEncoder.encode(dto.getPassword()));
         } else {
-            e.setPassword(passwordEncoder.encode("changeme123"));
+            e.setPassword(passwordEncoder.encode("password"));
         }
 
         Employee saved = employeeRepository.saveAndFlush(e);

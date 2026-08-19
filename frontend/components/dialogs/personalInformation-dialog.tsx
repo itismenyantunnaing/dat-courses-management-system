@@ -290,10 +290,6 @@ export function PersonalInformationDialog({
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
   const file = event.target.files?.[0]
   if (file) {
-    if (file.size > 5 * 1024 * 1024) {
-      alert("File size exceeds 5MB limit. Please choose a smaller file.")
-      return
-    }
 
     const validTypes = ["image/jpeg", "image/png", "image/gif"]
     if (!validTypes.includes(file.type)) {

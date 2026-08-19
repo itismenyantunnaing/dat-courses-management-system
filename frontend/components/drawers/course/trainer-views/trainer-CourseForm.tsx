@@ -59,14 +59,14 @@ const safelyCompareDates = (date1: Date | string | undefined, date2: Date | stri
   if (!date1 && !date2) return true;
   // If one is null/undefined and the other isn't, they're different
   if (!date1 || !date2) return false;
-  
+
   // Convert strings to Date objects if needed
   const d1 = date1 instanceof Date ? date1 : new Date(date1);
   const d2 = date2 instanceof Date ? date2 : new Date(date2);
-  
+
   // Check if both are valid dates
   if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
-  
+
   return d1.getTime() === d2.getTime();
 };
 
@@ -114,7 +114,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       onDelete,
       isSubmitting = false,
       onChanges,
-       disableSubmit = false, 
+      disableSubmit = false,
     },
     ref
   ) => {
@@ -329,49 +329,49 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       }
     }, [initialData, mode, defaultGroup, getCategoryByValue])
 
-  // Check for changes in edit mode
-useEffect(() => {
-  if (
-    mode === "edit" &&
-    initialData &&
-    onChanges &&
-    initialFormDataRef.current
-  ) {
-    const hasFormChanges =
-      formData.title !== initialFormDataRef.current.title ||
-      formData.courseType !== initialFormDataRef.current.courseType ||
-      formData.category !== initialFormDataRef.current.category ||
-      formData.categoryId !== initialFormDataRef.current.categoryId ||
-      // ✅ FIX: Use safe date comparison instead of direct .getTime()
-      !safelyCompareDates(
-        formData.registrationDeadline,
-        initialFormDataRef.current.registrationDeadline
-      ) ||
-      formData.selfStudyType !== initialFormDataRef.current.selfStudyType ||
-      formData.daysPerSession !==
-      initialFormDataRef.current.daysPerSession ||
-      JSON.stringify(formData.groups) !==
-      JSON.stringify(initialFormDataRef.current.groups) ||
-      JSON.stringify(formData.sessions) !==
-      JSON.stringify(initialFormDataRef.current.sessions) ||
-      JSON.stringify(formData.mentionedLearners) !==
-      JSON.stringify(initialFormDataRef.current.mentionedLearners) ||
-      formData.totalKanji !== initialFormDataRef.current.totalKanji ||
-      formData.totalVocabulary !==
-      initialFormDataRef.current.totalVocabulary ||
-      formData.totalGrammar !== initialFormDataRef.current.totalGrammar ||
-      formData.totalReadingMinutes !==
-      initialFormDataRef.current.totalReadingMinutes ||
-      formData.totalListeningMinutes !==
-      initialFormDataRef.current.totalListeningMinutes ||
-      formData.status !== initialFormDataRef.current.status
+    // Check for changes in edit mode
+    useEffect(() => {
+      if (
+        mode === "edit" &&
+        initialData &&
+        onChanges &&
+        initialFormDataRef.current
+      ) {
+        const hasFormChanges =
+          formData.title !== initialFormDataRef.current.title ||
+          formData.courseType !== initialFormDataRef.current.courseType ||
+          formData.category !== initialFormDataRef.current.category ||
+          formData.categoryId !== initialFormDataRef.current.categoryId ||
+          // ✅ FIX: Use safe date comparison instead of direct .getTime()
+          !safelyCompareDates(
+            formData.registrationDeadline,
+            initialFormDataRef.current.registrationDeadline
+          ) ||
+          formData.selfStudyType !== initialFormDataRef.current.selfStudyType ||
+          formData.daysPerSession !==
+          initialFormDataRef.current.daysPerSession ||
+          JSON.stringify(formData.groups) !==
+          JSON.stringify(initialFormDataRef.current.groups) ||
+          JSON.stringify(formData.sessions) !==
+          JSON.stringify(initialFormDataRef.current.sessions) ||
+          JSON.stringify(formData.mentionedLearners) !==
+          JSON.stringify(initialFormDataRef.current.mentionedLearners) ||
+          formData.totalKanji !== initialFormDataRef.current.totalKanji ||
+          formData.totalVocabulary !==
+          initialFormDataRef.current.totalVocabulary ||
+          formData.totalGrammar !== initialFormDataRef.current.totalGrammar ||
+          formData.totalReadingMinutes !==
+          initialFormDataRef.current.totalReadingMinutes ||
+          formData.totalListeningMinutes !==
+          initialFormDataRef.current.totalListeningMinutes ||
+          formData.status !== initialFormDataRef.current.status
 
-    const hasImageChanges = selectedImage !== null
+        const hasImageChanges = selectedImage !== null
 
-    const changed = hasFormChanges || hasImageChanges
-    onChanges(changed)
-  }
-}, [formData, selectedImage, initialData, mode, onChanges])
+        const changed = hasFormChanges || hasImageChanges
+        onChanges(changed)
+      }
+    }, [formData, selectedImage, initialData, mode, onChanges])
 
     // Handle delete
     const handleDelete = () => {

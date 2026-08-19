@@ -1,6 +1,6 @@
 // store/websocketStore.ts
 import { create } from 'zustand';
-import { Client, IMessage } from '@stomp/stompjs';
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { mainStore } from './mainStore';
 
@@ -50,6 +50,10 @@ const resolveWebSocketUrl = (): string => {
 
   return 'http://localhost:8080/ws';
 };
+// Module-level lock to prevent two overlapping connect() calls from
+// creating two separate STOMP clients (e.g. React StrictMode double-invoke,
+// or two components both calling connect() on mount).
+let isConnecting = false;
 
 export const webScoketStore = create<NotificationState>((set, get) => ({
   // Initial state
@@ -66,14 +70,26 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
     }
 
     // Prevent duplicate connections
+    if (isConnecting) {
+      return;
+    }
+
     const { stompClient, isConnected } = get();
 
     if (stompClient?.connected || isConnected) {
       return;
     }
 
+    isConnecting = true;
+
     // Create SockJS instance (the transport layer)
     const wsUrl = resolveWebSocketUrl();
+
+    // Tracks the active subscription so we can unsubscribe before
+    // re-subscribing on every reconnect (STOMP auto-reconnects and will
+    // call onConnect again - without this, subscriptions stack up and
+    // every message gets handled multiple times).
+    let currentSubscription: StompSubscription | null = null;
 
     // Create STOMP client
     const client = new Client({
@@ -86,29 +102,45 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
       },
 
       // Debug logging
-      // debug: (str) => { console.log('📡 STOMP Debug:', str);},
+      // debug: (str) => { console.log('📡 STOMP Debug:', str); },
 
-      // This runs when connection is SUCCESSFUL
+      // This runs when connection is SUCCESSFUL (including every reconnect)
       onConnect: () => {
         set({ isConnected: true });
+        isConnecting = false;
 
         // Get current user ID from mainStore
         const mainStoreState = mainStore.getState();
         const profile = mainStoreState.profile;
         const employeeId = profile?.id;
 
-
         // ✅ Subscribe to user-specific topic (where backend sends notifications)
         if (employeeId) {
+          // Unsubscribe any stale subscription before creating a new one.
+          // This is what actually prevents duplicate handling after a reconnect.
+          currentSubscription?.unsubscribe();
+
           const userTopic = `/topic/notifications/${employeeId}`;
 
-          client.subscribe(userTopic, (message: IMessage) => {
-
-
+          currentSubscription = client.subscribe(userTopic, (message: IMessage) => {
             try {
               // Parse the notification data
               const data = JSON.parse(message.body);
-              
+
+              // TEMP DEBUG: log every raw payload the socket receives.
+              // If a course action logs this block TWICE with two different
+              // notificationId/id values, the backend is publishing two
+              // separate messages - the frontend has nothing to dedupe against.
+              // Remove this once the root cause is confirmed.
+              console.log('📨 WS raw payload:', {
+                notificationId: data.notificationId,
+                id: data.id,
+                courseId: data.courseId,
+                referenceId: data.referenceId,
+                notificationType: data.notificationType,
+                receivedAt: new Date().toISOString(),
+              });
+
               // Create notification object for websocket store
               const notification: Notification = {
                 id: data.notificationId?.toString() || data.id || Date.now().toString(),
@@ -122,10 +154,43 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
               };
 
               // ✅ Update webScoketStore
-              set((state) => ({
-                notifications: [notification, ...state.notifications],
-                unreadCount: state.unreadCount + 1,
-              }));
+              set((state) => {
+                // Exact id dedupe - catches the same message delivered twice
+                const idDuplicate = state.notifications.some(
+                  (n) => n.id === notification.id
+                );
+                if (idDuplicate) {
+                  console.warn('🔁 Skipped exact-id duplicate:', notification.id);
+                  return state;
+                }
+
+                // Composite dedupe - catches two DIFFERENT messages (different
+                // ids) describing the same course event within a short window.
+                // This is what actually fixes the "course shows twice" case,
+                // since the backend is very likely sending two distinct
+                // notifications for the same course action.
+                if (notification.courseId != null) {
+                  const compositeDuplicate = state.notifications.some(
+                    (n) =>
+                      n.courseId === notification.courseId &&
+                      n.type === notification.type &&
+                      Math.abs(n.timestamp.getTime() - notification.timestamp.getTime()) < 3000
+                  );
+                  if (compositeDuplicate) {
+                    console.warn(
+                      '🔁 Skipped composite course duplicate:',
+                      notification.courseId,
+                      notification.id
+                    );
+                    return state;
+                  }
+                }
+
+                return {
+                  notifications: [notification, ...state.notifications],
+                  unreadCount: state.unreadCount + 1,
+                };
+              });
 
               // ✅ ALSO update mainStore's notification store
               try {
@@ -143,12 +208,23 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
                   certificateId: notification.certificateId,
                 };
 
-                // Check if notification already exists (avoid duplicates)
-                const exists = currentNotifications.some((n: any) => n.id === mainStoreNotification.id);
+                // Check if notification already exists (avoid duplicates),
+                // same composite check applied here too.
+                const exists = currentNotifications.some((n: any) => {
+                  if (n.id === mainStoreNotification.id) return true;
+                  if (
+                    mainStoreNotification.courseId != null &&
+                    n.courseId === mainStoreNotification.courseId &&
+                    n.type === mainStoreNotification.type
+                  ) {
+                    const nTime = new Date(n.createdAt).getTime();
+                    const newTime = new Date(mainStoreNotification.createdAt).getTime();
+                    return Math.abs(nTime - newTime) < 3000;
+                  }
+                  return false;
+                });
+
                 if (!exists) {
-                  // Update mainStore using the notificationStore's set method
-                  // Since mainStore has notificationStore methods, we can call them
-                  // But we need to update the state directly
                   mainStore.setState({
                     notifications: [mainStoreNotification, ...currentNotifications],
                     unreadCount: (mainStoreState.unreadCount || 0) + 1,
@@ -159,15 +235,16 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
               }
 
               // Optional: Show browser notification
-              if (typeof window !== 'undefined' &&
+              if (
+                typeof window !== 'undefined' &&
                 'Notification' in window &&
-                Notification.permission === 'granted') {
+                Notification.permission === 'granted'
+              ) {
                 new Notification(notification.title || 'New Notification', {
                   body: notification.message,
                   icon: '/notification-icon.png',
                 });
               }
-
             } catch (error) {
               console.error('Error parsing notification:', error);
             }
@@ -187,11 +264,13 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
       onStompError: (frame) => {
         console.error('STOMP error:', frame.headers['message']);
         set({ isConnected: false });
+        isConnecting = false;
       },
 
       onWebSocketError: (error) => {
         console.error('WebSocket error:', error);
         set({ isConnected: false });
+        isConnecting = false;
       },
 
       // Auto-reconnect settings
@@ -216,17 +295,18 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
         isConnected: false,
       });
     }
+    isConnecting = false;
   },
 
   // Mark a single notification as read
   markAsRead: (id: string) => {
     set((state) => {
-      const updatedNotifications = state.notifications.map(notif =>
+      const updatedNotifications = state.notifications.map((notif) =>
         notif.id === id ? { ...notif, read: true } : notif
       );
       return {
         notifications: updatedNotifications,
-        unreadCount: updatedNotifications.filter(n => !n.read).length,
+        unreadCount: updatedNotifications.filter((n) => !n.read).length,
       };
     });
   },
@@ -234,7 +314,7 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
   // Mark all notifications as read
   markAllAsRead: () => {
     set((state) => ({
-      notifications: state.notifications.map(notif => ({ ...notif, read: true })),
+      notifications: state.notifications.map((notif) => ({ ...notif, read: true })),
       unreadCount: 0,
     }));
   },

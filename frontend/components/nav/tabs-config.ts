@@ -140,7 +140,7 @@ export const allTabs = [
     accept: ".csv,.json,.xlsx,.xls",
     icon: UserGroupIcon,
     maxSize: 500,
-    onImport: async (file: File) => {
+   onImport: async (file: File) => {
       try {
         const startTime = performance.now()
 
@@ -181,7 +181,6 @@ export const allTabs = [
             // Don't delete if status is "system" (case-insensitive check)
             const isSystemEmployee = emp.status?.toLowerCase() === "system"
             const isMissingFromExcel = !excelEmployeeIds.has(emp.id)
-
             // Only delete if NOT a system employee AND missing from Excel
             return !isSystemEmployee && isMissingFromExcel
           }
