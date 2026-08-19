@@ -2,6 +2,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import {
   Drawer,
   DrawerClose,
@@ -411,43 +412,49 @@ export function ApproveCertificateDrawer({
         </DrawerContent>
       </Drawer>
 
-      {/* Image Preview Modal - Simple div overlay */}
-      {previewOpen && (
-        <div
-          className="animate-in/fade-in pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center bg-black/10 p-4 backdrop-blur-xs"
-          onClick={() => setPreviewOpen(false)}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="pointer-events-auto absolute top-4 right-4 z-10"
-            onClick={(e) => {
-              e.stopPropagation()
-              setPreviewOpen(false)
-            }}
-          >
-            <HugeiconsIcon
-              icon={Cancel01Icon}
-              strokeWidth={2}
-              className="h-6 w-6"
-            />
-          </Button>
-
+      {/* Image Preview Modal */}
+      {previewOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="pointer-events-auto relative max-h-[90vh] max-w-[90vw] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+            className="animate-in/fade-in pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center bg-black/10 p-4 backdrop-blur-xs"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => setPreviewOpen(false)}
           >
-            <Image
-              src={imageUrl}
-              alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
-              width={1200}
-              height={900}
-              className="h-auto max-h-[90vh] w-auto max-w-[90vw] object-contain"
-              unoptimized
-            />
-          </div>
-        </div>
-      )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="pointer-events-auto absolute top-4 right-4 z-10"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                setPreviewOpen(false)
+              }}
+            >
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                strokeWidth={2}
+                className="h-6 w-6"
+              />
+            </Button>
+
+            <div
+              className="pointer-events-auto relative max-h-[90vh] max-w-[90vw] overflow-hidden"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src={imageUrl}
+                alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
+                width={1200}
+                height={900}
+                className="h-auto max-h-[90vh] w-auto max-w-[90vw] object-contain"
+                unoptimized
+              />
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   )
 }

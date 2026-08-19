@@ -2,6 +2,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import {
   Drawer,
   DrawerClose,
@@ -26,6 +27,7 @@ import {
   Delete02Icon,
   Alert01Icon,
   ArrowLeft01Icon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import Image from "next/image"
 import { JapaneseCertificate } from "@/types/certificate"
@@ -82,6 +84,7 @@ export function CertificateDetailDrawer({
   onUpdateSuccess,
 }: CertificateDetailDrawerProps) {
   const [imageError, setImageError] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
@@ -101,6 +104,7 @@ export function CertificateDetailDrawer({
       setIsEditMode(false)
       setHasChanges(false)
       setImageError(false)
+      setPreviewOpen(false)
     }
   }, [open])
 
@@ -185,6 +189,12 @@ export function CertificateDetailDrawer({
     setHasChanges(changed)
   }
 
+  const handleImageClick = () => {
+    if (!imageError) {
+      setPreviewOpen(true)
+    }
+  }
+
   const handleDeleteClick = () => {
     // Check if certificate is approved - don't allow deletion
     if (status?.toLowerCase() === "approved") {
@@ -227,6 +237,10 @@ export function CertificateDetailDrawer({
   }
 
   const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && previewOpen) {
+      setPreviewOpen(false)
+      return
+    }
     if (!newOpen && isInteractingWithDropdown) {
       return
     }
@@ -242,6 +256,10 @@ export function CertificateDetailDrawer({
   }
 
   const handlePointerDownOutside = (e: Event) => {
+    if (previewOpen) {
+      e.preventDefault()
+      return
+    }
     const target = e.target as HTMLElement
     if (
       target.closest('[role="listbox"]') ||
@@ -259,6 +277,11 @@ export function CertificateDetailDrawer({
           className="right-0 left-auto h-full w-full max-w-2xl"
           onPointerDownOutside={handlePointerDownOutside}
           onEscapeKeyDown={(e) => {
+            if (previewOpen) {
+              e.preventDefault()
+              setPreviewOpen(false)
+              return
+            }
             if (isInteractingWithDropdown) {
               e.preventDefault()
             }
@@ -343,13 +366,16 @@ export function CertificateDetailDrawer({
                 // View Mode
                 <div className="space-y-6">
                   {/* Certificate Image */}
-                  <div className="relative m-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-lg border bg-muted">
+                  <div
+                    className="relative m-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-lg border bg-muted"
+                    onClick={handleImageClick}
+                  >
                     {!imageError ? (
                       <Image
                         src={imageUrl}
                         alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
                         fill
-                        className="object-cover"
+                        className="cursor-zoom-in object-cover transition-transform duration-300 hover:scale-105"
                         onError={() => setImageError(true)}
                         unoptimized
                         sizes="(max-width: 768px) 100vw, 500px"
@@ -475,6 +501,52 @@ export function CertificateDetailDrawer({
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+
+      {/* Image Preview Modal - portaled to document.body so it stays
+          viewport-fixed and isn't affected by DrawerContent's transform,
+          and so clicks on it aren't treated as "outside the drawer". */}
+      {previewOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="animate-in/fade-in pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center bg-black/10 p-4 backdrop-blur-xs"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => setPreviewOpen(false)}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="pointer-events-auto absolute top-4 right-4 z-10"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                setPreviewOpen(false)
+              }}
+            >
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                strokeWidth={2}
+                className="h-6 w-6"
+              />
+            </Button>
+
+            <div
+              className="pointer-events-auto relative max-h-[90vh] max-w-[90vw] overflow-hidden"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src={imageUrl}
+                alt={`${certificate.certificateType} - ${certificate.japaneseLevel}`}
+                width={1200}
+                height={900}
+                className="h-auto max-h-[90vh] w-auto max-w-[90vw] object-contain"
+                unoptimized
+              />
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
