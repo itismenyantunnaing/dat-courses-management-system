@@ -48,8 +48,8 @@ export function CertificateCard({
 }: CertificateCardProps) {
   const [imageError, setImageError] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
-
-  const imageUrl = certificate.filePath || "/placeholder-certificate.png"
+  const imageUrl = resolveUploadUrl(certificate.filePath) || "/placeholder-certificate.png"
+  // const imageUrl = certificate.filePath || "/placeholder-certificate.png"
   const status = certificate.verificationStatus || ""
 
   const handleCardClick = () => {
