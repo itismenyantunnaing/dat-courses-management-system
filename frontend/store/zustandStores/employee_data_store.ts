@@ -541,7 +541,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       await response.json();
 
-      await get().fetch_EmployeeData();
+      await get().fetch_EmployeeData(true);
       set(() => ({ isCreating: false }));
 
       return `Employee created successfully`;

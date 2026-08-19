@@ -45,6 +45,8 @@ public class EmployeeResponseDTO {
     private String role;
 
     private LocalDate dob;
+    private LocalDate joinedDate;
+    private String serviceYear;
 
     @JsonProperty("profile_photo_path")
     private String profilePhotoPath;

@@ -33,6 +33,7 @@ public class EmployeeWithSkillsResponseDTO {
     private String team;
     private String role;
     private LocalDate dob;
+    private String serviceYear;
     private String profilePhotoPath;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

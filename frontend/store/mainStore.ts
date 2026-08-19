@@ -15,6 +15,7 @@ import { auditLogStore } from "./zustandStores/audtiLog_store"
 import { systemConfigStore } from "./zustandStores/system_config_store"
 import { notificationStore } from "./zustandStores/notification_store"
 import { employeeProfileStore } from "./zustandStores/employeeProfile_store"
+import { AnnouncementDataStore } from "./zustandStores/announcement_store"
 
 // Combine all store types
 type combineTypes = Employee_StoreType & SkillSet_StoreType & CurrentTarget_StoreType & Holiday_StoreType & ExamProgressReport_StoreType & Certificates_StoreType & Session_StoreType & Course_StoreType & Feedback_StoreType & DashboardData_StoreType & AuditLog_StoreType & SystemConfig_StoreType & NotificationStoreType & EmployeeProfileStoreType
@@ -68,6 +69,7 @@ export const mainStore = create<combineTypes>((set, get) => ({
   ...dashboardDataStore(set, get),
   ...courseStore(set, get),
   ...FeedbackDataStore(set, get),
+  ...AnnouncementDataStore(set, get),
   ...auditLogStore(set, get),
   ...systemConfigStore(set, get),
   ...notificationStore(set, get),

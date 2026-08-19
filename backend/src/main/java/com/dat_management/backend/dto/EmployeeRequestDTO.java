@@ -52,6 +52,7 @@ public class EmployeeRequestDTO {
     private String roleName;
 
     private LocalDate dob;
+    private LocalDate joinedDate;
 
     @JsonProperty("profile_photo_path")
     private String profilePhotoPath;

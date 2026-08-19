@@ -1,3 +1,5 @@
+// EmployeeForm.tsx - Updated with Calendar Popover
+
 "use client"
 
 import { Input } from "@/components/ui/input"
@@ -15,7 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { PlusSignIcon } from "@hugeicons/core-free-icons"
+import { PlusSignIcon, CalendarIcon } from "@hugeicons/core-free-icons"
 import { useEffect, useState, useMemo } from "react"
 import { mainStore } from "@/store/mainStore"
 import {
@@ -24,6 +26,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
 
 export interface EmployeeFormData {
   div: string
@@ -35,6 +44,7 @@ export interface EmployeeFormData {
   emp_status: string
   role: string
   email: string
+  joinedDate?: string
 }
 
 interface EmployeeFormProps {
@@ -87,6 +97,10 @@ export function EmployeeForm({
   onDropdownOpenChange,
 }: EmployeeFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    data.joinedDate ? new Date(data.joinedDate) : undefined
+  )
 
   const {
     employee_data,
@@ -104,9 +118,7 @@ export function EmployeeForm({
       await fetchAll_CourseData()
     }
     loadData()
-  },[fetchAll_CourseData])
-
- 
+  }, [fetchAll_CourseData])
 
   // Filter departments based on selected division
   const filteredDepartments = useMemo(() => {
@@ -168,6 +180,35 @@ export function EmployeeForm({
     })
   }
 
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date)
+    if (date) {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const formattedDate = `${year}-${month}-${day}`
+      handleInputChange("joinedDate", formattedDate)
+    } else {
+      handleInputChange("joinedDate", "")
+    }
+    setDatePickerOpen(false)
+  }
+
+  // Get day of week for display
+  const getDayOfWeek = (dateString: string) => {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ]
+    return days[date.getDay()]
+  }
 
   if (isLoading) {
     return (
@@ -213,7 +254,7 @@ export function EmployeeForm({
               className="w-full"
             />
           </div>
-          <div className="min-w-0 space-y-2 sm:col-span-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="email">
               Email Address <span className="text-red-500">*</span>
             </Label>
@@ -226,6 +267,42 @@ export function EmployeeForm({
               required
               className="w-full"
             />
+          </div>
+          <div className="min-w-0 space-y-2">
+            <Label htmlFor="joinedDate">
+              Joined Date
+            </Label>
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  id="joinedDate"
+                  className="w-full justify-between font-normal"
+                >
+                  {selectedDate
+                    ? format(selectedDate, "PPP")
+                    : "Select joined date"}
+                  <HugeiconsIcon icon={CalendarIcon} strokeWidth={2} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto overflow-hidden p-0"
+                align="start"
+              >
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  defaultMonth={selectedDate}
+                  captionLayout="dropdown"
+                  onSelect={handleDateSelect}
+                />
+              </PopoverContent>
+            </Popover>
+            {data.joinedDate && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Day: {getDayOfWeek(data.joinedDate)}
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -265,6 +265,14 @@ export const adminData: SidebarConfig = {
       groupLabel: "Support",
       items: [
         {
+          title: "Announcement",
+          tabId: "announcement",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
+          ),
+        },
+        {
           title: "Feedback",
           tabId: "feedback",
           type: "primary-action",
@@ -358,6 +366,14 @@ export const learnerData: SidebarConfig = {
     {
       groupLabel: "Support",
       items: [
+        {
+          title: "Announcement",
+          tabId: "announcement",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
+          ),
+        },
         {
           title: "Feedback",
           tabId: "feedback",
@@ -467,6 +483,14 @@ export const approverData: SidebarConfig = {
     {
       groupLabel: "Support",
       items: [
+        {
+          title: "Announcement",
+          tabId: "announcement",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
+          ),
+        },
         {
           title: "Feedback",
           tabId: "feedback",

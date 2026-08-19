@@ -149,9 +149,9 @@ export function HolidayForm({
               >
                 <Calendar
                   mode="single"
+                  captionLayout="dropdown"
                   selected={selectedDate}
                   defaultMonth={selectedDate}
-                  captionLayout="dropdown"
                   onSelect={handleDateSelect}
                   disabled={disabledDates}
                 />

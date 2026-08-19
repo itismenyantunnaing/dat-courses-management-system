@@ -3,6 +3,7 @@ import {
   CodeIcon,
   CalendarIcon,
   TrendingUp,
+  ChartIcon,
 } from "@hugeicons/core-free-icons"
 import { extractHolidayDataFromExcel } from "@/lib/Excel-extractor-Holiday"
 import { extractEmployeeDataFromExcel, validateEmployeeData, EmployeeExcelData } from "@/lib/Excel-extractor-Employee"
@@ -139,7 +140,7 @@ export const allTabs = [
     accept: ".csv,.json,.xlsx,.xls",
     icon: UserGroupIcon,
     maxSize: 500,
-   onImport: async (file: File) => {
+    onImport: async (file: File) => {
       try {
         const startTime = performance.now()
 
@@ -180,7 +181,7 @@ export const allTabs = [
             // Don't delete if status is "system" (case-insensitive check)
             const isSystemEmployee = emp.status?.toLowerCase() === "system"
             const isMissingFromExcel = !excelEmployeeIds.has(emp.id)
-            
+
             // Only delete if NOT a system employee AND missing from Excel
             return !isSystemEmployee && isMissingFromExcel
           }
@@ -290,6 +291,7 @@ export const allTabs = [
           has_japan_business_trip: false,
           noti_setting: true,
           dob: "",
+          joinedDate: item.joinedDate || "",
           profile_photo_path: "",
         }))
 
@@ -1857,6 +1859,48 @@ export const allTabs = [
       }
     },
   },
+  {
+    id: "self_study_progress_report",
+    label: "Self-Study Progress",
+    exportTitle: "Export Self-Study Progress Report",
+    exportDescription: "Export self-study progress report from the system.",
+    icon: ChartIcon,
+    onExport: async (format: string) => {
+      const exportData = (window as any).__selfStudyProgressData;
+
+      if (!exportData || !exportData.data || exportData.data.length === 0) {
+        alert("No self-study progress data to export.");
+        return;
+      }
+
+      try {
+        const {
+          exportSelfStudyProgressToExcel,
+          exportSelfStudyProgressToCSV,
+          exportSelfStudyProgressToPDF
+        } = await import('@/lib/export/Export-selfStudyProgress');
+
+        const options = {
+          fileName: `SelfStudy_Progress_${new Date().toISOString().split('T')[0]}`,
+          courseName: exportData.courseName || 'Self-Study Course',
+          viewMode: exportData.viewMode || 'session',
+        };
+
+        if (format === "excel" || format === "xlsx") {
+          await exportSelfStudyProgressToExcel(exportData.data, options);
+        } else if (format === "csv") {
+          await exportSelfStudyProgressToCSV(exportData.data, options);
+        } else if (format === "pdf") {
+          await exportSelfStudyProgressToPDF(exportData.data, options);
+        } else {
+          alert(`Export format "${format}" is not supported.`);
+        }
+      } catch (error) {
+        console.error("❌ Export failed:", error);
+        alert(`Failed to export: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    },
+  }
 ]
 
 export const importTabs = allTabs

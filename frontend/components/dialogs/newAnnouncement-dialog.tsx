@@ -19,50 +19,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { MailSend02Icon } from "@hugeicons/core-free-icons"
-import { FeedbackCategory } from "@/types/feedback"
+import { AnnouncementCategory } from "@/types/announcement"
 
-interface NewFeedbackDialogProps {
+interface NewAnnouncementDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (subject: string, category: FeedbackCategory, description: string) => void
+  onSubmit: (title: string, category: AnnouncementCategory, text: string) => void  // ✅ Removed createdBy
   isLoading?: boolean
 }
 
 const categoryOptions = [
   { value: 'COURSE', label: 'Course' },
-  { value: 'MANAGEMENT', label: 'Management' },
-  { value: 'SYSTEM', label: 'System' },
+  { value: 'EXAM', label: 'Exam' },
+  { value: 'OTHER', label: 'Other' },
 ]
 
-export function NewFeedbackDialog({
+export function NewAnnouncementDialog({
   open,
   onOpenChange,
   onSubmit,
   isLoading = false,
-}: NewFeedbackDialogProps) {
-  const [subject, setSubject] = useState("")
-  const [category, setCategory] = useState<FeedbackCategory | "">("")
-  const [description, setDescription] = useState("")
+}: NewAnnouncementDialogProps) {
+  const [title, setTitle] = useState("")
+  const [category, setCategory] = useState<AnnouncementCategory | "">("")
+  const [text, setText] = useState("")
 
-  const isFormValid = subject.trim() !== "" && category !== "" && description.trim() !== ""
+  const isFormValid = title.trim() !== "" && category !== "" && text.trim() !== ""
 
   const handleSubmit = () => {
     if (isFormValid) {
-      onSubmit(subject, category as FeedbackCategory, description)
-      setSubject("")
+      onSubmit(title, category as AnnouncementCategory, text)
+      setTitle("")
       setCategory("")
-      setDescription("")
+      setText("")
       onOpenChange(false)
     }
   }
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setSubject("")
+      setTitle("")
       setCategory("")
-      setDescription("")
+      setText("")
     }
     onOpenChange(newOpen)
   }
@@ -72,25 +70,25 @@ export function NewFeedbackDialog({
       <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[550px]">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
-            Submit new feedback or suggestion.
+            Create New Announcement
           </DialogTitle>
           <DialogDescription>
-            Your feedback helps us improve. All fields are required.
+            Create an announcement to share with everyone. All fields are required.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-2">
           <div className="space-y-4">
-            {/* Subject */}
+            {/* Title */}
             <div className="flex flex-col gap-1 space-y-2">
               <Label className="text-sm font-medium">
-                Subject <span className="text-destructive">*</span>
+                Title <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="text"
-                placeholder="Enter feedback subject..."
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Enter announcement title..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
             </div>
 
@@ -101,7 +99,7 @@ export function NewFeedbackDialog({
               </Label>
               <Select 
                 value={category} 
-                onValueChange={(value) => setCategory(value as FeedbackCategory)}
+                onValueChange={(value) => setCategory(value as AnnouncementCategory)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category..." />
@@ -116,16 +114,16 @@ export function NewFeedbackDialog({
               </Select>
             </div>
 
-            {/* Description */}
+            {/* Text - Removed CreatedBy input */}
             <div className="mt-2 flex flex-col gap-1 space-y-2">
               <Label className="text-sm font-medium">
-                Description <span className="text-destructive">*</span>
+                Announcement Text <span className="text-destructive">*</span>
               </Label>
               <textarea
-                className="min-h-[200px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Write your feedback here..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                className="min-h-[150px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Write your announcement here..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
               />
             </div>
           </div>
@@ -144,7 +142,7 @@ export function NewFeedbackDialog({
             onClick={handleSubmit}
             disabled={!isFormValid || isLoading}
           >
-            {isLoading ? "Submitting..." : "Submit Feedback"}
+            {isLoading ? "Creating..." : "Create Announcement"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -187,8 +187,6 @@ export function AuditLogsContainer() {
 
   // Local state for UI
   const [searchTerm, setSearchTerm] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(20)
   const [filters, setFilters] = useState<FilterState>({
     action: [],
     module: [],
@@ -220,7 +218,7 @@ export function AuditLogsContainer() {
       undefined,
       undefined,
       0,
-      itemsPerPage
+      20
     )
   }, [])
 
@@ -336,15 +334,18 @@ export function AuditLogsContainer() {
   // Toggle sort order
   const toggleSortOrder = () => {
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
-    setCurrentPage(1)
+    // Reset to first page when sorting changes
+    if (pagination.currentPage !== 0) {
+      goToPage(0)
+    }
   }
 
   const filteredData = getFilteredData()
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
+  const totalPages = Math.ceil(filteredData.length / pagination.pageSize)
+  const startIndex = pagination.currentPage * pagination.pageSize
   const paginatedData = filteredData.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + pagination.pageSize
   )
 
   // Check if there is any data to display
@@ -354,36 +355,24 @@ export function AuditLogsContainer() {
   // Handle items per page change
   const handleItemsPerPageChange = (value: string) => {
     const newSize = Number(value)
-    setItemsPerPage(newSize)
-    setCurrentPage(1)
     setPageSize(newSize)
   }
 
-  // Handle page navigation using store
   const handlePrevious = async () => {
-    if (currentPage > 1) {
-      const newPage = currentPage - 1
-      setCurrentPage(newPage)
-      await prevPage()
-    }
+    await prevPage()
   }
 
   const handleNext = async () => {
-    if (currentPage < totalPages) {
-      const newPage = currentPage + 1
-      setCurrentPage(newPage)
-      await nextPage()
-    }
+    await nextPage()
   }
 
   const handleGoToPage = async (page: number) => {
-    setCurrentPage(page)
-    await goToPage(page - 1)
+    await goToPage(page - 1) // Convert 1-based to 0-based
   }
 
-  // Handle select all
+  // Handle select all - selects ALL filtered logs, not just current page
   const handleSelectAll = () => {
-    const allSelected = paginatedData.every(
+    const allSelected = filteredData.every(
       (log) => rowSelection[log.id.toString()]
     )
 
@@ -391,7 +380,7 @@ export function AuditLogsContainer() {
       setRowSelection({})
     } else {
       const newSelection: Record<string, boolean> = {}
-      paginatedData.forEach((log) => {
+      filteredData.forEach((log) => {
         newSelection[log.id.toString()] = true
       })
       setRowSelection(newSelection)
@@ -433,7 +422,10 @@ export function AuditLogsContainer() {
         return { ...prev, [field]: [...current, value] }
       }
     })
-    setCurrentPage(1)
+    // Reset to first page when filtering
+    if (pagination.currentPage !== 0) {
+      goToPage(0)
+    }
   }
 
   // Helper to clear all filters
@@ -442,7 +434,11 @@ export function AuditLogsContainer() {
       action: [],
       module: [],
     })
-    setCurrentPage(1)
+    setSearchTerm("") // Also clear search when clearing filters
+    // Reset to first page
+    if (pagination.currentPage !== 0) {
+      goToPage(0)
+    }
     await clearFilters()
   }
 
@@ -468,14 +464,20 @@ export function AuditLogsContainer() {
       setAuditLogs((prev) => prev.filter((log) => log.id !== logToDelete.id))
       setDeleteDialogOpen(false)
       setLogToDelete(null)
+      // Clear selection for deleted item
+      setRowSelection((prev) => {
+        const newSelection = { ...prev }
+        delete newSelection[logToDelete.id.toString()]
+        return newSelection
+      })
       await fetch_AuditLogsWithFilters(
         undefined,
         undefined,
         undefined,
         undefined,
         undefined,
-        currentPage - 1,
-        itemsPerPage
+        pagination.currentPage,
+        pagination.pageSize
       )
     } catch (error) {
       console.error("Failed to delete log:", error)
@@ -504,8 +506,8 @@ export function AuditLogsContainer() {
         undefined,
         undefined,
         undefined,
-        currentPage - 1,
-        itemsPerPage
+        pagination.currentPage,
+        pagination.pageSize
       )
     } catch (error) {
       console.error("Failed to delete logs:", error)
@@ -546,10 +548,10 @@ export function AuditLogsContainer() {
   // Determine if selection bar is active
   const isSelectionActive = selectedCount > 0
 
-  // Check if all filtered logs are selected
+  // Check if all filtered logs are selected (for the checkbox state)
   const areAllFilteredSelected =
-    paginatedData.length > 0 &&
-    paginatedData.every((log) => rowSelection[log.id.toString()])
+    filteredData.length > 0 &&
+    filteredData.every((log) => rowSelection[log.id.toString()])
 
   // Get action badge color
   const getActionBadge = (action: string) => {
@@ -585,8 +587,8 @@ export function AuditLogsContainer() {
       undefined,
       undefined,
       undefined,
-      currentPage - 1,
-      itemsPerPage
+      pagination.currentPage,
+      pagination.pageSize
     )
   }
 
@@ -612,7 +614,13 @@ export function AuditLogsContainer() {
                   ref={searchInputRef}
                   placeholder="Search logs..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    // Reset to first page when searching
+                    if (pagination.currentPage !== 0) {
+                      goToPage(0)
+                    }
+                  }}
                   disabled={isLoading}
                 />
                 <InputGroupAddon>
@@ -798,7 +806,7 @@ export function AuditLogsContainer() {
                           checked={areAllFilteredSelected}
                           onCheckedChange={handleSelectAll}
                           aria-label="Select all"
-                          disabled={isLoading || paginatedData.length === 0}
+                          disabled={isLoading || filteredData.length === 0}
                         />
                       </BorderedTableHead>
                       <BorderedTableHead className="align-middle whitespace-nowrap">
@@ -996,7 +1004,7 @@ export function AuditLogsContainer() {
                     Rows per page
                   </FieldLabel>
                   <Select
-                    value={itemsPerPage.toString()}
+                    value={pagination.pageSize.toString()}
                     onValueChange={handleItemsPerPageChange}
                     disabled={isLoading}
                   >
@@ -1014,7 +1022,7 @@ export function AuditLogsContainer() {
                 </Field>
                 <div className="text-sm text-muted-foreground">
                   Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
-                  {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
+                  {Math.min(startIndex + pagination.pageSize, filteredData.length)} of{" "}
                   {filteredData.length} logs
                 </div>
                 <Pagination className="mx-0 w-auto">
@@ -1027,15 +1035,15 @@ export function AuditLogsContainer() {
                           handlePrevious()
                         }}
                         className={
-                          currentPage === 1 ||
-                          filteredData.length === 0 ||
-                          isLoading
+                          pagination.currentPage === 0 ||
+                            filteredData.length === 0 ||
+                            isLoading
                             ? "pointer-events-none opacity-50"
                             : ""
                         }
                       />
                     </PaginationItem>
-                    {getPageNumbers(totalPages, currentPage).map(
+                    {getPageNumbers(totalPages, pagination.currentPage + 1).map(
                       (page, index) => (
                         <PaginationItem key={index}>
                           {page === "..." ? (
@@ -1043,7 +1051,7 @@ export function AuditLogsContainer() {
                           ) : (
                             <PaginationLink
                               href="#"
-                              isActive={currentPage === page}
+                              isActive={pagination.currentPage + 1 === page}
                               onClick={(e) => {
                                 e.preventDefault()
                                 handleGoToPage(page as number)
@@ -1063,9 +1071,9 @@ export function AuditLogsContainer() {
                           handleNext()
                         }}
                         className={
-                          currentPage === totalPages ||
-                          filteredData.length === 0 ||
-                          isLoading
+                          pagination.currentPage === totalPages - 1 ||
+                            filteredData.length === 0 ||
+                            isLoading
                             ? "pointer-events-none opacity-50"
                             : ""
                         }

@@ -7,6 +7,8 @@ type StoreGet = () => AuditLog_StoreType
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
+// In auditLogStore.ts
+
 export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
     auditLogs: [],
     allAuditLogs: [],
@@ -26,7 +28,7 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
         to: undefined as string | undefined,
     },
 
-    // Fetch all audit logs with pagination and filters
+    // Fetch ALL audit logs with filters (no pagination from backend)
     fetch_AuditLogs: async (
         employeeId?: string,
         module?: string,
@@ -46,8 +48,10 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
             if (action) params.append('action', action);
             if (from) params.append('from', from);
             if (to) params.append('to', to);
-            params.append('page', page.toString());
-            params.append('size', size.toString());
+            
+            // Request all logs with a large page size
+            params.append('page', '0');
+            params.append('size', '1000'); // Or whatever max your backend supports
 
             const response = await fetch(`${apiUrl}/api/audit-logs?${params.toString()}`);
 
@@ -56,30 +60,28 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
             }
 
             const result = await response.json();
-
-            // Handle both paginated and non-paginated responses
-            const auditLogs = result.content || result || [];
-            const pagination = result.pageable ? {
-                currentPage: result.number || 0,
-                totalPages: result.totalPages || 0,
-                totalItems: result.totalElements || 0,
-                pageSize: result.size || 20,
-            } : {
-                currentPage: 0,
-                totalPages: 1,
-                totalItems: auditLogs.length,
-                pageSize: size,
-            };
-
+            
+            // Extract all logs from the response
+            const allLogs = result.content || result || [];
+            
+            // Store all logs
             set(() => ({
-                auditLogs: auditLogs,
-                pagination: pagination,
-                isLoading: false
+                auditLogs: allLogs,
+                allAuditLogs: allLogs,
+                isLoading: false,
+                // Update pagination for frontend usage
+                pagination: {
+                    currentPage: 0,
+                    totalPages: Math.ceil(allLogs.length / size),
+                    totalItems: allLogs.length,
+                    pageSize: size,
+                }
             }));
         } catch (error) {
             console.error('Error fetching audit logs:', error);
             set(() => ({
                 auditLogs: [],
+                allAuditLogs: [],
                 isLoading: false,
                 pagination: {
                     currentPage: 0,
@@ -126,7 +128,8 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
         }
     },
 
-    // Fetch all audit logs without pagination (for export)
+    // This method is now redundant since we fetch all logs at once
+    // Keep it for compatibility but it just returns the stored data
     fetch_AllAuditLogs: async (
         employeeId?: string,
         module?: string,
@@ -134,53 +137,14 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
         from?: string,
         to?: string
     ) => {
-        try {
-            set(() => ({ isLoading: true }));
-
-            let allLogs: any[] = [];
-            let currentPage = 0;
-            let totalPages = 1;
-            const pageSize = 100; // Max allowed by backend
-
-            do {
-                const params = new URLSearchParams();
-                if (employeeId) params.append('employeeId', employeeId);
-                if (module) params.append('module', module);
-                if (action) params.append('action', action);
-                if (from) params.append('from', from);
-                if (to) params.append('to', to);
-                params.append('page', currentPage.toString());
-                params.append('size', pageSize.toString());
-
-                const response = await fetch(`${apiUrl}/api/audit-logs?${params.toString()}`);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                const logs = result.content || [];
-                allLogs = [...allLogs, ...logs];
-
-                totalPages = result.totalPages || 0;
-                currentPage++;
-            } while (currentPage < totalPages);
-
-            set(() => ({
-                allAuditLogs: allLogs,
-                isLoading: false
-            }));
-
-            return allLogs;
-
-        } catch (error) {
-            console.error('Error fetching all audit logs:', error);
-            set(() => ({
-                allAuditLogs: [],
-                isLoading: false
-            }));
-            return [];
+        const { allAuditLogs, fetch_AuditLogs } = get();
+        
+        // If we don't have all logs yet, fetch them
+        if (allAuditLogs.length === 0) {
+            await fetch_AuditLogs(employeeId, module, action, from, to);
         }
+        
+        return get().allAuditLogs;
     },
 
     // Create new audit log
@@ -207,6 +171,7 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
         // Immediately push to UI
         set(() => ({
             auditLogs: [optimisticLog, ...previousData],
+            allAuditLogs: [optimisticLog, ...get().allAuditLogs],
             isCreating: true
         }));
 
@@ -237,6 +202,7 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
             // Rollback to original state if the API fails
             set(() => ({
                 auditLogs: previousData,
+                allAuditLogs: previousData,
                 isCreating: false
             }));
 
@@ -269,6 +235,7 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
 
         set(() => ({
             auditLogs: updatedData,
+            allAuditLogs: updatedData,
             isCreating: true
         }));
 
@@ -300,6 +267,7 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
             // Rollback to original state if the API fails
             set(() => ({
                 auditLogs: previousData,
+                allAuditLogs: previousData,
                 isCreating: false
             }));
 
@@ -314,6 +282,7 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
         // Optimistically remove from UI
         set(() => ({
             auditLogs: previousData.filter(log => log.id !== id),
+            allAuditLogs: previousData.filter(log => log.id !== id),
         }));
 
         try {
@@ -325,7 +294,6 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
             });
 
             if (!response.ok) {
-                // Try to get error message from response if available
                 let errorMessage = `HTTP error! status: ${response.status}`;
                 try {
                     const errorText = await response.text();
@@ -334,22 +302,9 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
                         errorMessage = errorJson.message || errorMessage;
                     }
                 } catch (e) {
-                    // If response body is empty or not JSON, use status text
                     errorMessage = response.statusText || errorMessage;
                 }
                 throw new Error(errorMessage);
-            }
-
-            // Only try to parse JSON if there's content
-            let result = null;
-            const contentLength = response.headers.get('content-length');
-            if (contentLength && parseInt(contentLength) > 0) {
-                try {
-                    result = await response.json();
-                } catch (e) {
-                    // If response is empty or invalid JSON, that's fine for DELETE
-                    console.log('DELETE response has no body (expected for 204 No Content)');
-                }
             }
 
             // Refresh to get the updated data from the server
@@ -362,7 +317,8 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
 
             // Rollback to original state if the API fails
             set(() => ({
-                auditLogs: previousData
+                auditLogs: previousData,
+                allAuditLogs: previousData,
             }));
 
             throw error;
@@ -377,6 +333,7 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
         // Optimistically remove from UI
         set(() => ({
             auditLogs: previousData.filter(log => log.id !== undefined && !ids.includes(log.id)),
+            allAuditLogs: previousData.filter(log => log.id !== undefined && !ids.includes(log.id)),
         }));
 
         try {
@@ -402,16 +359,6 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
                 throw new Error(errorMessage);
             }
 
-            // Only try to parse JSON if there's content
-            const contentLength = response.headers.get('content-length');
-            if (contentLength && parseInt(contentLength) > 0) {
-                try {
-                    await response.json();
-                } catch (e) {
-                    console.log('DELETE response has no body (expected for 204 No Content)');
-                }
-            }
-
             // Refresh to get the updated data from the server
             await get().fetch_AuditLogs();
 
@@ -426,76 +373,64 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
 
             // Rollback to original state if the API fails
             set(() => ({
-                auditLogs: previousData
+                auditLogs: previousData,
+                allAuditLogs: previousData,
             }));
 
             throw error;
         }
     },
 
-    // Go to next page
+    // Go to next page (frontend pagination)
     nextPage: async () => {
         const { pagination } = get();
         if (pagination.currentPage < pagination.totalPages - 1) {
-            const { _filters } = get();
-            await get().fetch_AuditLogs(
-                _filters?.employeeId,
-                _filters?.module,
-                _filters?.action,
-                _filters?.from,
-                _filters?.to,
-                pagination.currentPage + 1,
-                pagination.pageSize
-            );
+            set(() => ({
+                pagination: {
+                    ...pagination,
+                    currentPage: pagination.currentPage + 1
+                }
+            }));
         }
     },
 
-    // Go to previous page
+    // Go to previous page (frontend pagination)
     prevPage: async () => {
         const { pagination } = get();
         if (pagination.currentPage > 0) {
-            const { _filters } = get();
-            await get().fetch_AuditLogs(
-                _filters?.employeeId,
-                _filters?.module,
-                _filters?.action,
-                _filters?.from,
-                _filters?.to,
-                pagination.currentPage - 1,
-                pagination.pageSize
-            );
+            set(() => ({
+                pagination: {
+                    ...pagination,
+                    currentPage: pagination.currentPage - 1
+                }
+            }));
         }
     },
 
-    // Go to specific page
+    // Go to specific page (frontend pagination)
     goToPage: async (page: number) => {
         const { pagination } = get();
         if (page >= 0 && page < pagination.totalPages) {
-            const { _filters } = get();
-            await get().fetch_AuditLogs(
-                _filters?.employeeId,
-                _filters?.module,
-                _filters?.action,
-                _filters?.from,
-                _filters?.to,
-                page,
-                pagination.pageSize
-            );
+            set(() => ({
+                pagination: {
+                    ...pagination,
+                    currentPage: page
+                }
+            }));
         }
     },
 
-    // Change page size
+    // Change page size (frontend pagination)
     setPageSize: async (size: number) => {
-        const { _filters } = get();
-        await get().fetch_AuditLogs(
-            _filters?.employeeId,
-            _filters?.module,
-            _filters?.action,
-            _filters?.from,
-            _filters?.to,
-            0, // Reset to first page
-            size
-        );
+        const { auditLogs } = get();
+        set(() => ({
+            pagination: {
+                currentPage: 0,
+                totalPages: Math.ceil(auditLogs.length / size),
+                totalItems: auditLogs.length,
+                pageSize: size,
+            }
+        }));
     },
 
     // Clear filters
@@ -514,7 +449,7 @@ export const auditLogStore = (set: StoreSet, get: StoreGet) => ({
 
     // Reset pagination to first page
     resetPagination: async () => {
-        const { _filters } = get();
+        const { auditLogs, _filters } = get();
         await get().fetch_AuditLogs(
             _filters?.employeeId,
             _filters?.module,

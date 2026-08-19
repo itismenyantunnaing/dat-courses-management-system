@@ -15,6 +15,8 @@ export interface Employee {
   team: string;
   role: string;
   dob: string;
+  joinedDate?: string;
+  serviceYear?: string;
   profile_photo_path: string;
   avatar?: string
 }
@@ -32,7 +34,7 @@ export interface EmployeeProfile {
   dob: string | null;
   role: string;
   team: string;
-   employeeId: string;
+  employeeId: string;
   profilePhotoPath: string | null;
   isCorePersonnel: boolean;
   hasJapanBusinessTrip: boolean;

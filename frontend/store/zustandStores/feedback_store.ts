@@ -13,13 +13,13 @@ export const FeedbackDataStore = (set: StoreSet, get: StoreGet) => ({
   isCreating: false,
   isUpdating: false,
   isLoading: false,
-  profile: [], 
+  profile: [],
 
   // Helper method to refresh feedback based on user role
   refreshFeedbackData: async () => {
     const currentProfile = get().profile;
     const userRole = currentProfile?.role?.toLowerCase() || '';
-    
+
     if (userRole === 'learner' && currentProfile?.id) {
       // Learner: fetch only their feedback
       await get().fetch_FeedbackByEmployeeId(currentProfile.id);
@@ -71,8 +71,8 @@ export const FeedbackDataStore = (set: StoreSet, get: StoreGet) => ({
     const previousData = get().feedback;
 
     // Validate required fields
-    if (!newFeedback.employeeId || !newFeedback.subject || !newFeedback.description) {
-      return 'Employee ID, Subject, and Description are required fields.';
+    if (!newFeedback.employeeId || !newFeedback.category || !newFeedback.description) {
+      return 'Employee ID, Category, and Description are required fields.';
     }
 
     // Create a copy with a generated temporary ID for optimistic UI
@@ -102,7 +102,7 @@ export const FeedbackDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-      
+
       if (!result.success) {
         throw new Error(result.message || 'Failed to create feedback');
       }
@@ -126,59 +126,6 @@ export const FeedbackDataStore = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
-  // Delete feedback
-  delete_FeedbackData: async (feedbackIds: number | number[]) => {
-    const previousData = get().feedback;
-
-    // Normalize input to always be an array of numbers
-    const idsToDelete = Array.isArray(feedbackIds) ? feedbackIds : [feedbackIds];
-    const count = idsToDelete.length;
-
-    // Optimistically filter out the deleted feedback immediately from the UI
-    set(() => ({
-      feedback: previousData.filter(f => f.id !== undefined && !idsToDelete.includes(f.id)),
-    }));
-
-    try {
-      // Delete one by one since the backend endpoint expects single ID
-      const deletePromises = idsToDelete.map(id => 
-        fetch(`${apiUrl}/api/feedback/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        })
-      );
-
-      const responses = await Promise.all(deletePromises);
-      
-      // Check if any deletion failed
-      const failedResponses = responses.filter(response => !response.ok);
-      if (failedResponses.length > 0) {
-        throw new Error(`Failed to delete ${failedResponses.length} feedback entries`);
-      }
-
-      // ✅ Refresh based on user role
-      await get().refreshFeedbackData();
-
-      const customMessage = count === 1
-        ? `1 Feedback deleted successfully`
-        : `${count} Feedback entries deleted successfully`;
-
-      return customMessage;
-
-    } catch (error) {
-      console.error('Error deleting feedback data:', error);
-
-      // Rollback to original state if the API fails
-      set(() => ({
-        feedback: previousData
-      }));
-
-      return `Failed to delete ${count === 1 ? 'feedback' : 'feedbacks'}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    }
-  },
-
   // Update feedback
   update_FeedbackData: async (id: number, updatedFeedback: FeedbackSuggestionDto) => {
     const previousData = get().feedback;
@@ -191,8 +138,8 @@ export const FeedbackDataStore = (set: StoreSet, get: StoreGet) => ({
     }
 
     // Validate required fields
-    if (!updatedFeedback.employeeId || !updatedFeedback.subject || !updatedFeedback.description) {
-      return 'Employee ID, Subject, and Description are required fields.';
+    if (!updatedFeedback.employeeId || !updatedFeedback.category || !updatedFeedback.description) {
+      return 'Employee ID, Category, and Description are required fields.';
     }
 
     // Optimistically update the feedback in the UI
@@ -220,7 +167,7 @@ export const FeedbackDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const result = await response.json();
-      
+
       if (!result.success) {
         throw new Error(result.message || 'Failed to update feedback');
       }
@@ -243,6 +190,61 @@ export const FeedbackDataStore = (set: StoreSet, get: StoreGet) => ({
       return `Failed to update feedback: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   },
+
+  // Delete feedback
+  delete_FeedbackData: async (feedbackIds: number | number[]) => {
+    const previousData = get().feedback;
+
+    // Normalize input to always be an array of numbers
+    const idsToDelete = Array.isArray(feedbackIds) ? feedbackIds : [feedbackIds];
+    const count = idsToDelete.length;
+
+    // Optimistically filter out the deleted feedback immediately from the UI
+    set(() => ({
+      feedback: previousData.filter(f => f.id !== undefined && !idsToDelete.includes(f.id)),
+    }));
+
+    try {
+      // Delete one by one since the backend endpoint expects single ID
+      const deletePromises = idsToDelete.map(id =>
+        fetch(`${apiUrl}/api/feedback/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+      );
+
+      const responses = await Promise.all(deletePromises);
+
+      // Check if any deletion failed
+      const failedResponses = responses.filter(response => !response.ok);
+      if (failedResponses.length > 0) {
+        throw new Error(`Failed to delete ${failedResponses.length} feedback entries`);
+      }
+
+      // ✅ Refresh based on user role
+      await get().refreshFeedbackData();
+
+      const customMessage = count === 1
+        ? `1 Feedback deleted successfully`
+        : `${count} Feedback entries deleted successfully`;
+
+      return customMessage;
+
+    } catch (error) {
+      console.error('Error deleting feedback data:', error);
+
+      // Rollback to original state if the API fails
+      set(() => ({
+        feedback: previousData
+      }));
+
+      return `Failed to delete ${count === 1 ? 'feedback' : 'feedbacks'}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+  },
+
+
 
   // Set profile in store (call this when profile is loaded)
   setProfile: (profile: any) => {

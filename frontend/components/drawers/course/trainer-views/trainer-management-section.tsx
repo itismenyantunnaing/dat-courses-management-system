@@ -1203,6 +1203,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
+                    captionLayout="dropdown"
                     selected={group.startDate}
                     onSelect={(date) =>
                       handleStartDateChange(group.id, date || undefined)
@@ -1253,6 +1254,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
+                    captionLayout="dropdown"
                     selected={group.endDate}
                     onSelect={(date) => {
                       if (date && group.startDate && date < group.startDate)
@@ -1520,6 +1522,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                             >
                               <Calendar
                                 mode="single"
+                                captionLayout="dropdown"
                                 selected={session.date}
                                 onSelect={(date) =>
                                   handleGroupSessionDateChange(

@@ -1,6 +1,9 @@
+export type FeedbackCategory = 'COURSE' | 'MANAGEMENT' | 'SYSTEM';
+
 export interface FeedbackSuggestionDto {
   id?: number;
   employeeId: string;
+  category: FeedbackCategory;
   subject: string;
   description: string;
   status?: string;

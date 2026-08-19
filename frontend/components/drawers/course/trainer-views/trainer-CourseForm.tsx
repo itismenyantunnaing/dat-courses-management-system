@@ -272,7 +272,11 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       if (mode === "edit" && initialData) {
         const category = getCategoryByValue(initialData.category)
 
-        setFormData({
+        // Build ONE normalized snapshot and reuse it for both formData and
+        // the change-detection ref, so the two are guaranteed to start
+        // identical (previously they used slightly different fallback
+        // logic, which made the form look "dirty" immediately on load).
+        const normalized: CourseFormData = {
           title: initialData.title || "",
           trainerName: initialData.trainerName || "",
           imageUrl: initialData.imageUrl || undefined,
@@ -291,29 +295,35 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           totalReadingMinutes: initialData.totalReadingMinutes || 0,
           totalListeningMinutes: initialData.totalListeningMinutes || 0,
           status: initialData.status || "draft",
-        })
+        }
+
+        setFormData(normalized)
 
         if (initialData.groups?.length > 0) {
           setActiveGroupTab(initialData.groups[0].id)
         }
 
+        // Snapshot the SAME normalized values (deep-cloned) that were just
+        // put into formData — not the raw initialData — so the very first
+        // comparison in the "has changes" effect below evaluates to false.
         initialFormDataRef.current = JSON.parse(JSON.stringify({
-          title: initialData.title,
-          imageUrl: initialData.imageUrl,
-          courseType: initialData.courseType,
-          category: initialData.category,
-          categoryId: category?.id || undefined,
-          registrationDeadline: initialData.registrationDeadline,
-          groups: initialData.groups,
-          sessions: initialData.sessions,
-          selfStudyType: initialData.selfStudyType,
-          daysPerSession: initialData.daysPerSession,
-          mentionedLearners: initialData.mentionedLearners || [],
-          totalKanji: initialData.totalKanji,
-          totalVocabulary: initialData.totalVocabulary,
-          totalGrammar: initialData.totalGrammar,
-          totalReadingMinutes: initialData.totalReadingMinutes,
-          totalListeningMinutes: initialData.totalListeningMinutes,
+          title: normalized.title,
+          imageUrl: normalized.imageUrl,
+          courseType: normalized.courseType,
+          category: normalized.category,
+          categoryId: normalized.categoryId,
+          registrationDeadline: normalized.registrationDeadline,
+          groups: normalized.groups,
+          sessions: normalized.sessions,
+          selfStudyType: normalized.selfStudyType,
+          daysPerSession: normalized.daysPerSession,
+          mentionedLearners: normalized.mentionedLearners,
+          totalKanji: normalized.totalKanji,
+          totalVocabulary: normalized.totalVocabulary,
+          totalGrammar: normalized.totalGrammar,
+          totalReadingMinutes: normalized.totalReadingMinutes,
+          totalListeningMinutes: normalized.totalListeningMinutes,
+          status: normalized.status,
         }))
       }
     }, [initialData, mode, defaultGroup, getCategoryByValue])
@@ -352,7 +362,8 @@ useEffect(() => {
       formData.totalReadingMinutes !==
       initialFormDataRef.current.totalReadingMinutes ||
       formData.totalListeningMinutes !==
-      initialFormDataRef.current.totalListeningMinutes
+      initialFormDataRef.current.totalListeningMinutes ||
+      formData.status !== initialFormDataRef.current.status
 
     const hasImageChanges = selectedImage !== null
 

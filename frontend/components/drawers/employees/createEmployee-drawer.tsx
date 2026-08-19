@@ -33,13 +33,13 @@ export function CreateEmployeeDrawer({
   const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
     useState(false)
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
-  const { 
-    add_EmployeeData, 
+  const {
+    add_EmployeeData,
     add_division,
     add_dat_department,
     add_team,
     divisions,
-    dat_departments 
+    dat_departments
   } = mainStore()
 
   // State for Add Item Dialog
@@ -58,6 +58,7 @@ export function CreateEmployeeDrawer({
     emp_status: "active",
     role: "",
     email: "",
+    joinedDate: "",
   })
 
   // Check if all required fields are filled
@@ -107,6 +108,7 @@ export function CreateEmployeeDrawer({
         team: formData.team,
         role: formData.role,
         dob: "",
+        joinedDate: formData.joinedDate || "",
         profile_photo_path: "",
       }
 
@@ -132,6 +134,7 @@ export function CreateEmployeeDrawer({
         emp_status: "active",
         role: "",
         email: "",
+        joinedDate: "",
       })
 
       onOpenChange(false)
@@ -154,29 +157,29 @@ export function CreateEmployeeDrawer({
     // Call the appropriate function based on the type
     if (addItemType === "division") {
       result = await add_division(name);
-      
+
       if (result && result.success) {
         alert(`✅ Division "${name}" added successfully!`);
         setFormData((prev) => ({ ...prev, div: name }));
       } else {
         alert(`❌ Failed to add division: ${result?.error || 'Unknown error'}`);
       }
-      
+
     } else if (addItemType === "department") {
-      
+
       // You need to get the division ID from the selected division
       // Find the selected division from the divisions list
-      const selectedDivision = divisions.find((div: any) => 
+      const selectedDivision = divisions.find((div: any) =>
         div.divisionName === formData.div || div.id === formData.div
       );
-      
+
       if (!selectedDivision) {
         alert('❌ Please select a division first before adding a department');
         return;
       }
-      
+
       const divisionId = selectedDivision.id || selectedDivision.divisionId;
-      
+
       // Find if the division has the ID
       let finalDivisionId = divisionId;
       if (!finalDivisionId && divisions.length > 0) {
@@ -193,42 +196,42 @@ export function CreateEmployeeDrawer({
           }
         }
       }
-      
+
       if (!finalDivisionId) {
         alert('❌ Could not find division ID. Please select a valid division.');
         return;
       }
-      
+
       result = await add_dat_department(finalDivisionId, name);
-      
+
       if (result && result.success) {
         alert(`✅ Department "${name}" added successfully!`);
         setFormData((prev) => ({ ...prev, dept_dat: name }));
       } else {
         alert(`❌ Failed to add department: ${result?.error || 'Unknown error'}`);
       }
-      
+
     } else if (addItemType === "team") {
-      
+
       // You need to get the department ID from the selected department
-      const selectedDepartment = dat_departments.find((dept: any) => 
+      const selectedDepartment = dat_departments.find((dept: any) =>
         dept.deptName === formData.dept_dat || dept.id === formData.dept_dat
       );
-      
+
       if (!selectedDepartment) {
         alert('❌ Please select a department first before adding a team');
         return;
       }
-      
+
       const departmentId = selectedDepartment.id || selectedDepartment.departmentDatId;
-      
+
       if (!departmentId) {
         alert('❌ Could not find department ID. Please select a valid department.');
         return;
       }
-      
+
       result = await add_team(departmentId, name);
-      
+
       if (result && result.success) {
         alert(`✅ Team "${name}" added successfully!`);
         setFormData((prev) => ({ ...prev, team: name }));

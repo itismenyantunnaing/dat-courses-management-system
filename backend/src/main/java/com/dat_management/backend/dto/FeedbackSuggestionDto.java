@@ -1,5 +1,6 @@
 package com.dat_management.backend.dto;
 
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -11,7 +12,11 @@ public class FeedbackSuggestionDto {
     @NotBlank(message = "Employee ID is required")
     private String employeeId; 
 
-    @NotBlank(message = "Subject is required")
+    @NotBlank(message = "Feedback category is required")
+    private String  category;
+
+    
+    @Column(nullable = false)
     private String subject;
 
     @NotBlank(message = "Description is required")

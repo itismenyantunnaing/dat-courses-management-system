@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ClockIcon, Delete02Icon, Edit03Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
+import { FeedbackCategory } from "@/types/feedback"
 
 interface FeedbackCardProps {
   feedback: {
@@ -17,6 +18,7 @@ interface FeedbackCardProps {
       avatar: string
     }
     subject: string
+    category?: FeedbackCategory // ✅ Add category
     description: string
     createdAt: string
     updatedAt?: string
@@ -27,6 +29,34 @@ interface FeedbackCardProps {
   formatTime: (dateString: string) => string
   getInitials: (name: string) => string
   canEdit?: boolean
+}
+
+// Category color mapping
+const getCategoryStyles = (category?: FeedbackCategory) => {
+  switch (category) {
+    case 'COURSE':
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    case 'MANAGEMENT':
+      return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+    case 'SYSTEM':
+      return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    default:
+      return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+  }
+}
+
+// Category label mapping
+const getCategoryLabel = (category?: FeedbackCategory) => {
+  switch (category) {
+    case 'COURSE':
+      return 'Course'
+    case 'MANAGEMENT':
+      return 'Management'
+    case 'SYSTEM':
+      return 'System'
+    default:
+      return 'Unknown'
+  }
 }
 
 export function FeedbackCard({
@@ -85,7 +115,7 @@ export function FeedbackCard({
               {showDepartmentTeam && (
                 <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                   {hasDepartment && (
-                    <span className="min-w-0 truncate">
+                    <span className="min-w-0 max-w-[50px] truncate">
                       {feedback.employee.department}
                     </span>
                   )}
@@ -93,7 +123,7 @@ export function FeedbackCard({
                     <span className="flex-shrink-0">•</span>
                   )}
                   {hasTeam && (
-                    <span className="truncate">{feedback.employee.team}</span>
+                    <span className="min-w-0 max-w-[50px] truncate">{feedback.employee.team}</span>
                   )}
                 </div>
               )}
@@ -110,19 +140,18 @@ export function FeedbackCard({
         </div>
       </CardHeader>
       <CardContent className="relative">
-        <h4 className="mb-1 truncate text-sm font-medium">
-          {feedback.subject}
-        </h4>
-        <div
-          className="line-clamp-2 text-sm text-muted-foreground"
-          style={{
-            display: "-webkit-box",
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            wordBreak: "break-word",
-          }}
-        >
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <h4 className="truncate text-sm font-medium">
+            {feedback.subject}
+          </h4>
+          {/* ✅ Category Badge */}
+          {feedback.category && (
+            <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${getCategoryStyles(feedback.category)}`}>
+              {getCategoryLabel(feedback.category)}
+            </span>
+          )}
+        </div>
+        <div className="text-sm text-muted-foreground min-w-0 max-w-[70%] truncate">
           {feedback.description}
         </div>
         {/* Action buttons with background and blur */}

@@ -496,42 +496,89 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       category: string
       sub_category: string
     }[] = []
-    ;(skill_headers || []).forEach((category: SkillCategory) => {
-      // API returns: categoryName, skillSubCategories
-      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-        // API returns: subCategoryName, skills
-        subCategory.skills?.forEach((skill: Skill) => {
-          // API returns: id, skillName
-          skills.push({
-            id: skill.id,
-            name: skill.skillName,
-            category: category.categoryName,
-            sub_category: subCategory.subCategoryName,
+      ; (skill_headers || []).forEach((category: SkillCategory) => {
+        // API returns: categoryName, skillSubCategories
+        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+          // API returns: subCategoryName, skills
+          subCategory.skills?.forEach((skill: Skill) => {
+            // API returns: id, skillName
+            skills.push({
+              id: skill.id,
+              name: skill.skillName,
+              category: category.categoryName,
+              sub_category: subCategory.subCategoryName,
+            })
           })
         })
       })
-    })
     return skills
   }, [skill_headers])
 
   // Group skills by category
   const dynamicSkillsByCategory = useMemo(() => {
     const grouped: Record<string, GroupedSkill[]> = {}
-    ;(skill_headers || []).forEach((category: SkillCategory) => {
-      const categoryName = category.categoryName
-      grouped[categoryName] = []
-      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-        subCategory.skills?.forEach((skill: Skill) => {
-          grouped[categoryName].push({
-            skill_id: skill.id,
-            skill_name: skill.skillName,
-            sub_category_name: subCategory.subCategoryName,
+      ; (skill_headers || []).forEach((category: SkillCategory) => {
+        const categoryName = category.categoryName
+        grouped[categoryName] = []
+        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+          subCategory.skills?.forEach((skill: Skill) => {
+            grouped[categoryName].push({
+              skill_id: skill.id,
+              skill_name: skill.skillName,
+              sub_category_name: subCategory.subCategoryName,
+            })
           })
         })
       })
-    })
     return grouped
   }, [skill_headers])
+
+  // Flat list of skills, ordered to match the category/subcategory grouping
+  // used in the table headers (NOT a global id sort).
+  const orderedSkillsList = useMemo(() => {
+    const result: {
+      id: number
+      name: string
+      category: string
+      sub_category: string
+    }[] = []
+
+    Object.entries(dynamicSkillsByCategory)
+      .sort((a, b) => {
+        const aMinId = Math.min(...a[1].map((s) => s.skill_id))
+        const bMinId = Math.min(...b[1].map((s) => s.skill_id))
+        return aMinId - bMinId
+      })
+      .forEach(([categoryName, skills]) => {
+        const subCategoryMap: Record<string, GroupedSkill[]> = {}
+        skills.forEach((skill) => {
+          const subName = skill.sub_category_name
+          if (!subCategoryMap[subName]) subCategoryMap[subName] = []
+          subCategoryMap[subName].push(skill)
+        })
+
+        Object.entries(subCategoryMap)
+          .sort((a, b) => {
+            const aMinId = Math.min(...a[1].map((s) => s.skill_id))
+            const bMinId = Math.min(...b[1].map((s) => s.skill_id))
+            return aMinId - bMinId
+          })
+          .forEach(([, subSkills]) => {
+            ;[...subSkills]
+              .sort((a, b) => a.skill_id - b.skill_id)
+              .forEach((skill) => {
+                result.push({
+                  id: skill.skill_id,
+                  name: skill.skill_name,
+                  category: categoryName,
+                  sub_category: skill.sub_category_name,
+                })
+              })
+          })
+      })
+
+    return result
+  }, [dynamicSkillsByCategory])
 
   const filteredEmployees = employees.filter((employee) => {
     return (
@@ -865,8 +912,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                       colSpan={
                         devCap_headers?.length !== 0
                           ? devCap_headers?.length &&
-                            languageSkillHeaders.length +
-                              devCap_headers.length * 2
+                          languageSkillHeaders.length +
+                          devCap_headers.length * 2
                           : languageSkillHeaders.length
                       }
                       className="cursor-pointer align-middle whitespace-nowrap transition-colors hover:bg-muted/70"
@@ -1171,10 +1218,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                 {/* ROW 4: Technical Individual Skills */}
                 <TableRow className="bg-muted/20">
                   {showTechnicalAbility &&
-                    dynamicSkillsList.length > 0 &&
-                    dynamicSkillsList
-                      .sort((a, b) => a.id - b.id)
-                      .map((skill) => {
+                   orderedSkillsList.length > 0 &&
+                    orderedSkillsList.map((skill) => {
                         // Check if this skill was already used as a sub-category header in Row 3
                         // A skill is shown as a sub-category header when its sub_category_name contains "empty"
                         let isSkillNameHeader = false
@@ -1227,7 +1272,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                       )
                     )}
                   {showTechnicalAbility &&
-                    dynamicSkillsList.map((skill) => (
+                    orderedSkillsList.map((skill) => (
                       <React.Fragment key={`${skill.id}-sub`}>
                         <BorderedTableHead className="text-center whitespace-nowrap">
                           {translate("Years")}
@@ -1416,7 +1461,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         {/* Technical Skills Cells - Column Filterable */}
                         {showTechnicalAbility && (
                           <>
-                            {dynamicSkillsList.map((skill) => {
+                            {orderedSkillsList.map((skill) => {
                               // Now use skill.name instead of skill.id
                               const skillData = employeeSkills.get(skill.name)
                               const years = skillData?.years
@@ -1539,7 +1584,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     }}
                     className={
                       currentPage === totalPages ||
-                      filteredEmployees.length === 0
+                        filteredEmployees.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }

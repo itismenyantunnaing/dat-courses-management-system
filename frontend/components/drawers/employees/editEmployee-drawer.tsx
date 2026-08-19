@@ -98,6 +98,7 @@ export function EditEmployeeDrawer({
         emp_status: employee.emp_status || "active",
         role: employee.role || "",
         email: employee.email || "",
+        joinedDate: employee.joinedDate || "",
       }
       setFormData(newFormData)
       setOriginalFormData(newFormData)
@@ -160,12 +161,13 @@ export function EditEmployeeDrawer({
         name: formData.name,
         email: formData.email,
         doorlog: formData.doorlog,
-        position:  "",
+        position: "",
         emp_status: formData.emp_status,
         div_name: formData.div,
         dept_dat: formData.dept_dat,
         team: formData.team,
         role: formData.role,
+        joinedDate: formData.joinedDate || "",
         // Preserve these fields from original employee
         is_core_personnel: employee?.is_core_personnel || false,
         has_japan_business_trip: employee?.has_japan_business_trip || false,
@@ -303,7 +305,7 @@ export function EditEmployeeDrawer({
                   onDropdownOpenChange={handleDropdownOpenChange}
                 />
               ) : (
-                <EmployeeView employee={employee} courses={courses}/>
+                <EmployeeView employee={employee} courses={courses} />
               )}
             </div>
           </div>

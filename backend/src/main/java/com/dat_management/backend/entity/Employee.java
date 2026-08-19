@@ -71,6 +71,7 @@ public class Employee implements UserDetails {
     private Role role;
 
     private LocalDate dob;
+    private LocalDate joinedDate;
 
     private String profilePhotoPath;
 

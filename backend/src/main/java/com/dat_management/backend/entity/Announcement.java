@@ -2,37 +2,36 @@ package com.dat_management.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "feedback_suggestions")
-@Data
+@Table(name = "announcements")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class FeedbackSuggestion {
+public class Announcement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id", nullable = false)
-    private Employee employee;
-
     @Column(nullable = false)
-    private String subject;
+    private String title;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String text;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private FeedbackCategory category;
+    private AnnouncementCategory category;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String description;
-
-    private String status;
+    @Column(name = "created_by", nullable = false)
+    private String createdBy; // Employee name of creator
 
     private LocalDateTime createdAt;
 
@@ -44,7 +43,7 @@ public class FeedbackSuggestion {
     }
 
     @PreUpdate
-    private void updateTimestamp() {
-        this.updatedAt = LocalDateTime.now();
+    private void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

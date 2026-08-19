@@ -420,6 +420,7 @@ export function EmployeeContainer({
     { field: "doorlog", header_name: "DoorLog" },
     { field: "dept", header_name: "Dept" },
     { field: "team", header_name: "Team" },
+    { field: "joinedDate", header_name: "Joined Date" },
     { field: "status", header_name: "Status" },
     { field: "role", header_name: "Role" },
   ]
@@ -495,8 +496,8 @@ export function EmployeeContainer({
       const divs = getUniqueValues("div_name")
       const filteredDivs = searchTerm.trim()
         ? divs.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : divs
       // Add "Others" category if there are employees with empty div_name
       const othersCount = getEmployeesWithEmptyCategory("div_name").length
@@ -508,8 +509,8 @@ export function EmployeeContainer({
       const depts = getUniqueValues("dept_dat")
       const filteredDepts = searchTerm.trim()
         ? depts.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : depts
       // Add "Others" category if there are employees with empty dept_dat
       const othersCount = getEmployeesWithEmptyCategory("dept_dat").length
@@ -521,8 +522,8 @@ export function EmployeeContainer({
       const teams = getUniqueValues("team")
       const filteredTeams = searchTerm.trim()
         ? teams.filter((item) =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          item.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         : teams
       // Add "Others" category if there are employees with empty team
       const othersCount = getEmployeesWithEmptyCategory("team").length
@@ -2269,7 +2270,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === 1 ||
-                            drillDownEmployees.length === 0
+                              drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -2304,7 +2305,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === drillDownTotalPages ||
-                            drillDownEmployees.length === 0
+                              drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -2407,7 +2408,7 @@ export function EmployeeContainer({
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8">
                                 <AvatarImage
-                                  src={employee.profile_photo_path || ""}
+                                  src={employee.profile_photo_path || null}
                                   alt={employee.name}
                                 />
                                 <AvatarFallback className="text-xs text-primary">
@@ -2428,6 +2429,9 @@ export function EmployeeContainer({
                           </BorderedTableCell>
                           <BorderedTableCell selected={isSelected}>
                             {employee.team}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            {employee.joinedDate || "-"}
                           </BorderedTableCell>
                           <BorderedTableCell selected={isSelected}>
                             <Badge
@@ -2605,7 +2609,7 @@ export function EmployeeContainer({
                       }}
                       className={
                         currentPage === totalPages ||
-                        filteredEmployees.length === 0
+                          filteredEmployees.length === 0
                           ? "pointer-events-none opacity-50"
                           : ""
                       }

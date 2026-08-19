@@ -127,7 +127,6 @@ export function NotificationsDrawer({
         await mark_AllNotificationsRead(employeeId)
         await fetch_Notifications(employeeId, false)
         await fetch_UnreadCount(employeeId)
-        console.log("✅ All notifications marked as read")
       } catch (error) {
         console.error("Failed to mark all as read:", error)
       }

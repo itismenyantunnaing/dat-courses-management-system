@@ -216,10 +216,9 @@ const BorderedTableHead = ({
 
 interface ProgressReportRow {
   id: string
-  sr: number
   session: string
+  sessionDeadline: string
   memberName: string
-  jlptLevel: string
   certified: string
   examTarget: string
   status: string
@@ -266,6 +265,7 @@ export default function SelfStudyProgressReportContainer() {
   const [filteredData, setFilteredData] = useState<ProgressReportRow[]>([])
   const hasLoadedRef = useRef(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [targetLevelsMap, setTargetLevelsMap] = useState<Map<string, any>>(new Map())
 
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODES.SESSION)
@@ -282,6 +282,7 @@ export default function SelfStudyProgressReportContainer() {
     fetch_studyProgress,
     studyProgress,
     fetchEmployeeTargetLevel,
+    employeeTargetLevel
   } = mainStore()
 
   // Filter self-study courses - MOVED UP BEFORE uniqueCourses
@@ -347,6 +348,61 @@ export default function SelfStudyProgressReportContainer() {
 
     loadCourses()
   }, [fetchAll_CourseData])
+
+  // Fetch target levels for ALL employees in the progress data
+  useEffect(() => {
+    const loadAllEmployeeTargetLevels = async () => {
+      if (!studyProgress || Object.keys(studyProgress).length === 0) return;
+
+      // Get all employee IDs from progress data
+      let progressArray = [];
+      if (studyProgress.progress && Array.isArray(studyProgress.progress)) {
+        progressArray = studyProgress.progress;
+      } else if (Array.isArray(studyProgress)) {
+        progressArray = studyProgress;
+      } else if (studyProgress.data && Array.isArray(studyProgress.data)) {
+        progressArray = studyProgress.data;
+      } else if (typeof studyProgress === "object") {
+        const values = Object.values(studyProgress);
+        if (values.length > 0 && values.some((v) => typeof v === "object" && v !== null && (v.employee_id || v.employee_name))) {
+          progressArray = values;
+        }
+      }
+
+      // Collect ALL unique employee IDs
+      const employeeIds = new Set<string>();
+      progressArray.forEach((progress: any) => {
+        const employeeId = progress.employee_id || progress.employeeId || progress.memberId;
+        if (employeeId) {
+          employeeIds.add(employeeId.toString());
+        }
+      });
+
+      console.log("📊 Found employee IDs:", Array.from(employeeIds));
+
+      // Fetch target level for EACH employee and store in a map
+      const targetMap = new Map();
+      for (const employeeId of employeeIds) {
+        try {
+          await fetchEmployeeTargetLevel(employeeId.toString());
+          // Get the fetched data from the store
+          const { employeeTargetLevel: currentTarget } = mainStore.getState();
+          if (currentTarget) {
+            targetMap.set(employeeId, currentTarget);
+            console.log(`✅ Target level fetched for employee ${employeeId}:`, currentTarget);
+          }
+        } catch (error) {
+          console.error(`❌ Error fetching target level for employee ${employeeId}:`, error);
+        }
+      }
+
+      // Store the map in state
+      setTargetLevelsMap(targetMap);
+    };
+
+    loadAllEmployeeTargetLevels();
+  }, [studyProgress, fetchEmployeeTargetLevel]);
+
 
   // Set default selected course when courses load
   useEffect(() => {
@@ -545,8 +601,8 @@ export default function SelfStudyProgressReportContainer() {
         const vocabularyPercentActual =
           totalVocabularyTarget > 0
             ? Math.round(
-                (cumulativeVocabularyActual / totalVocabularyTarget) * 100
-              )
+              (cumulativeVocabularyActual / totalVocabularyTarget) * 100
+            )
             : 0
         const kanjiPercentActual =
           totalKanjiTarget > 0
@@ -559,8 +615,8 @@ export default function SelfStudyProgressReportContainer() {
         const listeningPercentActual =
           totalListeningTarget > 0
             ? Math.round(
-                (cumulativeListeningActual / totalListeningTarget) * 100
-              )
+              (cumulativeListeningActual / totalListeningTarget) * 100
+            )
             : 0
 
         // Calculate % Complete Target (cumulative target / total target)
@@ -571,8 +627,8 @@ export default function SelfStudyProgressReportContainer() {
         const vocabularyPercentTarget =
           totalVocabularyTarget > 0
             ? Math.round(
-                (cumulativeVocabularyTarget / totalVocabularyTarget) * 100
-              )
+              (cumulativeVocabularyTarget / totalVocabularyTarget) * 100
+            )
             : 0
         const kanjiPercentTarget =
           totalKanjiTarget > 0
@@ -585,22 +641,22 @@ export default function SelfStudyProgressReportContainer() {
         const listeningPercentTarget =
           totalListeningTarget > 0
             ? Math.round(
-                (cumulativeListeningTarget / totalListeningTarget) * 100
-              )
+              (cumulativeListeningTarget / totalListeningTarget) * 100
+            )
             : 0
 
         // Calculate % Complete Progress (cumulative actual / cumulative target)
         const grammarPercentProgress =
           cumulativeGrammarTarget > 0
             ? Math.round(
-                (cumulativeGrammarActual / cumulativeGrammarTarget) * 100
-              )
+              (cumulativeGrammarActual / cumulativeGrammarTarget) * 100
+            )
             : 0
         const vocabularyPercentProgress =
           cumulativeVocabularyTarget > 0
             ? Math.round(
-                (cumulativeVocabularyActual / cumulativeVocabularyTarget) * 100
-              )
+              (cumulativeVocabularyActual / cumulativeVocabularyTarget) * 100
+            )
             : 0
         const kanjiPercentProgress =
           cumulativeKanjiTarget > 0
@@ -609,14 +665,14 @@ export default function SelfStudyProgressReportContainer() {
         const readingPercentProgress =
           cumulativeReadingTarget > 0
             ? Math.round(
-                (cumulativeReadingActual / cumulativeReadingTarget) * 100
-              )
+              (cumulativeReadingActual / cumulativeReadingTarget) * 100
+            )
             : 0
         const listeningPercentProgress =
           cumulativeListeningTarget > 0
             ? Math.round(
-                (cumulativeListeningActual / cumulativeListeningTarget) * 100
-              )
+              (cumulativeListeningActual / cumulativeListeningTarget) * 100
+            )
             : 0
 
         // Overall percentages (average of all 5 categories)
@@ -626,7 +682,7 @@ export default function SelfStudyProgressReportContainer() {
             kanjiPercentActual +
             readingPercentActual +
             listeningPercentActual) /
-            5
+          5
         )
         const overallPercentTarget = Math.round(
           (grammarPercentTarget +
@@ -634,7 +690,7 @@ export default function SelfStudyProgressReportContainer() {
             kanjiPercentTarget +
             readingPercentTarget +
             listeningPercentTarget) /
-            5
+          5
         )
 
         // Calculate Current (individual session completion)
@@ -665,7 +721,7 @@ export default function SelfStudyProgressReportContainer() {
             kanjiCurrentPercent +
             readingCurrentPercent +
             listeningCurrentPercent) /
-            5
+          5
         )
 
         // Get session status
@@ -676,18 +732,16 @@ export default function SelfStudyProgressReportContainer() {
 
         // Format session with date
         const formattedDate = formatDate(sessionDate)
-        const sessionDisplay = formattedDate
-          ? `Ses ${sessionNo} (${formattedDate})`
-          : `Ses ${sessionNo}`
+
+        const targetData = targetLevelsMap.get(employee.employee_id?.toString());
 
         rows.push({
           id: progress.id || `row-${rows.length}`,
-          sr: rows.length + 1,
-          session: sessionDisplay,
+          session: `${sessionNo}`,
+          sessionDeadline: formattedDate,
           memberName: employee.employee_name,
-          jlptLevel: "",
-          certified: "No",
-          examTarget: "",
+          certified: targetData?.jlptHighestLevel || "",
+          examTarget: targetData?.targetJlptNatLevel || "",
           status: statusInfo.label,
           // Current session values - INDIVIDUAL session progress
           grammarCurrent: currentGrammar,
@@ -722,7 +776,7 @@ export default function SelfStudyProgressReportContainer() {
     setReportData(rows)
     setFilteredData(rows)
     setCurrentPage(1)
-  }, [studyProgress, selectedCourseId, selfStudyCourses])
+  }, [studyProgress, selectedCourseId, selfStudyCourses, targetLevelsMap])
 
   // Filter data based on search term and filters
   useEffect(() => {
@@ -825,6 +879,18 @@ export default function SelfStudyProgressReportContainer() {
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [hasActiveFilters])
+
+  useEffect(() => {
+  if (reportData.length > 0) {
+    // Store the data in a global state or window for export
+    (window as any).__selfStudyProgressData = {
+      data: reportData,
+      courseId: selectedCourseId,
+      courseName: selfStudyCourses.find(c => c.id === selectedCourseId)?.title || '',
+      viewMode: viewMode,
+    };
+  }
+}, [reportData, selectedCourseId, viewMode]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
@@ -1053,13 +1119,13 @@ export default function SelfStudyProgressReportContainer() {
                       className="align-middle whitespace-nowrap"
                       rowSpan={2}
                     >
-                      Sr.
+                      Session
                     </BorderedTableHead>
                     <BorderedTableHead
                       className="align-middle whitespace-nowrap"
                       rowSpan={2}
                     >
-                      Session
+                      Session deadline
                     </BorderedTableHead>
                     <BorderedTableHead
                       className="align-middle whitespace-nowrap"
@@ -1077,25 +1143,25 @@ export default function SelfStudyProgressReportContainer() {
                     {/* Show either Session or Overall columns based on view mode */}
                     {viewMode === VIEW_MODES.SESSION
                       ? // Session columns - individual session data
-                        STUDY_COLUMNS.map((column) => (
-                          <BorderedTableHead
-                            key={column.key}
-                            colSpan={2}
-                            className="align-middle whitespace-nowrap"
-                          >
-                            {column.label}
-                          </BorderedTableHead>
-                        ))
+                      STUDY_COLUMNS.map((column) => (
+                        <BorderedTableHead
+                          key={column.key}
+                          colSpan={2}
+                          className="align-middle whitespace-nowrap"
+                        >
+                          {column.label}
+                        </BorderedTableHead>
+                      ))
                       : // Overall columns - cumulative totals
-                        STUDY_COLUMNS.map((column) => (
-                          <BorderedTableHead
-                            key={`total-${column.key}`}
-                            colSpan={2}
-                            className="align-middle whitespace-nowrap"
-                          >
-                            Total {column.label}
-                          </BorderedTableHead>
-                        ))}
+                      STUDY_COLUMNS.map((column) => (
+                        <BorderedTableHead
+                          key={`total-${column.key}`}
+                          colSpan={2}
+                          className="align-middle whitespace-nowrap"
+                        >
+                          Total {column.label}
+                        </BorderedTableHead>
+                      ))}
 
                     {/* % Complete - shows different sub-headers based on view mode */}
                     <BorderedTableHead
@@ -1124,27 +1190,27 @@ export default function SelfStudyProgressReportContainer() {
                     {/* Show either Session or Overall column headers based on view mode */}
                     {viewMode === VIEW_MODES.SESSION
                       ? // Session columns - Current/Target pairs
-                        STUDY_COLUMNS.map((column) => (
-                          <React.Fragment key={column.key}>
-                            <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                              Current
-                            </BorderedTableHead>
-                            <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                              Target
-                            </BorderedTableHead>
-                          </React.Fragment>
-                        ))
+                      STUDY_COLUMNS.map((column) => (
+                        <React.Fragment key={column.key}>
+                          <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                            Current
+                          </BorderedTableHead>
+                          <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                            Target
+                          </BorderedTableHead>
+                        </React.Fragment>
+                      ))
                       : // Overall columns - Current/Target pairs
-                        STUDY_COLUMNS.map((column) => (
-                          <React.Fragment key={`total-${column.key}`}>
-                            <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                              Current
-                            </BorderedTableHead>
-                            <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
-                              Target
-                            </BorderedTableHead>
-                          </React.Fragment>
-                        ))}
+                      STUDY_COLUMNS.map((column) => (
+                        <React.Fragment key={`total-${column.key}`}>
+                          <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                            Current
+                          </BorderedTableHead>
+                          <BorderedTableHead className="align-middle font-medium whitespace-nowrap">
+                            Target
+                          </BorderedTableHead>
+                        </React.Fragment>
+                      ))}
 
                     {/* % Complete sub-headers - changes based on view mode */}
                     {viewMode === VIEW_MODES.SESSION ? (
@@ -1175,10 +1241,8 @@ export default function SelfStudyProgressReportContainer() {
                         key={item.id}
                         className="transition-colors hover:bg-muted/50"
                       >
-                        <BorderedTableCell className="text-center">
-                          {item.sr}
-                        </BorderedTableCell>
-                        <BorderedTableCell>{item.session}</BorderedTableCell>
+                        <BorderedTableCell className="text-center">{item.session}</BorderedTableCell>
+                        <BorderedTableCell>{item.sessionDeadline}</BorderedTableCell>
                         <BorderedTableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
@@ -1190,7 +1254,7 @@ export default function SelfStudyProgressReportContainer() {
                           </div>
                         </BorderedTableCell>
                         <BorderedTableCell className="text-center">
-                          {item.jlptLevel || "-"}
+                          {item.certified || "-"}
                         </BorderedTableCell>
                         <BorderedTableCell className="text-center">
                           {item.examTarget || "-"}
@@ -1199,43 +1263,43 @@ export default function SelfStudyProgressReportContainer() {
                         {/* Show either Session or Overall data based on view mode */}
                         {viewMode === VIEW_MODES.SESSION
                           ? // Session columns - individual session data
-                            STUDY_COLUMNS.flatMap(({ key }) => {
-                              const currentKey = `${key}Current`
-                              const targetKey = `${key}Target`
-                              return [
-                                <BorderedTableCell
-                                  key={`${key}-current`}
-                                  className="text-center"
-                                >
-                                  {isUpcoming ? "-" : item[currentKey]}
-                                </BorderedTableCell>,
-                                <BorderedTableCell
-                                  key={`${key}-target`}
-                                  className="text-center"
-                                >
-                                  {item[targetKey]}
-                                </BorderedTableCell>,
-                              ]
-                            })
+                          STUDY_COLUMNS.flatMap(({ key }) => {
+                            const currentKey = `${key}Current`
+                            const targetKey = `${key}Target`
+                            return [
+                              <BorderedTableCell
+                                key={`${key}-current`}
+                                className="text-center"
+                              >
+                                {isUpcoming ? "-" : item[currentKey]}
+                              </BorderedTableCell>,
+                              <BorderedTableCell
+                                key={`${key}-target`}
+                                className="text-center"
+                              >
+                                {item[targetKey]}
+                              </BorderedTableCell>,
+                            ]
+                          })
                           : // Overall columns - CUMULATIVE totals
-                            STUDY_COLUMNS.flatMap(({ key }) => {
-                              const totalCurrentKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Current`
-                              const totalTargetKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Target`
-                              return [
-                                <BorderedTableCell
-                                  key={`total-${key}-current`}
-                                  className="text-center"
-                                >
-                                  {isUpcoming ? "-" : item[totalCurrentKey]}
-                                </BorderedTableCell>,
-                                <BorderedTableCell
-                                  key={`total-${key}-target`}
-                                  className="text-center"
-                                >
-                                  {item[totalTargetKey]}
-                                </BorderedTableCell>,
-                              ]
-                            })}
+                          STUDY_COLUMNS.flatMap(({ key }) => {
+                            const totalCurrentKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Current`
+                            const totalTargetKey = `total${key.charAt(0).toUpperCase() + key.slice(1)}Target`
+                            return [
+                              <BorderedTableCell
+                                key={`total-${key}-current`}
+                                className="text-center"
+                              >
+                                {isUpcoming ? "-" : item[totalCurrentKey]}
+                              </BorderedTableCell>,
+                              <BorderedTableCell
+                                key={`total-${key}-target`}
+                                className="text-center"
+                              >
+                                {item[totalTargetKey]}
+                              </BorderedTableCell>,
+                            ]
+                          })}
 
                         {/* % Complete - changes based on view mode */}
                         {viewMode === VIEW_MODES.SESSION ? (
@@ -1364,7 +1428,7 @@ export default function SelfStudyProgressReportContainer() {
                         }}
                         className={
                           currentPage === totalPages ||
-                          filteredData.length === 0
+                            filteredData.length === 0
                             ? "pointer-events-none opacity-50"
                             : ""
                         }

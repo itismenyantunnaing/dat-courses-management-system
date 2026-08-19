@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   InputGroup,
   InputGroupAddon,
@@ -59,17 +58,16 @@ import {
   SortByUp01Icon,
   FilterMailIcon,
   Delete02Icon,
-  CommentAdd01Icon,
-  ChatFeedback01Icon,
   ListViewIcon,
   GridViewIcon,
   MessageEdit01Icon,
-  Message01Icon,
+  Speaker01Icon,
+  Add01Icon,
 } from "@hugeicons/core-free-icons"
-import { FeedbackCard } from "./cards/feedback-card"
-import { NewFeedbackDialog } from "./dialogs/newFeedback-dialog"
-import { EditFeedbackDialog } from "./dialogs/editFeedback-dialog"
-import { FeedbackSuggestionDto, type FeedbackCategory } from "@/types/feedback"
+import { AnnouncementCard } from "@/components/cards/announcement-card"
+import { NewAnnouncementDialog } from "@/components/dialogs/newAnnouncement-dialog"
+import { EditAnnouncementDialog } from "@/components/dialogs/editAnnouncement-dialog"
+import { AnnouncementDto, AnnouncementCategory } from "@/types/announcement"
 import { mainStore } from "@/store/mainStore"
 import {
   Tooltip,
@@ -117,113 +115,90 @@ const formatTime = (dateString: string) => {
   }
 }
 
-// Helper function to get initials
-const getInitials = (name: string) => {
-  if (!name) return "U"
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
+// Category color mapping
+const getCategoryStyles = (category?: AnnouncementCategory) => {
+  switch (category) {
+    case 'COURSE':
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    case 'EXAM':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    case 'OTHER':
+      return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    default:
+      return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+  }
 }
 
-// Helper function to get the effective date (updatedAt or createdAt)
-const getEffectiveDate = (feedbackItem: FeedbackSuggestionDto): Date => {
-  if (feedbackItem.updatedAt) {
-    return new Date(feedbackItem.updatedAt)
+const getCategoryLabel = (category?: AnnouncementCategory) => {
+  switch (category) {
+    case 'COURSE':
+      return 'Course'
+    case 'EXAM':
+      return 'Exam'
+    case 'OTHER':
+      return 'Other'
+    default:
+      return 'Unknown'
   }
-  if (feedbackItem.createdAt) {
-    return new Date(feedbackItem.createdAt)
-  }
-  return new Date(0)
 }
 
 // Filter state type
-type FeedbackFilterState = {
-  department: string[]
-  team: string[]
+type AnnouncementFilterState = {
   category: string[]
+  createdBy: string[]
 }
 
-export function FeedbackContainer() {
+export function AnnouncementContainer() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedFeedback, setSelectedFeedback] =
-    useState<FeedbackSuggestionDto | null>(null)
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementDto | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
-  const [newFeedbackDialogOpen, setNewFeedbackDialogOpen] = useState(false)
-  const [editFeedbackDialogOpen, setEditFeedbackDialogOpen] = useState(false)
-  const [feedbackToEdit, setFeedbackToEdit] =
-    useState<FeedbackSuggestionDto | null>(null)
+  const [newAnnouncementDialogOpen, setNewAnnouncementDialogOpen] = useState(false)
+  const [editAnnouncementDialogOpen, setEditAnnouncementDialogOpen] = useState(false)
+  const [announcementToEdit, setAnnouncementToEdit] = useState<AnnouncementDto | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [feedbackToDelete, setFeedbackToDelete] = useState<number | null>(null)
+  const [announcementToDelete, setAnnouncementToDelete] = useState<number | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [message, setMessage] = useState<{
-    type: "success" | "error"
-    text: string
-  } | null>(null)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [viewMode, setViewMode] = useState<ViewMode>("card")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
 
-  // Filter state
-  const [filters, setFilters] = useState<FeedbackFilterState>({
-    department: [],
-    team: [],
-    category: []
+  // Filter state - same as feedback
+  const [filters, setFilters] = useState<AnnouncementFilterState>({
+    category: [],
+    createdBy: [],
   })
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Use the feedback store
   const {
-    feedback,
+    announcements,
     isLoading,
-    fetch_FeedbackData,
-    add_FeedbackData,
-    delete_FeedbackData,
-    update_FeedbackData,
-    fetch_FeedbackByEmployeeId,
-    profile,
-    setProfile,
+    fetch_AnnouncementData,
+    add_AnnouncementData,
+    delete_AnnouncementData,
+    update_AnnouncementData,
+    profile
   } = mainStore()
 
-  // Determine user role
   const userRole = profile?.role?.toLowerCase() || ""
-  const isLearner = userRole === "learner"
-  const isAdmin = userRole === "admin"
-  const isApprover = userRole === "approver"
-  const isAdminOrApprover = isAdmin || isApprover
-  const canCreateFeedback = isLearner
-  const canEditFeedback = isLearner
-  const canFilter = isAdmin || isApprover // Only admin and approver can filter
+  const canEdit = userRole !== "learner" 
 
-  // Get the appropriate icon based on role
-  const getEmptyStateIcon = () => {
-    if (isAdmin) {
-      return Message01Icon
-    }
-    // For learner and approver, use CommentAdd01Icon
-    return CommentAdd01Icon
-  }
-
-  // Check if any filters are active - MOVED BEFORE useEffect
+  // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(
     (filterArray) => filterArray.length > 0
   )
 
-  // Keyboard shortcuts - supports both Ctrl+K (Windows/Linux) and Cmd+K (Mac)
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Ctrl+K (Windows/Linux) or Cmd+K (Mac) - focus search
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault()
         searchInputRef.current?.focus()
       }
-
-      // Check for Escape key - clear filters
+      // Escape key - clear filters
       if (e.key === "Escape" && hasActiveFilters) {
         e.preventDefault()
         clearAllFilters()
@@ -232,38 +207,17 @@ export function FeedbackContainer() {
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [hasActiveFilters]) // Re-run when hasActiveFilters changes
+  }, [hasActiveFilters])
 
-  // Fetch feedback data on component mount based on role
+  // Fetch announcements on mount
   useEffect(() => {
-    const loadFeedback = async () => {
-      if (profile) {
-        setProfile(profile)
-      }
+    fetch_AnnouncementData()
+  }, [fetch_AnnouncementData])
 
-      if (isLearner && profile?.id) {
-        await fetch_FeedbackByEmployeeId(profile.id)
-      } else if (isAdminOrApprover) {
-        await fetch_FeedbackData()
-      } else {
-        await fetch_FeedbackData()
-      }
-    }
-    loadFeedback()
-  }, [
-    fetch_FeedbackData,
-    fetch_FeedbackByEmployeeId,
-    profile?.id,
-    isLearner,
-    isAdminOrApprover,
-    profile,
-    setProfile,
-  ])
-
-  // Get unique values for filter fields from feedback data
-  const getFilterUniqueValues = (field: keyof FeedbackSuggestionDto) => {
+  // Get unique values for filter fields
+  const getFilterUniqueValues = (field: keyof AnnouncementDto) => {
     const values = new Set<string>()
-    feedback.forEach((item) => {
+    announcements.forEach((item: AnnouncementDto) => {
       const value = item[field] as string
       if (value && value.trim()) {
         values.add(value.trim())
@@ -272,23 +226,19 @@ export function FeedbackContainer() {
     return Array.from(values).sort()
   }
 
-  // Get department values
-  const departmentValues = getFilterUniqueValues("department")
-  const hasDepartmentData = departmentValues.length > 0
-
-  // Get team values
-  const teamValues = getFilterUniqueValues("team")
-  const hasTeamData = teamValues.length > 0
-
-  // Get category values 
+  // Get category values
   const categoryValues = getFilterUniqueValues("category")
   const hasCategoryData = categoryValues.length > 0
 
+  // Get createdBy values
+  const createdByValues = getFilterUniqueValues("createdBy")
+  const hasCreatedByData = createdByValues.length > 0
+
   // Check if there's any filter data available
-  const hasFilterData = hasDepartmentData || hasTeamData || hasCategoryData
+  const hasFilterData = hasCategoryData || hasCreatedByData
 
   // Helper to toggle filter values
-  const toggleFilter = (field: keyof FeedbackFilterState, value: string) => {
+  const toggleFilter = (field: keyof AnnouncementFilterState, value: string) => {
     setFilters((prev) => {
       const current = prev[field]
       if (current.includes(value)) {
@@ -302,50 +252,33 @@ export function FeedbackContainer() {
   // Helper to clear all filters
   const clearAllFilters = () => {
     setFilters({
-      department: [],
-      team: [],
-      category: []
+      category: [],
+      createdBy: [],
     })
   }
 
-  // Filter and sort feedbacks based on search term, filters, and sort order
-  const filteredAndSortedFeedbacks = feedback
-    .filter((feedbackItem) => {
-      // Search filter
+  // Filter and sort announcements
+  const filteredAndSortedAnnouncements = announcements
+    .filter((announcement: AnnouncementDto) => {
       const searchLower = searchTerm.toLowerCase()
       const matchesSearch =
-        feedbackItem.employeeId?.toLowerCase().includes(searchLower) ||
-        feedbackItem.employeeName?.toLowerCase().includes(searchLower) ||
-        feedbackItem.subject?.toLowerCase().includes(searchLower) ||
-        feedbackItem.description?.toLowerCase().includes(searchLower) ||
-        feedbackItem.department?.toLowerCase().includes(searchLower) ||
-        feedbackItem.team?.toLowerCase().includes(searchLower) ||
-        feedbackItem.category?.toLowerCase().includes(searchLower)  // ✅ Add category search
+        announcement.title?.toLowerCase().includes(searchLower) ||
+        announcement.text?.toLowerCase().includes(searchLower) ||
+        announcement.createdBy?.toLowerCase().includes(searchLower)
 
-      // Department filter
-      const matchesDepartment =
-        !canFilter ||
-        filters.department.length === 0 ||
-        (feedbackItem.department &&
-          filters.department.includes(feedbackItem.department))
+      // Category filter
+      const matchesCategory = filters.category.length === 0 ||
+        (announcement.category && filters.category.includes(announcement.category))
 
-      // Team filter
-      const matchesTeam =
-        !canFilter ||
-        filters.team.length === 0 ||
-        (feedbackItem.team && filters.team.includes(feedbackItem.team))
+      // CreatedBy filter
+      const matchesCreatedBy = filters.createdBy.length === 0 ||
+        (announcement.createdBy && filters.createdBy.includes(announcement.createdBy))
 
-      // Category filter - ✅ Add category filter
-      const matchesCategory =
-        !canFilter ||
-        filters.category.length === 0 ||
-        (feedbackItem.category && filters.category.includes(feedbackItem.category))
-
-      return matchesSearch && matchesDepartment && matchesTeam && matchesCategory
+      return matchesSearch && matchesCategory && matchesCreatedBy
     })
-    .sort((a, b) => {
-      const dateA = getEffectiveDate(a).getTime()
-      const dateB = getEffectiveDate(b).getTime()
+    .sort((a: AnnouncementDto, b: AnnouncementDto) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
 
       if (sortOrder === "desc") {
         return dateB - dateA
@@ -355,9 +288,9 @@ export function FeedbackContainer() {
     })
 
   // Pagination
-  const totalPages = Math.ceil(filteredAndSortedFeedbacks.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredAndSortedAnnouncements.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedFeedbacks = filteredAndSortedFeedbacks.slice(
+  const paginatedAnnouncements = filteredAndSortedAnnouncements.slice(
     startIndex,
     startIndex + itemsPerPage
   )
@@ -368,8 +301,7 @@ export function FeedbackContainer() {
   }
 
   const handlePrevious = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
-  const handleNext = () =>
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+  const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = []
@@ -394,48 +326,45 @@ export function FeedbackContainer() {
     return pages
   }
 
-  // Handle feedback card click
-  const handleFeedbackClick = (feedbackItem: FeedbackSuggestionDto) => {
-    setSelectedFeedback(feedbackItem)
+  // Handle announcement card click
+  const handleAnnouncementClick = (announcement: AnnouncementDto) => {
+    setSelectedAnnouncement(announcement)
     setDetailDialogOpen(true)
   }
 
   // Handle edit button click
-  const handleEditClick = (
-    e: React.MouseEvent,
-    feedbackItem: FeedbackSuggestionDto
-  ) => {
+  const handleEditClick = (e: React.MouseEvent, announcement: AnnouncementDto) => {
     e.stopPropagation()
-    setFeedbackToEdit(feedbackItem)
-    setEditFeedbackDialogOpen(true)
+    setAnnouncementToEdit(announcement)
+    setEditAnnouncementDialogOpen(true)
     if (detailDialogOpen) {
       setDetailDialogOpen(false)
     }
   }
 
-  // Handle delete button click from feedback card
-  const handleDeleteClick = (e: React.MouseEvent, feedbackId: number) => {
+  // Handle delete button click
+  const handleDeleteClick = (e: React.MouseEvent, announcementId: number) => {
     e.stopPropagation()
-    setFeedbackToDelete(feedbackId)
+    setAnnouncementToDelete(announcementId)
     setDeleteDialogOpen(true)
   }
 
   // Handle delete confirmation
   const handleDeleteConfirm = async () => {
-    if (feedbackToDelete === null) return
+    if (announcementToDelete === null) return
 
     setIsDeleting(true)
     try {
-      const result = await delete_FeedbackData(feedbackToDelete)
+      const result = await delete_AnnouncementData(announcementToDelete)
 
       if (result.includes("successfully")) {
         setMessage({ type: "success", text: result })
         setDeleteDialogOpen(false)
-        setFeedbackToDelete(null)
+        setAnnouncementToDelete(null)
 
-        if (selectedFeedback?.id === feedbackToDelete) {
+        if (selectedAnnouncement?.id === announcementToDelete) {
           setDetailDialogOpen(false)
-          setSelectedFeedback(null)
+          setSelectedAnnouncement(null)
         }
 
         setTimeout(() => setMessage(null), 1000)
@@ -443,97 +372,77 @@ export function FeedbackContainer() {
         setMessage({ type: "error", text: result })
       }
     } catch (error) {
-      console.error("Failed to delete feedback:", error)
-      setMessage({ type: "error", text: "Failed to delete feedback" })
+      console.error("Failed to delete announcement:", error)
+      setMessage({ type: "error", text: "Failed to delete announcement" })
     } finally {
       setIsDeleting(false)
     }
   }
 
-  // Handle new feedback
-  const handleNewFeedback = () => {
-    setNewFeedbackDialogOpen(true)
+  // Handle new announcement
+  const handleNewAnnouncement = () => {
+    setNewAnnouncementDialogOpen(true)
   }
 
-  // Handle submit feedback
-  const handleSubmitFeedback = async (subject: string, category: FeedbackCategory, description: string) => {
+  // Handle submit announcement
+  const handleSubmitAnnouncement = async (title: string, category: AnnouncementCategory, text: string) => {
     setIsSubmitting(true)
     try {
-      const employeeId = profile?.id
-
-      if (!employeeId) {
-        throw new Error("Employee ID not found")
-      }
-
-      const newFeedback: FeedbackSuggestionDto = {
-        employeeId: employeeId,
-        subject: subject,
+      const newAnnouncement: AnnouncementDto = {
+        title: title,
         category: category,
-        description: description,
+        text: text,
       }
 
-      const result = await add_FeedbackData(newFeedback)
+      const result = await add_AnnouncementData(newAnnouncement)
 
       if (result.includes("successfully")) {
-        setNewFeedbackDialogOpen(false)
+        setNewAnnouncementDialogOpen(false)
         setMessage({ type: "success", text: result })
         setTimeout(() => setMessage(null), 1000)
       } else {
         setMessage({ type: "error", text: result })
       }
     } catch (error) {
-      console.error("Failed to submit feedback:", error)
-      setMessage({ type: "error", text: "Failed to submit feedback" })
+      console.error("Failed to create announcement:", error)
+      setMessage({ type: "error", text: "Failed to create announcement" })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // Handle edit feedback
-  const handleEditFeedback = async (
+  // Handle edit announcement
+  const handleEditAnnouncement = async (
     id: number,
-    subject: string,
-    category: FeedbackCategory,
-    description: string
+    title: string,
+    category: AnnouncementCategory,
+    text: string
   ) => {
     setIsSubmitting(true)
     try {
-      const updatedFeedback: FeedbackSuggestionDto = {
+      const updatedAnnouncement: AnnouncementDto = {
         id: id,
-        employeeId: feedbackToEdit?.employeeId || "",
-        subject: subject,
+        title: title,
         category: category,
-        description: description,
+        text: text,
       }
 
-      const result = await update_FeedbackData(id, updatedFeedback)
+      const result = await update_AnnouncementData(id, updatedAnnouncement)
 
       if (result.includes("successfully")) {
-        setEditFeedbackDialogOpen(false)
-        setFeedbackToEdit(null)
+        setEditAnnouncementDialogOpen(false)
+        setAnnouncementToEdit(null)
         setMessage({ type: "success", text: result })
         setTimeout(() => setMessage(null), 1000)
       } else {
         setMessage({ type: "error", text: result })
       }
     } catch (error) {
-      console.error("Failed to update feedback:", error)
-      setMessage({ type: "error", text: "Failed to update feedback" })
+      console.error("Failed to update announcement:", error)
+      setMessage({ type: "error", text: "Failed to update announcement" })
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  // Get display time for detail dialog
-  const getDisplayTime = (feedbackItem: FeedbackSuggestionDto | null) => {
-    if (!feedbackItem) return "Just now"
-    if (feedbackItem.updatedAt) {
-      return formatTime(feedbackItem.updatedAt)
-    }
-    if (feedbackItem.createdAt) {
-      return formatTime(feedbackItem.createdAt)
-    }
-    return "Just now"
   }
 
   // Toggle sort order
@@ -542,19 +451,19 @@ export function FeedbackContainer() {
     setCurrentPage(1)
   }
 
-  const hasFeedback = filteredAndSortedFeedbacks.length > 0
+  const hasAnnouncements = filteredAndSortedAnnouncements.length > 0
 
   return (
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
         <CardContent className="px-0">
-          {/* Header with Search and New Button - Only show when there's feedback */}
-          {feedback.length > 0 && (
+          {/* Header with Search and New Button */}
+          {announcements.length > 0 && (
             <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
               <InputGroup className="w-[400px]">
                 <InputGroupInput
                   ref={searchInputRef}
-                  placeholder="Search by employee, subject, description..."
+                  placeholder="Search announcements..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -622,25 +531,19 @@ export function FeedbackContainer() {
                       onClick={toggleSortOrder}
                     >
                       <HugeiconsIcon
-                        icon={
-                          sortOrder === "desc"
-                            ? SortByUp01Icon
-                            : SortByDown01Icon
-                        }
+                        icon={sortOrder === "desc" ? SortByUp01Icon : SortByDown01Icon}
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>
-                      {sortOrder === "desc" ? "Least recent" : "Most recent"}
-                    </p>
+                    <p>{sortOrder === "desc" ? "Newest first" : "Oldest first"}</p>
                   </TooltipContent>
                 </Tooltip>
 
-                {/* Filter Dropdown - Only show for admin/approver and when there's filter data */}
-                {canFilter && hasFilterData && (
+                {/* Filter Dropdown - Same as feedback */}
+                {hasFilterData && (
                   <DropdownMenu>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -667,62 +570,6 @@ export function FeedbackContainer() {
                     </Tooltip>
 
                     <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
-                      {/* Department Filter */}
-                      {hasDepartmentData && (
-                        <>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              Department
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
-                                {departmentValues.map((value) => (
-                                  <DropdownMenuCheckboxItem
-                                    key={value}
-                                    checked={filters.department.includes(value)}
-                                    onCheckedChange={() =>
-                                      toggleFilter("department", value)
-                                    }
-                                    onSelect={(e) => e.preventDefault()}
-                                  >
-                                    {value}
-                                  </DropdownMenuCheckboxItem>
-                                ))}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-
-                      {/* Team Filter */}
-                      {hasTeamData && (
-                        <>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              Team
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
-                                {teamValues.map((value) => (
-                                  <DropdownMenuCheckboxItem
-                                    key={value}
-                                    checked={filters.team.includes(value)}
-                                    onCheckedChange={() =>
-                                      toggleFilter("team", value)
-                                    }
-                                    onSelect={(e) => e.preventDefault()}
-                                  >
-                                    {value}
-                                  </DropdownMenuCheckboxItem>
-                                ))}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-
                       {/* Category Filter */}
                       {hasCategoryData && (
                         <>
@@ -741,7 +588,35 @@ export function FeedbackContainer() {
                                     }
                                     onSelect={(e) => e.preventDefault()}
                                   >
-                                    {value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()}
+                                    {getCategoryLabel(value as AnnouncementCategory)}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+
+                      {/* Created By Filter */}
+                      {hasCreatedByData && (
+                        <>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              Created By
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                {createdByValues.map((value) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={value}
+                                    checked={filters.createdBy.includes(value)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("createdBy", value)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {value}
                                   </DropdownMenuCheckboxItem>
                                 ))}
                               </DropdownMenuSubContent>
@@ -771,21 +646,15 @@ export function FeedbackContainer() {
                   </DropdownMenu>
                 )}
 
-
-                {canCreateFeedback && (
+                {canEdit && (
                   <Button
                     variant="default"
-                    onClick={handleNewFeedback}
+                    onClick={handleNewAnnouncement}
                     className="bg-primary hover:bg-primary/90"
                     disabled={isLoading}
-                    title={
-                      !canCreateFeedback
-                        ? "Only learners can create feedback"
-                        : ""
-                    }
                   >
-                    <HugeiconsIcon icon={CommentAdd01Icon} strokeWidth={2} />
-                    New Feedback
+                    <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+                    New Announcement
                   </Button>
                 )}
               </div>
@@ -807,141 +676,93 @@ export function FeedbackContainer() {
           {/* Loading State */}
           {isLoading && (
             <div className="mx-4 py-12 text-center text-muted-foreground">
-              Loading feedback...
+              Loading announcements...
             </div>
           )}
 
-          {/* Feedback Cards/Table Grid */}
+          {/* Announcement Cards/Table Grid */}
           {!isLoading && (
             <div className="mx-4">
-              {paginatedFeedbacks.length > 0 ? (
+              {paginatedAnnouncements.length > 0 ? (
                 <>
                   {viewMode === "card" ? (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {paginatedFeedbacks.map((feedbackItem) => (
-                        <FeedbackCard
-                          key={feedbackItem.id}
-                          feedback={{
-                            id: feedbackItem.id!,
-                            employee: {
-                              name: feedbackItem.employeeName || `Employee ${feedbackItem.employeeId}`,
-                              email: `${feedbackItem.employeeId}@company.com`,
-                              department: feedbackItem.department || "N/A",
-                              team: feedbackItem.team || "N/A",
-                              avatar: feedbackItem.profilePhotoPath || "",
-                            },
-                            subject: feedbackItem.subject || "",
-                            category: feedbackItem.category,
-                            description: feedbackItem.description,
-                            createdAt: feedbackItem.createdAt || new Date().toISOString(),
-                            updatedAt: feedbackItem.updatedAt,
+                      {paginatedAnnouncements.map((announcement: AnnouncementDto) => (
+                        <AnnouncementCard
+                          key={announcement.id}
+                          announcement={{
+                            id: announcement.id!,
+                            title: announcement.title,
+                            text: announcement.text,
+                            category: announcement.category,
+                            createdBy: announcement.createdBy,
+                            createdAt: announcement.createdAt || new Date().toISOString(),
+                            updatedAt: announcement.updatedAt,
                           }}
-                          onClick={() => handleFeedbackClick(feedbackItem)}
+                          onClick={() => handleAnnouncementClick(announcement)}
                           onDelete={handleDeleteClick}
-                          onEdit={canEditFeedback ? (e) => handleEditClick(e, feedbackItem) : undefined}
+                          onEdit={canEdit ? (e) => handleEditClick(e, announcement) : undefined}
                           formatTime={formatTime}
-                          getInitials={getInitials}
-                          canEdit={canEditFeedback}
+                          canEdit={canEdit}
                         />
                       ))}
                     </div>
                   ) : (
-                    // Table View with border
+                    // Table View
                     <div className="relative overflow-x-auto rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
-                            <TableHead className="border-r whitespace-nowrap">
-                              Sr.
-                            </TableHead>
-                            <TableHead className="border-r whitespace-nowrap">
-                              Employee
-                            </TableHead>
-                            <TableHead className="border-r whitespace-nowrap">
-                              Department
-                            </TableHead>
-                            <TableHead className="border-r whitespace-nowrap">
-                              Team
-                            </TableHead>
-                            <TableHead className="border-r whitespace-nowrap">
-                              Subject
-                            </TableHead>
-                            <TableHead className="border-r whitespace-nowrap">
-                              Description
-                            </TableHead>
-                            <TableHead className="border-r whitespace-nowrap">
-                              Last updated
-                            </TableHead>
-                            <TableHead className="text-right whitespace-nowrap">
-                              Actions
-                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">Sr.</TableHead>
+                            <TableHead className="border-r whitespace-nowrap">Title</TableHead>
+                            <TableHead className="border-r whitespace-nowrap">Category</TableHead>
+                            <TableHead className="border-r whitespace-nowrap">Created By</TableHead>
+                            <TableHead className="border-r whitespace-nowrap">Text</TableHead>
+                            <TableHead className="border-r whitespace-nowrap">Created At</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {paginatedFeedbacks.map((feedbackItem, index) => (
+                          {paginatedAnnouncements.map((announcement: AnnouncementDto, index: number) => (
                             <TableRow
-                              key={feedbackItem.id}
+                              key={announcement.id}
                               className="cursor-pointer transition-colors hover:bg-muted/50"
-                              onClick={() => handleFeedbackClick(feedbackItem)}
+                              onClick={() => handleAnnouncementClick(announcement)}
                             >
                               <TableCell className="border-r whitespace-nowrap">
                                 {startIndex + index + 1}
                               </TableCell>
-                              <TableCell className="border-r">
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage
-                                      src={feedbackItem.profilePhotoPath || ""}
-                                      alt={feedbackItem.employeeName || ""}
-                                    />
-                                    <AvatarFallback className="text-xs text-primary">
-                                      {feedbackItem.employeeName
-                                        ? getInitials(feedbackItem.employeeName)
-                                        : feedbackItem.employeeId
-                                          ?.slice(0, 2)
-                                          .toUpperCase() || "U"}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      {feedbackItem.employeeName ||
-                                        `Employee ${feedbackItem.employeeId}`}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {feedbackItem.employeeId}
-                                    </div>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="border-r whitespace-nowrap">
-                                {feedbackItem.department || "-"}
-                              </TableCell>
-                              <TableCell className="border-r whitespace-nowrap">
-                                {feedbackItem.team || "-"}
-                              </TableCell>
                               <TableCell className="max-w-[150px] border-r">
-                                <div className="truncate">
-                                  {feedbackItem.subject}
-                                </div>
+                                <div className="truncate font-medium">{announcement.title}</div>
                               </TableCell>
-                              <TableCell className="max-w-[200px] border-r">
+                              <TableCell className="border-r whitespace-nowrap">
+                                {announcement.category && (
+                                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${getCategoryStyles(announcement.category)}`}>
+                                    {getCategoryLabel(announcement.category)}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="border-r whitespace-nowrap">
+                                {announcement.createdBy}
+                              </TableCell>
+                              <TableCell className="max-w-[250px] border-r">
                                 <div className="truncate text-sm text-muted-foreground">
-                                  {feedbackItem.description}
+                                  {announcement.text}
                                 </div>
                               </TableCell>
                               <TableCell className="border-r text-sm whitespace-nowrap text-muted-foreground">
-                                {getDisplayTime(feedbackItem)}
+                                {announcement.createdAt ? formatTime(announcement.createdAt) : "-"}
                               </TableCell>
                               <TableCell className="text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-1">
-                                  {canEditFeedback && (
+                                  {canEdit && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       className="h-8 w-8 p-0 hover:bg-primary/10"
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        handleEditClick(e, feedbackItem)
+                                        handleEditClick(e, announcement)
                                       }}
                                     >
                                       <HugeiconsIcon
@@ -957,7 +778,7 @@ export function FeedbackContainer() {
                                     className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      handleDeleteClick(e, feedbackItem.id!)
+                                      handleDeleteClick(e, announcement.id!)
                                     }}
                                   >
                                     <HugeiconsIcon
@@ -976,20 +797,15 @@ export function FeedbackContainer() {
                   )}
 
                   {/* Pagination */}
-                  {filteredAndSortedFeedbacks.length > 0 && (
+                  {filteredAndSortedAnnouncements.length > 0 && (
                     <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <Field orientation="horizontal" className="w-fit">
-                        <FieldLabel htmlFor="select-rows-per-page">
-                          Rows per page
-                        </FieldLabel>
+                        <FieldLabel htmlFor="select-rows-per-page">Rows per page</FieldLabel>
                         <Select
                           value={itemsPerPage.toString()}
                           onValueChange={handleItemsPerPageChange}
                         >
-                          <SelectTrigger
-                            className="w-15"
-                            id="select-rows-per-page"
-                          >
+                          <SelectTrigger className="w-15" id="select-rows-per-page">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent align="start">
@@ -1003,15 +819,15 @@ export function FeedbackContainer() {
                       </Field>
                       <div className="text-sm text-muted-foreground">
                         Showing{" "}
-                        {filteredAndSortedFeedbacks.length === 0
+                        {filteredAndSortedAnnouncements.length === 0
                           ? 0
                           : startIndex + 1}{" "}
                         to{" "}
                         {Math.min(
                           startIndex + itemsPerPage,
-                          filteredAndSortedFeedbacks.length
+                          filteredAndSortedAnnouncements.length
                         )}{" "}
-                        of {filteredAndSortedFeedbacks.length} feedbacks
+                        of {filteredAndSortedAnnouncements.length} announcements
                       </div>
                       <Pagination className="mx-0 w-auto">
                         <PaginationContent>
@@ -1023,8 +839,7 @@ export function FeedbackContainer() {
                                 handlePrevious()
                               }}
                               className={
-                                currentPage === 1 ||
-                                  filteredAndSortedFeedbacks.length === 0
+                                currentPage === 1 || filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -1056,8 +871,7 @@ export function FeedbackContainer() {
                                 handleNext()
                               }}
                               className={
-                                currentPage === totalPages ||
-                                  filteredAndSortedFeedbacks.length === 0
+                                currentPage === totalPages || filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -1069,34 +883,31 @@ export function FeedbackContainer() {
                   )}
                 </>
               ) : (
-                // Empty state - with role-based icon
+                // Empty state
                 <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <HugeiconsIcon
-                        icon={Message01Icon}
+                        icon={Speaker01Icon}
                         strokeWidth={2}
                         className="h-12 w-12 text-muted-foreground"
                       />
                     </EmptyMedia>
                     <EmptyTitle>
                       {searchTerm || hasActiveFilters
-                        ? `No Matching Feedback for ${searchTerm}`
-                        : "No Feedback"}
+                        ? "No Matching Announcements"
+                        : "No Announcements"}
                     </EmptyTitle>
                     <EmptyDescription className="text-center text-pretty">
                       {searchTerm || hasActiveFilters ? (
                         <>Try adjusting your search or filters.</>
-                      ) : isLearner ? (
-                        "Share your thoughts on courses, management, or the system."
                       ) : (
-                        ""
+                        "Stay updated with the latest announcements."
                       )}
                     </EmptyDescription>
                   </EmptyHeader>
                   <EmptyContent>
-                    {(searchTerm || hasActiveFilters) &&
-                      filteredAndSortedFeedbacks.length === 0 ? (
+                    {(searchTerm || hasActiveFilters) && (
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -1104,23 +915,18 @@ export function FeedbackContainer() {
                           clearAllFilters()
                         }}
                       >
-                        Clear
+                        Clear Filters
                       </Button>
-                    ) : (
-                      canCreateFeedback && (
-                        <Button
-                          variant="default"
-                          onClick={handleNewFeedback}
-                          className="bg-primary hover:bg-primary/90"
-                        >
-                          <HugeiconsIcon
-                            icon={CommentAdd01Icon}
-                            strokeWidth={2}
-                            className="h-4 w-4"
-                          />
-                          New Feedback
-                        </Button>
-                      )
+                    )}
+                    {canEdit && !searchTerm && !hasActiveFilters && (
+                      <Button
+                        variant="default"
+                        onClick={handleNewAnnouncement}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="h-4 w-4" />
+                        New Announcement
+                      </Button>
                     )}
                   </EmptyContent>
                 </Empty>
@@ -1130,26 +936,24 @@ export function FeedbackContainer() {
         </CardContent>
       </div>
 
-      {/* Feedback Detail Dialog */}
+      {/* Announcement Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[600px]">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="pr-8">
-              {selectedFeedback?.subject}
-            </DialogTitle>
+            <DialogTitle className="pr-8">{selectedAnnouncement?.title}</DialogTitle>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-2">
             <div className="space-y-4">
               <div>
                 <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-                  Description
+                  Announcement
                 </h4>
                 <div
                   className="text-sm leading-relaxed whitespace-pre-wrap"
                   style={{ wordBreak: "break-word" }}
                 >
-                  {selectedFeedback?.description}
+                  {selectedAnnouncement?.text}
                 </div>
               </div>
             </div>
@@ -1157,71 +961,40 @@ export function FeedbackContainer() {
 
           <DialogFooter className="border-t p-6 pt-4">
             <div className="flex w-full items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage
-                    src={selectedFeedback?.profilePhotoPath || ""}
-                    alt={
-                      selectedFeedback?.employeeName ||
-                      `Employee ${selectedFeedback?.employeeId}`
-                    }
-                  />
-                  <AvatarFallback className="text-lg text-primary">
-                    {selectedFeedback?.employeeName
-                      ? getInitials(selectedFeedback.employeeName)
-                      : selectedFeedback?.employeeId
-                        ?.slice(0, 2)
-                        .toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">
-                    {selectedFeedback?.employeeName ||
-                      `Employee ${selectedFeedback?.employeeId}`}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-                    {selectedFeedback?.department && (
-                      <>
-                        <span>{selectedFeedback.department}</span>
-                        <span>•</span>
-                      </>
-                    )}
-                    {selectedFeedback?.team && (
-                      <span>{selectedFeedback.team}</span>
-                    )}
-                  </div>
-                </div>
+              <div>
+                <p className="font-medium">{selectedAnnouncement?.createdBy}</p>
+                {selectedAnnouncement?.category && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getCategoryStyles(selectedAnnouncement.category)}`}>
+                    {getCategoryLabel(selectedAnnouncement.category)}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
-                <HugeiconsIcon
-                  icon={ClockIcon}
-                  strokeWidth={2}
-                  className="h-3 w-3"
-                />
-                {getDisplayTime(selectedFeedback)}
+                <HugeiconsIcon icon={ClockIcon} strokeWidth={2} className="h-3 w-3" />
+                {selectedAnnouncement?.createdAt ? formatTime(selectedAnnouncement.createdAt) : "-"}
               </div>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* New Feedback Dialog */}
-      {canCreateFeedback && (
-        <NewFeedbackDialog
-          open={newFeedbackDialogOpen}
-          onOpenChange={setNewFeedbackDialogOpen}
-          onSubmit={handleSubmitFeedback}
+      {/* New Announcement Dialog */}
+      {canEdit && (
+        <NewAnnouncementDialog
+          open={newAnnouncementDialogOpen}
+          onOpenChange={setNewAnnouncementDialogOpen}
+          onSubmit={handleSubmitAnnouncement}
           isLoading={isSubmitting}
         />
       )}
 
-      {/* Edit Feedback Dialog */}
-      {canEditFeedback && feedbackToEdit && (
-        <EditFeedbackDialog
-          open={editFeedbackDialogOpen}
-          onOpenChange={setEditFeedbackDialogOpen}
-          feedback={feedbackToEdit}
-          onSubmit={handleEditFeedback}
+      {/* Edit Announcement Dialog */}
+      {canEdit && announcementToEdit && (
+        <EditAnnouncementDialog
+          open={editAnnouncementDialogOpen}
+          onOpenChange={setEditAnnouncementDialogOpen}
+          announcement={announcementToEdit}
+          onSubmit={handleEditAnnouncement}
           isLoading={isSubmitting}
         />
       )}
@@ -1232,7 +1005,7 @@ export function FeedbackContainer() {
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this feedback?
+              Are you sure you want to delete this announcement?
               <br />
               This action cannot be undone.
             </DialogDescription>
@@ -1242,7 +1015,7 @@ export function FeedbackContainer() {
               variant="outline"
               onClick={() => {
                 setDeleteDialogOpen(false)
-                setFeedbackToDelete(null)
+                setAnnouncementToDelete(null)
               }}
               disabled={isDeleting}
               className="flex-1"

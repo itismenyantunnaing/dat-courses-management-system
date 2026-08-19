@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,8 @@ public class EmployeeService {
             }
         }
 
+        String serviceYear = calculateServiceYear(e.getJoinedDate());
+
         return EmployeeResponseDTO.builder()
                 .id(e.getId())
                 .name(e.getName())
@@ -63,6 +67,8 @@ public class EmployeeService {
                 .team(e.getTeam() != null ? e.getTeam().getTeamName() : null)
                 .role(e.getRole() != null ? e.getRole().getRoleName() : null)
                 .dob(e.getDob())
+                .joinedDate(e.getJoinedDate())
+                .serviceYear(serviceYear)
                 .profilePhotoPath(e.getProfilePhotoPath())
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
@@ -140,6 +146,7 @@ public class EmployeeService {
                 .hasJapanBusinessTrip(employee.getHasJapanBusinessTrip())
                 .notiSetting(employee.getNotiSetting())
                 .dob(employee.getDob())
+                .serviceYear(calculateServiceYear(employee.getJoinedDate()))
                 .profilePhotoPath(employee.getProfilePhotoPath())
                 .createdAt(employee.getCreatedAt())
                 .updatedAt(employee.getUpdatedAt())
@@ -296,6 +303,29 @@ public class EmployeeService {
                 });
     }
 
+    private String calculateServiceYear(LocalDate joinedDate) {
+        if (joinedDate == null) {
+            return null;
+        }
+
+        LocalDate today = LocalDate.now();
+        Period period = Period.between(joinedDate, today);
+
+        int years = period.getYears();
+        int months = period.getMonths();
+
+        if (years > 0 && months > 0) {
+            return years + (years == 1 ? " year " : " years ")
+                    + months + (months == 1 ? " month" : " months");
+        }
+
+        if (years > 0) {
+            return years + (years == 1 ? " year" : " years");
+        }
+
+        return months + (months == 1 ? " month" : " months");
+    }
+
     // ── Apply DTO fields to entity ───────────────────────────────────────────
 
     private void applyDTO(Employee e, EmployeeRequestDTO dto) {
@@ -309,6 +339,7 @@ public class EmployeeService {
         e.setHasJapanBusinessTrip(dto.getHasJapanBusinessTrip() != null ? dto.getHasJapanBusinessTrip() : false);
         e.setNotiSetting(dto.getNotiSetting() != null ? dto.getNotiSetting() : false);
         e.setDob(dto.getDob());
+        e.setJoinedDate(dto.getJoinedDate());
         e.setProfilePhotoPath(dto.getProfilePhotoPath());
         if (dto.getTeamName() == null || dto.getTeamName().isBlank()) {
             dto.setTeamName(dto.getDepartmentDatName());

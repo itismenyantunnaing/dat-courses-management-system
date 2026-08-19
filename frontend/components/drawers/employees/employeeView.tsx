@@ -132,6 +132,8 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
   const [isLoadingSkills, setIsLoadingSkills] = useState(false)
   const { checkMyEnrollment, fetch_SkillData, skillData } = mainStore()
 
+  console.log(employee)
+
   // Filter courses when courses prop changes
   useEffect(() => {
     const filterEnrolledCourses = async () => {
@@ -261,6 +263,8 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
             <InfoRow label="Team" value={employee.team} />
             <InfoRow label="Role" value={employee.role} />
             <InfoRow label="Door Log Access" value={employee.doorlog} />
+            <InfoRow label="Joined Date" value={employee.joinedDate} />
+            <InfoRow label="Service Year" value={employee.serviceYear} />
             <InfoRow label="Core Personnel" value={employee.is_core_personnel ? "Yes" : "No"} />
             <InfoRow label="Japan Business Trip" value={employee.has_japan_business_trip ? "Yes" : "No"} />
             {employee.dob && <InfoRow label="Date of Birth" value={employee.dob} />}

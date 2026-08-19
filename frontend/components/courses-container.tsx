@@ -285,6 +285,7 @@ export function CoursesContainer({
     setEditingCourse(course)
     setIsFormVisible(true)
     setIsSuccessfullySaved(false)
+    setHasUnsavedChanges(false) // ✅ Start each edit session clean
   }
 
   const handleNewCourse = () => {
@@ -292,6 +293,7 @@ export function CoursesContainer({
     setEditingCourse(null)
     setIsFormVisible(true)
     setIsSuccessfullySaved(false)
+    setHasUnsavedChanges(false) // ✅ Start each create session clean
   }
 
   // Function to close form without confirmation (used after successful save)
@@ -299,6 +301,7 @@ export function CoursesContainer({
     resetForm()
     setIsSubmitting(false)
     setIsSuccessfullySaved(false)
+    setHasUnsavedChanges(false) // ✅ Always clear the dirty flag when the form closes
 
     // If we were editing a course, go back to the course detail
     if (editingCourseRef) {
@@ -309,13 +312,15 @@ export function CoursesContainer({
 
   // Handle cancel with confirmation
  const handleCancel = () => {
+  const wasCreating = !editingCourseRef
+
   // Skip confirmation if we just saved successfully
   if (isSuccessfullySaved) {
     closeForm();
     return;
   }
 
-  // ✅ NEW: Check if there are actual unsaved changes
+  // Check if there are actual unsaved changes
   if (hasUnsavedChanges) {
     const confirmCancel = window.confirm(
       `You have unsaved changes. Are you sure you want to cancel editing "${editingCourse?.title || 'this course'}"? Your changes will be lost.`
@@ -326,11 +331,10 @@ export function CoursesContainer({
     }
   }
 
-  closeForm();
-  setHasUnsavedChanges(false); // Reset the flag
+  closeForm(); // Also clears hasUnsavedChanges
 
   // If we were creating a new course, show a brief notification
-  if (!editingCourseRef) {
+  if (wasCreating) {
     alert("Course creation cancelled");
   }
 };

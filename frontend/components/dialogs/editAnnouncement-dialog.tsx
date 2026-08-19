@@ -20,71 +20,66 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { FeedbackSuggestionDto, FeedbackCategory } from "@/types/feedback"
+import { AnnouncementDto, AnnouncementCategory } from "@/types/announcement"
 
-interface EditFeedbackDialogProps {
+interface EditAnnouncementDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  feedback: FeedbackSuggestionDto
-  onSubmit: (id: number, subject: string, category: FeedbackCategory, description: string) => Promise<void>
+  announcement: AnnouncementDto
+  onSubmit: (id: number, title: string, category: AnnouncementCategory, text: string) => Promise<void>  // ✅ Removed createdBy
   isLoading: boolean
 }
 
 const categoryOptions = [
   { value: 'COURSE', label: 'Course' },
-  { value: 'MANAGEMENT', label: 'Management' },
-  { value: 'SYSTEM', label: 'System' },
+  { value: 'EXAM', label: 'Exam' },
+  { value: 'OTHER', label: 'Other' },
 ]
 
-export function EditFeedbackDialog({
+export function EditAnnouncementDialog({
   open,
   onOpenChange,
-  feedback,
+  announcement,
   onSubmit,
   isLoading,
-}: EditFeedbackDialogProps) {
-  const [subject, setSubject] = useState("")
-  const [category, setCategory] = useState<FeedbackCategory | "">("")
-  const [description, setDescription] = useState("")
-  const [originalSubject, setOriginalSubject] = useState("")
-  const [originalCategory, setOriginalCategory] = useState<FeedbackCategory | "">("")
-  const [originalDescription, setOriginalDescription] = useState("")
+}: EditAnnouncementDialogProps) {
+  const [title, setTitle] = useState("")
+  const [category, setCategory] = useState<AnnouncementCategory | "">("")
+  const [text, setText] = useState("")
+  const [originalTitle, setOriginalTitle] = useState("")
+  const [originalCategory, setOriginalCategory] = useState<AnnouncementCategory | "">("")
+  const [originalText, setOriginalText] = useState("")
 
   useEffect(() => {
-    if (feedback) {
-      const newSubject = feedback.subject || ""
-      const newCategory = feedback.category || ""
-      const newDescription = feedback.description || ""
-      setSubject(newSubject)
-      setCategory(newCategory as FeedbackCategory)
-      setDescription(newDescription)
-      setOriginalSubject(newSubject)
-      setOriginalCategory(newCategory as FeedbackCategory)
-      setOriginalDescription(newDescription)
+    if (announcement) {
+      const newTitle = announcement.title || ""
+      const newCategory = announcement.category || ""
+      const newText = announcement.text || ""
+      setTitle(newTitle)
+      setCategory(newCategory as AnnouncementCategory)
+      setText(newText)
+      setOriginalTitle(newTitle)
+      setOriginalCategory(newCategory as AnnouncementCategory)
+      setOriginalText(newText)
     }
-  }, [feedback])
+  }, [announcement])
 
-  // Check if there are any changes
   const hasChanges =
-    subject !== originalSubject || 
+    title !== originalTitle || 
     category !== originalCategory || 
-    description !== originalDescription
+    text !== originalText
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!feedback?.id || !hasChanges) return
-    if (!category) {
-      // Show error if category is not selected
-      return
-    }
-    await onSubmit(feedback.id, subject, category as FeedbackCategory, description)
+    if (!announcement?.id || !hasChanges) return
+    if (!category) return
+    await onSubmit(announcement.id, title, category as AnnouncementCategory, text)
   }
 
-  // Reset to original values when canceling
   const handleCancel = () => {
-    setSubject(originalSubject)
+    setTitle(originalTitle)
     setCategory(originalCategory)
-    setDescription(originalDescription)
+    setText(originalText)
     onOpenChange(false)
   }
 
@@ -92,21 +87,21 @@ export function EditFeedbackDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Edit Feedback</DialogTitle>
+          <DialogTitle>Edit Announcement</DialogTitle>
           <DialogDescription>
-            Update your feedback. Click save when you're done.
+            Update your announcement. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-subject">Subject</Label>
+              <Label htmlFor="edit-title">Title</Label>
               <Input
-                id="edit-subject"
-                placeholder="Enter feedback subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                id="edit-title"
+                placeholder="Enter announcement title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 required
                 disabled={isLoading}
               />
@@ -116,7 +111,7 @@ export function EditFeedbackDialog({
               <Label htmlFor="edit-category">Category</Label>
               <Select 
                 value={category} 
-                onValueChange={(value) => setCategory(value as FeedbackCategory)}
+                onValueChange={(value) => setCategory(value as AnnouncementCategory)}
                 disabled={isLoading}
               >
                 <SelectTrigger id="edit-category">
@@ -133,12 +128,12 @@ export function EditFeedbackDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="edit-description">Description</Label>
+              <Label htmlFor="edit-text">Announcement Text</Label>
               <Textarea
-                id="edit-description"
-                placeholder="Describe your feedback in detail..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                id="edit-text"
+                placeholder="Write your announcement..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
                 rows={4}
                 required
                 disabled={isLoading}

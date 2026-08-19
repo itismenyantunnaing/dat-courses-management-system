@@ -2,6 +2,7 @@ package com.dat_management.backend.service;
 
 import com.dat_management.backend.dto.FeedbackSuggestionDto;
 import com.dat_management.backend.entity.Employee;
+import com.dat_management.backend.entity.FeedbackCategory;
 import com.dat_management.backend.entity.FeedbackSuggestion;
 import com.dat_management.backend.repository.EmployeeRepository;
 import com.dat_management.backend.repository.FeedbackSuggestionRepository;
@@ -24,18 +25,19 @@ public class FeedbackSuggestionService {
         dto.setId(feedback.getId());
         dto.setEmployeeId(feedback.getEmployee().getId());
         dto.setSubject(feedback.getSubject());
+        dto.setCategory(feedback.getCategory().name());
         dto.setDescription(feedback.getDescription());
         dto.setStatus(feedback.getStatus());
-        
+
         // Set timestamps
         dto.setCreatedAt(feedback.getCreatedAt() != null ? feedback.getCreatedAt().toString() : null);
         dto.setUpdatedAt(feedback.getUpdatedAt() != null ? feedback.getUpdatedAt().toString() : null);
-        
+
         // Set employee details
         Employee employee = feedback.getEmployee();
         if (employee != null) {
             dto.setEmployeeName(employee.getName());
-            
+
             // Get department from Team -> DepartmentDat
             if (employee.getTeam() != null) {
                 if (employee.getTeam().getDepartmentDat() != null) {
@@ -43,10 +45,10 @@ public class FeedbackSuggestionService {
                 }
                 dto.setTeam(employee.getTeam().getTeamName());
             }
-            
+
             dto.setProfilePhotoPath(employee.getProfilePhotoPath());
         }
-        
+
         return dto;
     }
 
@@ -62,11 +64,12 @@ public class FeedbackSuggestionService {
                 .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + dto.getEmployeeId()));
 
         FeedbackSuggestion feedback = new FeedbackSuggestion();
-        feedback.setEmployee(employee); 
+        feedback.setEmployee(employee);
         feedback.setSubject(dto.getSubject());
+        feedback.setCategory(FeedbackCategory.valueOf(dto.getCategory()));
         feedback.setDescription(dto.getDescription());
         feedback.setStatus(dto.getStatus() != null ? dto.getStatus() : "Pending");
-        
+
         FeedbackSuggestion saved = feedbackRepository.save(feedback);
         return convertToDto(saved);
     }
@@ -78,7 +81,7 @@ public class FeedbackSuggestionService {
     public List<FeedbackSuggestionDto> getByEmployeeId(String employeeId) {
         employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + employeeId));
-        
+
         return convertToDtoList(feedbackRepository.findByEmployeeId(employeeId));
     }
 
@@ -90,12 +93,13 @@ public class FeedbackSuggestionService {
 
         FeedbackSuggestion feedback = feedbackRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Feedback not found with id: " + id));
-        
+
         feedback.setEmployee(employee);
         feedback.setSubject(dto.getSubject());
+        feedback.setCategory(FeedbackCategory.valueOf(dto.getCategory()));
         feedback.setDescription(dto.getDescription());
         feedback.setStatus(dto.getStatus());
-        
+
         // The @PreUpdate will automatically set updatedAt
         FeedbackSuggestion updated = feedbackRepository.save(feedback);
         return convertToDto(updated);

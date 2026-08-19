@@ -42,6 +42,7 @@ import { webScoketStore } from "@/store/websocketStore"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import type { SessionData } from "@/types/session"
+import { AnnouncementContainer } from "@/components/announcement-container"
 
 interface DashboardClientProps {
   userData: SessionData
@@ -71,6 +72,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     profile,
     unreadCount: dbUnreadCount,
     fetch_UnreadCount,
+    fetch_CertificateData,
+    fetch_AllCertificates,
+    fetchAll_CourseData
   } = mainStore()
   const { connect } = webScoketStore()
 
@@ -84,7 +88,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Initialize session in Zustand store when component mounts
   useEffect(() => {
     if (!initialized.current && userData) {
-      ;(async () => {
+      ; (async () => {
         setSession(userData)
         await fetch_EmployeeProfile(userData.userId)
         initialized.current = true
@@ -123,7 +127,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   useEffect(() => {
     setMounted(true)
     if (typeof window !== "undefined") {
-      ;(window as any).mainStore = mainStore
+      ; (window as any).mainStore = mainStore
     }
   }, [])
 
@@ -161,9 +165,16 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             onClick: () => {
               webScoketStore.getState().markAsRead(latest.id)
               if (latest.courseId) {
+                fetchAll_CourseData()
                 setSelectedCourseId(latest.courseId)
                 setActiveTab("courses")
               } else if (latest.certificateId) {
+                // refetch certificate data
+                if (user_role === "learner") {
+                  fetch_CertificateData(profile.id)
+                } else {
+                  fetch_AllCertificates(profile.id)
+                }
                 const targetTab =
                   user_role === "learner"
                     ? "japanese-certificates"
@@ -202,28 +213,28 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
   const user_role = profile?.role ? userRole : "learner"
 
-useEffect(() => {
-  if (!isProfileLoaded || !user_role) return
+  useEffect(() => {
+    if (!isProfileLoaded || !user_role) return
 
-  const normalizedRole = user_role.toLowerCase()
-  let tab = "learner-dashboard"
+    const normalizedRole = user_role.toLowerCase()
+    let tab = "learner-dashboard"
 
-  switch (normalizedRole) {
-    case "admin":
-      tab = "admin-dashboard"
-      break
-    case "approver":
-    case "department_head":
-    case "division_head":
-      tab = "approver-dashboard"
-      break
-    default:
-      tab = "learner-dashboard"
-      break
-  }
+    switch (normalizedRole) {
+      case "admin":
+        tab = "admin-dashboard"
+        break
+      case "approver":
+      case "department_head":
+      case "division_head":
+        tab = "approver-dashboard"
+        break
+      default:
+        tab = "learner-dashboard"
+        break
+    }
 
-  setActiveTab(tab)
-}, [user_role, isProfileLoaded])
+    setActiveTab(tab)
+  }, [user_role, isProfileLoaded])
 
   //  Use database unread count
   const totalUnreadCount = dbUnreadCount || 0
@@ -254,7 +265,6 @@ useEffect(() => {
       setPendingCertificateId(id)
       setSelectedCertificateId(null)
       setActiveTab(targetTab)
-      console.log(`🔔 Navigating to ${targetTab} with certificate ID:`, id)
     }
   }
 
@@ -328,6 +338,9 @@ useEffect(() => {
         return "Japanese Certificates"
       case "certificates-requests":
         return "Requested Certificates"
+      case "announcement":
+        // Dynamic label based on user role
+        return "Announcements"
       case "feedback":
         // Dynamic label based on user role
         return user_role === "learner" ? "Your Feedback" : "Learners' Feedback"
@@ -370,6 +383,7 @@ useEffect(() => {
     },
     { value: "seminar", component: SeminarContainer },
     { value: "exams", component: ExamsContainer },
+    { value: "announcement", component: AnnouncementContainer },
     { value: "feedback", component: FeedbackContainer },
     { value: "skills", component: SkillContainer },
     { value: "jlpt_target_level", component: CurrentTargetContainer },
@@ -468,9 +482,8 @@ useEffect(() => {
                     )}
                   </Button>
                   <div
-                    className={`absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-white ${
-                      isConnected ? "bg-green-500" : "bg-red-500"
-                    }`}
+                    className={`absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-white ${isConnected ? "bg-green-500" : "bg-red-500"
+                      }`}
                   />
                 </div>
 
