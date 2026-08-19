@@ -29,6 +29,7 @@ import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"
 import Image from "next/image"
 import { Cancel01Icon, ImageNotFound01Icon } from "@hugeicons/core-free-icons"
+import {resolveUploadUrl} from "@/lib/utils";
 
 interface ApproveCertificateDrawerProps {
   open: boolean
@@ -224,15 +225,18 @@ export function ApproveCertificateDrawer({
 
   if (!certificate) return null
 
-  const imageUrl = certificate.filePath || "/placeholder-certificate.png"
+  const imageUrl = certificate.filePath
+      ? resolveUploadUrl(certificate.filePath)
+      : "/placeholder-certificate.png"
   const status = certificate.status
   const employeeName = certificate.employee.name || ""
   const employeeEmail = certificate.email || "No email provided"
-  const employeeAvatar = ""
+  const employeeAvatar = certificate.profilePhotoPath
+      ? resolveUploadUrl(certificate.profilePhotoPath)
+      : certificate.employee?.avatar || ""
   const submittedDate = certificate.createdAt
     ? certificate.createdAt.toISOString()
     : new Date().toISOString()
-
   return (
     <>
       <Drawer open={open} onOpenChange={handleOpenChange} direction="right">

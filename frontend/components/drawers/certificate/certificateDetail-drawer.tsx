@@ -32,7 +32,7 @@ import {
 import Image from "next/image"
 import { JapaneseCertificate } from "@/types/certificate"
 import { format } from "date-fns"
-import { cn } from "@/lib/utils"
+import { resolveUploadUrl} from "@/lib/utils"
 import { CertificateForm } from "@/components/drawers/certificate/certificateForm"
 import { mainStore } from "@/store/mainStore"
 import { CERTIFICATE_TYPES, CERTIFICATE_LEVELS } from "@/types/certificate"
@@ -115,7 +115,10 @@ export function CertificateDetailDrawer({
 
   if (!certificate) return null
 
-  const imageUrl = certificate.filePath || "/placeholder-certificate.png"
+  const imageUrl = certificate.filePath
+      ? resolveUploadUrl(certificate.filePath)
+      : "/placeholder-certificate.png"
+
   const status = certificate.verificationStatus || ""
 
   // Get employee info
@@ -123,7 +126,16 @@ export function CertificateDetailDrawer({
     certificate.employee?.name || certificate.employeeName || "Unknown User"
   const employeeEmail =
     certificate.employee?.email || certificate.email || "No email provided"
-  const employeeAvatar = certificate.employee?.avatar || ""
+  const employeeAvatar = certificate.profilePhotoPath
+    ? resolveUploadUrl(certificate.profilePhotoPath)
+    : certificate.employee?.avatar || ""
+  const verifiedByPath = (certificate.verifiedByProfilePhotoPath || "").trim()
+  const verifiedByAvatar =
+    verifiedByPath &&
+    verifiedByPath.toLowerCase() !== "null" &&
+    verifiedByPath.toLowerCase() !== "undefined"
+      ? resolveUploadUrl(verifiedByPath)
+      : ""
 
   // Get submitted date
   const submittedDate = certificate.createdAt || new Date()
@@ -436,7 +448,7 @@ export function CertificateDetailDrawer({
                             <Avatar className="h-10 w-10 overflow-hidden rounded-full">
                               <AvatarImage
                                 className="h-10 w-10 overflow-hidden rounded-full"
-                                src=""
+                                src={verifiedByAvatar}
                                 alt={certificate.verifiedByEmployeeName}
                               />
                               <AvatarFallback className="overflow-hidden rounded-full">
