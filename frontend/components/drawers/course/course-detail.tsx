@@ -146,7 +146,7 @@ export function CourseDetail({
   }, [enrollments])
 
   const TESTING_DATE = new Date()
-  // const TESTING_DATE = new Date("2026-08-04")
+  // const TESTING_DATE = new Date("2026-08-04") 
 
   // Check if first session has started or passed
   const isFirstSessionStartedOrPassed = React.useMemo(() => {
@@ -1000,7 +1000,34 @@ export function CourseDetail({
           </div>
 
           {/* Tab Contents */}
-          {activeTab === "information" && <InformationTab course={course} />}
+          {activeTab === "information" &&
+            <InformationTab
+              course={course}
+              enrollments={enrollments}
+              userRole={userRole}
+              profile={profile}
+              enrollmentSearchTerm=""
+              onSearchChange={() => { }}
+              allEmployees={allEmployees}
+              groups={course.groups || []}
+              onRefreshEnrollments={async () => {
+                if (course.id) {
+                  await fetch_courseEnrollments(course.id)
+                }
+              }}
+              onAdminChangeGroup={handleAdminChangeGroup}
+              isChangingGroup={isAdminChangingGroup}
+              groupChangeError={groupChangeError}
+              groupChangeSuccess={groupChangeSuccess}
+              onEnrollEmployee={handleEnrollEmployee}
+              onUnenrollEmployee={handleUnenrollEmployee}
+              isEnrolling={isEnrolling}
+              isUnenrolling={isUnenrolling}
+              // SessionsTab props
+              currentUserEnrollment={currentUserEnrollment}
+              isUserEnrolled={isUserEnrolled}
+            />
+          }
 
           {activeTab === "groups" &&
             course.courseType === "trainer" &&

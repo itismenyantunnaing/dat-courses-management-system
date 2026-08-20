@@ -49,6 +49,8 @@ public class CourseEnrollment {
 
     private LocalDateTime enrolledAt;
 
+    private Integer mockTestAttempt;
+
     @PrePersist
     protected void onCreate() {
         enrolledAt = LocalDateTime.now();

@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class EnrollmentUpdateDTO {
 
-    private String enrollmentStatus;
+    private Integer mockTestAttempt;
 }

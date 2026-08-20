@@ -220,7 +220,7 @@ public class CourseStatsService {
                 enrollment.getId(), averageCompletion * 100, COMPLETION_THRESHOLD * 100,
                 averageCompletion >= COMPLETION_THRESHOLD);
             
-            if (averageCompletion >= COMPLETION_THRESHOLD) {
+            if (averageCompletion >= COMPLETION_THRESHOLD * 100) {
                 completedCount++;
                 log.info("✅ Self-Study Enrollment {} COMPLETED (Average: {}%)", 
                     enrollment.getId(), averageCompletion * 100);

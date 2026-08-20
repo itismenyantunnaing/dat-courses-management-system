@@ -119,7 +119,7 @@ public class CourseEnrollmentService {
                                                 HttpStatus.NOT_FOUND,
                                                 "Enrollment not found"));
 
-                enrollment.setEnrollmentStatus(dto.getEnrollmentStatus());
+                enrollment.setMockTestAttempt(dto.getMockTestAttempt());
 
                 return toDTO(
                                 enrollmentRepository.save(enrollment));
