@@ -22,6 +22,7 @@ class CertificateFileStorageServiceTest {
     void setUp() {
         service = new CertificateFileStorageService();
         ReflectionTestUtils.setField(service, "uploadDir", tempDir.toString());
+        service.init();
     }
 
     @Test
@@ -30,8 +31,15 @@ class CertificateFileStorageServiceTest {
 
         String result = service.storeFile(file, "EMP001", "jlpt", "n2");
 
-        Assertions.assertEquals("uploads/certificates/EMP001_JLPT_N2.png", result);
-        Assertions.assertArrayEquals(new byte[] {1, 2, 3}, Files.readAllBytes(tempDir.resolve("EMP001_JLPT_N2.png")));
+        Assertions.assertTrue(
+                result.matches("/uploads/certificates/EMP001_JLPT_N2_\\d{14}\\.png"));
+
+        String fileName = Path.of(result).getFileName().toString();
+
+        Assertions.assertTrue(Files.exists(tempDir.resolve(fileName)));
+        Assertions.assertArrayEquals(
+                new byte[] {1, 2, 3},
+                Files.readAllBytes(tempDir.resolve(fileName)));
     }
 
     @Test
@@ -42,10 +50,17 @@ class CertificateFileStorageServiceTest {
         String firstPath = service.storeFile(first, "EMP001", "JLPT", "N2");
         String secondPath = service.storeFile(second, "EMP001", "JLPT", "N2");
 
-        Assertions.assertEquals("uploads/certificates/EMP001_JLPT_N2.png", firstPath);
-        Assertions.assertEquals("uploads/certificates/EMP001_JLPT_N2_1.png", secondPath);
-        Assertions.assertTrue(Files.exists(tempDir.resolve("EMP001_JLPT_N2.png")));
-        Assertions.assertTrue(Files.exists(tempDir.resolve("EMP001_JLPT_N2_1.png")));
+        Assertions.assertTrue(
+                firstPath.matches("/uploads/certificates/EMP001_JLPT_N2_\\d{14}\\.png"));
+
+        Assertions.assertTrue(
+                secondPath.matches("/uploads/certificates/EMP001_JLPT_N2_\\d{14}_1\\.png"));
+
+        String firstFileName = Path.of(firstPath).getFileName().toString();
+        String secondFileName = Path.of(secondPath).getFileName().toString();
+
+        Assertions.assertTrue(Files.exists(tempDir.resolve(firstFileName)));
+        Assertions.assertTrue(Files.exists(tempDir.resolve(secondFileName)));
     }
 
     @Test

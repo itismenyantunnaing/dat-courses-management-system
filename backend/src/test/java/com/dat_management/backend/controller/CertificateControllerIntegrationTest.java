@@ -84,7 +84,12 @@ class CertificateControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.verificationStatus").value("PENDING"));
 
         org.junit.jupiter.api.Assertions.assertEquals(1, certificateRepository.count());
-        org.junit.jupiter.api.Assertions.assertTrue(Files.exists(UPLOAD_ROOT.resolve("EMP001_JLPT_N2.png")));
+        boolean fileExists = Files.list(UPLOAD_ROOT)
+                .anyMatch(path -> path.getFileName()
+                        .toString()
+                        .matches("EMP001_JLPT_N2_\\d{14}\\.png"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(fileExists);
     }
 
     @Test

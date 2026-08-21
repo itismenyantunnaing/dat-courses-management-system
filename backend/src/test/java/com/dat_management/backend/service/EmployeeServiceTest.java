@@ -117,7 +117,7 @@ class EmployeeServiceTest {
         EmployeeRequestDTO request = request("EMP001", "Alice Admin");
 
         when(employeeRepository.existsByIdAndIsDeletedFalse("EMP001")).thenReturn(false);
-        when(passwordEncoder.encode("changeme123")).thenReturn("encoded-default");
+        when(passwordEncoder.encode("password")).thenReturn("encoded-default");
         when(employeeRepository.save(any(Employee.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         EmployeeResponseDTO result = service.create(request);
@@ -142,19 +142,19 @@ class EmployeeServiceTest {
         Division division = division("Digital");
         DepartmentDat departmentDat = departmentDat("DAT", division);
         Team team = team("Platform", departmentDat);
-        Role role = new Role(1L, "staff");
+        Role role = new Role(1L, "Learner");
         EmployeeRequestDTO request = request("EMP002", "Bob Staff");
         request.setDivisionName("Digital");
         request.setDepartmentDatName("DAT");
         request.setTeamName("Platform");
         request.setPassword("Initial1!");
-        request.setRoleName("staff");
+        request.setRoleName("Learner");
 
         when(employeeRepository.existsByIdAndIsDeletedFalse("EMP002")).thenReturn(false);
         when(divisionRepository.findByDivisionName("Digital")).thenReturn(Optional.of(division));
         when(departmentDatRepository.findByDeptNameAndDivision("DAT", division)).thenReturn(Optional.of(departmentDat));
         when(teamRepository.findByTeamNameAndDepartmentDat("Platform", departmentDat)).thenReturn(Optional.of(team));
-        when(roleRepository.findByRoleName("staff")).thenReturn(Optional.of(role));
+        when(roleRepository.findByRoleName("Learner")).thenReturn(Optional.of(role));
         when(passwordEncoder.encode("Initial1!")).thenReturn("encoded-custom");
         when(employeeRepository.save(any(Employee.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -163,7 +163,7 @@ class EmployeeServiceTest {
         Assertions.assertEquals("Platform", result.getTeam());
         Assertions.assertEquals("DAT", result.getDeptDat());
         Assertions.assertEquals("Digital", result.getDivName());
-        Assertions.assertEquals("staff", result.getRole());
+        Assertions.assertEquals("Learner", result.getRole());
     }
 
     @Test
@@ -235,7 +235,7 @@ class EmployeeServiceTest {
 //        Removed this line because this method has been left out
 //        in createSingleInNewTransaction(210:234) in EmployeeService.java
 //        when(employeeRepository.existsByIdAndIsDeletedFalse("EMP001")).thenReturn(false);
-        when(passwordEncoder.encode("changeme123")).thenReturn("encoded-default");
+        when(passwordEncoder.encode("password")).thenReturn("encoded-default");
         when(employeeRepository.saveAndFlush(any(Employee.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Map<String, Object> result = service.createBulk(List.of(valid, invalid));

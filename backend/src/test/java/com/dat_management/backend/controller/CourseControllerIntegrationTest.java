@@ -58,8 +58,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
-        "file.upload-dir=target/course-test-uploads",
-        "spring.sql.init.mode=never"
+        "file.upload-dir=target/course-test-uploads"
 })
 @Transactional
 class CourseControllerIntegrationTest {
@@ -99,33 +98,35 @@ class CourseControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        systemConfigRepository.deleteAll();
 
-        SystemConfig config = new SystemConfig();
-        config.setId(1L);
-        config.setActiveSmtpProvider(SystemConfig.SmtpProvider.GMAIL);
-
-        config.setGmailHost("smtp.gmail.com");
-        config.setGmailPort(587);
-        config.setGmailUsername("test@gmail.com");
-        config.setGmailPassword("password");
-
-        config.setFileUploadSizeMb(5);
-        config.setSessionTimeoutMinutes(30);
-        config.setJwtExpiryHours(24);
-        config.setMaxLoginAttempts(5);
-
-        systemConfigRepository.save(config);
-
+        // Clean dependent tables first
         attendanceRepository.deleteAll();
         progressRepository.deleteAll();
         enrollmentRepository.deleteAll();
         sessionRepository.deleteAll();
         selfStudySessionRepository.deleteAll();
         groupRepository.deleteAll();
+        sessionRepository.deleteAll();
         courseRepository.deleteAll();
         categoryRepository.deleteAll();
         employeeRepository.deleteAll();
+
+        // Clean system config
+        systemConfigRepository.deleteAll();
+
+        // Create test configuration
+        SystemConfig config = new SystemConfig();
+        config.setActiveSmtpProvider(SystemConfig.SmtpProvider.GMAIL);
+        config.setGmailHost("smtp.gmail.com");
+        config.setGmailPort(587);
+        config.setGmailUsername("test@gmail.com");
+        config.setGmailPassword("password");
+        config.setFileUploadSizeMb(5);
+        config.setSessionTimeoutMinutes(30);
+        config.setJwtExpiryHours(24);
+        config.setMaxLoginAttempts(5);
+
+        systemConfigRepository.save(config);
     }
 
     @Test

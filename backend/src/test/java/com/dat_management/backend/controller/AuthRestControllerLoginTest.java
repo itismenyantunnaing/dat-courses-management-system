@@ -144,7 +144,7 @@ class AuthRestControllerLoginTest {
     @Test
     void loginLocksAccountOnThirdInvalidPasswordAttempt() {
         AuthRestController controller = controller();
-        Employee employee = buildUser("EMP003", "encoded-password", 2, null);
+        Employee employee = buildUser("EMP003", "encoded-password", 4, null);
         LoginRequest request = loginRequest("EMP003", "wrong-password");
 
         when(employeeRepository.findByIdAndIsDeletedFalse("EMP003")).thenReturn(Optional.of(employee));
@@ -155,7 +155,7 @@ class AuthRestControllerLoginTest {
         Assertions.assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         Map<String, Object> body = bodyAsMap(response);
         Assertions.assertEquals("Invalid password", body.get("message"));
-        Assertions.assertEquals(3, body.get("attempts"));
+        Assertions.assertEquals(5, body.get("attempts"));
         verify(employeeRepository).save(employee);
         Assertions.assertEquals(0, employee.getFailedLoginAttempts());
         Assertions.assertNotNull(employee.getAccountLockedUntil());
