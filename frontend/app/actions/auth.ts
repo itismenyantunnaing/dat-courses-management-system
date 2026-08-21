@@ -4,7 +4,7 @@ import type { SessionData } from '@/types/session'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_BASE_URL =  "http://localhost:8080"
 
 interface LoginCredentials {
     staff_Id: string

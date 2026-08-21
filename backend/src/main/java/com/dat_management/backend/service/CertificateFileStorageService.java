@@ -112,7 +112,7 @@ public class CertificateFileStorageService {
         }
 
         // Return the relative path for the database
-        return "/uploads/certificates/" + fileName;
+        return "uploads/certificates/" + fileName;
     }
 
     public void deleteFile(String filePath) throws IOException {
