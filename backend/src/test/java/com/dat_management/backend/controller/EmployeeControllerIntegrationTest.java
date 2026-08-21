@@ -151,11 +151,11 @@ class EmployeeControllerIntegrationTest {
 
         mockMvc.perform(put("/api/employees/{id}", "EMP001")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(employeeJson("EMP001", "Alice Updated", "active", "PMO")))
+                        .content(employeeJson("EMP001", "Alice Updated", "active", "Approver")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("EMP001"))
                 .andExpect(jsonPath("$.name").value("Alice Updated"))
-                .andExpect(jsonPath("$.role").value("PMO"));
+                .andExpect(jsonPath("$.role").value("Approver"));
     }
 
     @Test
