@@ -40,3 +40,20 @@ export interface EmployeeProfile {
   hasJapanBusinessTrip: boolean;
   dob: string | null;
 }
+
+
+export interface EmployeeDepartmentPositionRequestDTO {
+  employeeId: string;
+  departmentDirName: string;
+  position: string;
+  isCorePersonnel: boolean;
+  hasJapanBusinessTrip: boolean;
+}
+
+export interface EmployeeDepartmentPositionResponseDTO {
+  employeeId: string;
+  departmentDirName: string;
+  position: string;
+  isCorePersonnel: boolean;
+  hasJapanBusinessTrip: boolean;
+}

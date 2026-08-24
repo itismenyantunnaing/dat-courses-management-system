@@ -326,8 +326,23 @@ export default function AdminDashboardContainer() {
     const trainerCategories = courseCategory_data.trainer || []
     const selfStudyCategories = courseCategory_data.selfStudy || []
 
+    // Filter out self-study categories with selfStudyType === "other"
+    const filteredSelfStudy = selfStudyCategories.filter(
+      (category: any) => category.selfStudyType?.toLowerCase() !== "other"
+    )
+
     // Merge them into one array
-    return [...trainerCategories, ...selfStudyCategories]
+    const allCategories = [...trainerCategories, ...filteredSelfStudy]
+
+    // Deduplicate by value (category name) to avoid duplicate keys
+    const uniqueCategories = new Map()
+    allCategories.forEach((category) => {
+      if (!uniqueCategories.has(category.value)) {
+        uniqueCategories.set(category.value, category)
+      }
+    })
+
+    return Array.from(uniqueCategories.values())
   }, [courseCategory_data])
 
   // Extract course group attendance data from dailyAttendance - AGGREGATED BY DATE
@@ -347,11 +362,9 @@ export default function AdminDashboardContainer() {
     }> = {}
 
     if (!dailyAttendance || !Array.isArray(dailyAttendance) || dailyAttendance.length === 0) {
-      console.log("No dailyAttendance data available")
       return result
     }
 
-    console.log("Processing dailyAttendance data:", dailyAttendance)
 
     dailyAttendance.forEach((division: any) => {
       // Handle new data structure: division -> departments -> teams -> courses -> groups
@@ -412,7 +425,6 @@ export default function AdminDashboardContainer() {
       }
     })
 
-    console.log("courseGroupAttendanceData result:", Object.keys(result))
     return result
   }, [dailyAttendance])
 
@@ -1284,7 +1296,7 @@ export default function AdminDashboardContainer() {
           </div>
           {filteredAttendanceData.length > 0 && (
             <div className="flex items-center gap-2 leading-none font-medium text-muted-foreground">
-              {selectedAttendanceCourseGroup === "all" 
+              {selectedAttendanceCourseGroup === "all"
                 ? "Showing combined attendance for all course groups"
                 : `Showing attendance breakdown for ${courseGroupAttendanceData[selectedAttendanceCourseGroup]?.courseName || selectedAttendanceCourseGroup}`
               }

@@ -1,4 +1,4 @@
-// EmployeeForm.tsx - Updated with Calendar Popover
+// EmployeeForm.tsx - Updated with Dir Department and Position
 
 "use client"
 
@@ -40,6 +40,8 @@ export interface EmployeeFormData {
   name: string
   doorlog: string
   dept_dat: string
+  dept_dir: string
+  position: string // Added position field
   team: string
   emp_status: string
   role: string
@@ -111,27 +113,28 @@ export function EmployeeForm({
     fetchAll_CourseData,
     courses,
     enrollments,
+    departmentDirOptions,
+    fetchDepartmentDirOptions,
   } = mainStore()
 
   useEffect(() => {
     const loadData = async () => {
       await fetchAll_CourseData()
+      await fetchDepartmentDirOptions()
     }
     loadData()
-  }, [fetchAll_CourseData])
+  }, [fetchAll_CourseData, fetchDepartmentDirOptions])
 
   // Filter departments based on selected division
   const filteredDepartments = useMemo(() => {
     if (!data.div) return dat_departments
 
-    // Find the selected division
     const selectedDivision = divisions.find(
       (div: any) => div.divisionName === data.div
     )
 
     if (!selectedDivision) return dat_departments
 
-    // Filter departments that belong to the selected division
     return dat_departments.filter(
       (dept: any) => dept.divisionId === selectedDivision.id
     )
@@ -141,35 +144,31 @@ export function EmployeeForm({
   const filteredTeams = useMemo(() => {
     if (!data.dept_dat) return teams
 
-    // Find the selected department
     const selectedDepartment = dat_departments.find(
       (dept: any) => dept.deptName === data.dept_dat
     )
 
     if (!selectedDepartment) return teams
 
-    // Filter teams that belong to the selected department
     return teams.filter(
       (team: any) => team.departmentDatId === selectedDepartment.id
     )
   }, [data.dept_dat])
 
-  // Handle division change - reset department and team
   const handleDivisionChange = (value: string) => {
     onChange({
       ...data,
       div: value,
-      dept_dat: "", // Reset department
-      team: "", // Reset team
+      dept_dat: "",
+      team: "",
     })
   }
 
-  // Handle department change - reset team
   const handleDepartmentChange = (value: string) => {
     onChange({
       ...data,
       dept_dat: value,
-      team: "", // Reset team
+      team: "",
     })
   }
 
@@ -194,7 +193,6 @@ export function EmployeeForm({
     setDatePickerOpen(false)
   }
 
-  // Get day of week for display
   const getDayOfWeek = (dateString: string) => {
     if (!dateString) return ""
     const date = new Date(dateString)
@@ -360,10 +358,10 @@ export function EmployeeForm({
             </Select>
           </div>
 
-          {/* Department Select - Filtered by selected division */}
+          {/* Department (Dat Department) Select - Filtered by selected division */}
           <div className="min-w-0 space-y-2">
-            <Label htmlFor="dept">
-              Department <span className="text-red-500">*</span>
+            <Label htmlFor="dept_dat">
+              Dat Department <span className="text-red-500">*</span>
             </Label>
             <Select
               value={data.dept_dat}
@@ -556,6 +554,59 @@ export function EmployeeForm({
               required
               className="w-full"
             />
+          </div>
+
+          {/* Dir Department and Position - Side by side */}
+          <div className="col-span-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Dir Department */}
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="dept_dir" className="text-muted-foreground">
+                  Dir Department <span className="text-muted-foreground text-xs">(Optional)</span>
+                </Label>
+                <Select
+                  value={data.dept_dir || ""}
+                  onValueChange={(value) => handleInputChange("dept_dir", value)}
+                  onOpenChange={onDropdownOpenChange}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select dir department" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    <SelectGroup>
+                      <SelectLabel>Dir Departments</SelectLabel>
+                      {departmentDirOptions && departmentDirOptions.length > 0 ? (
+                        departmentDirOptions.map((dept: string) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <TruncatedSelectItem
+                          value="no-departments"
+                          label="No dir departments available"
+                          disabled
+                        />
+                      )}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Position */}
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="position" className="text-muted-foreground">
+                  Position <span className="text-muted-foreground text-xs">(Optional)</span>
+                </Label>
+                <Input
+                  id="position"
+                  value={data.position || ""}
+                  onChange={(e) => handleInputChange("position", e.target.value)}
+                  placeholder="Enter position"
+                  className="w-full"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ package com.dat_management.backend.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -11,36 +12,62 @@ import java.nio.file.Paths;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    // Same property keys CertificateFileStorageService / CourseImageStorageService /
-    // EmployeeProfileService already read to decide WHERE to save a file. Resolving
-    // through those here — instead of hardcoding "/data/uploads/..." — means this
-    // handler always points at wherever the file actually landed, in both the
-    // "local" profile (writes into frontend/public/uploads/...) and the "prod"
-    // profile used by Docker (writes into /data/uploads/...).
-    @Value("${file.upload-dir:/data/uploads/certificates}")
+    @Value("${file.upload-dir:./imageStorage/certificates}")
     private String certificateUploadDir;
 
-    @Value("${file.profile-upload-dir:/data/uploads/profiles}")
+    @Value("${file.profile-upload-dir:./imageStorage/profiles}")
     private String profileUploadDir;
+
+    @Value("${file.course-upload-dir:./imageStorage/courses}")
+    private String courseUploadDir;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String certificateLocation = toResourceLocation(certificateUploadDir);
         String profileLocation = toResourceLocation(profileUploadDir);
+        String courseLocation = toResourceLocation(courseUploadDir);
 
-        registry.addResourceHandler("/courses/**")
-                .addResourceLocations(certificateLocation + "courses/");
+        System.out.println("=========================================");
+        System.out.println("📁 WebConfig - Certificate location: " + certificateLocation);
+        System.out.println("📁 WebConfig - Profile location: " + profileLocation);
+        System.out.println("📁 WebConfig - Course location: " + courseLocation);
 
+        // Serve certificates: /uploads/certificates/** -> ./imageStorage/certificates/
         registry.addResourceHandler("/uploads/certificates/**")
                 .addResourceLocations(certificateLocation);
 
+        // Serve profiles: /uploads/profiles/** -> ./imageStorage/profiles/
+        registry.addResourceHandler("/uploads/profiles/**")
+                .addResourceLocations(profileLocation);
+
+        // Serve courses: /uploads/courses/** -> ./imageStorage/courses/
+        registry.addResourceHandler("/uploads/courses/**")
+                .addResourceLocations(courseLocation);
+
+        // Backward compatibility for /profiles/**
         registry.addResourceHandler("/profiles/**")
                 .addResourceLocations(profileLocation);
+
+        // Backward compatibility for /courses/**
+        registry.addResourceHandler("/courses/**")
+                .addResourceLocations(courseLocation);
     }
 
-    // Resolves a configured dir (relative or absolute) to an absolute "file:" resource
-    // location, the same way CertificateFileStorageService/EmployeeProfileService
-    // resolve it before writing — so serving and storing always agree.
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/api/**")
+                .allowedOrigins("http://localhost:3000")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+        
+        registry.addMapping("/uploads/**")
+                .allowedOrigins("http://localhost:3000")
+                .allowedMethods("GET", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
+
     private String toResourceLocation(String configuredDir) {
         Path resolved = Paths.get(configuredDir).toAbsolutePath().normalize();
         return "file:" + resolved + "/";

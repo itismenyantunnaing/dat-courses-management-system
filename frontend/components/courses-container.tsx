@@ -273,6 +273,9 @@ export function CoursesContainer({
     return { all, draft, active }
   }, [courses])
 
+  console.log("AAAAAAAAAAAAAa")
+  console.log(enrollments)
+
   // Get counts for each tab (learner)
   const getLearnerTabCounts = useMemo(() => {
     const all = courses.filter((c: Course) => c.status !== "draft").length

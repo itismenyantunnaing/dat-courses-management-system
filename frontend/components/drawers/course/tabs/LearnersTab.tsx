@@ -1,3 +1,4 @@
+// components/course/tabs/LearnersTab.tsx
 "use client"
 
 import React, {
@@ -172,7 +173,6 @@ export function LearnersTab({
       (employee.email || "").toLowerCase().includes(searchLower)
     )
   })
-
 
   filteredEnrollments = filteredEnrollments.sort((a, b) => {
     const groupA = a.courseGroupName || ""
@@ -494,6 +494,9 @@ export function LearnersTab({
                         </TableHead>
                       )}
                       <TableHead className="text-xs font-medium">
+                        Mock Test
+                      </TableHead>
+                      <TableHead className="text-xs font-medium">
                         Enrolled At
                       </TableHead>
                       {canManageLearners && (
@@ -566,7 +569,11 @@ export function LearnersTab({
                               </Badge>
                             </TableCell>
                           )}
-
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {employee.mockTestAttempt ?? 0}
+                            </Badge>
+                          </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {employee.enrolledAt
                               ? format(
@@ -658,6 +665,13 @@ export function LearnersTab({
                                   )}
                                 >
                                   {employee.courseGroupName || "-"}
+                                </Badge>
+                              </div>
+                              {/* Mock Test in Card View - View Only */}
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Mock Test:</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {employee.mockTestAttempt ?? 0}
                                 </Badge>
                               </div>
                             </div>

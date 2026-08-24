@@ -359,6 +359,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
 
     loadData()
   }, [])
+
   // Employee data
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
@@ -708,8 +709,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     { field: "name", header_name: "Name" },
     {
       field: "dept",
-      header_name:
-        "Name of the commissioning department *Select from the dropdown menu",
+      header_name: "Name of the commissioning department",
     },
     { field: "is_core_personnel", header_name: "Core personnel (FPT only)" },
     {
@@ -1218,40 +1218,40 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                 {/* ROW 4: Technical Individual Skills */}
                 <TableRow className="bg-muted/20">
                   {showTechnicalAbility &&
-                   orderedSkillsList.length > 0 &&
+                    orderedSkillsList.length > 0 &&
                     orderedSkillsList.map((skill) => {
-                        // Check if this skill was already used as a sub-category header in Row 3
-                        // A skill is shown as a sub-category header when its sub_category_name contains "empty"
-                        let isSkillNameHeader = false
+                      // Check if this skill was already used as a sub-category header in Row 3
+                      // A skill is shown as a sub-category header when its sub_category_name contains "empty"
+                      let isSkillNameHeader = false
 
-                        for (const [, skills] of Object.entries(
-                          dynamicSkillsByCategory
-                        )) {
-                          const foundSkill = skills.find(
-                            (s) => s.skill_id === skill.id
-                          )
-                          if (
-                            foundSkill &&
-                            foundSkill.sub_category_name.includes("empty")
-                          ) {
-                            isSkillNameHeader = true
-                            break
-                          }
-                        }
-
-                        // Skip if this skill was already rendered as a sub-category header in Row 3
-                        if (isSkillNameHeader) return null
-
-                        return (
-                          <BorderedTableHead
-                            key={skill.id}
-                            colSpan={2}
-                            className="text-center"
-                          >
-                            {translate(skill.name)}
-                          </BorderedTableHead>
+                      for (const [, skills] of Object.entries(
+                        dynamicSkillsByCategory
+                      )) {
+                        const foundSkill = skills.find(
+                          (s) => s.skill_id === skill.id
                         )
-                      })
+                        if (
+                          foundSkill &&
+                          foundSkill.sub_category_name.includes("empty")
+                        ) {
+                          isSkillNameHeader = true
+                          break
+                        }
+                      }
+
+                      // Skip if this skill was already rendered as a sub-category header in Row 3
+                      if (isSkillNameHeader) return null
+
+                      return (
+                        <BorderedTableHead
+                          key={skill.id}
+                          colSpan={2}
+                          className="text-center"
+                        >
+                          {translate(skill.name)}
+                        </BorderedTableHead>
+                      )
+                    })
                       .filter(Boolean)}
                 </TableRow>
 
@@ -1325,8 +1325,17 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         <BorderedTableCell className="font-medium">
                           {employee.name}
                         </BorderedTableCell>
+                        {/* Department Column - View Only */}
                         <BorderedTableCell>
-                          {translate(employee.dept_dir || "-")}
+                          {employee.dept_dir ? (
+                            <Badge variant="outline" className="text-xs">
+                              {employee.dept_dir}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              -
+                            </span>
+                          )}
                         </BorderedTableCell>
                         <BorderedTableCell>
                           <Badge
@@ -1584,7 +1593,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     }}
                     className={
                       currentPage === totalPages ||
-                        filteredEmployees.length === 0
+                      filteredEmployees.length === 0
                         ? "pointer-events-none opacity-50"
                         : ""
                     }

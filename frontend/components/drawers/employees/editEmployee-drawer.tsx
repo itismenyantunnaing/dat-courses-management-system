@@ -56,22 +56,30 @@ export function EditEmployeeDrawer({
     name: "",
     doorlog: "",
     dept_dat: "",
+    dept_dir: "",
+    position: "", // Added position
     team: "",
     emp_status: "active",
     role: "",
     email: "",
+    joinedDate: "",
   })
+
   const [originalFormData, setOriginalFormData] = useState<EmployeeFormData>({
     div: "",
     staff_id: "",
     name: "",
     doorlog: "",
     dept_dat: "",
+    dept_dir: "",
+    position: "", // Added position
     team: "",
     emp_status: "active",
     role: "",
     email: "",
+    joinedDate: "",
   })
+
 
   // Reset edit mode when drawer opens/closes
   useEffect(() => {
@@ -94,6 +102,8 @@ export function EditEmployeeDrawer({
         name: employee.name || "",
         doorlog: employee.doorlog || "",
         dept_dat: employee.dept_dat || "",
+        dept_dir: employee.dept_dir || "",
+        position: employee.position || "", // Added position
         team: employee.team || "",
         emp_status: employee.emp_status || "active",
         role: employee.role || "",
@@ -116,7 +126,6 @@ export function EditEmployeeDrawer({
       `✅ ${addItemType.charAt(0).toUpperCase() + addItemType.slice(1)} "${name}" added successfully!`
     )
 
-    // Auto-select the newly added item in the form
     if (addItemType === "division") {
       setFormData((prev) => ({ ...prev, div: name }))
       setOriginalFormData((prev) => ({ ...prev, div: name }))
@@ -154,25 +163,22 @@ export function EditEmployeeDrawer({
     try {
       // Map form data to Employee type - PRESERVE ALL ORIGINAL FIELDS
       const updatedEmployee: Employee = {
-        // Keep all original employee data
         ...employee!,
-        // Override with updated values from form
         id: formData.staff_id,
         name: formData.name,
         email: formData.email,
         doorlog: formData.doorlog,
-        position: "",
+        position: formData.position || "",
         emp_status: formData.emp_status,
         div_name: formData.div,
         dept_dat: formData.dept_dat,
+        dept_dir: formData.dept_dir || null,
         team: formData.team,
         role: formData.role,
         joinedDate: formData.joinedDate || "",
-        // Preserve these fields from original employee
         is_core_personnel: employee?.is_core_personnel || false,
         has_japan_business_trip: employee?.has_japan_business_trip || false,
         noti_setting: employee?.noti_setting || true,
-        dept_dir: employee?.dept_dir || null,
         dob: employee?.dob || "",
         profile_photo_path: employee?.profile_photo_path || "",
       }

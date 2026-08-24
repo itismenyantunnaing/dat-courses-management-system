@@ -1,6 +1,6 @@
 // store/employee_data_store.ts
 import { Employee_StoreType } from "../types"
-import { Employee } from "@/types/employee";
+import { Employee, EmployeeDepartmentPositionResponseDTO, EmployeeDepartmentPositionRequestDTO } from "@/types/employee";
 import { logout } from "@/app/actions/auth"
 import { getAuthToken } from "../mainStore";
 
@@ -26,6 +26,12 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
   department_options: [],
   team_options: [],
   role_options: [],
+  departmentDirOptions: [] as string[],
+  isLoadingDepartmentDirOptions: false,
+
+  employeeDepartmentPosition: null as EmployeeDepartmentPositionResponseDTO | null,
+  isLoadingDepartmentPosition: false,
+  isUpdatingDepartmentPosition: false,
 
   // Helper function to get token
   _getToken: () => {
@@ -912,5 +918,261 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       }));
       throw error;
     }
+  },
+
+  // GET /api/employees/{employeeId}/department-position - Fetch employee department and position
+  fetchEmployeeDepartmentPosition: async (employeeId: string) => {
+    set((state: Employee_StoreType) => ({
+      ...state,
+      isLoadingDepartmentPosition: true,
+      employeeDepartmentPosition: null
+    }))
+
+    try {
+      const token = getAuthToken()
+      const response = await fetch(`${apiUrl}/api/employees/${employeeId}/department-position`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Employee not found or no department position set
+          set((state: Employee_StoreType) => ({
+            ...state,
+            isLoadingDepartmentPosition: false,
+            employeeDepartmentPosition: null
+          }))
+          return null
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      set((state: Employee_StoreType) => ({
+        ...state,
+        isLoadingDepartmentPosition: false,
+        employeeDepartmentPosition: data
+      }))
+
+      return data
+
+    } catch (error) {
+      console.error('❌ Error fetching employee department position:', error)
+      set((state: Employee_StoreType) => ({
+        ...state,
+        isLoadingDepartmentPosition: false,
+        employeeDepartmentPosition: null
+      }))
+      return null
+    }
+  },
+
+  // PUT /api/employees/department-position - Update employee department and position
+  updateEmployeeDepartmentPosition: async (request: EmployeeDepartmentPositionRequestDTO) => {
+    set((state: Employee_StoreType) => ({
+      ...state,
+      isUpdatingDepartmentPosition: true
+    }))
+
+    try {
+      const token = getAuthToken()
+      const response = await fetch(`${apiUrl}/api/employees/department-position`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      })
+
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`
+        try {
+          const errorData = await response.text()
+          errorMessage = errorData || errorMessage
+        } catch (e) {
+          errorMessage = response.statusText || errorMessage
+        }
+
+        set((state: Employee_StoreType) => ({
+          ...state,
+          isUpdatingDepartmentPosition: false
+        }))
+
+        return {
+          success: false,
+          message: errorMessage,
+          data: null
+        }
+      }
+
+      const data = await response.json()
+
+      set((state: Employee_StoreType) => ({
+        ...state,
+        isUpdatingDepartmentPosition: false,
+        employeeDepartmentPosition: data
+      }))
+
+      return {
+        success: true,
+        message: 'Department and position updated successfully',
+        data: data
+      }
+
+    } catch (error) {
+      console.error('❌ Error updating employee department position:', error)
+      set((state: Employee_StoreType) => ({
+        ...state,
+        isUpdatingDepartmentPosition: false
+      }))
+
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update department and position',
+        data: null
+      }
+    }
+  },
+
+  // PUT /api/employees/department-position/bulk - Bulk update employee department/position/core-personnel/Japan-trip
+  bulkUpdateEmployeeDepartmentPosition: async (requests: EmployeeDepartmentPositionRequestDTO[]) => {
+    if (!requests || requests.length === 0) {
+      return {
+        success: true,
+        message: 'No department updates to process',
+        data: [] as EmployeeDepartmentPositionResponseDTO[]
+      }
+    }
+
+    set((state: Employee_StoreType) => ({
+      ...state,
+      isUpdatingDepartmentPosition: true
+    }))
+
+    try {
+      const token = getAuthToken()
+      const response = await fetch(`${apiUrl}/api/employees/department-position/bulk`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requests),
+      })
+
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`
+        try {
+          const errorData = await response.text()
+          errorMessage = errorData || errorMessage
+        } catch (e) {
+          errorMessage = response.statusText || errorMessage
+        }
+
+        if (response.status === 401) {
+          await logout()
+        }
+
+        set((state: Employee_StoreType) => ({
+          ...state,
+          isUpdatingDepartmentPosition: false
+        }))
+
+        return {
+          success: false,
+          message: errorMessage,
+          data: [] as EmployeeDepartmentPositionResponseDTO[]
+        }
+      }
+
+      const data: EmployeeDepartmentPositionResponseDTO[] = await response.json()
+
+      set((state: Employee_StoreType) => ({
+        ...state,
+        isUpdatingDepartmentPosition: false
+      }))
+
+      return {
+        success: true,
+        message: `${data.length} department/position record(s) updated successfully`,
+        data: data
+      }
+
+    } catch (error) {
+      console.error('❌ Error bulk updating employee department position:', error)
+      set((state: Employee_StoreType) => ({
+        ...state,
+        isUpdatingDepartmentPosition: false
+      }))
+
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to bulk update department and position',
+        data: [] as EmployeeDepartmentPositionResponseDTO[]
+      }
+    }
+  },
+
+  // GET /api/employees/dir-departments - Fetch all department directory names
+  fetchDepartmentDirOptions: async () => {
+    // Skip if already loaded
+    if (get().departmentDirOptions.length > 0) {
+      return
+    }
+
+    set((state: Employee_StoreType) => ({
+      ...state,
+      isLoadingDepartmentDirOptions: true
+    }))
+
+    try {
+      const token = getAuthToken()
+      const response = await fetch(`${apiUrl}/api/employees/dir-departments`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      set((state: Employee_StoreType) => ({
+        ...state,
+        departmentDirOptions: data || [],
+        isLoadingDepartmentDirOptions: false
+      }))
+
+      return data
+
+    } catch (error) {
+      console.error('❌ Error fetching department directory options:', error)
+      set((state: Employee_StoreType) => ({
+        ...state,
+        departmentDirOptions: [],
+        isLoadingDepartmentDirOptions: false
+      }))
+      return []
+    }
+  },
+  
+
+
+  // Clear employee department position state
+  clearEmployeeDepartmentPosition: () => {
+    set((state: Employee_StoreType) => ({
+      ...state,
+      employeeDepartmentPosition: null,
+      isLoadingDepartmentPosition: false,
+      isUpdatingDepartmentPosition: false
+    }))
   },
 })

@@ -16,9 +16,9 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class CertificateFileStorageService {
 
-    @Value("${file.upload-dir:/data/uploads/certificates}")
+    @Value("${file.upload-dir:./imageStorage/certificates}")
     private String uploadDir;
-    
+
     private Path uploadPath;
 
     @PostConstruct

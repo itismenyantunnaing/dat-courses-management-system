@@ -47,6 +47,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         ...enrollment,
         courseId: parseInt(courseId.toString())
       }))
+      
 
       // Store the enrollments in the store state
       set((state: Course_StoreType) => ({
@@ -414,6 +415,71 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
     } catch (error) {
       console.error('Error getting enrollment counts:', error)
       return { total: 0, approved: 0, pending: 0, cancelled: 0, completed: 0 }
+    }
+  },
+
+
+  // mock test updated through enrollment update endpoint
+  updateMockTest: async (courseId: number | string, enrollmentId: number, mockTestAttempt: number) => {
+    set((state: Course_StoreType) => ({
+      ...state,
+      isUpdatingEnrollment: true,
+      enrollmentError: null
+    }))
+
+    try {
+      const headers = get().getAuthHeaders()
+
+      const response = await fetch(`${apiUrl}/api/courses/${courseId}/enrollments/${enrollmentId}`, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify({ mockTestAttempt }),
+      })
+
+      let result
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        result = await response.json()
+      } else {
+        const text = await response.text()
+        result = { message: text || `Error: ${response.status} ${response.statusText}` }
+      }
+
+      if (!response.ok) {
+        set((state: Course_StoreType) => ({
+          ...state,
+          isUpdatingEnrollment: false,
+          enrollmentError: result.message || 'Failed to update mock test'
+        }))
+        throw new Error(result.message || 'Failed to update mock test')
+      }
+
+
+
+      set((state: Course_StoreType) => ({
+        ...state,
+        isUpdatingEnrollment: false,
+        enrollmentError: null
+      }))
+
+      return {
+        success: true,
+        message: result.message || 'Mock test updated successfully',
+        data: result
+      }
+
+    } catch (error) {
+      console.error('❌ Error updating mock test:', error)
+      set((state: Course_StoreType) => ({
+        ...state,
+        isUpdatingEnrollment: false,
+        enrollmentError: error instanceof Error ? error.message : 'Failed to update mock test'
+      }))
+
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update mock test'
+      }
     }
   },
 

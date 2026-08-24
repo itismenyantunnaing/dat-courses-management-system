@@ -203,6 +203,7 @@ public class CourseEnrollmentService {
                                                                 ? enrollment.getCourseGroup().getGroupName()
                                                                 : null)
                                 .enrollmentStatus(enrollment.getEnrollmentStatus())
+                                .mockTestAttempt(enrollment.getMockTestAttempt())
                                 .enrolledAt(enrollment.getEnrolledAt())
                                 // === ADD GROUP CHANGE FIELDS ===
                                 .groupChangeStatus(enrollment.getGroupChangeStatus() != null 

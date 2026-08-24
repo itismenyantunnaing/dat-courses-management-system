@@ -29,6 +29,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { exportTabs, VISIBLE_TABS_COUNT } from "../nav/tabs-config"
 import { mainStore } from "@/store/mainStore"
+import { excelExportStore } from "@/store/excelExportStore"
 
 // Create an "All" tab configuration
 const allTab = {
@@ -61,6 +62,8 @@ export function ExportDialog({
   const [activeExportTab, setActiveExportTab] = useState("")
   const [isExporting, setIsExporting] = useState(false)
   const [exportLanguage, setExportLanguage] = useState<"eng" | "japan">("eng")
+  const [selectedCourse, setSelectedCourse] = useState<string>("")
+  const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false)
 
   const {
     fetch_EmployeeData,
@@ -73,7 +76,16 @@ export function ExportDialog({
     fetch_languageSkillData,
     fetch_managementScoreData,
     fetch_EmployeeJapaneseLevel,
+    fetchAll_CourseData,
+    courses
   } = mainStore()
+
+  // Fetch courses when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchAll_CourseData()
+    }
+  }, [open, fetchAll_CourseData])
 
   // Get the filtered tabs based on label prop
   const filteredTabs = useMemo(() => {
@@ -113,6 +125,18 @@ export function ExportDialog({
     return currentTabData?.id === "skills"
   }, [currentTabData])
 
+  // Check if current tab is Self-Study Progress
+  const isSelfStudyTab = useMemo(() => {
+    return currentTabData?.id === "self_study_progress_report"
+  }, [currentTabData])
+
+  // Reset selected course when switching away from self-study tab
+  useEffect(() => {
+    if (!isSelfStudyTab) {
+      setSelectedCourse("")
+    }
+  }, [isSelfStudyTab])
+
   // Reset when dialog opens - set initial tab
   useEffect(() => {
     if (open) {
@@ -125,6 +149,8 @@ export function ExportDialog({
       setIsExporting(false)
       // Reset language to English when dialog opens
       setExportLanguage("eng")
+      // Reset selected course
+      setSelectedCourse("")
     }
   }, [open, showTabs, filteredTabs])
 
@@ -162,6 +188,9 @@ export function ExportDialog({
               fetch_TargetDates(),
             ])
             break
+          case "self_study_progress_report":
+            await fetchAll_CourseData()
+            break
           default:
             break
         }
@@ -171,11 +200,17 @@ export function ExportDialog({
     }
 
     fetchDataForTab()
-  }, [open, currentTabData?.id])
+  }, [open, currentTabData?.id, fetchAll_CourseData])
 
   const handleExportClick = useCallback(
     async (format: string) => {
       if (!currentTabData) return
+
+      // For self-study tab, check if course is selected
+      if (isSelfStudyTab && !selectedCourse) {
+        alert("Please select a course before exporting.")
+        return
+      }
 
       setIsExporting(true)
 
@@ -212,8 +247,12 @@ export function ExportDialog({
             await currentTabData.onExport(format)
             break
 
-          default:
+          case "self_study_progress_report":
+            // Pass the selected course to the export function
+            await currentTabData.onExport(format, selectedCourse)
+            break
 
+          default:
             await currentTabData.onExport(format)
         }
 
@@ -227,7 +266,7 @@ export function ExportDialog({
         setIsExporting(false)
       }
     },
-    [currentTabData, onOpenChange, exportLanguage]
+    [currentTabData, onOpenChange, exportLanguage, selectedCourse, isSelfStudyTab]
   )
 
   const handleCancel = useCallback(() => {
@@ -237,15 +276,105 @@ export function ExportDialog({
   // Check if PDF should be hidden for certain tabs
   const shouldHidePDF = useMemo(() => {
     const tabId = currentTabData?.id
-    return tabId === "current_target_data" || tabId === "skills"
+    return tabId === "current_target_data" || 
+           tabId === "skills" ||
+           tabId === "self_study_progress_report" || 
+           currentTabData?.id === "exam_progress_report"
   }, [currentTabData])
+
+  // Check if CSV should be hidden for self-study
+  const shouldHideCSV = useMemo(() => {
+    return currentTabData?.id === "self_study_progress_report" || currentTabData?.id === "exam_progress_report"
+  }, [currentTabData])
+
+  // Get course options for dropdown - FILTER OUT "trainer" courses
+  const courseOptions = useMemo(() => {
+    if (!courses || !Array.isArray(courses)) return []
+    
+    // Filter courses where courseType is NOT "trainer"
+    // Also ensure we only include courses with self-study data
+    const filteredCourses = courses.filter((course: any) => {
+      const courseType = course.courseType?.toLowerCase() || ""
+      // Exclude "trainer" courses
+      if (courseType === "trainer") return false
+      
+      // Optional: Only include courses that have self-study data
+      // You can add additional filters here if needed
+      // For example: course.self_study_sessions?.length > 0
+      
+      return true
+    })
+    
+    return filteredCourses.map((course: any) => ({
+      id: course.id || course._id,
+      name: course.title || course.name || "Unnamed Course"
+    }))
+  }, [courses])
 
   // Export buttons component
   const ExportButtons = () => (
     <div className="space-y-3">
+      {/* Course Selection - Only show for Self-Study Progress tab */}
+      {isSelfStudyTab && (
+        <div className="mb-3">
+          <label className="text-sm font-medium text-muted-foreground block mb-2">
+            Select Course:
+          </label>
+          <DropdownMenu 
+            open={isCourseDropdownOpen} 
+            onOpenChange={setIsCourseDropdownOpen}
+            modal={false}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-between"
+                disabled={courseOptions.length === 0}
+              >
+                {selectedCourse 
+                  ? courseOptions.find(c => c.id === selectedCourse)?.name || "Select Course"
+                  : "Select a course..."}
+                <span className="ml-2">▼</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              align="start" 
+              className="w-full min-w-[200px] max-h-[200px] overflow-y-auto"
+            >
+              {courseOptions.length === 0 ? (
+                <DropdownMenuItem disabled>
+                  No self-study courses available
+                </DropdownMenuItem>
+              ) : (
+                courseOptions.map((course) => (
+                  <DropdownMenuItem
+                    key={course.id}
+                    onSelect={() => {
+                      setSelectedCourse(course.id)
+                      setIsCourseDropdownOpen(false)
+                    }}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{course.name}</span>
+                    {selectedCourse === course.id && (
+                      <span className="h-4 w-4 text-primary">✓</span>
+                    )}
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {courseOptions.length === 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              No self-study courses found. Please create a self-study course first.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Language Toggle - Only show for Skills tab */}
       {isSkillsTab && (
-        <div className="mb-3 flex items-center gap-2 rounded-lg  p-2">
+        <div className="mb-3 flex items-center gap-2 rounded-lg p-2">
           <span className="text-sm font-medium text-muted-foreground">
             Export Language:
           </span>
@@ -274,7 +403,7 @@ export function ExportDialog({
         variant="outline"
         className="h-12 w-full justify-start gap-3 transition-colors hover:border-green-200 hover:bg-green-50"
         onClick={() => handleExportClick("excel")}
-        disabled={isExporting}
+        disabled={isExporting || (isSelfStudyTab && !selectedCourse)}
       >
         <HugeiconsIcon
           icon={Xls01Icon}
@@ -284,19 +413,21 @@ export function ExportDialog({
         <span>{isExporting ? "Exporting..." : "Export to Excel"}</span>
       </Button>
 
-      <Button
-        variant="outline"
-        className="h-12 w-full justify-start gap-3 transition-colors hover:border-blue-200 hover:bg-blue-50"
-        onClick={() => handleExportClick("csv")}
-        disabled={isExporting}
-      >
-        <HugeiconsIcon
-          icon={Csv01Icon}
-          strokeWidth={2}
-          className="size-5 text-blue-600"
-        />
-        <span>{isExporting ? "Exporting..." : "Export to CSV"}</span>
-      </Button>
+      {!shouldHideCSV && (
+        <Button
+          variant="outline"
+          className="h-12 w-full justify-start gap-3 transition-colors hover:border-blue-200 hover:bg-blue-50"
+          onClick={() => handleExportClick("csv")}
+          disabled={isExporting}
+        >
+          <HugeiconsIcon
+            icon={Csv01Icon}
+            strokeWidth={2}
+            className="size-5 text-blue-600"
+          />
+          <span>{isExporting ? "Exporting..." : "Export to CSV"}</span>
+        </Button>
+      )}
 
       {!shouldHidePDF && (
         <Button
@@ -415,6 +546,10 @@ export function ExportDialog({
                       if (tab.id !== "skills") {
                         setExportLanguage("eng")
                       }
+                      // Reset selected course when switching away from self-study tab
+                      if (tab.id !== "self_study_progress_report") {
+                        setSelectedCourse("")
+                      }
                     }}
                   >
                     {tab.label}
@@ -448,6 +583,10 @@ export function ExportDialog({
                         // Reset language when switching away from skills tab
                         if (tab.id !== "skills") {
                           setExportLanguage("eng")
+                        }
+                        // Reset selected course when switching away from self-study tab
+                        if (tab.id !== "self_study_progress_report") {
+                          setSelectedCourse("")
                         }
                       }}
                       className="flex items-center justify-between"

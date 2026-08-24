@@ -14,7 +14,7 @@ public class DepartmentDir {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
+    @Column(nullable = false,unique = true)
     private String deptName;
 
     private Boolean isDeleted = false;

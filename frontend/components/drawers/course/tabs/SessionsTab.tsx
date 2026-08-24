@@ -19,6 +19,7 @@ import {
   Alert01Icon,
   SaveIcon,
   UserGroupIcon,
+  Edit03Icon,
 } from "@hugeicons/core-free-icons"
 import { Course, isJLPTType } from "@/types/course"
 import { format } from "date-fns"
@@ -65,6 +66,7 @@ export function SessionsTab({
     fetch_studyProgress,
     add_studyProgress,
     update_studyProgress,
+    updateMockTest,
   } = mainStore()
 
   const [savedProgress, setSavedProgress] = useState<Record<string, any>>({})
@@ -72,6 +74,8 @@ export function SessionsTab({
   const [savingSessions, setSavingSessions] = useState<Record<string, boolean>>(
     {}
   )
+  const [mockTestAttempt, setMockTestAttempt] = useState<number>(0)
+  const [isSavingMockTest, setIsSavingMockTest] = useState(false)
 
   const TESTING_DATE = new Date()
   // const TESTING_DATE = new Date("2026-08-4")
@@ -109,6 +113,13 @@ export function SessionsTab({
       fetch_studyProgress(course.id)
     }
   }, [course.id, isUserEnrolled, course.courseType])
+
+  // Initialize mockTestAttempt from currentUserEnrollment
+  useEffect(() => {
+    if (currentUserEnrollment) {
+      setMockTestAttempt(currentUserEnrollment.mockTestAttempt || 0)
+    }
+  }, [currentUserEnrollment])
 
   useEffect(() => {
     if (
@@ -257,8 +268,7 @@ export function SessionsTab({
       if (result.success) {
         await fetch_studyProgress(course.id)
         alert(
-          `Progress saved successfully for Session ${
-            session.session_no || session.sessionNo || ""
+          `Progress saved successfully for Session ${session.session_no || session.sessionNo || ""
           }`
         )
 
@@ -278,6 +288,44 @@ export function SessionsTab({
       }))
     }
   }
+
+ const handleSaveMockTest = async () => {
+  if (!currentUserEnrollment) {
+    alert("You are not enrolled in this course")
+    return
+  }
+
+  if (mockTestAttempt < 0) {
+    alert("Mock test attempt cannot be negative")
+    return
+  }
+
+  setIsSavingMockTest(true)
+  try {
+    const result = await updateMockTest(
+      course.id,
+      currentUserEnrollment.id,
+      mockTestAttempt
+    )
+
+    if (result.success) {
+      alert("Mock test attempt updated successfully!")
+      // No refetch needed - the mockTestAttempt state already has the updated value
+      // The UI will stay consistent with the local state
+    } else {
+      alert(result.message || "Failed to update mock test attempt")
+      // Revert to previous value on error
+      setMockTestAttempt(currentUserEnrollment.mockTestAttempt || 0)
+    }
+  } catch (error) {
+    console.error("Error updating mock test:", error)
+    alert("An error occurred while updating mock test attempt")
+    // Revert to previous value on error
+    setMockTestAttempt(currentUserEnrollment.mockTestAttempt || 0)
+  } finally {
+    setIsSavingMockTest(false)
+  }
+}
 
   const firstFutureSessionIndex = React.useMemo(() => {
     const sessionsList =
@@ -311,10 +359,65 @@ export function SessionsTab({
       ? activeEmployees.filter((employee) => employee.teamName === profile.team)
       : activeEmployees
 
+  // Check if user can edit mock test (only learners can edit)
+  const canEditMockTest = isLearner && isUserEnrolled && currentUserEnrollment
+
   return (
     <TabsContent value="sessions" className="pt-4">
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Sessions</h3>
+
+        {/* Mock Test Attempt - Show above sessions (Only for learners) */}
+        {isUserEnrolled && isLearner && (
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium">Mock Test Attempt</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Track your mock test progress for this course
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium">Attempt:</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={mockTestAttempt}
+                      onChange={(e) => setMockTestAttempt(parseInt(e.target.value) || 0)}
+                      className="w-20 h-9"
+                      disabled={isSavingMockTest}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveMockTest}
+                    disabled={isSavingMockTest}
+                    className="gap-2"
+                  >
+                    {isSavingMockTest ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <HugeiconsIcon
+                          icon={SaveIcon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
+                        Save
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sessionsList.map((session, index) => {
             const isJLPT = isJLPTType(course.selfStudyType as any)
@@ -352,13 +455,13 @@ export function SessionsTab({
 
             const overallProgress = hasProgress
               ? Math.round(
-                  ((progress?.kanji_progress_percent || 0) +
-                    (progress?.vocabulary_progress_percent || 0) +
-                    (progress?.grammar_progress_percent || 0) +
-                    (progress?.reading_progress_percent || 0) +
-                    (progress?.listening_progress_percent || 0)) /
-                    5
-                )
+                ((progress?.kanji_progress_percent || 0) +
+                  (progress?.vocabulary_progress_percent || 0) +
+                  (progress?.grammar_progress_percent || 0) +
+                  (progress?.reading_progress_percent || 0) +
+                  (progress?.listening_progress_percent || 0)) /
+                5
+              )
               : 0
 
             let statusBadge = null
@@ -389,7 +492,7 @@ export function SessionsTab({
                   Overdue by{" "}
                   {Math.ceil(
                     (TESTING_DATE.getTime() - new Date(sessionDate).getTime()) /
-                      (1000 * 60 * 60 * 24)
+                    (1000 * 60 * 60 * 24)
                   )}{" "}
                   days
                 </Badge>
@@ -417,8 +520,8 @@ export function SessionsTab({
                 className={cn(
                   "flex flex-col overflow-hidden border-muted bg-muted/5 transition-colors",
                   isFutureSession &&
-                    index !== firstFutureSessionIndex &&
-                    "opacity-70",
+                  index !== firstFutureSessionIndex &&
+                  "opacity-70",
                   isOverdue && !isCompleted && "border-red-200 bg-red-50/5"
                 )}
               >
@@ -458,9 +561,9 @@ export function SessionsTab({
                           >
                             {sessionDate
                               ? format(
-                                  new Date(sessionDate),
-                                  "MMM d, yyyy (EEE)"
-                                )
+                                new Date(sessionDate),
+                                "MMM d, yyyy (EEE)"
+                              )
                               : "Dynamic based on enrollment"}
                           </span>
                         </>
@@ -882,82 +985,6 @@ export function SessionsTab({
             )
           })}
         </div>
-
-        {/* Enrolled Employees */}
-        {/* {filteredEmployees.length > 0 && (
-          <div className="mt-8">
-            <Card>
-              <CardHeader className="bg-muted/30 pb-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="flex items-center gap-2 text-lg font-semibold">
-                    <HugeiconsIcon
-                      icon={UserGroupIcon}
-                      strokeWidth={1.5}
-                      className="h-5 w-5"
-                    />
-                    Enrolled Employees ({filteredEmployees.length})
-                  </h4>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="text-xs">
-                      {
-                        filteredEmployees.filter(
-                          (e) => e.enrollmentStatus === "APPROVED"
-                        ).length
-                      }{" "}
-                      Approved
-                    </Badge>
-                    {isApprover && profile?.team && (
-                      <Badge
-                        variant="outline"
-                        className="border-blue-200 bg-blue-50 text-[10px] text-blue-600"
-                      >
-                        Team: {profile.team}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredEmployees.map((employee) => (
-                    <div
-                      key={employee.id}
-                      className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
-                    >
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
-                        <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
-                          {getInitials(employee.employeeName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className="truncate text-sm font-medium"
-                          title={employee.employeeName}
-                        >
-                          {employee.employeeName}
-                        </p>
-                        <p
-                          className="truncate text-xs text-muted-foreground"
-                          title={`${employee.departmentName} • ${employee.teamName}`}
-                        >
-                          {truncateText(employee.departmentName, 25)}
-                          {employee.teamName &&
-                            ` • ${truncateText(employee.teamName, 20)}`}
-                        </p>
-                        <div className="mt-1">
-                          <Badge variant="outline" className="text-[10px]">
-                            {employee.enrollmentStatus}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )} */}
       </div>
     </TabsContent>
   )

@@ -139,9 +139,7 @@ export function InformationTab({
 
   const canViewAllGroups = isAdmin || isApprover
 
-  // const TESTING_DATE = new Date()
-  const TESTING_DATE = new Date("2026-08-30") 
-
+  const TESTING_DATE = new Date()
   const [showFullLearners, setShowFullLearners] = useState(false)
 
   // Session state
@@ -1111,7 +1109,7 @@ export function InformationTab({
 
                 return (
                   <Card
-                    key={sessionId || index}
+                    key={index}
                     className={cn(
                       "flex flex-col overflow-hidden border-muted bg-muted/5 transition-colors",
                       isFutureSession &&

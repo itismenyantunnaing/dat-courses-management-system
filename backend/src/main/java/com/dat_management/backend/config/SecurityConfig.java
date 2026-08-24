@@ -74,19 +74,19 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // ✅ Add CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Add CORS
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        //  Allow WebSocket endpoints
+                        // Allow WebSocket endpoints
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/ws/info/**").permitAll()
                         .requestMatchers("/ws/websocket/**").permitAll()
 
-                        //  Allow SockJS endpoints
+                        // Allow SockJS endpoints
                         .requestMatchers("/sockjs/**").permitAll()
 
                         // Your existing API endpoints
@@ -101,9 +101,11 @@ public class SecurityConfig {
                                 "/api/employees/",
                                 "/courses/**",
                                 "/uploads/certificates/**",
+                                "/uploads/profiles/**",
+                                "/uploads/courses/**",
                                 "/profiles/**",
-                                "/api/**"
-                        ).permitAll()
+                                "/api/**")
+                        .permitAll()
 
                         // Dashboard endpoints
                         .requestMatchers("/dashboard/admin").hasAnyRole("Admin", "PMO")

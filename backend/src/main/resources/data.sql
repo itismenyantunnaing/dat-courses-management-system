@@ -13,6 +13,21 @@ VALUES
     (1, 'GMAIL', 5, 'smtp.gmail.com', NULL, 587, NULL, 23, 5,
      'smtp.office365.com', NULL, 587, NULL, 234, NULL);
 
+INSERT IGNORE INTO department_dir (dept_name,is_deleted) VALUES 
+('Retail Front System Department',false),
+('DX Systems Department',false),
+('Financial Front Systems Department',false),
+('Retail Core Systems Department 1',false),
+('Wholesale Core Systems Department',false),
+('Core Systems Platform Department',false),
+('Financial Systems Department',false),
+('Asset Management Platform Department',false),
+('Health Tech Platform Division 1',false),
+('Fundamental Technology Division 1',false),
+('Fundamental Technology Department II',false),
+('DX Promotion Department',false),
+('Digital Solutions Research and Development Department',false);
+
 INSERT IGNORE INTO employees (
     id,
     name,

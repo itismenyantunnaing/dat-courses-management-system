@@ -9,6 +9,9 @@ import com.dat_management.backend.repository.EmployeeRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 @Service
@@ -97,5 +100,9 @@ public class EmployeeDepartmentPositionService {
                         employee.getHasJapanBusinessTrip()
                 )
                 .build();
+    }
+
+    public List<String> getAllDepartmentName(){
+        return departmentDirRepository.findAllDepartmentNames();
     }
 }
