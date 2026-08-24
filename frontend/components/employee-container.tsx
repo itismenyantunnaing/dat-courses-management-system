@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { resolveUploadUrl } from "@/lib/utils"
 import {
   Table,
@@ -231,6 +231,14 @@ const TruncatedText = ({
   )
 }
 
+// Helper function to get color based on years of experience
+const getYearColor = (years: number) => {
+  if (years >= 5) return "text-green-600"
+  if (years >= 3) return "text-blue-600"
+  if (years >= 1) return "text-yellow-600"
+  return "text-gray-500"
+}
+
 export function EmployeeContainer({
   searchPlaceholder = "Search employees...",
 }) {
@@ -313,7 +321,23 @@ export function EmployeeContainer({
     teams,
     fetchAll_CourseData,
     courses,
+    fetch_SkillData,
+    skillData,
   } = mainStore()
+
+  // Fetch skills if not already loaded
+  useEffect(() => {
+    const loadSkills = async () => {
+      try {
+        if (!skillData || skillData.length === 0) {
+          await fetch_SkillData()
+        }
+      } catch (error) {
+        console.error("Error loading skills:", error)
+      }
+    }
+    loadSkills()
+  }, [fetch_SkillData, skillData])
 
   useEffect(() => {
     const loadData = async () => {
@@ -913,6 +937,12 @@ export function EmployeeContainer({
     filteredEmployees.length > 0 &&
     filteredEmployees.every((employee) => rowSelection[employee.id.toString()])
 
+  // Get skills for an employee
+  const getEmployeeSkills = (employeeId: string) => {
+    if (!skillData || skillData.length === 0) return []
+    return skillData.filter((skill: any) => skill.employeeId === employeeId)
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -929,6 +959,11 @@ export function EmployeeContainer({
   // Render employee card
   const renderEmployeeCard = (employee: Employee, index: number) => {
     const isSelected = !!rowSelection[employee.id.toString()]
+    const employeeSkills = getEmployeeSkills(employee.id)
+    // Get top 3 skills to display (by years of experience)
+    const topSkills = [...employeeSkills]
+      .sort((a, b) => (b.yearsOfExperience || 0) - (a.yearsOfExperience || 0))
+      .slice(0, 3)
 
     // Handle individual employee delete
     const handleDeleteEmployee = (e: React.MouseEvent) => {
@@ -991,6 +1026,18 @@ export function EmployeeContainer({
                 <div className="col-span-3 text-muted-foreground">
                   {employee.email || "-"}
                 </div>
+                <div className="col-span-2">
+                  <span className="block text-xs text-muted-foreground uppercase">
+                    Joined Date
+                  </span>
+                  {employee.joinedDate || "-"}
+                </div>
+                <div className="col-span-2">
+                  <span className="block text-xs text-muted-foreground uppercase">
+                    Service Year
+                  </span>
+                  {employee.serviceYear || "-"}
+                </div>
                 <div className="absolute top-0 right-3">
                   <Badge className={getStatusBadge(employee.emp_status)}>
                     {statusLabels[
@@ -1014,6 +1061,56 @@ export function EmployeeContainer({
                   </Button>
                 </div>
               </div>
+
+              {/* Skills Section */}
+              {topSkills.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-border/50">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground uppercase mr-1">
+                      Skills:
+                    </span>
+                    {topSkills.map((skill, idx) => (
+                      <Tooltip key={skill.id || idx}>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-xs font-normal px-2 py-0 h-5 cursor-help",
+                              getYearColor(skill.yearsOfExperience || 0)
+                            )}
+                          >
+                            {skill.skillName}
+                            <span className="ml-1 text-[10px] text-muted-foreground">
+                              {skill.yearsOfExperience?.toFixed(1) || "0"}y
+                            </span>
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <div className="space-y-1 text-xs">
+                            <p><span className="font-medium">Skill:</span> {skill.skillName}</p>
+                            <p><span className="font-medium">Years:</span> {skill.yearsOfExperience?.toFixed(1) || "0"}</p>
+                            <p><span className="font-medium">Level:</span> {skill.experienceLevel || "N/A"}</p>
+                            {skill.categoryName && !skill.categoryName.includes("empty") && (
+                              <p><span className="font-medium">Category:</span> {skill.categoryName}</p>
+                            )}
+                            {skill.subCategoryName && !skill.subCategoryName.includes("empty") && (
+                              <p><span className="font-medium">Sub-Category:</span> {skill.subCategoryName}</p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                    {employeeSkills.length > 3 && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-normal px-2 py-0 h-5"
+                      >
+                        +{employeeSkills.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

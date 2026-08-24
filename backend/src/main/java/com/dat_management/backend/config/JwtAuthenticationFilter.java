@@ -33,15 +33,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/auth/test-mail",
             "/api/auth/verify-otp",
             "/api/auth/reset-password",
-            // "/api/employee-japanese-profiles",
-            // "/api/target-terms/**",
+            "/security/api/auth",
+            "/security/api/auth/login",
+            "/security/api/auth/forgot-password",
+            "/security/api/auth/verify-otp",
+            "/security/api/auth/reset-password",
             "/",
-            // "/api/**",
             "/error"
     );
 
     private final JwtService jwtService;
-
     private final UserDetailsServiceImpl userDetailsService;
 
     @Override
@@ -110,10 +111,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean shouldSkipAuthentication(String path) {
-        return PUBLIC_PATHS.contains(path) ||
-                path.startsWith("/css/") ||
+        // Check exact matches
+        if (PUBLIC_PATHS.contains(path)) {
+            return true;
+        }
+        
+        // Check path prefixes and patterns
+        return path.startsWith("/css/") ||
                 path.startsWith("/js/") ||
-                path.startsWith("/images/");
+                path.startsWith("/images/") ||
+                // 🔥 ADD THESE TO CATCH ANY AUTH PATHS
+                path.startsWith("/security/api/auth/") ||
+                path.startsWith("/api/auth/") ||
+                path.endsWith("/login") ||
+                path.endsWith("/forgot-password") ||
+                path.endsWith("/verify-otp") ||
+                path.endsWith("/reset-password");
     }
 
     private String parseJwt(HttpServletRequest request) {

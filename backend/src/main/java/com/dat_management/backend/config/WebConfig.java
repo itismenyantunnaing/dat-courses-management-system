@@ -21,6 +21,10 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${file.course-upload-dir:./imageStorage/courses}")
     private String courseUploadDir;
 
+    // 🔥 ADD THIS - Read allowed origins from properties
+    @Value("${app.cors.allowed-origins:http://localhost:3000}")
+    private String[] allowedOrigins;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String certificateLocation = toResourceLocation(certificateUploadDir);
@@ -55,14 +59,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // 🔥 NOW USING THE PROPERTY INSTEAD OF HARDCODED VALUE
         registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:3000")
+                .allowedOrigins(allowedOrigins)  // ← Changed from hardcoded string
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
         
         registry.addMapping("/uploads/**")
-                .allowedOrigins("http://localhost:3000")
+                .allowedOrigins(allowedOrigins)  // ← Changed from hardcoded string
                 .allowedMethods("GET", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

@@ -12,6 +12,7 @@
 	<artifactId>backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>backend</name>
+	<packaging>war</packaging>
 	<description/>
 	<url/>
 	<licenses>

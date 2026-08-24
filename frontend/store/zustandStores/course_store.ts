@@ -869,7 +869,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
 
   initializeCourses: () => {
     try {
-      set((state: Course_StoreType) => {
+      set((state: Course_StoreType) => {     
         if (state.courses.length === 0) {
           return state
         }

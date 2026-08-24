@@ -199,6 +199,7 @@ export function FeedbackContainer() {
   const isAdminOrApprover = isAdmin || isApprover
   const canCreateFeedback = isLearner
   const canEditFeedback = isLearner
+  const canDeleteFeedback = isAdmin
   const canFilter = isAdmin || isApprover // Only admin and approver can filter
 
   // Get the appropriate icon based on role
@@ -843,6 +844,7 @@ export function FeedbackContainer() {
                           formatTime={formatTime}
                           getInitials={getInitials}
                           canEdit={canEditFeedback}
+                          canDelete={canDeleteFeedback}
                         />
                       ))}
                     </div>

@@ -1,0 +1,30 @@
+for pm2
+
+
+--------------->  pm2 start node_modules/next/dist/bin/next —name "next-app" — start
+
+--------------->  pm2 delete all
+
+
+
+
+for nginx
+
+
+// That command does not start Nginx. It only validates the configuration.
+
+--------------->  .\nginx.exe -t
+
+
+
+
+// It will probably return immediately to the prompt. That's normal on Windows.
+
+--------------->  .\nginx.exe
+
+
+
+
+// Stop all remaining Nginx processes
+
+--------------->  taskkill /F /IM nginx.exe

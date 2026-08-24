@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { ClockIcon, Delete02Icon, Edit03Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { FeedbackCategory } from "@/types/feedback"
+import { mainStore } from "@/store/mainStore"
 
 interface FeedbackCardProps {
   feedback: {
@@ -29,6 +30,7 @@ interface FeedbackCardProps {
   formatTime: (dateString: string) => string
   getInitials: (name: string) => string
   canEdit?: boolean
+  canDelete?: boolean
 }
 
 // Category color mapping
@@ -67,7 +69,10 @@ export function FeedbackCard({
   formatTime,
   getInitials,
   canEdit = false,
+  canDelete = false,
 }: FeedbackCardProps) {
+  const { profile } = mainStore()
+
   // Get the time to display - use updatedAt if exists, otherwise createdAt
   const getDisplayTime = () => {
     if (feedback.updatedAt) {
@@ -173,21 +178,24 @@ export function FeedbackCard({
               />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(e, feedback.id)
-            }}
-          >
-            <HugeiconsIcon
-              icon={Delete02Icon}
-              strokeWidth={2}
-              className="h-3.5 w-3.5"
-            />
-          </Button>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(e, feedback.id)
+              }}
+            >
+              <HugeiconsIcon
+                icon={Delete02Icon}
+                strokeWidth={2}
+                className="h-3.5 w-3.5"
+              />
+            </Button>
+          )}
+
         </div>
       </CardContent>
     </Card>

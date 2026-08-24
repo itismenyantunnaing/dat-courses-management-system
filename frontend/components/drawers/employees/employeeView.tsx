@@ -133,7 +133,6 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
   const [isLoadingSkills, setIsLoadingSkills] = useState(false)
   const { checkMyEnrollment, fetch_SkillData, skillData } = mainStore()
 
-  console.log(employee)
 
   // Filter courses when courses prop changes
   useEffect(() => {
