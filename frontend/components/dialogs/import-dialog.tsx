@@ -143,6 +143,8 @@ export function ImportDialog({
   }
 
   const handleCancel = () => {
+    // Prevent cancel during processing
+    if (isProcessing) return
     onOpenChange(false)
   }
 
@@ -154,7 +156,7 @@ export function ImportDialog({
           isDragging
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/25"
-        }`}
+        } ${isProcessing ? "pointer-events-none opacity-60" : ""}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -188,6 +190,11 @@ export function ImportDialog({
                 MB
               </p>
             )}
+            {isProcessing && (
+              <p className="text-xs text-blue-600 animate-pulse">
+                Processing import...
+              </p>
+            )}
           </div>
           <input
             type="file"
@@ -196,6 +203,7 @@ export function ImportDialog({
             ref={fileInputRef}
             onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
             accept={currentTabData?.accept}
+            disabled={isProcessing}
           />
           <div className="flex gap-2">
             <Button
@@ -203,10 +211,11 @@ export function ImportDialog({
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
+              disabled={isProcessing}
             >
               Browse Files
             </Button>
-            {selectedFile && (
+            {selectedFile && !isProcessing && (
               <Button
                 type="button"
                 variant="ghost"
@@ -230,6 +239,7 @@ export function ImportDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           className="sm:max-w-[550px]"
+          disableClose={isProcessing}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => {
             // Prevent dialog from closing when clicking inside dropdown
@@ -255,7 +265,11 @@ export function ImportDialog({
           <FileUploadArea />
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancel}>
+            <Button 
+              variant="outline" 
+              onClick={handleCancel}
+              disabled={isProcessing}
+            >
               Cancel
             </Button>
             <Button
@@ -280,6 +294,7 @@ export function ImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-[550px]"
+        disableClose={isProcessing}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(e) => {
           // Prevent dialog from closing when clicking inside dropdown
@@ -320,6 +335,7 @@ export function ImportDialog({
                     key={tab.id}
                     value={tab.id}
                     className="w-full"
+                    disabled={isProcessing}
                     onClick={() => {
                       setSelectedFile(null)
                       setIsDragging(false)
@@ -339,6 +355,7 @@ export function ImportDialog({
                     variant="outline"
                     size="sm"
                     className="shrink-0 whitespace-nowrap"
+                    disabled={isProcessing}
                   >
                     More ({dropdownImportTabs.length})
                     <HugeiconsIcon
@@ -352,6 +369,7 @@ export function ImportDialog({
                   {dropdownImportTabs.map((tab) => (
                     <DropdownMenuItem
                       key={tab.id}
+                      disabled={isProcessing}
                       onSelect={() => {
                         setActiveImportTab(tab.id)
                         setSelectedFile(null)
@@ -379,7 +397,12 @@ export function ImportDialog({
         </Tabs>
 
         <DialogFooter className="flex">
-          <Button variant="outline" className="flex-1" onClick={handleCancel}>
+          <Button 
+            variant="outline" 
+            className="flex-1" 
+            onClick={handleCancel}
+            disabled={isProcessing}
+          >
             Cancel
           </Button>
           <Button

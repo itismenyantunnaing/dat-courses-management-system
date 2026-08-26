@@ -1,6 +1,12 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ClockIcon, Delete02Icon, Edit03Icon } from "@hugeicons/core-free-icons"
@@ -19,7 +25,7 @@ interface FeedbackCardProps {
       avatar: string
     }
     subject: string
-    category?: FeedbackCategory // ✅ Add category
+    category?: FeedbackCategory
     description: string
     createdAt: string
     updatedAt?: string
@@ -36,28 +42,28 @@ interface FeedbackCardProps {
 // Category color mapping
 const getCategoryStyles = (category?: FeedbackCategory) => {
   switch (category) {
-    case 'COURSE':
-      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-    case 'MANAGEMENT':
-      return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-    case 'SYSTEM':
-      return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    case "COURSE":
+      return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+    case "MANAGEMENT":
+      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+    case "SYSTEM":
+      return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
     default:
-      return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+      return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
   }
 }
 
 // Category label mapping
 const getCategoryLabel = (category?: FeedbackCategory) => {
   switch (category) {
-    case 'COURSE':
-      return 'Course'
-    case 'MANAGEMENT':
-      return 'Management'
-    case 'SYSTEM':
-      return 'System'
+    case "COURSE":
+      return "Course"
+    case "MANAGEMENT":
+      return "Management"
+    case "SYSTEM":
+      return "System"
     default:
-      return 'Unknown'
+      return "Unknown"
   }
 }
 
@@ -98,13 +104,29 @@ export function FeedbackCard({
 
   return (
     <Card
-      className="group h-full cursor-pointer transition-all hover:bg-muted/40"
+      className="group h-full cursor-pointer py-4 transition-all hover:bg-muted/40"
       onClick={onClick}
     >
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Avatar className="h-10 w-10 flex-shrink-0">
+      <CardContent className="px-4">
+        <div className="mb-4 flex items-start justify-between gap-2">
+          <h4 className="flex-1 truncate text-base font-medium">{feedback.subject}</h4>
+          {/* Category Badge */}
+          {feedback.category && (
+            <span
+              className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${getCategoryStyles(feedback.category)}`}
+            >
+              {getCategoryLabel(feedback.category)}
+            </span>
+          )}
+        </div>
+        <div className="line-clamp-3 text-sm text-muted-foreground">
+          {feedback.description}
+        </div>
+      </CardContent>
+      <CardFooter className="relative border-t px-4 pt-3!">
+        <div className="flex w-full items-center justify-between gap-1">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Avatar className="h-9 w-9 flex-shrink-0">
               <AvatarImage
                 src={feedback.employee.avatar || ""}
                 alt={feedback.employee.name}
@@ -114,13 +136,13 @@ export function FeedbackCard({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <CardTitle className="truncate text-base font-medium">
+              <CardTitle className="truncate text-sm font-medium">
                 {feedback.employee.name}
               </CardTitle>
               {showDepartmentTeam && (
-                <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   {hasDepartment && (
-                    <span className="min-w-0 max-w-[50px] truncate">
+                    <span className="max-w-[50%] truncate">
                       {feedback.employee.department}
                     </span>
                   )}
@@ -128,7 +150,9 @@ export function FeedbackCard({
                     <span className="flex-shrink-0">•</span>
                   )}
                   {hasTeam && (
-                    <span className="min-w-0 max-w-[50px] truncate">{feedback.employee.team}</span>
+                    <span className="max-w-[50%] truncate">
+                      {feedback.employee.team}
+                    </span>
                   )}
                 </div>
               )}
@@ -143,29 +167,13 @@ export function FeedbackCard({
             {getDisplayTime()}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="relative">
-        <div className="mb-1 flex items-start justify-between gap-2">
-          <h4 className="truncate text-sm font-medium">
-            {feedback.subject}
-          </h4>
-          {/* ✅ Category Badge */}
-          {feedback.category && (
-            <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${getCategoryStyles(feedback.category)}`}>
-              {getCategoryLabel(feedback.category)}
-            </span>
-          )}
-        </div>
-        <div className="text-sm text-muted-foreground min-w-0 max-w-[70%] truncate">
-          {feedback.description}
-        </div>
+
         {/* Action buttons with background and blur */}
-        <div className="absolute right-4 bottom-[-2] z-10 flex items-center gap-0.5 rounded-lg bg-background/80 px-1 py-1 opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100">
+        <div className="absolute right-2 bottom-[-2] z-10 flex items-center gap-0.5 rounded-lg bg-background/80 px-1 py-1 opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100">
           {canEdit && onEdit && (
             <Button
               variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 hover:bg-primary/10"
+              size="icon"
               onClick={(e) => {
                 e.stopPropagation()
                 onEdit(e, feedback.id)
@@ -197,7 +205,7 @@ export function FeedbackCard({
           )}
 
         </div>
-      </CardContent>
+      </CardFooter>
     </Card>
   )
 }

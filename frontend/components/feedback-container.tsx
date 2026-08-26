@@ -66,10 +66,12 @@ import {
   GridViewIcon,
   MessageEdit01Icon,
   Message01Icon,
+  MessageAdd01Icon,
 } from "@hugeicons/core-free-icons"
 import { FeedbackCard } from "./cards/feedback-card"
 import { NewFeedbackDialog } from "./dialogs/newFeedback-dialog"
 import { EditFeedbackDialog } from "./dialogs/editFeedback-dialog"
+import { FeedbackDetailDialog } from "./dialogs/feedbackDetail-dialog"
 import { FeedbackSuggestionDto, type FeedbackCategory } from "@/types/feedback"
 import { mainStore } from "@/store/mainStore"
 import {
@@ -94,27 +96,24 @@ import {
 
 type ViewMode = "list" | "card"
 
-// Helper function to format time
+// Helper function to format time with sec, min, hr units
 const formatTime = (dateString: string) => {
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffHr = Math.floor(diffMin / 60)
+  const diffDays = Math.floor(diffHr / 24)
 
-  if (diffMins < 60) {
-    return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`
-  } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`
-  } else if (diffDays < 7) {
-    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`
+  if (diffDays > 0) {
+    return `${diffDays}D ago`
+  } else if (diffHr > 0) {
+    return `${diffHr}hr ago`
+  } else if (diffMin > 0) {
+    return `${diffMin}min ago`
   } else {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
+    return `${diffSec}sec ago`
   }
 }
 
@@ -173,7 +172,7 @@ export function FeedbackContainer() {
   const [filters, setFilters] = useState<FeedbackFilterState>({
     department: [],
     team: [],
-    category: []
+    category: [],
   })
 
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -282,7 +281,7 @@ export function FeedbackContainer() {
   const teamValues = getFilterUniqueValues("team")
   const hasTeamData = teamValues.length > 0
 
-  // Get category values 
+  // Get category values
   const categoryValues = getFilterUniqueValues("category")
   const hasCategoryData = categoryValues.length > 0
 
@@ -306,7 +305,7 @@ export function FeedbackContainer() {
     setFilters({
       department: [],
       team: [],
-      category: []
+      category: [],
     })
   }
 
@@ -322,7 +321,7 @@ export function FeedbackContainer() {
         feedbackItem.description?.toLowerCase().includes(searchLower) ||
         feedbackItem.department?.toLowerCase().includes(searchLower) ||
         feedbackItem.team?.toLowerCase().includes(searchLower) ||
-        feedbackItem.category?.toLowerCase().includes(searchLower)  // ✅ Add category search
+        feedbackItem.category?.toLowerCase().includes(searchLower) // ✅ Add category search
 
       // Department filter
       const matchesDepartment =
@@ -341,9 +340,12 @@ export function FeedbackContainer() {
       const matchesCategory =
         !canFilter ||
         filters.category.length === 0 ||
-        (feedbackItem.category && filters.category.includes(feedbackItem.category))
+        (feedbackItem.category &&
+          filters.category.includes(feedbackItem.category))
 
-      return matchesSearch && matchesDepartment && matchesTeam && matchesCategory
+      return (
+        matchesSearch && matchesDepartment && matchesTeam && matchesCategory
+      )
     })
     .sort((a, b) => {
       const dateA = getEffectiveDate(a).getTime()
@@ -458,7 +460,11 @@ export function FeedbackContainer() {
   }
 
   // Handle submit feedback
-  const handleSubmitFeedback = async (subject: string, category: FeedbackCategory, description: string) => {
+  const handleSubmitFeedback = async (
+    subject: string,
+    category: FeedbackCategory,
+    description: string
+  ) => {
     setIsSubmitting(true)
     try {
       const employeeId = profile?.id
@@ -556,7 +562,7 @@ export function FeedbackContainer() {
               <InputGroup className="w-[400px]">
                 <InputGroupInput
                   ref={searchInputRef}
-                  placeholder="Search by employee, subject, description..."
+                  placeholder="Search feedbacks..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -669,6 +675,34 @@ export function FeedbackContainer() {
                     </Tooltip>
 
                     <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
+                      {/* Category Filter */}
+                      {hasCategoryData && (
+                        <>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              Category
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                {categoryValues.map((value) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={value}
+                                    checked={filters.category.includes(value)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("category", value)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {value.charAt(0).toUpperCase() +
+                                      value.slice(1).toLowerCase()}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        </>
+                      )}
+                      
                       {/* Department Filter */}
                       {hasDepartmentData && (
                         <>
@@ -693,7 +727,6 @@ export function FeedbackContainer() {
                               </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
-                          <DropdownMenuSeparator />
                         </>
                       )}
 
@@ -721,38 +754,10 @@ export function FeedbackContainer() {
                               </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
-                          <DropdownMenuSeparator />
                         </>
                       )}
 
-                      {/* Category Filter */}
-                      {hasCategoryData && (
-                        <>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              Category
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
-                                {categoryValues.map((value) => (
-                                  <DropdownMenuCheckboxItem
-                                    key={value}
-                                    checked={filters.category.includes(value)}
-                                    onCheckedChange={() =>
-                                      toggleFilter("category", value)
-                                    }
-                                    onSelect={(e) => e.preventDefault()}
-                                  >
-                                    {value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()}
-                                  </DropdownMenuCheckboxItem>
-                                ))}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-
+                      <DropdownMenuSeparator />
                       {/* Clear Filters Button */}
                       <DropdownMenuItem
                         onClick={clearAllFilters}
@@ -773,7 +778,6 @@ export function FeedbackContainer() {
                   </DropdownMenu>
                 )}
 
-
                 {canCreateFeedback && (
                   <Button
                     variant="default"
@@ -786,7 +790,7 @@ export function FeedbackContainer() {
                         : ""
                     }
                   >
-                    <HugeiconsIcon icon={CommentAdd01Icon} strokeWidth={2} />
+                    <HugeiconsIcon icon={MessageAdd01Icon} strokeWidth={2} />
                     New Feedback
                   </Button>
                 )}
@@ -797,10 +801,11 @@ export function FeedbackContainer() {
           {/* Message Display */}
           {message && (
             <div
-              className={`mx-4 mb-4 rounded p-4 ${message.type === "success"
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-                }`}
+              className={`mx-4 mb-4 rounded p-4 ${
+                message.type === "success"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
             >
               {message.text}
             </div>
@@ -826,21 +831,32 @@ export function FeedbackContainer() {
                           feedback={{
                             id: feedbackItem.id!,
                             employee: {
-                              name: feedbackItem.employeeName || `Employee ${feedbackItem.employeeId}`,
+                              name:
+                                feedbackItem.employeeName ||
+                                `Employee ${feedbackItem.employeeId}`,
                               email: `${feedbackItem.employeeId}@company.com`,
                               department: feedbackItem.department || "N/A",
                               team: feedbackItem.team || "N/A",
-                              avatar: resolveUploadUrl(selectedFeedback?.profilePhotoPath) || "",
+                              avatar:
+                                resolveUploadUrl(
+                                  selectedFeedback?.profilePhotoPath
+                                ) || "",
                             },
                             subject: feedbackItem.subject || "",
                             category: feedbackItem.category,
                             description: feedbackItem.description,
-                            createdAt: feedbackItem.createdAt || new Date().toISOString(),
+                            createdAt:
+                              feedbackItem.createdAt ||
+                              new Date().toISOString(),
                             updatedAt: feedbackItem.updatedAt,
                           }}
                           onClick={() => handleFeedbackClick(feedbackItem)}
                           onDelete={handleDeleteClick}
-                          onEdit={canEditFeedback ? (e) => handleEditClick(e, feedbackItem) : undefined}
+                          onEdit={
+                            canEditFeedback
+                              ? (e) => handleEditClick(e, feedbackItem)
+                              : undefined
+                          }
                           formatTime={formatTime}
                           getInitials={getInitials}
                           canEdit={canEditFeedback}
@@ -894,15 +910,19 @@ export function FeedbackContainer() {
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-8 w-8">
                                     <AvatarImage
-                                      src={resolveUploadUrl(selectedFeedback?.profilePhotoPath) || ""}
+                                      src={
+                                        resolveUploadUrl(
+                                          selectedFeedback?.profilePhotoPath
+                                        ) || ""
+                                      }
                                       alt={feedbackItem.employeeName || ""}
                                     />
                                     <AvatarFallback className="text-xs text-primary">
                                       {feedbackItem.employeeName
                                         ? getInitials(feedbackItem.employeeName)
                                         : feedbackItem.employeeId
-                                          ?.slice(0, 2)
-                                          .toUpperCase() || "U"}
+                                            ?.slice(0, 2)
+                                            .toUpperCase() || "U"}
                                     </AvatarFallback>
                                   </Avatar>
                                   <div>
@@ -1027,7 +1047,7 @@ export function FeedbackContainer() {
                               }}
                               className={
                                 currentPage === 1 ||
-                                  filteredAndSortedFeedbacks.length === 0
+                                filteredAndSortedFeedbacks.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -1060,7 +1080,7 @@ export function FeedbackContainer() {
                               }}
                               className={
                                 currentPage === totalPages ||
-                                  filteredAndSortedFeedbacks.length === 0
+                                filteredAndSortedFeedbacks.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -1099,7 +1119,7 @@ export function FeedbackContainer() {
                   </EmptyHeader>
                   <EmptyContent>
                     {(searchTerm || hasActiveFilters) &&
-                      filteredAndSortedFeedbacks.length === 0 ? (
+                    filteredAndSortedFeedbacks.length === 0 ? (
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -1111,13 +1131,9 @@ export function FeedbackContainer() {
                       </Button>
                     ) : (
                       canCreateFeedback && (
-                        <Button
-                          variant="default"
-                          onClick={handleNewFeedback}
-                          className="bg-primary hover:bg-primary/90"
-                        >
+                        <Button variant="default" onClick={handleNewFeedback}>
                           <HugeiconsIcon
-                            icon={CommentAdd01Icon}
+                            icon={MessageAdd01Icon}
                             strokeWidth={2}
                             className="h-4 w-4"
                           />
@@ -1133,77 +1149,15 @@ export function FeedbackContainer() {
         </CardContent>
       </div>
 
-      {/* Feedback Detail Dialog */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[600px]">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="pr-8">
-              {selectedFeedback?.subject}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto px-6 py-2">
-            <div className="space-y-4">
-              <div>
-                <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-                  Description
-                </h4>
-                <div
-                  className="text-sm leading-relaxed whitespace-pre-wrap"
-                  style={{ wordBreak: "break-word" }}
-                >
-                  {selectedFeedback?.description}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="border-t p-6 pt-4">
-            <div className="flex w-full items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage
-                    src={resolveUploadUrl(selectedFeedback?.profilePhotoPath) || ""}
-                    alt={selectedFeedback?.employeeName || `Employee ${selectedFeedback?.employeeId}`}
-                  />
-                  <AvatarFallback className="text-lg text-primary">
-                    {selectedFeedback?.employeeName
-                      ? getInitials(selectedFeedback.employeeName)
-                      : selectedFeedback?.employeeId
-                        ?.slice(0, 2)
-                        .toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">
-                    {selectedFeedback?.employeeName ||
-                      `Employee ${selectedFeedback?.employeeId}`}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-                    {selectedFeedback?.department && (
-                      <>
-                        <span>{selectedFeedback.department}</span>
-                        <span>•</span>
-                      </>
-                    )}
-                    {selectedFeedback?.team && (
-                      <span>{selectedFeedback.team}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
-                <HugeiconsIcon
-                  icon={ClockIcon}
-                  strokeWidth={2}
-                  className="h-3 w-3"
-                />
-                {getDisplayTime(selectedFeedback)}
-              </div>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Feedback Detail Dialog - Now using separate component */}
+      <FeedbackDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        feedback={selectedFeedback}
+        getDisplayTime={getDisplayTime}
+        getInitials={getInitials}
+        resolveUploadUrl={resolveUploadUrl}
+      />
 
       {/* New Feedback Dialog */}
       {canCreateFeedback && (

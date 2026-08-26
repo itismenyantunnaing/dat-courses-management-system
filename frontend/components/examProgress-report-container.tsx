@@ -459,7 +459,7 @@ export function ExamProgressReportContainer() {
                   />
                 </InputGroupAddon>
                 <InputGroupAddon align="inline-end">
-                  <Kbd>⌘K</Kbd>
+                  <Kbd>Ctrl + K</Kbd>
                 </InputGroupAddon>
               </InputGroup>
 
@@ -674,7 +674,7 @@ export function ExamProgressReportContainer() {
                   {searchTerm || hasActiveFilters ? (
                     <>Try adjusting your search or filters.</>
                   ) : (
-                    "Import your JLPT target level data to start tracking your exam progress."
+                    "Import your JLPT target level data to start tracking learners' exam progress."
                   )}
                 </EmptyDescription>
               </EmptyHeader>

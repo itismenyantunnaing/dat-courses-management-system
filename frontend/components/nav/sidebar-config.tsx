@@ -14,6 +14,7 @@ import {
   Message01Icon,
   Calendar03Icon,
   LanguageSquareIcon,
+  Megaphone01Icon,
 } from "@hugeicons/core-free-icons"
 
 const STROKE_WIDTH = 2
@@ -269,7 +270,7 @@ export const adminData: SidebarConfig = {
           tabId: "announcement",
           type: "primary",
           icon: (
-            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
+            <HugeiconsIcon icon={Megaphone01Icon} strokeWidth={STROKE_WIDTH} />
           ),
         },
         {
@@ -371,7 +372,7 @@ export const learnerData: SidebarConfig = {
           tabId: "announcement",
           type: "primary",
           icon: (
-            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
+            <HugeiconsIcon icon={Megaphone01Icon} strokeWidth={STROKE_WIDTH} />
           ),
         },
         {
@@ -488,7 +489,7 @@ export const approverData: SidebarConfig = {
           tabId: "announcement",
           type: "primary",
           icon: (
-            <HugeiconsIcon icon={Message01Icon} strokeWidth={STROKE_WIDTH} />
+            <HugeiconsIcon icon={Megaphone01Icon} strokeWidth={STROKE_WIDTH} />
           ),
         },
         {

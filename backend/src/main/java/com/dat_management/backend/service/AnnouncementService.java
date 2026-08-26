@@ -10,17 +10,22 @@ import com.dat_management.backend.dto.AnnouncementDto;
 import com.dat_management.backend.entity.Announcement;
 import com.dat_management.backend.entity.AnnouncementCategory;
 import com.dat_management.backend.repository.AnnouncementRepository;
+import com.dat_management.backend.repository.EmployeeRepository;
 
 @Service
 public class AnnouncementService {
 
     private final AnnouncementRepository announcementRepository;
 
-    public AnnouncementService(AnnouncementRepository announcementRepository) {
+    private final EmployeeRepository employeeRepository;
+
+    public AnnouncementService(AnnouncementRepository announcementRepository,EmployeeRepository employeeRepository) {
         this.announcementRepository = announcementRepository;
+        this.employeeRepository= employeeRepository;
     }
 
     private AnnouncementDto convertToDto(Announcement announcement) {
+        
         AnnouncementDto dto = new AnnouncementDto();
         dto.setId(announcement.getId());
         dto.setTitle(announcement.getTitle());

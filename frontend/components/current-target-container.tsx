@@ -51,6 +51,8 @@ import {
   CalendarSyncIcon,
   LayoutGridIcon,
   EyeIcon,
+  LanguageSquareIcon,
+  Upload05Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -89,6 +91,15 @@ import {
   DropdownMenuSubContent,
 } from "./ui/dropdown-menu"
 import { Checkbox } from "./ui/checkbox"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { ImportDialog } from "@/components/dialogs/import-dialog"
 
 const STROKE_WIDTH = 2
 
@@ -196,6 +207,9 @@ export function CurrentTargetContainer({
     useState(false)
   const [isCreateTargetDatesDrawerOpen, setIsCreateTargetDatesDrawerOpen] =
     useState(false)
+
+  // State for import dialog
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   // Column visibility state for Japanese data sections
   const [selectedSection, setSelectedSection] = useState<string>("all")
@@ -401,6 +415,11 @@ export function CurrentTargetContainer({
   // Handle new profile creation
   const handleNewProfile = () => {
     setIsCreateDrawerOpen(true)
+  }
+
+  // Handle import
+  const handleImport = () => {
+    setImportDialogOpen(true)
   }
 
   // Handle opening target dates drawer (edit or create)
@@ -897,6 +916,9 @@ export function CurrentTargetContainer({
   // Check if there is any data to display
   const hasData = filteredEmployees.length > 0
 
+  // Check if there are any employees at all (not filtered)
+  const hasAnyEmployees = employees.length > 0
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -911,971 +933,1015 @@ export function CurrentTargetContainer({
     <>
       <div className="flex flex-col gap-4 pt-4 pb-6">
         <CardContent className="px-4">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 gap-2">
-              <InputGroup className="max-w-[500px] flex-1">
-                <InputGroupInput
-                  ref={searchInputRef}
-                  placeholder="Search by Staff ID, Name, Team, or Department..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <InputGroupAddon>
-                  <HugeiconsIcon
-                    icon={Search01Icon}
-                    strokeWidth={STROKE_WIDTH}
-                    className="h-4 w-4 text-muted-foreground"
+          {/* Search and controls - Show when there are any employees */}
+          {hasAnyEmployees && (
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-1 gap-2">
+                <InputGroup className="max-w-[500px] flex-1">
+                  <InputGroupInput
+                    ref={searchInputRef}
+                    placeholder="Search by Staff ID, Name, Team, or Department..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                </InputGroupAddon>
-                <InputGroupAddon align="inline-end">
-                  <Kbd>⌘K</Kbd>
-                </InputGroupAddon>
-              </InputGroup>
-            </div>
-            <div className="flex gap-2">
-              {/* Edit Target Dates Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={handleEditTargetDates}
-                  >
+                  <InputGroupAddon>
                     <HugeiconsIcon
-                      icon={CalendarSyncIcon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
+                      icon={Search01Icon}
+                      strokeWidth={STROKE_WIDTH}
+                      className="h-4 w-4 text-muted-foreground"
                     />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Edit Target Dates</p>
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Property Visibility Dropdown */}
-              <DropdownMenu>
+                  </InputGroupAddon>
+                  <InputGroupAddon align="inline-end">
+                    <Kbd>Ctrl +K</Kbd>
+                  </InputGroupAddon>
+                </InputGroup>
+              </div>
+              <div className="flex gap-2">
+                {/* Edit Target Dates Button */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-9 w-9">
-                        <HugeiconsIcon
-                          icon={EyeIcon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={handleEditTargetDates}
+                    >
+                      <HugeiconsIcon
+                        icon={CalendarSyncIcon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Property Visibility</p>
+                    <p>Edit Target Dates</p>
                   </TooltipContent>
                 </Tooltip>
 
-                <DropdownMenuContent className="w-72">
-                  {sectionOptions.map((option) => (
-                    <DropdownMenuCheckboxItem
-                      key={option.value}
-                      checked={selectedSection === option.value}
-                      onCheckedChange={() => handleSectionSelect(option.value)}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      {option.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Filter Dropdown with indicator */}
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="relative h-9 w-9"
-                      >
-                        <HugeiconsIcon
-                          icon={FilterMailIcon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                        {hasActiveFilters && (
-                          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Filter</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                <DropdownMenuContent className="w-80">
-                  {/* JLPT / NAT Test */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      JLPT / NAT Test
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("jlpt_nat_test").map((value) => (
-                          <DropdownMenuCheckboxItem
-                            key={value}
-                            checked={filters.jlpt_nat_test.includes(value)}
-                            onCheckedChange={() =>
-                              toggleFilter("jlpt_nat_test", value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {value}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSeparator />
-
-                  {/* Certified Level */}
-                  <DropdownMenuLabel>Certified Level</DropdownMenuLabel>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      JLPT Highest Level (Certified)
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("jlpt_highest_level").map((value) => (
-                          <DropdownMenuCheckboxItem
-                            key={value}
-                            checked={filters.jlpt_highest_level.includes(value)}
-                            onCheckedChange={() =>
-                              toggleFilter("jlpt_highest_level", value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {value}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Other Highest Japanese Level (Certified)
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("other_japanese_level").map(
-                          (value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.other_japanese_level.includes(
-                                value
-                              )}
-                              onCheckedChange={() =>
-                                toggleFilter("other_japanese_level", value)
-                              }
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value}
-                            </DropdownMenuCheckboxItem>
-                          )
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Preferred Joining Group & Level
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("preferred_learning_group").map(
-                          (value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.preferred_learning_group.includes(
-                                value
-                              )}
-                              onCheckedChange={() =>
-                                toggleFilter("preferred_learning_group", value)
-                              }
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value}
-                            </DropdownMenuCheckboxItem>
-                          )
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSeparator />
-
-                  {/* Current */}
-                  <DropdownMenuLabel>Current</DropdownMenuLabel>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Communication Level
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent className="max-w-[250px]">
-                        {getUniqueValues("current_communication_level").map(
-                          (value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.current_communication_level.includes(
-                                value
-                              )}
-                              onCheckedChange={() =>
-                                toggleFilter(
-                                  "current_communication_level",
-                                  value
-                                )
-                              }
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value !== "-" ? (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="block truncate">
-                                        {value}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="text-sm">{value}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              ) : (
-                                value
-                              )}
-                            </DropdownMenuCheckboxItem>
-                          )
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSeparator />
-
-                  {/* Target Level to be on (Date 1) */}
-                  <DropdownMenuLabel>
-                    Target Level to be on{" "}
-                    {firstTargetDate?.target1Date
-                      ? formatGroupDate(firstTargetDate.target1Date)
-                      : "(Date 1)"}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      JLPT / NAT Test Level
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("target_1_jlpt_nat_level").map(
-                          (value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.target_1_jlpt_nat_level.includes(
-                                value
-                              )}
-                              onCheckedChange={() =>
-                                toggleFilter("target_1_jlpt_nat_level", value)
-                              }
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value}
-                            </DropdownMenuCheckboxItem>
-                          )
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Communication Level
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent className="max-w-[250px]">
-                        {getUniqueValues("target_1_communication_level").map(
-                          (value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.target_1_communication_level.includes(
-                                value
-                              )}
-                              onCheckedChange={() =>
-                                toggleFilter(
-                                  "target_1_communication_level",
-                                  value
-                                )
-                              }
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value !== "-" ? (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="block truncate">
-                                        {value}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="text-sm">{value}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              ) : (
-                                value
-                              )}
-                            </DropdownMenuCheckboxItem>
-                          )
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSeparator />
-
-                  {/* Target Level to be on (Date 2) */}
-                  <DropdownMenuLabel>
-                    Target Level to be on{" "}
-                    {firstTargetDate?.target2Date
-                      ? formatGroupDate(firstTargetDate.target2Date)
-                      : "(Date 2)"}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      JLPT / NAT Test Level
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("target_2_jlpt_nat_level").map(
-                          (value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.target_2_jlpt_nat_level.includes(
-                                value
-                              )}
-                              onCheckedChange={() =>
-                                toggleFilter("target_2_jlpt_nat_level", value)
-                              }
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value}
-                            </DropdownMenuCheckboxItem>
-                          )
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Communication Level
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent className="max-w-[250px]">
-                        {getUniqueValues("target_2_communication_level").map(
-                          (value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.target_2_communication_level.includes(
-                                value
-                              )}
-                              onCheckedChange={() =>
-                                toggleFilter(
-                                  "target_2_communication_level",
-                                  value
-                                )
-                              }
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value !== "-" ? (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="block truncate">
-                                        {value}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="text-sm">{value}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              ) : (
-                                value
-                              )}
-                            </DropdownMenuCheckboxItem>
-                          )
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSeparator />
-
-                  {/* Current Learning Level and Method */}
-                  <DropdownMenuLabel>
-                    Current Learning Level and Method
-                  </DropdownMenuLabel>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Japanese Level (Current Learning)
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent className="max-w-[250px]">
-                        {getUniqueValues("current_learning_level").map(
-                          (value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.current_learning_level.includes(
-                                value
-                              )}
-                              onCheckedChange={() =>
-                                toggleFilter("current_learning_level", value)
-                              }
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value !== "-" ? (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="block truncate">
-                                        {value}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="text-sm">{value}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              ) : (
-                                value
-                              )}
-                            </DropdownMenuCheckboxItem>
-                          )
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Learning Method
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("learning_method").map((value) => (
-                          <DropdownMenuCheckboxItem
-                            key={value}
-                            checked={filters.learning_method.includes(value)}
-                            onCheckedChange={() =>
-                              toggleFilter("learning_method", value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {value}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSeparator />
-
-                  {/* JLPT Exam Target (Exam Date) */}
-                  <DropdownMenuLabel>JLPT Exam Target</DropdownMenuLabel>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Want to sit JLPT exam{" "}
-                      {firstTargetDate?.examDate
-                        ? `(${formatGroupDate(firstTargetDate.examDate)})`
-                        : "(Exam Date)"}
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("want_to_sit_exam").map((value) => (
-                          <DropdownMenuCheckboxItem
-                            key={value}
-                            checked={filters.want_to_sit_exam.includes(value)}
-                            onCheckedChange={() =>
-                              toggleFilter("want_to_sit_exam", value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {value}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      If Yes, Which Level?
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("exam_target_level").map((value) => (
-                          <DropdownMenuCheckboxItem
-                            key={value}
-                            checked={filters.exam_target_level.includes(value)}
-                            onCheckedChange={() =>
-                              toggleFilter("exam_target_level", value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {value}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      Confidence Level to Pass Exam
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {getUniqueValues("confidence_level").map((value) => (
-                          <DropdownMenuCheckboxItem
-                            key={value}
-                            checked={filters.confidence_level.includes(value)}
-                            onCheckedChange={() =>
-                              toggleFilter("confidence_level", value)
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            {value}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-
-                  <DropdownMenuSeparator />
-
-                  {/* Clear Filters Button - This will close the dropdown */}
-                  <DropdownMenuItem
-                    onClick={clearAllFilters}
-                    variant="destructive"
-                    className="gap-2"
-                  >
-                    <HugeiconsIcon
-                      icon={Delete02Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                    Clear All Filters
-                    <DropdownMenuShortcut>
-                      <Kbd>Esc</Kbd>
-                    </DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Button
-                variant="default"
-                onClick={handleNewProfile}
-                className="bg-primary hover:bg-primary/90"
-              >
-                <HugeiconsIcon icon={UserAdd02Icon} strokeWidth={2} />
-                New
-              </Button>
-            </div>
-          </div>
-
-          <div
-            className={cn("relative overflow-x-auto rounded-md border")}
-            style={{ zIndex: 1 }}
-          >
-            <Table key={refreshKey}>
-              <TableHeader>
-                {/* First Row - Group Headers */}
-                <TableRow className="bg-muted/50">
-                  {employeeHeaders.map((header) => (
-                    <BorderedTableHead
-                      key={header.field}
-                      className={cn(
-                        "text-center align-middle whitespace-nowrap",
-                        header.field === "select" && "w-10 min-w-[40px]"
-                      )}
-                      rowSpan={2}
-                    >
-                      {header.field === "select" ? (
-                        <Checkbox
-                          checked={areAllFilteredSelected}
-                          onCheckedChange={handleSelectAll}
-                          aria-label="Select all"
-                        />
-                      ) : (
-                        header.header_name
-                      )}
-                    </BorderedTableHead>
-                  ))}
-                  {visibleJapaneseHeaderGroups.map((group, index) => (
-                    <BorderedTableHead
-                      key={index}
-                      className={cn(
-                        "bg-muted/30 text-center align-middle whitespace-nowrap",
-                        (group.groupName.includes("Target Level") ||
-                          group.groupName.includes("JLPT Exam Target")) &&
-                          "cursor-pointer transition-colors hover:bg-muted/50"
-                      )}
-                      colSpan={group.children.length}
-                      onClick={() => {
-                        if (
-                          group.groupName.includes("Target Level") ||
-                          group.groupName.includes("JLPT Exam Target")
-                        ) {
-                          handleEditTargetDates()
-                        }
-                      }}
-                    >
-                      {group.groupName}
-                    </BorderedTableHead>
-                  ))}
-                </TableRow>
-
-                <TableRow className="bg-muted/50">
-                  {flattenedJapaneseHeaders.map((header) => (
-                    <BorderedTableHead
-                      key={header.field}
-                      className={cn(
-                        "align-middle whitespace-nowrap",
-                        (header.field === "current_communication_level" ||
-                          header.field === "target_1_communication_level" ||
-                          header.field === "target_2_communication_level" ||
-                          header.field === "current_learning_level") &&
-                          "w-48"
-                      )}
-                    >
-                      {header.header_name}
-                    </BorderedTableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {paginatedEmployees.length === 0 ? (
-                  <TableRow>
-                    <BorderedTableCell
-                      colSpan={totalColumns}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      {searchTerm
-                        ? `No employees found matching "${searchTerm}"`
-                        : "No employees with Japanese profile data found"}
-                    </BorderedTableCell>
-                  </TableRow>
-                ) : (
-                  paginatedEmployees.map((employee, index) => {
-                    const isSelected = !!rowSelection[employee.id.toString()]
-                    const globalIndex = startIndex + index + 1
-                    const jpLevel = getJapaneseLevelByEmployeeId(employee.id)
-
-                    return (
-                      <TableRow
-                        key={employee.id}
-                        className="cursor-pointer transition-colors hover:bg-muted/50"
-                        onClick={() => handleRowClick(employee)}
-                      >
-                        {/* <BorderedTableCell
-                          className="w-10 min-w-[40px]"
-                          selected={isSelected}
-                          onClick={(e) => e.stopPropagation()}
+                {/* Property Visibility Dropdown */}
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
                         >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() =>
-                              handleRowSelect(employee.id.toString())
-                            }
-                            aria-label={`Select ${employee.name}`}
+                          <HugeiconsIcon
+                            icon={EyeIcon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
                           />
-                        </BorderedTableCell> */}
-                        <BorderedTableCell selected={isSelected}>
-                          {globalIndex}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          selected={isSelected}
-                          className="text-sm"
-                        >
-                          {employee.id || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell
-                          selected={isSelected}
-                          className="font-medium"
-                        >
-                          {employee.name}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.email || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.position || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.team || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {employee.dept_dat || "-"}
-                        </BorderedTableCell>
-                        <BorderedTableCell selected={isSelected}>
-                          {jpLevel?.jlptNatTest || "-"}
-                        </BorderedTableCell>
-                        {/* Only render visible Japanese columns */}
-                        {visibleJapaneseHeaderGroups.map((group) => {
-                          return group.children.map((header) => {
-                            let value = "-"
-                            switch (header.field) {
-                              case "jlpt_highest_level":
-                                value = jpLevel?.jlptHighestLevel || "-"
-                                break
-                              case "other_japanese_level":
-                                value = jpLevel?.otherJapaneseLevel || "-"
-                                break
-                              case "preferred_learning_group":
-                                value = jpLevel?.preferredLearningGroup || "-"
-                                break
-                              case "current_communication_level":
-                                value =
-                                  jpLevel?.currentCommunicationLevel || "-"
-                                break
-                              case "target_1_jlpt_nat_level":
-                                value = jpLevel?.target1JlptNatLevel || "-"
-                                break
-                              case "target_1_communication_level":
-                                value =
-                                  jpLevel?.target1CommunicationLevel || "-"
-                                break
-                              case "target_2_jlpt_nat_level":
-                                value = jpLevel?.target2JlptNatLevel || "-"
-                                break
-                              case "target_2_communication_level":
-                                value =
-                                  jpLevel?.target2CommunicationLevel || "-"
-                                break
-                              case "current_learning_level":
-                                value = jpLevel?.currentLearningLevel || "-"
-                                break
-                              case "learning_method":
-                                value = jpLevel?.learningMethod || "-"
-                                break
-                              case "want_to_sit_exam":
-                                value =
-                                  jpLevel?.wantToSitExam === true
-                                    ? "Yes"
-                                    : jpLevel?.wantToSitExam === false
-                                      ? "No"
-                                      : "-"
-                                break
-                              case "exam_target_level":
-                                value = jpLevel?.examTargetLevel || "-"
-                                break
-                              case "confidence_level":
-                                value = jpLevel?.confidenceLevel || "-"
-                                break
-                              default:
-                                value = "-"
-                            }
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Property Visibility</p>
+                    </TooltipContent>
+                  </Tooltip>
 
-                            const displayValue = value || "-"
-                            const isTruncatable = isTruncatableField(
-                              header.field
-                            )
+                  <DropdownMenuContent className="w-72">
+                    {sectionOptions.map((option) => (
+                      <DropdownMenuCheckboxItem
+                        key={option.value}
+                        checked={selectedSection === option.value}
+                        onCheckedChange={() =>
+                          handleSectionSelect(option.value)
+                        }
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        {option.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-                            return (
-                              <BorderedTableCell
-                                key={header.field}
-                                selected={isSelected}
-                                className={cn(
-                                  isTruncatable && "max-w-[192px]",
-                                  (header.field ===
-                                    "current_communication_level" ||
-                                    header.field ===
-                                      "target_1_communication_level" ||
-                                    header.field ===
-                                      "target_2_communication_level" ||
-                                    header.field ===
-                                      "current_learning_level") &&
-                                    "w-48"
+                {/* Filter Dropdown with indicator */}
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="relative h-9 w-9"
+                        >
+                          <HugeiconsIcon
+                            icon={FilterMailIcon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                          {hasActiveFilters && (
+                            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Filter</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <DropdownMenuContent className="w-80">
+                    {/* JLPT / NAT Test */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        JLPT / NAT Test
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("jlpt_nat_test").map((value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.jlpt_nat_test.includes(value)}
+                              onCheckedChange={() =>
+                                toggleFilter("jlpt_nat_test", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Certified Level */}
+                    <DropdownMenuLabel>Certified Level</DropdownMenuLabel>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        JLPT Highest Level (Certified)
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("jlpt_highest_level").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.jlpt_highest_level.includes(
+                                  value
                                 )}
+                                onCheckedChange={() =>
+                                  toggleFilter("jlpt_highest_level", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
                               >
-                                {isTruncatable && displayValue !== "-" ? (
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Other Highest Japanese Level (Certified)
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("other_japanese_level").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.other_japanese_level.includes(
+                                  value
+                                )}
+                                onCheckedChange={() =>
+                                  toggleFilter("other_japanese_level", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Preferred Joining Group & Level
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("preferred_learning_group").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.preferred_learning_group.includes(
+                                  value
+                                )}
+                                onCheckedChange={() =>
+                                  toggleFilter(
+                                    "preferred_learning_group",
+                                    value
+                                  )
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Current */}
+                    <DropdownMenuLabel>Current</DropdownMenuLabel>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Communication Level
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="max-w-[250px]">
+                          {getUniqueValues("current_communication_level").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.current_communication_level.includes(
+                                  value
+                                )}
+                                onCheckedChange={() =>
+                                  toggleFilter(
+                                    "current_communication_level",
+                                    value
+                                  )
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value !== "-" ? (
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <span className="block truncate">
-                                          {displayValue}
+                                          {value}
                                         </span>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p className="text-sm">
-                                          {displayValue}
-                                        </p>
+                                        <p className="text-sm">{value}</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 ) : (
-                                  displayValue
+                                  value
                                 )}
-                              </BorderedTableCell>
+                              </DropdownMenuCheckboxItem>
                             )
-                          })
-                        })}
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
 
-          {/* Selection Bar */}
-          {isSelectionActive && (
-            <>
-              <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
-                <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={areAllFilteredSelected}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
+                    <DropdownMenuSeparator />
+
+                    {/* Target Level to be on (Date 1) */}
+                    <DropdownMenuLabel>
+                      Target Level to be on{" "}
+                      {firstTargetDate?.target1Date
+                        ? formatGroupDate(firstTargetDate.target1Date)
+                        : "(Date 1)"}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        JLPT / NAT Test Level
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("target_1_jlpt_nat_level").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.target_1_jlpt_nat_level.includes(
+                                  value
+                                )}
+                                onCheckedChange={() =>
+                                  toggleFilter("target_1_jlpt_nat_level", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Communication Level
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="max-w-[250px]">
+                          {getUniqueValues("target_1_communication_level").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.target_1_communication_level.includes(
+                                  value
+                                )}
+                                onCheckedChange={() =>
+                                  toggleFilter(
+                                    "target_1_communication_level",
+                                    value
+                                  )
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value !== "-" ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="block truncate">
+                                          {value}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="text-sm">{value}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  value
+                                )}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Target Level to be on (Date 2) */}
+                    <DropdownMenuLabel>
+                      Target Level to be on{" "}
+                      {firstTargetDate?.target2Date
+                        ? formatGroupDate(firstTargetDate.target2Date)
+                        : "(Date 2)"}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        JLPT / NAT Test Level
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("target_2_jlpt_nat_level").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.target_2_jlpt_nat_level.includes(
+                                  value
+                                )}
+                                onCheckedChange={() =>
+                                  toggleFilter("target_2_jlpt_nat_level", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Communication Level
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="max-w-[250px]">
+                          {getUniqueValues("target_2_communication_level").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.target_2_communication_level.includes(
+                                  value
+                                )}
+                                onCheckedChange={() =>
+                                  toggleFilter(
+                                    "target_2_communication_level",
+                                    value
+                                  )
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value !== "-" ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="block truncate">
+                                          {value}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="text-sm">{value}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  value
+                                )}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Current Learning Level and Method */}
+                    <DropdownMenuLabel>
+                      Current Learning Level and Method
+                    </DropdownMenuLabel>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Japanese Level (Current Learning)
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="max-w-[250px]">
+                          {getUniqueValues("current_learning_level").map(
+                            (value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.current_learning_level.includes(
+                                  value
+                                )}
+                                onCheckedChange={() =>
+                                  toggleFilter("current_learning_level", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value !== "-" ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="block truncate">
+                                          {value}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="text-sm">{value}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  value
+                                )}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Learning Method
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("learning_method").map((value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.learning_method.includes(value)}
+                              onCheckedChange={() =>
+                                toggleFilter("learning_method", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {/* JLPT Exam Target (Exam Date) */}
+                    <DropdownMenuLabel>JLPT Exam Target</DropdownMenuLabel>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Want to sit JLPT exam{" "}
+                        {firstTargetDate?.examDate
+                          ? `(${formatGroupDate(firstTargetDate.examDate)})`
+                          : "(Exam Date)"}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("want_to_sit_exam").map((value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.want_to_sit_exam.includes(value)}
+                              onCheckedChange={() =>
+                                toggleFilter("want_to_sit_exam", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        If Yes, Which Level?
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("exam_target_level").map((value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.exam_target_level.includes(
+                                value
+                              )}
+                              onCheckedChange={() =>
+                                toggleFilter("exam_target_level", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Confidence Level to Pass Exam
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          {getUniqueValues("confidence_level").map((value) => (
+                            <DropdownMenuCheckboxItem
+                              key={value}
+                              checked={filters.confidence_level.includes(value)}
+                              onCheckedChange={() =>
+                                toggleFilter("confidence_level", value)
+                              }
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {value}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Clear Filters Button - This will close the dropdown */}
+                    <DropdownMenuItem
+                      onClick={clearAllFilters}
+                      variant="destructive"
+                      className="gap-2"
+                    >
+                      <HugeiconsIcon
+                        icon={Delete02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
                       />
-                      <span className="text-sm font-medium whitespace-nowrap">
-                        {selectedCount} employee
-                        {selectedCount > 1 ? "s are" : " is"} selected
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleBulkDeleteClick}
-                        disabled={isDeleting}
-                      >
-                        <HugeiconsIcon
-                          icon={Delete02Icon}
-                          strokeWidth={2}
-                          className="mr-1 h-4 w-4"
-                        />
-                        Delete
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleClearSelection}
-                        className="px-2"
-                      >
-                        <HugeiconsIcon
-                          icon={Cancel01Icon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                      Clear All Filters
+                      <DropdownMenuShortcut>
+                        <Kbd>Esc</Kbd>
+                      </DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant="default" onClick={handleNewProfile}>
+                  <HugeiconsIcon icon={UserAdd02Icon} strokeWidth={2} />
+                  New
+                </Button>
               </div>
-            </>
+            </div>
           )}
 
-          {/* Pagination - Only show when there's data */}
-          {hasData && (
-            <div
-              className={cn(
-                "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-              )}
-            >
-              <Field orientation="horizontal" className="w-fit">
-                <FieldLabel htmlFor="select-rows-per-page">
-                  Rows per page
-                </FieldLabel>
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={handleItemsPerPageChange}
-                >
-                  <SelectTrigger className="w-18" id="select-rows-per-page">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="start">
-                    <SelectGroup>
-                      <SelectItem value="15">15</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <div className="text-sm text-muted-foreground">
-                Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
-                {Math.min(startIndex + itemsPerPage, filteredEmployees.length)}{" "}
-                of {filteredEmployees.length} employees with Japanese language
-                data
-              </div>
-              <Pagination className="mx-0 w-auto">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handlePrevious()
-                      }}
-                      className={
-                        currentPage === 1 || filteredEmployees.length === 0
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-                  {getPageNumbers().map((page, index) => (
-                    <PaginationItem key={index}>
-                      {page === "..." ? (
-                        <span className="px-2">...</span>
-                      ) : (
-                        <PaginationLink
-                          href="#"
-                          isActive={currentPage === page}
-                          onClick={(e) => {
-                            e.preventDefault()
-                            setCurrentPage(page as number)
+          {/* Table - Only show when there's data after search/filter */}
+          {hasData ? (
+            <>
+              <div
+                className={cn("relative overflow-x-auto rounded-md border")}
+                style={{ zIndex: 1 }}
+              >
+                <Table key={refreshKey}>
+                  <TableHeader>
+                    {/* First Row - Group Headers */}
+                    <TableRow className="bg-muted/50">
+                      {employeeHeaders.map((header) => (
+                        <BorderedTableHead
+                          key={header.field}
+                          className={cn(
+                            "text-center align-middle whitespace-nowrap",
+                            header.field === "select" && "w-10 min-w-[40px]"
+                          )}
+                          rowSpan={2}
+                        >
+                          {header.field === "select" ? (
+                            <Checkbox
+                              checked={areAllFilteredSelected}
+                              onCheckedChange={handleSelectAll}
+                              aria-label="Select all"
+                            />
+                          ) : (
+                            header.header_name
+                          )}
+                        </BorderedTableHead>
+                      ))}
+                      {visibleJapaneseHeaderGroups.map((group, index) => (
+                        <BorderedTableHead
+                          key={index}
+                          className={cn(
+                            "bg-muted/30 text-center align-middle whitespace-nowrap",
+                            (group.groupName.includes("Target Level") ||
+                              group.groupName.includes("JLPT Exam Target")) &&
+                              "cursor-pointer transition-colors hover:bg-muted/50"
+                          )}
+                          colSpan={group.children.length}
+                          onClick={() => {
+                            if (
+                              group.groupName.includes("Target Level") ||
+                              group.groupName.includes("JLPT Exam Target")
+                            ) {
+                              handleEditTargetDates()
+                            }
                           }}
                         >
-                          {page}
-                        </PaginationLink>
-                      )}
+                          {group.groupName}
+                        </BorderedTableHead>
+                      ))}
+                    </TableRow>
+
+                    <TableRow className="bg-muted/50">
+                      {flattenedJapaneseHeaders.map((header) => (
+                        <BorderedTableHead
+                          key={header.field}
+                          className={cn(
+                            "align-middle whitespace-nowrap",
+                            (header.field === "current_communication_level" ||
+                              header.field === "target_1_communication_level" ||
+                              header.field === "target_2_communication_level" ||
+                              header.field === "current_learning_level") &&
+                              "w-48"
+                          )}
+                        >
+                          {header.header_name}
+                        </BorderedTableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {paginatedEmployees.map((employee, index) => {
+                      const isSelected = !!rowSelection[employee.id.toString()]
+                      const globalIndex = startIndex + index + 1
+                      const jpLevel = getJapaneseLevelByEmployeeId(employee.id)
+
+                      return (
+                        <TableRow
+                          key={employee.id}
+                          className="cursor-pointer transition-colors hover:bg-muted/50"
+                          onClick={() => handleRowClick(employee)}
+                        >
+                          <BorderedTableCell selected={isSelected}>
+                            {globalIndex}
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            selected={isSelected}
+                            className="text-sm"
+                          >
+                            {employee.id || "-"}
+                          </BorderedTableCell>
+                          <BorderedTableCell
+                            selected={isSelected}
+                            className="font-medium"
+                          >
+                            {employee.name}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            {employee.email || "-"}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            {employee.position || "-"}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            {employee.team || "-"}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            {employee.dept_dat || "-"}
+                          </BorderedTableCell>
+                          <BorderedTableCell selected={isSelected}>
+                            {jpLevel?.jlptNatTest || "-"}
+                          </BorderedTableCell>
+                          {/* Only render visible Japanese columns */}
+                          {visibleJapaneseHeaderGroups.map((group) => {
+                            return group.children.map((header) => {
+                              let value = "-"
+                              switch (header.field) {
+                                case "jlpt_highest_level":
+                                  value = jpLevel?.jlptHighestLevel || "-"
+                                  break
+                                case "other_japanese_level":
+                                  value = jpLevel?.otherJapaneseLevel || "-"
+                                  break
+                                case "preferred_learning_group":
+                                  value = jpLevel?.preferredLearningGroup || "-"
+                                  break
+                                case "current_communication_level":
+                                  value =
+                                    jpLevel?.currentCommunicationLevel || "-"
+                                  break
+                                case "target_1_jlpt_nat_level":
+                                  value = jpLevel?.target1JlptNatLevel || "-"
+                                  break
+                                case "target_1_communication_level":
+                                  value =
+                                    jpLevel?.target1CommunicationLevel || "-"
+                                  break
+                                case "target_2_jlpt_nat_level":
+                                  value = jpLevel?.target2JlptNatLevel || "-"
+                                  break
+                                case "target_2_communication_level":
+                                  value =
+                                    jpLevel?.target2CommunicationLevel || "-"
+                                  break
+                                case "current_learning_level":
+                                  value = jpLevel?.currentLearningLevel || "-"
+                                  break
+                                case "learning_method":
+                                  value = jpLevel?.learningMethod || "-"
+                                  break
+                                case "want_to_sit_exam":
+                                  value =
+                                    jpLevel?.wantToSitExam === true
+                                      ? "Yes"
+                                      : jpLevel?.wantToSitExam === false
+                                        ? "No"
+                                        : "-"
+                                  break
+                                case "exam_target_level":
+                                  value = jpLevel?.examTargetLevel || "-"
+                                  break
+                                case "confidence_level":
+                                  value = jpLevel?.confidenceLevel || "-"
+                                  break
+                                default:
+                                  value = "-"
+                              }
+
+                              const displayValue = value || "-"
+                              const isTruncatable = isTruncatableField(
+                                header.field
+                              )
+
+                              return (
+                                <BorderedTableCell
+                                  key={header.field}
+                                  selected={isSelected}
+                                  className={cn(
+                                    isTruncatable && "max-w-[192px]",
+                                    (header.field ===
+                                      "current_communication_level" ||
+                                      header.field ===
+                                        "target_1_communication_level" ||
+                                      header.field ===
+                                        "target_2_communication_level" ||
+                                      header.field ===
+                                        "current_learning_level") &&
+                                      "w-48"
+                                  )}
+                                >
+                                  {isTruncatable && displayValue !== "-" ? (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="block truncate">
+                                            {displayValue}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="text-sm">
+                                            {displayValue}
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  ) : (
+                                    displayValue
+                                  )}
+                                </BorderedTableCell>
+                              )
+                            })
+                          })}
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Selection Bar */}
+              {isSelectionActive && (
+                <>
+                  <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] min-w-[300px] -translate-x-1/2">
+                    <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={areAllFilteredSelected}
+                            onCheckedChange={handleSelectAll}
+                            aria-label="Select all"
+                          />
+                          <span className="text-sm font-medium whitespace-nowrap">
+                            {selectedCount} employee
+                            {selectedCount > 1 ? "s are" : " is"} selected
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDeleteClick}
+                            disabled={isDeleting}
+                          >
+                            <HugeiconsIcon
+                              icon={Delete02Icon}
+                              strokeWidth={2}
+                              className="mr-1 h-4 w-4"
+                            />
+                            Delete
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearSelection}
+                            className="px-2"
+                          >
+                            <HugeiconsIcon
+                              icon={Cancel01Icon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Pagination - Only show when there's data */}
+              <div
+                className={cn(
+                  "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                )}
+              >
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="select-rows-per-page">
+                    Rows per page
+                  </FieldLabel>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={handleItemsPerPageChange}
+                  >
+                    <SelectTrigger className="w-18" id="select-rows-per-page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectGroup>
+                        <SelectItem value="15">15</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1}{" "}
+                  to{" "}
+                  {Math.min(
+                    startIndex + itemsPerPage,
+                    filteredEmployees.length
+                  )}{" "}
+                  of {filteredEmployees.length} employees with Japanese language
+                  data
+                </div>
+                <Pagination className="mx-0 w-auto">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handlePrevious()
+                        }}
+                        className={
+                          currentPage === 1 || filteredEmployees.length === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
                     </PaginationItem>
-                  ))}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handleNext()
-                      }}
-                      className={
-                        currentPage === totalPages ||
-                        filteredEmployees.length === 0
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+                    {getPageNumbers().map((page, index) => (
+                      <PaginationItem key={index}>
+                        {page === "..." ? (
+                          <span className="px-2">...</span>
+                        ) : (
+                          <PaginationLink
+                            href="#"
+                            isActive={currentPage === page}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setCurrentPage(page as number)
+                            }}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleNext()
+                        }}
+                        className={
+                          currentPage === totalPages ||
+                          filteredEmployees.length === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </>
+          ) : (
+            // Empty state - show when no data after search/filter
+            <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon
+                    icon={LanguageSquareIcon}
+                    strokeWidth={2}
+                    className="h-12 w-12 text-muted-foreground"
+                  />
+                </EmptyMedia>
+                <EmptyTitle>
+                  {searchTerm || hasActiveFilters
+                    ? `No Matching Employees Found for ${searchTerm}`
+                    : "No Japanese Profile Data"}
+                </EmptyTitle>
+                <EmptyDescription className="text-center text-pretty">
+                  {searchTerm || hasActiveFilters ? (
+                    <>Try adjusting your search or filters.</>
+                  ) : (
+                    "Upload an Excel file or manually add a profile to start tracking learner JLPT targets."
+                  )}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {searchTerm || hasActiveFilters ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("")
+                      clearAllFilters()
+                    }}
+                  >
+                    Clear Search & Filters
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button variant="default" onClick={handleImport}>
+                      <HugeiconsIcon icon={Upload05Icon} strokeWidth={2} />
+                      Import Excel File
+                    </Button>
+                    <Button variant="outline" onClick={handleNewProfile}>
+                      <HugeiconsIcon icon={UserAdd02Icon} strokeWidth={2} />
+                      Add New Profile
+                    </Button>
+                  </div>
+                )}
+              </EmptyContent>
+            </Empty>
           )}
         </CardContent>
       </div>
@@ -1973,6 +2039,13 @@ export function CurrentTargetContainer({
           handleDataChanged()
           setIsCreateTargetDatesDrawerOpen(false)
         }}
+      />
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        label="current_target_data"
       />
     </>
   )

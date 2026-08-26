@@ -1,5 +1,3 @@
-// components/drawers/currentTarget/createCurrentTarget-drawer.tsx
-
 "use client"
 
 import { useState, useRef } from "react"

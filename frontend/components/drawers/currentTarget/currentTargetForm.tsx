@@ -195,7 +195,6 @@ export function CurrentTargetForm({
       {showEmployeeSelect && (
         <>
           <div>
-            <h3 className="mb-4 text-lg font-semibold">Employee Selection</h3>
             <div className="grid gap-4 sm:grid-cols-1">
               <div className="min-w-0 space-y-2">
                 <Label htmlFor="employeeId">
@@ -242,7 +241,6 @@ export function CurrentTargetForm({
                         </div>
                       </div>
                       <SelectGroup>
-                        <SelectLabel>Employees</SelectLabel>
                         {filteredEmployeeOptions.length === 0 ? (
                           <div className="px-2 py-2 text-center text-sm text-muted-foreground">
                             No employees found
@@ -265,7 +263,6 @@ export function CurrentTargetForm({
         </>
       )}
 
-      {/* Rest of the form remains the same... */}
       {/* Certified Level Section */}
       <div>
         <h3 className="mb-4 text-lg font-semibold">Certified Level</h3>

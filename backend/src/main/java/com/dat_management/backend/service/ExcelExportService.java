@@ -51,7 +51,7 @@ public class ExcelExportService {
     private static final String TEMPLATE_PATH =
         "templates/_DAT_ Skills Set_Translated (2).xlsx";
 
-    private static final String TEMPLATE_MAIN_SHEET = "Sheet1";
+    private static final String TEMPLATE_MAIN_SHEET = "Skills";
 
     private static final int TEMPLATE_DATA_START_ROW = 9;
 

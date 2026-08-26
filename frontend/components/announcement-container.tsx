@@ -63,6 +63,7 @@ import {
   MessageEdit01Icon,
   Speaker01Icon,
   Add01Icon,
+  Megaphone01Icon,
 } from "@hugeicons/core-free-icons"
 import { AnnouncementCard } from "@/components/cards/announcement-card"
 import { NewAnnouncementDialog } from "@/components/dialogs/newAnnouncement-dialog"
@@ -118,27 +119,27 @@ const formatTime = (dateString: string) => {
 // Category color mapping
 const getCategoryStyles = (category?: AnnouncementCategory) => {
   switch (category) {
-    case 'COURSE':
-      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-    case 'EXAM':
-      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-    case 'OTHER':
-      return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    case "COURSE":
+      return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+    case "EXAM":
+      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+    case "OTHER":
+      return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
     default:
-      return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+      return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
   }
 }
 
 const getCategoryLabel = (category?: AnnouncementCategory) => {
   switch (category) {
-    case 'COURSE':
-      return 'Course'
-    case 'EXAM':
-      return 'Exam'
-    case 'OTHER':
-      return 'Other'
+    case "COURSE":
+      return "Course"
+    case "EXAM":
+      return "Exam"
+    case "OTHER":
+      return "Other"
     default:
-      return 'Unknown'
+      return "Unknown"
   }
 }
 
@@ -150,16 +151,25 @@ type AnnouncementFilterState = {
 
 export function AnnouncementContainer() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementDto | null>(null)
+  const [selectedAnnouncement, setSelectedAnnouncement] =
+    useState<AnnouncementDto | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
-  const [newAnnouncementDialogOpen, setNewAnnouncementDialogOpen] = useState(false)
-  const [editAnnouncementDialogOpen, setEditAnnouncementDialogOpen] = useState(false)
-  const [announcementToEdit, setAnnouncementToEdit] = useState<AnnouncementDto | null>(null)
+  const [newAnnouncementDialogOpen, setNewAnnouncementDialogOpen] =
+    useState(false)
+  const [editAnnouncementDialogOpen, setEditAnnouncementDialogOpen] =
+    useState(false)
+  const [announcementToEdit, setAnnouncementToEdit] =
+    useState<AnnouncementDto | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [announcementToDelete, setAnnouncementToDelete] = useState<number | null>(null)
+  const [announcementToDelete, setAnnouncementToDelete] = useState<
+    number | null
+  >(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [message, setMessage] = useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [viewMode, setViewMode] = useState<ViewMode>("card")
   const [currentPage, setCurrentPage] = useState(1)
@@ -180,11 +190,11 @@ export function AnnouncementContainer() {
     add_AnnouncementData,
     delete_AnnouncementData,
     update_AnnouncementData,
-    profile
+    profile,
   } = mainStore()
 
   const userRole = profile?.role?.toLowerCase() || ""
-  const canEdit = userRole !== "learner" 
+  const canEdit = userRole !== "learner"
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(
@@ -238,7 +248,10 @@ export function AnnouncementContainer() {
   const hasFilterData = hasCategoryData || hasCreatedByData
 
   // Helper to toggle filter values
-  const toggleFilter = (field: keyof AnnouncementFilterState, value: string) => {
+  const toggleFilter = (
+    field: keyof AnnouncementFilterState,
+    value: string
+  ) => {
     setFilters((prev) => {
       const current = prev[field]
       if (current.includes(value)) {
@@ -267,12 +280,16 @@ export function AnnouncementContainer() {
         announcement.createdBy?.toLowerCase().includes(searchLower)
 
       // Category filter
-      const matchesCategory = filters.category.length === 0 ||
-        (announcement.category && filters.category.includes(announcement.category))
+      const matchesCategory =
+        filters.category.length === 0 ||
+        (announcement.category &&
+          filters.category.includes(announcement.category))
 
       // CreatedBy filter
-      const matchesCreatedBy = filters.createdBy.length === 0 ||
-        (announcement.createdBy && filters.createdBy.includes(announcement.createdBy))
+      const matchesCreatedBy =
+        filters.createdBy.length === 0 ||
+        (announcement.createdBy &&
+          filters.createdBy.includes(announcement.createdBy))
 
       return matchesSearch && matchesCategory && matchesCreatedBy
     })
@@ -288,7 +305,9 @@ export function AnnouncementContainer() {
     })
 
   // Pagination
-  const totalPages = Math.ceil(filteredAndSortedAnnouncements.length / itemsPerPage)
+  const totalPages = Math.ceil(
+    filteredAndSortedAnnouncements.length / itemsPerPage
+  )
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedAnnouncements = filteredAndSortedAnnouncements.slice(
     startIndex,
@@ -301,7 +320,8 @@ export function AnnouncementContainer() {
   }
 
   const handlePrevious = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
-  const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+  const handleNext = () =>
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = []
@@ -333,7 +353,10 @@ export function AnnouncementContainer() {
   }
 
   // Handle edit button click
-  const handleEditClick = (e: React.MouseEvent, announcement: AnnouncementDto) => {
+  const handleEditClick = (
+    e: React.MouseEvent,
+    announcement: AnnouncementDto
+  ) => {
     e.stopPropagation()
     setAnnouncementToEdit(announcement)
     setEditAnnouncementDialogOpen(true)
@@ -385,7 +408,11 @@ export function AnnouncementContainer() {
   }
 
   // Handle submit announcement
-  const handleSubmitAnnouncement = async (title: string, category: AnnouncementCategory, text: string) => {
+  const handleSubmitAnnouncement = async (
+    title: string,
+    category: AnnouncementCategory,
+    text: string
+  ) => {
     setIsSubmitting(true)
     try {
       const newAnnouncement: AnnouncementDto = {
@@ -531,14 +558,20 @@ export function AnnouncementContainer() {
                       onClick={toggleSortOrder}
                     >
                       <HugeiconsIcon
-                        icon={sortOrder === "desc" ? SortByUp01Icon : SortByDown01Icon}
+                        icon={
+                          sortOrder === "desc"
+                            ? SortByUp01Icon
+                            : SortByDown01Icon
+                        }
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{sortOrder === "desc" ? "Newest first" : "Oldest first"}</p>
+                    <p>
+                      {sortOrder === "desc" ? "Newest first" : "Oldest first"}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -588,13 +621,14 @@ export function AnnouncementContainer() {
                                     }
                                     onSelect={(e) => e.preventDefault()}
                                   >
-                                    {getCategoryLabel(value as AnnouncementCategory)}
+                                    {getCategoryLabel(
+                                      value as AnnouncementCategory
+                                    )}
                                   </DropdownMenuCheckboxItem>
                                 ))}
                               </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
-                          <DropdownMenuSeparator />
                         </>
                       )}
 
@@ -622,10 +656,10 @@ export function AnnouncementContainer() {
                               </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
-                          <DropdownMenuSeparator />
                         </>
                       )}
 
+                      <DropdownMenuSeparator />
                       {/* Clear Filters Button */}
                       <DropdownMenuItem
                         onClick={clearAllFilters}
@@ -653,7 +687,7 @@ export function AnnouncementContainer() {
                     className="bg-primary hover:bg-primary/90"
                     disabled={isLoading}
                   >
-                    <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+                    <HugeiconsIcon icon={Megaphone01Icon} strokeWidth={2} />
                     New Announcement
                   </Button>
                 )}
@@ -664,10 +698,11 @@ export function AnnouncementContainer() {
           {/* Message Display */}
           {message && (
             <div
-              className={`mx-4 mb-4 rounded p-4 ${message.type === "success"
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-                }`}
+              className={`mx-4 mb-4 rounded p-4 ${
+                message.type === "success"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
             >
               {message.text}
             </div>
@@ -687,25 +722,35 @@ export function AnnouncementContainer() {
                 <>
                   {viewMode === "card" ? (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {paginatedAnnouncements.map((announcement: AnnouncementDto) => (
-                        <AnnouncementCard
-                          key={announcement.id}
-                          announcement={{
-                            id: announcement.id!,
-                            title: announcement.title,
-                            text: announcement.text,
-                            category: announcement.category,
-                            createdBy: announcement.createdBy,
-                            createdAt: announcement.createdAt || new Date().toISOString(),
-                            updatedAt: announcement.updatedAt,
-                          }}
-                          onClick={() => handleAnnouncementClick(announcement)}
-                          onDelete={handleDeleteClick}
-                          onEdit={canEdit ? (e) => handleEditClick(e, announcement) : undefined}
-                          formatTime={formatTime}
-                          canEdit={canEdit}
-                        />
-                      ))}
+                      {paginatedAnnouncements.map(
+                        (announcement: AnnouncementDto) => (
+                          <AnnouncementCard
+                            key={announcement.id}
+                            announcement={{
+                              id: announcement.id!,
+                              title: announcement.title,
+                              text: announcement.text,
+                              category: announcement.category,
+                              createdBy: announcement.createdBy,
+                              createdAt:
+                                announcement.createdAt ||
+                                new Date().toISOString(),
+                              updatedAt: announcement.updatedAt,
+                            }}
+                            onClick={() =>
+                              handleAnnouncementClick(announcement)
+                            }
+                            onDelete={handleDeleteClick}
+                            onEdit={
+                              canEdit
+                                ? (e) => handleEditClick(e, announcement)
+                                : undefined
+                            }
+                            formatTime={formatTime}
+                            canEdit={canEdit}
+                          />
+                        )
+                      )}
                     </div>
                   ) : (
                     // Table View
@@ -713,84 +758,108 @@ export function AnnouncementContainer() {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
-                            <TableHead className="border-r whitespace-nowrap">Sr.</TableHead>
-                            <TableHead className="border-r whitespace-nowrap">Title</TableHead>
-                            <TableHead className="border-r whitespace-nowrap">Category</TableHead>
-                            <TableHead className="border-r whitespace-nowrap">Created By</TableHead>
-                            <TableHead className="border-r whitespace-nowrap">Text</TableHead>
-                            <TableHead className="border-r whitespace-nowrap">Created At</TableHead>
-                            <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Sr.
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Title
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Category
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Created By
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Text
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Created At
+                            </TableHead>
+                            <TableHead className="text-right whitespace-nowrap">
+                              Actions
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {paginatedAnnouncements.map((announcement: AnnouncementDto, index: number) => (
-                            <TableRow
-                              key={announcement.id}
-                              className="cursor-pointer transition-colors hover:bg-muted/50"
-                              onClick={() => handleAnnouncementClick(announcement)}
-                            >
-                              <TableCell className="border-r whitespace-nowrap">
-                                {startIndex + index + 1}
-                              </TableCell>
-                              <TableCell className="max-w-[150px] border-r">
-                                <div className="truncate font-medium">{announcement.title}</div>
-                              </TableCell>
-                              <TableCell className="border-r whitespace-nowrap">
-                                {announcement.category && (
-                                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${getCategoryStyles(announcement.category)}`}>
-                                    {getCategoryLabel(announcement.category)}
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell className="border-r whitespace-nowrap">
-                                {announcement.createdBy}
-                              </TableCell>
-                              <TableCell className="max-w-[250px] border-r">
-                                <div className="truncate text-sm text-muted-foreground">
-                                  {announcement.text}
-                                </div>
-                              </TableCell>
-                              <TableCell className="border-r text-sm whitespace-nowrap text-muted-foreground">
-                                {announcement.createdAt ? formatTime(announcement.createdAt) : "-"}
-                              </TableCell>
-                              <TableCell className="text-right whitespace-nowrap">
-                                <div className="flex items-center justify-end gap-1">
-                                  {canEdit && (
+                          {paginatedAnnouncements.map(
+                            (announcement: AnnouncementDto, index: number) => (
+                              <TableRow
+                                key={announcement.id}
+                                className="cursor-pointer transition-colors hover:bg-muted/50"
+                                onClick={() =>
+                                  handleAnnouncementClick(announcement)
+                                }
+                              >
+                                <TableCell className="border-r whitespace-nowrap">
+                                  {startIndex + index + 1}
+                                </TableCell>
+                                <TableCell className="max-w-[150px] border-r">
+                                  <div className="truncate font-medium">
+                                    {announcement.title}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="border-r whitespace-nowrap">
+                                  {announcement.category && (
+                                    <span
+                                      className={`rounded-full px-2 py-1 text-xs font-medium ${getCategoryStyles(announcement.category)}`}
+                                    >
+                                      {getCategoryLabel(announcement.category)}
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="border-r whitespace-nowrap">
+                                  {announcement.createdBy}
+                                </TableCell>
+                                <TableCell className="max-w-[250px] border-r">
+                                  <div className="truncate text-sm text-muted-foreground">
+                                    {announcement.text}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="border-r text-sm whitespace-nowrap text-muted-foreground">
+                                  {announcement.createdAt
+                                    ? formatTime(announcement.createdAt)
+                                    : "-"}
+                                </TableCell>
+                                <TableCell className="text-right whitespace-nowrap">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {canEdit && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-primary/10"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleEditClick(e, announcement)
+                                        }}
+                                      >
+                                        <HugeiconsIcon
+                                          icon={MessageEdit01Icon}
+                                          strokeWidth={2}
+                                          className="h-4 w-4"
+                                        />
+                                      </Button>
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                                      className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        handleEditClick(e, announcement)
+                                        handleDeleteClick(e, announcement.id!)
                                       }}
                                     >
                                       <HugeiconsIcon
-                                        icon={MessageEdit01Icon}
+                                        icon={Delete02Icon}
                                         strokeWidth={2}
                                         className="h-4 w-4"
                                       />
                                     </Button>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDeleteClick(e, announcement.id!)
-                                    }}
-                                  >
-                                    <HugeiconsIcon
-                                      icon={Delete02Icon}
-                                      strokeWidth={2}
-                                      className="h-4 w-4"
-                                    />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          )}
                         </TableBody>
                       </Table>
                     </div>
@@ -800,12 +869,17 @@ export function AnnouncementContainer() {
                   {filteredAndSortedAnnouncements.length > 0 && (
                     <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <Field orientation="horizontal" className="w-fit">
-                        <FieldLabel htmlFor="select-rows-per-page">Rows per page</FieldLabel>
+                        <FieldLabel htmlFor="select-rows-per-page">
+                          Rows per page
+                        </FieldLabel>
                         <Select
                           value={itemsPerPage.toString()}
                           onValueChange={handleItemsPerPageChange}
                         >
-                          <SelectTrigger className="w-15" id="select-rows-per-page">
+                          <SelectTrigger
+                            className="w-15"
+                            id="select-rows-per-page"
+                          >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent align="start">
@@ -839,7 +913,8 @@ export function AnnouncementContainer() {
                                 handlePrevious()
                               }}
                               className={
-                                currentPage === 1 || filteredAndSortedAnnouncements.length === 0
+                                currentPage === 1 ||
+                                filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -871,7 +946,8 @@ export function AnnouncementContainer() {
                                 handleNext()
                               }}
                               className={
-                                currentPage === totalPages || filteredAndSortedAnnouncements.length === 0
+                                currentPage === totalPages ||
+                                filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -888,21 +964,21 @@ export function AnnouncementContainer() {
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <HugeiconsIcon
-                        icon={Speaker01Icon}
+                        icon={Megaphone01Icon}
                         strokeWidth={2}
                         className="h-12 w-12 text-muted-foreground"
                       />
                     </EmptyMedia>
                     <EmptyTitle>
                       {searchTerm || hasActiveFilters
-                        ? "No Matching Announcements"
+                        ? `No Matching Announcements for ${searchTerm}`
                         : "No Announcements"}
                     </EmptyTitle>
                     <EmptyDescription className="text-center text-pretty">
                       {searchTerm || hasActiveFilters ? (
                         <>Try adjusting your search or filters.</>
                       ) : (
-                        "Stay updated with the latest announcements."
+                        "Share updates about upcoming courses, exams, or schedule changes with your learners."
                       )}
                     </EmptyDescription>
                   </EmptyHeader>
@@ -924,7 +1000,11 @@ export function AnnouncementContainer() {
                         onClick={handleNewAnnouncement}
                         className="bg-primary hover:bg-primary/90"
                       >
-                        <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="h-4 w-4" />
+                        <HugeiconsIcon
+                          icon={Megaphone01Icon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />
                         New Announcement
                       </Button>
                     )}
@@ -940,7 +1020,9 @@ export function AnnouncementContainer() {
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[600px]">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="pr-8">{selectedAnnouncement?.title}</DialogTitle>
+            <DialogTitle className="pr-8">
+              {selectedAnnouncement?.title}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-2">
@@ -964,14 +1046,22 @@ export function AnnouncementContainer() {
               <div>
                 <p className="font-medium">{selectedAnnouncement?.createdBy}</p>
                 {selectedAnnouncement?.category && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getCategoryStyles(selectedAnnouncement.category)}`}>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${getCategoryStyles(selectedAnnouncement.category)}`}
+                  >
                     {getCategoryLabel(selectedAnnouncement.category)}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
-                <HugeiconsIcon icon={ClockIcon} strokeWidth={2} className="h-3 w-3" />
-                {selectedAnnouncement?.createdAt ? formatTime(selectedAnnouncement.createdAt) : "-"}
+                <HugeiconsIcon
+                  icon={ClockIcon}
+                  strokeWidth={2}
+                  className="h-3 w-3"
+                />
+                {selectedAnnouncement?.createdAt
+                  ? formatTime(selectedAnnouncement.createdAt)
+                  : "-"}
               </div>
             </div>
           </DialogFooter>

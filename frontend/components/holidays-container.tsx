@@ -652,7 +652,7 @@ export function HolidaysContainer({
               </div>
             </>
           ) : (
-            // Empty state - like feedback container
+            // Empty state
             <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -663,7 +663,7 @@ export function HolidaysContainer({
                   />
                 </EmptyMedia>
                 <EmptyTitle>
-                  {searchTerm ? "No Matching Holidays" : "No Holiday"}
+                  {searchTerm ? `No Matching Holidays for ${searchTerm}` : "No Holiday"}
                 </EmptyTitle>
                 <EmptyDescription className="text-center text-pretty">
                   {searchTerm ? (
