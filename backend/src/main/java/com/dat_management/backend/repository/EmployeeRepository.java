@@ -1,6 +1,8 @@
 package com.dat_management.backend.repository;
 
 import com.dat_management.backend.entity.Employee;
+
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +14,6 @@ import java.util.Optional;
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
-    Optional<Employee> findById(String id);
     Optional<Employee> findByEmail(String email);
     Boolean existsByEmail(String email);
 
@@ -60,5 +61,19 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
            "AND e.isDeleted = false " +
            "AND e.team.id = :teamId")
     Long countActiveEmployeesByTeamId(@Param("teamId") Integer teamId);
+
+    @EntityGraph(attributePaths = {"team", "departmentDir"})
+    Optional<Employee> findById(String id);
+
+    Optional<Employee> findByDoorlog(String doorlog);
+    @EntityGraph(attributePaths = {"team", "departmentDir"})
+    List<Employee> findByIsDeletedFalse();
+    @EntityGraph(attributePaths = {"team", "departmentDir"})
+    List<Employee> findByDepartmentDirId(Integer departmentDirId);
+    @EntityGraph(attributePaths = {"team", "departmentDir"})
+    List<Employee> findByTeamId(Integer teamId);
+    
+    @Query("SELECT e FROM Employee e WHERE e.isDeleted = false AND e.team.departmentDat.id = :deptDatId")
+    List<Employee> findByDepartmentDatId(@Param("deptDatId") Integer deptDatId);
     
 }

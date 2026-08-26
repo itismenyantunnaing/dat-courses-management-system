@@ -7,4 +7,6 @@ public interface JapaneseDictionaryRepository extends JpaRepository<JapaneseDict
    boolean existsByEnglishText(String englishText);
 
    boolean existsByEnglishTextAndIdNot(String englishText, Integer id);
+
+   
 }

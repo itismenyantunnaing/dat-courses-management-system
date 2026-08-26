@@ -1,5 +1,6 @@
 package com.dat_management.backend.repository;
 
+import com.dat_management.backend.entity.SkillCategory;
 import com.dat_management.backend.entity.SkillSubCategory;
 
 import java.util.List;
@@ -13,4 +14,10 @@ public interface SkillSubCategoryRepository extends JpaRepository<SkillSubCatego
     Optional<SkillSubCategory> findBySubCategoryNameIgnoreCaseAndCategoryId(String subCategoryName, Integer categoryId);
     Optional<SkillSubCategory> findBySubCategoryNameIgnoreCase(String subCategoryName);
     List<SkillSubCategory> findByCategoryId(Integer categoryId);
+
+    Optional<SkillSubCategory> findBySubCategoryName(String subCategoryName);
+
+    Optional<SkillSubCategory> findBySubCategoryNameAndCategory(String subCategoryName, SkillCategory category);
+    
+    List<SkillSubCategory> findByIsActiveTrue();
 }

@@ -13,4 +13,6 @@ public interface DivisionRepository extends JpaRepository<Division, Integer> {
     Optional<Division> findByDivisionNameIgnoreCase(String divisionName);
     List<Division> findAllByIsDeletedFalse();
     Optional<Division> findByIdAndIsDeletedFalse(Integer id);
+
+    List<Division> findByIsDeletedFalse();
 }

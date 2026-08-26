@@ -61,7 +61,7 @@ export function ExportDialog({
 }: ExportDialogProps) {
   const [activeExportTab, setActiveExportTab] = useState("")
   const [isExporting, setIsExporting] = useState(false)
-  const [exportLanguage, setExportLanguage] = useState<"eng" | "japan">("eng")
+  const [exportLanguage, setExportLanguage] = useState<"english" | "japanese">("english")
   const [selectedCourse, setSelectedCourse] = useState<string>("")
   const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false)
 
@@ -77,6 +77,8 @@ export function ExportDialog({
     fetch_managementScoreData,
     fetch_EmployeeJapaneseLevel,
     fetchAll_CourseData,
+    fetch_FeedbackData,
+    fetch_FeedbackByEmployeeId,
     courses
   } = mainStore()
 
@@ -100,9 +102,9 @@ export function ExportDialog({
       if (label === "exams") return tab.id === "exams"
       if (label === "dashboard") return tab.id === "dashboard"
       if (label === "skills") return tab.id === "skills"
-      if (label === "current_target_data")
-        return tab.id === "current_target_data"
+      if (label === "current_target_data") return tab.id === "current_target_data"
       if (label === "holidays") return tab.id === "holidays"
+      if (label === 'feedback') return tab.id === "feedback"
       return tab.id === label
     })
   }, [label])
@@ -130,6 +132,11 @@ export function ExportDialog({
     return currentTabData?.id === "self_study_progress_report"
   }, [currentTabData])
 
+  // Check if current tab is Feedback
+  const isFeedbackTab = useMemo(() => {
+    return currentTabData?.id === "feedback"
+  }, [currentTabData])
+
   // Reset selected course when switching away from self-study tab
   useEffect(() => {
     if (!isSelfStudyTab) {
@@ -148,7 +155,7 @@ export function ExportDialog({
       }
       setIsExporting(false)
       // Reset language to English when dialog opens
-      setExportLanguage("eng")
+      setExportLanguage("english")
       // Reset selected course
       setSelectedCourse("")
     }
@@ -191,6 +198,26 @@ export function ExportDialog({
           case "self_study_progress_report":
             await fetchAll_CourseData()
             break
+          case "feedback":
+            // Fetch feedback data based on user role
+            try {
+              const store = (window as any).mainStore?.getState()
+              const profile = store?.profile
+              const userRole = profile?.role?.toLowerCase() || ""
+              const isLearner = userRole === "learner"
+              const isAdminOrApprover = userRole === "admin" || userRole === "approver"
+              
+              if (isLearner && profile?.id) {
+                await fetch_FeedbackByEmployeeId(profile.id)
+              } else if (isAdminOrApprover) {
+                await fetch_FeedbackData()
+              } else {
+                await fetch_FeedbackData()
+              }
+            } catch (error) {
+              console.error("❌ Failed to fetch feedback data:", error)
+            }
+            break
           default:
             break
         }
@@ -200,7 +227,7 @@ export function ExportDialog({
     }
 
     fetchDataForTab()
-  }, [open, currentTabData?.id, fetchAll_CourseData])
+  }, [open, currentTabData?.id, fetchAll_CourseData, fetch_FeedbackData, fetch_FeedbackByEmployeeId])
 
   const handleExportClick = useCallback(
     async (format: string) => {
@@ -252,6 +279,11 @@ export function ExportDialog({
             await currentTabData.onExport(format, selectedCourse)
             break
 
+          case "feedback":
+            // Handle feedback export
+            await currentTabData.onExport(format)
+            break
+
           default:
             await currentTabData.onExport(format)
         }
@@ -279,12 +311,17 @@ export function ExportDialog({
     return tabId === "current_target_data" || 
            tabId === "skills" ||
            tabId === "self_study_progress_report" || 
-           currentTabData?.id === "exam_progress_report"
+           tabId === "exam_progress_report"
+    // Note: Feedback supports PDF, so it's not in this list
   }, [currentTabData])
 
-  // Check if CSV should be hidden for self-study
+  // Check if CSV should be hidden for certain tabs
   const shouldHideCSV = useMemo(() => {
-    return currentTabData?.id === "self_study_progress_report" || currentTabData?.id === "exam_progress_report"
+    const tabId = currentTabData?.id
+    return tabId === "self_study_progress_report" || 
+           tabId === "exam_progress_report" || 
+           tabId === "skills"
+    // Note: Feedback supports CSV, so it's not in this list
   }, [currentTabData])
 
   // Get course options for dropdown - FILTER OUT "trainer" courses
@@ -380,18 +417,18 @@ export function ExportDialog({
           </span>
           <div className="flex items-center gap-4 rounded-md bg-muted p-1">
             <Button
-              variant={exportLanguage === "eng" ? "default" : "ghost"}
+              variant={exportLanguage === "english" ? "default" : "ghost"}
               size="sm"
               className="h-7 flex-1 text-xs"
-              onClick={() => setExportLanguage("eng")}
+              onClick={() => setExportLanguage("english")}
             >
               English
             </Button>
             <Button
-              variant={exportLanguage === "japan" ? "default" : "ghost"}
+              variant={exportLanguage === "japanese" ? "default" : "ghost"}
               size="sm"
               className="h-7 flex-1 text-xs"
-              onClick={() => setExportLanguage("japan")}
+              onClick={() => setExportLanguage("japanese")}
             >
               日本語
             </Button>
@@ -418,7 +455,7 @@ export function ExportDialog({
           variant="outline"
           className="h-12 w-full justify-start gap-3 transition-colors hover:border-blue-200 hover:bg-blue-50"
           onClick={() => handleExportClick("csv")}
-          disabled={isExporting}
+          disabled={isExporting || (isSelfStudyTab && !selectedCourse)}
         >
           <HugeiconsIcon
             icon={Csv01Icon}
@@ -434,7 +471,7 @@ export function ExportDialog({
           variant="outline"
           className="h-12 w-full justify-start gap-3 transition-colors hover:border-red-200 hover:bg-red-50"
           onClick={() => handleExportClick("pdf")}
-          disabled={isExporting}
+          disabled={isExporting || (isSelfStudyTab && !selectedCourse)}
         >
           <HugeiconsIcon
             icon={Pdf01Icon}
@@ -544,7 +581,7 @@ export function ExportDialog({
                     onClick={() => {
                       // Reset language when switching away from skills tab
                       if (tab.id !== "skills") {
-                        setExportLanguage("eng")
+                        setExportLanguage("english")
                       }
                       // Reset selected course when switching away from self-study tab
                       if (tab.id !== "self_study_progress_report") {
@@ -582,7 +619,7 @@ export function ExportDialog({
                         setActiveExportTab(tab.id)
                         // Reset language when switching away from skills tab
                         if (tab.id !== "skills") {
-                          setExportLanguage("eng")
+                          setExportLanguage("english")
                         }
                         // Reset selected course when switching away from self-study tab
                         if (tab.id !== "self_study_progress_report") {

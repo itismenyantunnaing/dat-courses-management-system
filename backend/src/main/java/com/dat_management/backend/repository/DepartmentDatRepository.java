@@ -19,4 +19,10 @@ public interface DepartmentDatRepository extends JpaRepository<DepartmentDat, In
     List<DepartmentDat> findAllByDivisionAndIsDeletedFalse(Division division);
 
     Optional<DepartmentDat> findByIdAndIsDeletedFalse(Integer id);
+
+    Optional<DepartmentDat> findByDeptNameAndDivisionId(String deptName, Integer divisionId);
+
+    List<DepartmentDat> findByDivisionId(Integer divisionId);
+    
+    List<DepartmentDat> findByIsDeletedFalse();
 }

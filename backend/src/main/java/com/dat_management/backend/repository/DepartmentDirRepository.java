@@ -15,4 +15,8 @@ public interface DepartmentDirRepository
     // Query to get all department names
     @Query("SELECT d.deptName FROM DepartmentDir d ")
     List<String> findAllDepartmentNames();
+
+    Optional<DepartmentDir> findByDeptName(String deptName);
+    
+    List<DepartmentDir> findByIsDeletedFalse();
 }   

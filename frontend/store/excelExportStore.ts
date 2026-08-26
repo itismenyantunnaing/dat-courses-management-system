@@ -5,6 +5,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 interface ExcelExportStore {
   exportDashboard: () => void;
   exportProgress: (courseId: number) => void;
+  exportSkillset: (language: string) => void;
 }
 
 export const excelExportStore = create<ExcelExportStore>(() => ({
@@ -16,4 +17,8 @@ export const excelExportStore = create<ExcelExportStore>(() => ({
   exportProgress: (courseId: number) => {
     window.location.href = `${apiUrl}/api/excel/progress/${courseId}`;
   },
+
+  exportSkillset: (language: string) => {
+    window.location.href = `${apiUrl}/api/excel/export/all/${language}`
+  } 
 }));

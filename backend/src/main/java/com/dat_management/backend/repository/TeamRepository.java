@@ -21,4 +21,11 @@ public interface TeamRepository extends JpaRepository<Team, Integer> {
     List<Team> findAllByDepartmentDatDivisionAndIsDeletedFalse(com.dat_management.backend.entity.Division division);
 
     Optional<Team> findByIdAndIsDeletedFalse(Integer id);
+
+    Optional<Team> findByTeamNameAndDepartmentDatId(String teamName, Integer departmentDatId);
+
+    List<Team> findByDepartmentDatId(Integer departmentDatId);
+    
+    List<Team> findByIsDeletedFalse();
 }
+  

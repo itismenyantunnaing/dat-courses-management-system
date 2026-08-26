@@ -10,4 +10,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ManagementScoreRepository extends JpaRepository<ManagementScore, Integer> {
     Optional<ManagementScore> findByEmployeeId(String employeeId);
+    void deleteByEmployeeId(String employeeId);
 }

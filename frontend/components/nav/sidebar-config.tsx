@@ -282,7 +282,7 @@ export const adminData: SidebarConfig = {
           actions: [
             {
               label: "Export data",
-              tabId: "exam_progress_report",
+              tabId: "feedback",
               action: "export",
             },
           ],

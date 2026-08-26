@@ -1310,66 +1310,14 @@ export const allTabs = [
         return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
       }
     },
-    onExport: async (format: string, language?: 'eng' | 'japan') => {
-      const store = (window as any).mainStore?.getState();
-      if (!store) {
-        alert("System store not initialized. Please refresh and try again.");
-        return;
+    onExport: async (format: string, language?: 'english' | 'japanese') => {
+
+      if ((format === "excel" || format === "xlsx") && language) {
+        excelExportStore.getState().exportSkillset(language);
+      } else {
+        alert(`Export format "${format}" is not supported for skills data.`);
       }
 
-      const {
-        employee_data,
-        skill_headers,
-        skillData,
-        devCap_headers,
-        devCap_data,
-        languageSkill_data,
-        managementScores_Data,
-        employeeJapaneseLevel_Data,
-        dictionary
-      } = store;
-
-      if (!employee_data || employee_data.length === 0) {
-        alert("No employee data to export");
-        return;
-      }
-
-      try {
-        const exportData = {
-          employee_data,
-          skill_headers,
-          skillData,
-          devCap_headers,
-          devCap_data,
-          languageSkill_data,
-          managementScores_Data,
-          employeeJapaneseLevel_Data,
-          dictionary
-        };
-
-        const options = {
-          showAdministrator: true,
-          showDeveloper: true,
-          showTechnicalAbility: true,
-          fileName: `Skills_Report_${new Date().toISOString().split("T")[0]}`,
-          language: language || 'eng'
-        };
-
-        if (format === "excel" || format === "xlsx") {
-          await exportSkillsToExcel(exportData, options);
-        } else if (format === "csv") {
-          await exportSkillsToCSV(exportData, options);
-        } else if (format === "pdf") {
-          await exportSkillsToPDF(exportData, options);
-        } else {
-          alert(`Export format "${format}" is not supported for skills data.`);
-        }
-      } catch (error) {
-        console.error("❌ Export failed:", error);
-        alert(
-          `Failed to export skills data: ${error instanceof Error ? error.message : "Unknown error"}`
-        );
-      }
     },
   },
   {
@@ -1962,6 +1910,91 @@ export const allTabs = [
 
       // Use the excelExportStore to export with the selected course
       excelExportStore.getState().exportProgress(courseId);
+    },
+  },
+  {
+    id: "feedback",
+    label: "feedback",
+    exportTitle: "Export Feedback",
+    exportDescription: "Export Feedback from the system.",
+    icon: ChartIcon,
+    onExport: async (format: string) => {
+      // Get data from store
+      const store = (window as any).mainStore?.getState();
+
+      if (!store) {
+        alert("System store not initialized. Please refresh and try again.");
+        return;
+      }
+
+      // Fetch feedback data if not already loaded
+      let feedbackData = store.feedback || [];
+
+      // If no feedback data, try fetching it
+      if (!feedbackData || feedbackData.length === 0) {
+        try {
+          // Check if user is learner or admin/approver
+          const profile = store.profile;
+          const userRole = profile?.role?.toLowerCase() || "";
+          const isLearner = userRole === "learner";
+          const isAdminOrApprover = userRole === "admin" || userRole === "approver";
+
+          if (isLearner && profile?.id) {
+            await store.fetch_FeedbackByEmployeeId(profile.id);
+          } else if (isAdminOrApprover) {
+            await store.fetch_FeedbackData();
+          } else {
+            await store.fetch_FeedbackData();
+          }
+
+          // Get fresh data after fetch
+          const freshStore = (window as any).mainStore?.getState();
+          feedbackData = freshStore?.feedback || [];
+        } catch (error) {
+          console.error("❌ Error fetching feedback data:", error);
+          alert(`Failed to fetch feedback data: ${error instanceof Error ? error.message : "Unknown error"}`);
+          return;
+        }
+      }
+
+      // Check if we have data to export
+      if (!feedbackData || feedbackData.length === 0) {
+        alert("No feedback data to export");
+        return;
+      }
+
+      try {
+        // Import the export functions
+        const {
+          exportFeedbackToExcel,
+          exportFeedbackToCSV,
+          exportFeedbackToPDF,
+          exportFilteredFeedback
+        } = await import('@/lib/export/Export-feedbackData');
+
+        // Export based on format
+        if (format === "excel" || format === "xlsx") {
+          await exportFeedbackToExcel(feedbackData);
+        } else if (format === "csv") {
+          await exportFeedbackToCSV(feedbackData);
+        } else if (format === "pdf") {
+          await exportFeedbackToPDF(feedbackData);
+        } else if (format === "all") {
+          await exportFilteredFeedback(feedbackData, { format: 'all' });
+        } else {
+          alert(`Export format "${format}" is not supported for feedback.`);
+          return;
+        }
+
+        // Optional: Show success message
+        console.log(`✅ Feedback exported successfully as ${format}`);
+
+      } catch (error) {
+        console.error("❌ Export failed:", error);
+        alert(
+          `Failed to export feedback data: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
     },
   },
 ]

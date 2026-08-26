@@ -13,4 +13,6 @@ public interface DevelopmentTypeRepository extends JpaRepository<DevelopmentType
     Optional<DevelopmentType> findByDevelopmentTypeNameIgnoreCase(String developmentTypeName);
 
     List<DevelopmentType> findByIsActiveTrue();
+
+    Optional<DevelopmentType> findByDevelopmentTypeName(String developmentTypeName);
 }
