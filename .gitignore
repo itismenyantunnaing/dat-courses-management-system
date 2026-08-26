@@ -31,6 +31,9 @@ backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
 backend/HELP.md
 
+# --- Backend (ImageFile Storage) ---
+backend/imageStorage/
+
 # STS / Eclipse
 backend/.apt_generated
 backend/.classpath
