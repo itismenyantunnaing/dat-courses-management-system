@@ -40,7 +40,6 @@ import {
 import { Button } from "@/components/ui/button"
 import ChangePassword from "./dialogs/changePassword-dialog"
 import { PersonalInformationDialog } from "./dialogs/personalInformation-dialog"
-import { RolePermissionsDialog } from "./dialogs/rolePermissions-dialog"
 import { LogoutDialog } from "./dialogs/logout-dialog"
 import { SettingDialog } from "./dialogs/setting-dialog"
 import { logout } from "@/app/actions/auth"
@@ -328,15 +327,6 @@ export function NavUser() {
                   <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
                   Setting
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault()
-                    setRolePermissionsDialogOpen(true)
-                  }}
-                >
-                  <HugeiconsIcon icon={ShieldUserIcon} strokeWidth={2} />
-                  Manage role permissions
-                </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -400,15 +390,6 @@ export function NavUser() {
           />
         </DialogContent>
       </Dialog>
-
-      {/* Role Permissions Dialog */}
-      <RolePermissionsDialog
-        open={rolePermissionsDialogOpen}
-        onOpenChange={setRolePermissionsDialogOpen}
-        onSave={(roles) => {
-          // Handle save logic here
-        }}
-      />
     </>
   )
 }
