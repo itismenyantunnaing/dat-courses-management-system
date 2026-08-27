@@ -523,8 +523,9 @@ useEffect(() => {
         onOpenChange={setSendMailOpen}
         defaultEmail={profile?.email || ""}
       />
+
       {/* Forced Password Change Dialog for New Users */}
-      {/* <Dialog
+      <Dialog
         open={isChangePasswordOpen}
         onOpenChange={(open) => {
           // Prevent closing if user status is still "default"
@@ -550,7 +551,7 @@ useEffect(() => {
             onClose={() => setIsChangePasswordOpen(false)}
           />
         </DialogContent>
-      </Dialog> */}
+      </Dialog>
     </>
   )
 }

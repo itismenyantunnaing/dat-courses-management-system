@@ -19,7 +19,7 @@ import { AddDivDeptTeamDialog } from "@/components/dialogs/createDivDeptTeam-dia
 import type { Employee } from "@/types/employee"
 import { mainStore } from "@/store/mainStore"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Edit03Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, Edit03Icon } from "@hugeicons/core-free-icons"
 import type { Course } from "@/types/course"
 
 interface EditEmployeeDrawerProps {
@@ -49,7 +49,11 @@ export function EditEmployeeDrawer({
     useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
-  const { update_EmployeeData, add_division, updateEmployeeDepartmentPosition } = mainStore()
+  const {
+    update_EmployeeData,
+    add_division,
+    updateEmployeeDepartmentPosition,
+  } = mainStore()
 
   // State for Add Item Dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -86,7 +90,6 @@ export function EditEmployeeDrawer({
     email: "",
     joinedDate: "",
   })
-
 
   // Reset edit mode when drawer opens/closes
   useEffect(() => {
@@ -177,8 +180,6 @@ export function EditEmployeeDrawer({
     setIsSubmitting(true)
 
     try {
-
-
       // Map form data to Employee type - PRESERVE ALL ORIGINAL FIELDS
       const updatedEmployee: Employee = {
         ...employee!,
@@ -221,13 +222,15 @@ export function EditEmployeeDrawer({
       if (deptDirChanged || positionChanged) {
         const deptPosResult = await updateEmployeeDepartmentPosition({
           employeeId: employee!.id,
-          departmentDirName: formData.dept_dir || "",  
+          departmentDirName: formData.dept_dir || "",
           position: formData.position || "",
           isCorePersonnel: employee?.is_core_personnel || false,
           hasJapanBusinessTrip: employee?.has_japan_business_trip || false,
         })
         if (deptPosResult && !deptPosResult.success) {
-          alert(`Failed to update department/position: ${deptPosResult.message}`)
+          alert(
+            `Failed to update department/position: ${deptPosResult.message}`
+          )
           return
         }
       }
@@ -316,19 +319,31 @@ export function EditEmployeeDrawer({
         >
           <DrawerHeader className="shrink-0 border-b">
             <div className="flex items-center justify-between">
-              <DrawerTitle>
-                {isEditMode ? "Edit Employee" : "Employee Details"}
-              </DrawerTitle>
+              <div className="flex items-center gap-1">
+                {isEditMode && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleCancelEdit}
+                    disabled={isSubmitting}
+                  >
+                    <HugeiconsIcon
+                      icon={ArrowLeft01Icon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                  </Button>
+                )}
+                <DrawerTitle>
+                  {isEditMode ? "Edit Employee" : "Employee Details"}
+                </DrawerTitle>
+              </div>
+
               {/* Edit is only offered when the current user has permission
                   to manage this specific employee; everyone else still
                   gets the view above, just without this button. */}
               {!isEditMode && employee && canEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleEditClick}
-                  className="gap-1"
-                >
+                <Button variant="outline" size="sm" onClick={handleEditClick}>
                   <HugeiconsIcon
                     icon={Edit03Icon}
                     strokeWidth={2}
@@ -341,7 +356,7 @@ export function EditEmployeeDrawer({
           </DrawerHeader>
 
           <div className="flex-1 overflow-y-auto">
-            <div className="px-6 py-4">
+            <div className="p-4">
               {isEditMode && canEdit ? (
                 <EmployeeForm
                   data={formData}

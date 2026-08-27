@@ -53,7 +53,9 @@ const InfoRow = ({
 }) => {
   return (
     <div className="flex items-start gap-4 py-3">
-      <span className="w-32 shrink-0 text-sm text-muted-foreground">{label}</span>
+      <span className="w-32 shrink-0 text-sm text-muted-foreground">
+        {label}
+      </span>
       <span className="text-sm font-medium break-all">{value || "-"}</span>
     </div>
   )
@@ -89,35 +91,37 @@ const SkillItem = ({ skill }: { skill: any }) => {
   }
 
   return (
-    <div className="flex items-center justify-between py-3 px-4 hover:bg-muted/30 transition-colors rounded-md group">
-      <div className="flex-1 min-w-0">
+    <div className="group flex items-center justify-between rounded-md px-4 py-3 transition-colors hover:bg-muted/30">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+          <p className="truncate text-sm font-medium transition-colors group-hover:text-primary">
             {skill.skillName}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 ml-4 shrink-0">
+      <div className="ml-4 flex shrink-0 items-center gap-4">
         <div className="flex items-center gap-3">
           {/* Years */}
           <div className="flex items-baseline gap-1">
-            <span className={cn(
-              "text-sm font-semibold tabular-nums",
-              getYearColor(skill.yearsOfExperience || 0)
-            )}>
+            <span
+              className={cn(
+                "text-sm font-semibold tabular-nums",
+                getYearColor(skill.yearsOfExperience || 0)
+              )}
+            >
               {skill.yearsOfExperience?.toFixed(1) || "0"}
             </span>
             <span className="text-xs text-muted-foreground">yrs</span>
           </div>
 
           {/* Separator */}
-          <div className="w-px h-5 bg-border" />
+          <div className="h-5 w-px bg-border" />
 
           {/* Experience Level */}
           <Badge
             variant="outline"
-            className="text-xs font-normal px-2 py-0 h-5"
+            className="h-5 px-2 py-0 text-xs font-normal"
           >
             {skill.experienceLevel || "N/A"}
           </Badge>
@@ -132,7 +136,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingSkills, setIsLoadingSkills] = useState(false)
   const { checkMyEnrollment, fetch_SkillData, skillData, profile } = mainStore()
-  const userRole = profile.role.toLowerCase();
+  const userRole = profile.role.toLowerCase()
   const isAdmin = userRole === "admin"
 
   // Filter courses when courses prop changes
@@ -202,7 +206,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
     employeeSkills.forEach((skill: any) => {
       // Use subCategoryName if category is empty, otherwise use category
       const key = skill.categoryName?.includes("empty")
-        ? (skill.subCategoryName || "")
+        ? skill.subCategoryName || ""
         : skill.categoryName
 
       if (!grouped[key]) {
@@ -224,10 +228,10 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Profile Header */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-4">
+      <div className="flex gap-2">
+        {/* Profile Header */}
+        <CardContent className="px-4">
+          <div className="flex flex-col gap-2">
             <Avatar className="h-16 w-16">
               <AvatarImage
                 src={resolveUploadUrl(employee.profile_photo_path) || ""}
@@ -237,142 +241,206 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
                 {getInitials(employee.name)}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-xl font-semibold truncate">{employee.name}</h2>
-                <Badge className={getStatusBadge(employee.emp_status)}>
-                  {statusLabels[employee.emp_status] || employee.emp_status}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">{employee.role || "-"}</p>
-              <p className="text-sm text-muted-foreground">{employee.email || "-"}</p>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <h2 className="truncate text-xl font-semibold">
+                {employee.name}
+              </h2>
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground">{employee.id}</p>
+                  <Badge className={getStatusBadge(employee.emp_status)}>
+                    {statusLabels[employee.emp_status] || employee.emp_status}
+                  </Badge>
+                </div>
+              )}
+
+              {/* <p className="text-sm text-muted-foreground">
+                {employee.role || "-"}
+              </p> */}
+              <p className="truncate text-sm text-muted-foreground">
+                {employee.email || "-"}
+              </p>
             </div>
           </div>
         </CardContent>
-      </Card>
 
-      {/* Employment Information */}
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground">
-            Employment Information
-          </h3>
-          <div className="divide-y">
-            {isAdmin && <InfoRow label="Staff ID" value={employee.id} />}
+        {/* Employment Information */}
+        <CardContent className="flex-1 px-0">
+          {/* <div className="divide-y">
             <InfoRow label="Division" value={employee.div_name} />
             <InfoRow label="Department" value={employee.dept_dat} />
             <InfoRow label="Team" value={employee.team} />
-            <InfoRow label="Role" value={employee.role} />
-            {isAdmin && <InfoRow label="Door Log Access" value={employee.doorlog} />}
-            {isAdmin && <InfoRow label="Joined Date" value={employee.joinedDate} />}
+            {isAdmin && (
+              <InfoRow label="Door Log Access" value={employee.doorlog} />
+            )}
+            {isAdmin && (
+              <InfoRow label="Joined Date" value={employee.joinedDate} />
+            )}
             <InfoRow label="Service Year" value={employee.serviceYear} />
-            <InfoRow label="Core Personnel" value={employee.is_core_personnel ? "Yes" : "No"} />
-            <InfoRow label="Japan Business Trip" value={employee.has_japan_business_trip ? "Yes" : "No"} />
-            {employee.dob && <InfoRow label="Date of Birth" value={employee.dob} />}
+            <InfoRow
+              label="Core Personnel"
+              value={employee.is_core_personnel ? "Yes" : "No"}
+            />
+            <InfoRow
+              label="Japan Business Trip"
+              value={employee.has_japan_business_trip ? "Yes" : "No"}
+            />
+            {employee.dob && (
+              <InfoRow label="Date of Birth" value={employee.dob} />
+            )}
+          </div> */}
+          <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="block text-xs text-muted-foreground uppercase">
+                Div
+              </span>
+              {employee.div_name || "-"}
+            </div>
+            <div className="col-span-2">
+              <span className="block text-xs text-muted-foreground uppercase">
+                Dept
+              </span>
+              {employee.dept_dat || "-"}
+            </div>
+            <div>
+              <span className="block text-xs text-muted-foreground uppercase">
+                Door Log
+              </span>
+              {employee.doorlog || "-"}
+            </div>
+            <div className="col-span-2">
+              <span className="block text-xs text-muted-foreground uppercase">
+                Team
+              </span>
+              {employee.team || "-"}
+            </div>
+            <div>
+              <span className="block text-xs text-muted-foreground uppercase">
+                Service year
+              </span>
+              {employee.serviceYear || "-"}
+            </div>
+            <div className="col-span-2">
+              <span className="block text-xs text-muted-foreground uppercase">
+                Joined Date
+              </span>
+              {employee.joinedDate || "-"}
+            </div>
           </div>
         </CardContent>
-      </Card>
+      </div>
 
       {/* Skills Section */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-              Skills
-            </h3>
-            <Badge variant="secondary" className="text-xs">
-              {isLoadingSkills ? "Loading..." : `${employeeSkills.length} skills`}
-            </Badge>
+      <CardContent className="pt-6 px-0">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            Skills
+          </h3>
+          <Badge variant="secondary" className="text-xs">
+            {isLoadingSkills ? "Loading..." : `${employeeSkills.length} skill${employeeSkills.length > 1 ? "s" : ""}`}
+          </Badge>
+        </div>
+        <Separator className="mb-4" />
+
+        {isLoadingSkills ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-sm text-muted-foreground">
+              Loading skills...
+            </div>
           </div>
-          <Separator className="mb-4" />
+        ) : employeeSkills.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No skills recorded for this employee
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {Object.entries(groupedSkills).map(([category, skills]) => {
+              const displayName = getCategoryDisplayName(category, skills)
+              const isOtherCategory = category.includes("empty")
 
-          {isLoadingSkills ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-sm text-muted-foreground">Loading skills...</div>
-            </div>
-          ) : employeeSkills.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No skills recorded for this employee
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {Object.entries(groupedSkills).map(([category, skills]) => {
-                const displayName = getCategoryDisplayName(category, skills)
-                const isOtherCategory = category.includes("empty")
-
-                return (
-                  <div key={category}>
-                    {/* Separator with optional label */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="flex-1 border-t border-border" />
-                      {displayName ? (
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
+              return (
+                <div key={category}>
+                  {/* Separator with optional label */}
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="flex-1 border-t border-border" />
+                    {displayName ? (
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
                             "text-xs font-medium",
-                            isOtherCategory ? "text-muted-foreground" : "text-foreground"
-                          )}>
-                            {displayName}
-                          </span>
-                        </div>
-                      ) : (
-                        // No label - show just a small dot
-                        <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                      )}
-                      <div className="flex-1 border-t border-border" />
-                    </div>
-
-                    {/* Skills list */}
-                    <div className={cn(
-                      "rounded-md border overflow-hidden",
-                      (isOtherCategory || !displayName) && "border-dashed border-muted-foreground/20"
-                    )}>
-                      {skills.map((skill, skillIndex) => (
-                        <div key={skill.id}>
-                          <SkillItem skill={skill} />
-                          {skillIndex < skills.length - 1 && (
-                            <div className="border-b border-border/50" />
+                            isOtherCategory
+                              ? "text-muted-foreground"
+                              : "text-foreground"
                           )}
-                        </div>
-                      ))}
-                    </div>
+                        >
+                          {displayName}
+                        </span>
+                      </div>
+                    ) : (
+                      // No label - show just a small dot
+                      <div className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+                    )}
+                    <div className="flex-1 border-t border-border" />
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+                  {/* Skills list */}
+                  <div
+                    className={cn(
+                      "overflow-hidden rounded-md border",
+                      (isOtherCategory || !displayName) &&
+                        "border-dashed border-muted-foreground/20"
+                    )}
+                  >
+                    {skills.map((skill, skillIndex) => (
+                      <div key={skill.id}>
+                        <SkillItem skill={skill} />
+                        {skillIndex < skills.length - 1 && (
+                          <div className="border-b border-border/50" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </CardContent>
 
       {/* Enrolled Courses Section */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold uppercase text-muted-foreground">
-              Enrolled Courses
-            </h3>
-            <Badge variant="secondary" className="text-xs">
-              {isLoading ? "Loading..." : `${enrolledCourses.length} courses`}
-            </Badge>
-          </div>
-          <Separator className="mb-4" />
+      <CardContent className="pt-6 px-0">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            Enrolled Courses
+          </h3>
+          <Badge variant="secondary" className="text-xs">
+            {isLoading ? "Loading..." : `${enrolledCourses.length} courses`}
+          </Badge>
+        </div>
+        <Separator className="mb-4" />
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-sm text-muted-foreground">Loading courses...</div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-sm text-muted-foreground">
+              Loading courses...
             </div>
-          ) : enrolledCourses.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No enrolled courses found
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {enrolledCourses.map((course) => (
-                <CourseCard key={course.id} course={course} showViewButton={false} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        ) : enrolledCourses.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No enrolled courses found
+          </div>
+        ) : (
+          <div className="space-y-3 grid grid-cols-2 gap-2">
+            {enrolledCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                showViewButton={false}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
     </div>
   )
 }
