@@ -131,8 +131,9 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingSkills, setIsLoadingSkills] = useState(false)
-  const { checkMyEnrollment, fetch_SkillData, skillData } = mainStore()
-
+  const { checkMyEnrollment, fetch_SkillData, skillData, profile } = mainStore()
+  const userRole = profile.role.toLowerCase();
+  const isAdmin = userRole === "admin"
 
   // Filter courses when courses prop changes
   useEffect(() => {
@@ -257,13 +258,13 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
             Employment Information
           </h3>
           <div className="divide-y">
-            <InfoRow label="Staff ID" value={employee.id} />
+            {isAdmin && <InfoRow label="Staff ID" value={employee.id} />}
             <InfoRow label="Division" value={employee.div_name} />
             <InfoRow label="Department" value={employee.dept_dat} />
             <InfoRow label="Team" value={employee.team} />
             <InfoRow label="Role" value={employee.role} />
-            <InfoRow label="Door Log Access" value={employee.doorlog} />
-            <InfoRow label="Joined Date" value={employee.joinedDate} />
+            {isAdmin && <InfoRow label="Door Log Access" value={employee.doorlog} />}
+            {isAdmin && <InfoRow label="Joined Date" value={employee.joinedDate} />}
             <InfoRow label="Service Year" value={employee.serviceYear} />
             <InfoRow label="Core Personnel" value={employee.is_core_personnel ? "Yes" : "No"} />
             <InfoRow label="Japan Business Trip" value={employee.has_japan_business_trip ? "Yes" : "No"} />

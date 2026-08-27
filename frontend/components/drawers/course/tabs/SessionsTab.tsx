@@ -354,10 +354,6 @@ export function SessionsTab({
     (e) => e.enrollmentStatus !== "CANCELLED"
   )
 
-  const filteredEmployees =
-    isApprover && profile?.team
-      ? activeEmployees.filter((employee) => employee.teamName === profile.team)
-      : activeEmployees
 
   // Check if user can edit mock test (only learners can edit)
   const canEditMockTest = isLearner && isUserEnrolled && currentUserEnrollment

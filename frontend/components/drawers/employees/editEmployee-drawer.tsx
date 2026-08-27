@@ -28,6 +28,12 @@ interface EditEmployeeDrawerProps {
   employee: Employee | null
   courses: Course[] | null
   onSuccess?: () => void
+  // Whether the current user is allowed to edit THIS employee. The drawer
+  // itself always opens in view mode for everyone (view is available to
+  // all roles); this prop only controls whether the "Edit" button (and
+  // therefore edit mode) is offered. Defaults to true so existing callers
+  // that don't pass it keep their current behavior.
+  canEdit?: boolean
 }
 
 export function EditEmployeeDrawer({
@@ -36,6 +42,7 @@ export function EditEmployeeDrawer({
   employee,
   courses,
   onSuccess,
+  canEdit = true,
 }: EditEmployeeDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
@@ -88,6 +95,14 @@ export function EditEmployeeDrawer({
     }
   }, [open])
 
+  // If the drawer is re-targeted at an employee the user can't edit while
+  // it's already open in edit mode, drop back to view mode.
+  useEffect(() => {
+    if (!canEdit && isEditMode) {
+      setIsEditMode(false)
+    }
+  }, [canEdit, isEditMode])
+
   // Check if form has changes
   const hasChanges = () => {
     return JSON.stringify(formData) !== JSON.stringify(originalFormData)
@@ -139,6 +154,7 @@ export function EditEmployeeDrawer({
   }
 
   const handleSubmit = async () => {
+    if (!canEdit) return
     if (!hasChanges()) {
       return
     }
@@ -253,6 +269,7 @@ export function EditEmployeeDrawer({
   }
 
   const handleEditClick = () => {
+    if (!canEdit) return
     setIsEditMode(true)
   }
 
@@ -280,7 +297,10 @@ export function EditEmployeeDrawer({
               <DrawerTitle>
                 {isEditMode ? "Edit Employee" : "Employee Details"}
               </DrawerTitle>
-              {!isEditMode && employee && (
+              {/* Edit is only offered when the current user has permission
+                  to manage this specific employee; everyone else still
+                  gets the view above, just without this button. */}
+              {!isEditMode && employee && canEdit && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -300,7 +320,7 @@ export function EditEmployeeDrawer({
 
           <div className="flex-1 overflow-y-auto">
             <div className="px-6 py-4">
-              {isEditMode ? (
+              {isEditMode && canEdit ? (
                 <EmployeeForm
                   data={formData}
                   onChange={setFormData}
@@ -317,7 +337,7 @@ export function EditEmployeeDrawer({
           </div>
 
           <DrawerFooter className="shrink-0 border-t">
-            {isEditMode ? (
+            {isEditMode && canEdit ? (
               <div className="flex gap-2">
                 <Button
                   variant="outline"

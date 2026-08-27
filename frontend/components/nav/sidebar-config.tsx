@@ -327,6 +327,19 @@ export const learnerData: SidebarConfig = {
       ],
     },
     {
+      groupLabel: "Manage",
+      items: [
+        {
+          title: "Employees",
+          tabId: "employees",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon icon={UserGroupIcon} strokeWidth={STROKE_WIDTH} />
+          ),
+        },
+      ],
+    },
+    {
       groupLabel: "My Learning",
       items: [
         {

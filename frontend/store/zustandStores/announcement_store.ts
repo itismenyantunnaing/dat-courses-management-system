@@ -35,12 +35,13 @@ export const AnnouncementDataStore = (set: StoreSet, get: StoreGet) => ({
   add_AnnouncementData: async (newAnnouncement: AnnouncementDto) => {
     const previousData = get().announcements;
     const currentProfile = get().profile;
+    const employeeId = currentProfile?.id || 'Unknown User';
     const employeeName = currentProfile?.name || 'Unknown User';
 
     // ✅ Set createdBy from profile
     const announcementWithCreator = {
       ...newAnnouncement,
-      createdBy: employeeName,
+      createdBy: employeeId,
     };
 
     // Validate required fields

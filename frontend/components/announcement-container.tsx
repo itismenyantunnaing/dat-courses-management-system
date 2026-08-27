@@ -175,7 +175,7 @@ export function AnnouncementContainer() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
 
-  // Filter state - same as feedback
+  // Filter state
   const [filters, setFilters] = useState<AnnouncementFilterState>({
     category: [],
     createdBy: [],
@@ -575,7 +575,7 @@ export function AnnouncementContainer() {
                   </TooltipContent>
                 </Tooltip>
 
-                {/* Filter Dropdown - Same as feedback */}
+                {/* Filter Dropdown */}
                 {hasFilterData && (
                   <DropdownMenu>
                     <Tooltip>
@@ -731,7 +731,10 @@ export function AnnouncementContainer() {
                               title: announcement.title,
                               text: announcement.text,
                               category: announcement.category,
-                              createdBy: announcement.createdBy,
+                              createdBy: announcement.createdBy || "Unknown",
+                              departmentName: announcement.departmentName,
+                              teamName: announcement.teamName,
+                              divisionName: announcement.divisionName,
                               createdAt:
                                 announcement.createdAt ||
                                 new Date().toISOString(),
@@ -769,6 +772,12 @@ export function AnnouncementContainer() {
                             </TableHead>
                             <TableHead className="border-r whitespace-nowrap">
                               Created By
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Department
+                            </TableHead>
+                            <TableHead className="border-r whitespace-nowrap">
+                              Team
                             </TableHead>
                             <TableHead className="border-r whitespace-nowrap">
                               Text
@@ -809,7 +818,13 @@ export function AnnouncementContainer() {
                                   )}
                                 </TableCell>
                                 <TableCell className="border-r whitespace-nowrap">
-                                  {announcement.createdBy}
+                                  {announcement.createdBy || "-"}
+                                </TableCell>
+                                <TableCell className="border-r whitespace-nowrap">
+                                  {announcement.departmentName || "-"}
+                                </TableCell>
+                                <TableCell className="border-r whitespace-nowrap">
+                                  {announcement.teamName || "-"}
                                 </TableCell>
                                 <TableCell className="max-w-[250px] border-r">
                                   <div className="truncate text-sm text-muted-foreground">
@@ -1045,9 +1060,20 @@ export function AnnouncementContainer() {
             <div className="flex w-full items-center justify-between">
               <div>
                 <p className="font-medium">{selectedAnnouncement?.createdBy}</p>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  {selectedAnnouncement?.departmentName && (
+                    <>
+                      <span>{selectedAnnouncement.departmentName}</span>
+                      {selectedAnnouncement?.teamName && <span>•</span>}
+                    </>
+                  )}
+                  {selectedAnnouncement?.teamName && (
+                    <span>{selectedAnnouncement.teamName}</span>
+                  )}
+                </div>
                 {selectedAnnouncement?.category && (
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${getCategoryStyles(selectedAnnouncement.category)}`}
+                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${getCategoryStyles(selectedAnnouncement.category)}`}
                   >
                     {getCategoryLabel(selectedAnnouncement.category)}
                   </span>

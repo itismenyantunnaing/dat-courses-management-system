@@ -445,43 +445,43 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const currentProfile = get().profile;
 
-      if (currentProfile && currentProfile.role) {
-        const userRole = currentProfile.role.toLowerCase();
+      // if (currentProfile && currentProfile.role) {
+      //   const userRole = currentProfile.role.toLowerCase();
 
-        if (userRole === "approver") {
-          const userTeam = currentProfile.team;
-          if (userTeam) {
-            employeeData = employeeData.filter(
-              (employee: Employee) => employee.team === userTeam
-            );
-          } else {
-            employeeData = [];
-          }
-        }
+      //   if (userRole === "approver") {
+      //     const userTeam = currentProfile.team;
+      //     if (userTeam) {
+      //       employeeData = employeeData.filter(
+      //         (employee: Employee) => employee.team === userTeam
+      //       );
+      //     } else {
+      //       employeeData = [];
+      //     }
+      //   }
 
-        if (userRole === "department_head") {
-          const userDepartment = currentProfile.deptDat;
-          if (userDepartment) {
-            employeeData = employeeData.filter(
-              (employee: Employee) => employee.dept_dat === userDepartment
-            );
-          } else {
-            employeeData = [];
-          }
-        }
+      //   if (userRole === "department_head") {
+      //     const userDepartment = currentProfile.deptDat;
+      //     if (userDepartment) {
+      //       employeeData = employeeData.filter(
+      //         (employee: Employee) => employee.dept_dat === userDepartment
+      //       );
+      //     } else {
+      //       employeeData = [];
+      //     }
+      //   }
 
-        if (userRole === "division_head") {
-          const userDivision = currentProfile.divName;
-          if (userDivision) {
-            employeeData = employeeData.filter(
-              (employee: Employee) => employee.div_name === userDivision
-            );
-          } else {
-            employeeData = [];
-          }
-        }
+      //   if (userRole === "division_head") {
+      //     const userDivision = currentProfile.divName;
+      //     if (userDivision) {
+      //       employeeData = employeeData.filter(
+      //         (employee: Employee) => employee.div_name === userDivision
+      //       );
+      //     } else {
+      //       employeeData = [];
+      //     }
+      //   }
 
-      }
+      // }
 
       set(() => ({ employee_data: employeeData }));
 
@@ -696,6 +696,8 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       }
 
       const responseData = await response.json();
+
+      await get().fetch_EmployeeData(true);
 
       const finalData = get().employee_data;
       const divisions = [...new Set(finalData.map((emp: Employee) => emp.div_name).filter(Boolean))]
@@ -1163,7 +1165,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       return []
     }
   },
-  
+
 
 
   // Clear employee department position state

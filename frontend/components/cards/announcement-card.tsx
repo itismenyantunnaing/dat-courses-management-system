@@ -20,8 +20,9 @@ interface AnnouncementCardProps {
     text: string
     category?: AnnouncementCategory
     createdBy: string
-    department?: string
-    team?: string
+    departmentName?: string | null
+    teamName?: string | null
+    divisionName?: string | null
     createdAt: string
     updatedAt?: string
   }
@@ -91,15 +92,15 @@ export function AnnouncementCard({
 
   // Check if department has valid data (not N/A, not empty, not null)
   const hasDepartment =
-    announcement.department &&
-    announcement.department !== "N/A" &&
-    announcement.department.trim() !== ""
+    announcement.departmentName &&
+    announcement.departmentName !== "N/A" &&
+    announcement.departmentName.trim() !== ""
 
   // Check if team has valid data (not N/A, not empty, not null)
   const hasTeam =
-    announcement.team &&
-    announcement.team !== "N/A" &&
-    announcement.team.trim() !== ""
+    announcement.teamName &&
+    announcement.teamName !== "N/A" &&
+    announcement.teamName.trim() !== ""
 
   // Determine if we should show the department/team section
   const showDepartmentTeam = hasDepartment || hasTeam
@@ -141,18 +142,18 @@ export function AnnouncementCard({
                 {announcement.createdBy}
               </CardTitle>
               {showDepartmentTeam && (
-                <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   {hasDepartment && (
-                    <span className="min-w-0 flex-1 truncate">
-                      {announcement.department}
+                    <span className="max-w-[50%] truncate">
+                      {announcement.departmentName}
                     </span>
                   )}
                   {hasDepartment && hasTeam && (
                     <span className="flex-shrink-0">•</span>
                   )}
                   {hasTeam && (
-                    <span className="min-w-0 flex-1 truncate">
-                      {announcement.team}
+                    <span className="max-w-[50%] truncate">
+                      {announcement.teamName}
                     </span>
                   )}
                 </div>

@@ -4,15 +4,6 @@
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { useEffect, useState } from "react"
@@ -20,7 +11,36 @@ import { mainStore } from "@/store/mainStore"
 import { Search01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { Employee } from "@/types/employee"
-import { UserIcon } from "@hugeicons/core-free-icons" // Add this import
+import { UserIcon } from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from "@/components/ui/command"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  PlusSignIcon,
+  CancelIcon,
+  Building04Icon,
+  BriefcaseIcon,
+  UserGroupIcon,
+} from "@hugeicons/core-free-icons"
+import { resolveUploadUrl } from "@/lib/utils"
 
 export interface CurrentTargetFormData {
   // Employee selection
@@ -88,6 +108,21 @@ const CONFIDENCE_LEVELS = [
   { value: "Low", label: "Low" },
 ]
 
+// Helper function to get avatar URL or fallback
+const getEmployeeAvatar = (employee: Employee | null) => {
+  if (!employee) return null
+  if (employee.profile_photo_path && employee.profile_photo_path !== "") {
+    return resolveUploadUrl(employee.profile_photo_path)
+  }
+  return null
+}
+
+// Helper function to get initials from employee name
+const getEmployeeInitials = (employee: Employee | null) => {
+  if (!employee || !employee.name) return "U"
+  return employee.name.charAt(0).toUpperCase()
+}
+
 export function CurrentTargetForm({
   data,
   onChange,
@@ -97,8 +132,8 @@ export function CurrentTargetForm({
   onDropdownOpenChange,
 }: CurrentTargetFormProps) {
   const [isLoading, setIsLoading] = useState(true)
-  const [employeeSearchTerm, setEmployeeSearchTerm] = useState("")
-  const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
   const { employee_data, fetch_EmployeeData } = mainStore()
 
   // Fetch employees for the select dropdown
@@ -116,25 +151,52 @@ export function CurrentTargetForm({
       }
     }
     loadEmployees()
-  }, [])
+  }, [fetch_EmployeeData, employee_data])
 
-  // Generate employee options if not provided
-  const employeeSelectOptions =
-    employeeOptions.length > 0
-      ? employeeOptions
-      : employee_data?.map((emp: Employee) => ({
-          value: emp.id,
-          label: `${emp.id} - ${emp.name}`,
-        })) || []
+  // Get employee options - Always use employee_data for full employee objects
+  const employeeSelectOptions = employee_data?.map((emp: Employee) => ({
+    value: emp.id,
+    label: `${emp.id} - ${emp.name}`,
+    employee: emp, // This contains all employee fields including dept_dat and team
+  })) || []
 
-  // Filter employees based on search term
-  const filteredEmployeeOptions = employeeSelectOptions.filter((option) =>
-    option.label.toLowerCase().includes(employeeSearchTerm.toLowerCase())
-  )
+  // If employeeOptions is provided from parent, use it but also try to find full employee data
+  const getFullEmployeeOption = (option: { value: string; label: string }) => {
+    // Try to find the full employee data from employee_data
+    const fullEmployee = employee_data?.find((emp: Employee) => emp.id === option.value)
+    if (fullEmployee) {
+      return {
+        ...option,
+        employee: fullEmployee
+      }
+    }
+    // If not found, create a minimal employee object with just the ID and name
+    return {
+      ...option,
+      employee: {
+        id: option.value,
+        name: option.label.split('-')[1]?.trim() || option.label,
+        dept_dat: '',
+        team: '',
+        div_name: '',
+        profile_photo_path: ''
+      } as Employee
+    }
+  }
 
-  // Get the selected employee details
+  // Use provided employeeOptions if available, otherwise use employee_data
+  const options = employeeOptions.length > 0 
+    ? employeeOptions.map(getFullEmployeeOption)
+    : employeeSelectOptions
+
+  // Get selected employee details
   const selectedEmployee = employee_data?.find(
     (emp: Employee) => emp.id === data.employeeId
+  )
+
+  // Filter employees based on search
+  const filteredEmployees = options.filter((option) =>
+    option.label.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const handleInputChange = (
@@ -157,6 +219,26 @@ export function CurrentTargetForm({
     })
   }
 
+  const handleSelectEmployee = (employee: any) => {
+    const employeeId = employee.value || employee.id
+    const employeeName = employee.label || employee.name
+    onChange({
+      ...data,
+      employeeId: employeeId,
+      employeeName: employeeName,
+    })
+    setSearchOpen(false)
+    setSearchQuery("")
+  }
+
+  const handleRemoveEmployee = () => {
+    onChange({
+      ...data,
+      employeeId: "",
+      employeeName: "",
+    })
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -174,18 +256,34 @@ export function CurrentTargetForm({
       {isEdit && selectedEmployee && (
         <div className="rounded-lg border bg-muted/50 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <HugeiconsIcon
-                icon={UserIcon}
-                strokeWidth={2}
-                className="h-5 w-5 text-primary"
+            <Avatar className="h-10 w-10 rounded-full">
+              <AvatarImage 
+                src={getEmployeeAvatar(selectedEmployee) || undefined} 
+                alt={selectedEmployee.name}
               />
-            </div>
-            <div>
-              <h3 className="font-semibold">{selectedEmployee.name}</h3>
-              <p className="text-sm text-muted-foreground">
-                Employee ID: {selectedEmployee.id}
+              <AvatarFallback className="rounded-full bg-primary/10 text-primary">
+                {getEmployeeInitials(selectedEmployee)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold truncate">{selectedEmployee.name}</h3>
+              <p className="text-sm text-muted-foreground truncate">
+                ID: {selectedEmployee.id}
               </p>
+              {/* Department and Team info */}
+              <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                {selectedEmployee.dept_dat && (
+                  <>
+                    <span className="truncate">Dept: {selectedEmployee.dept_dat}</span>
+                  </>
+                )}
+                {selectedEmployee.team && (
+                  <>
+                    <span className="mx-0.5">•</span>
+                    <span className="truncate">Team: {selectedEmployee.team}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -197,71 +295,189 @@ export function CurrentTargetForm({
           <div>
             <div className="grid gap-4 sm:grid-cols-1">
               <div className="min-w-0 space-y-2">
-                <Label htmlFor="employeeId">
+                <Label>
                   Select Employee <span className="text-red-500">*</span>
                 </Label>
-                <div className="relative">
-                  <Select
-                    value={data.employeeId}
-                    onValueChange={(value) => {
-                      handleInputChange("employeeId", value)
-                      setIsEmployeeDropdownOpen(false)
-                      setEmployeeSearchTerm("")
-                    }}
-                    onOpenChange={(open) => {
-                      setIsEmployeeDropdownOpen(open)
-                      onDropdownOpenChange?.(open)
-                      if (!open) {
-                        setEmployeeSearchTerm("")
-                      }
-                    }}
-                    required
-                  >
-                    <SelectTrigger className="w-full" data-dropdown-trigger>
-                      <SelectValue placeholder="Search and select an employee..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-80">
-                      {/* Search Input inside dropdown */}
-                      <div className="sticky top-0 z-10 border-b bg-popover p-2">
-                        <div className="relative">
-                          <HugeiconsIcon
-                            icon={Search01Icon}
-                            strokeWidth={2}
-                            className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground"
-                          />
-                          <Input
-                            placeholder="Search employees..."
-                            value={employeeSearchTerm}
-                            onChange={(e) =>
-                              setEmployeeSearchTerm(e.target.value)
-                            }
-                            className="pl-9"
-                            onClick={(e) => e.stopPropagation()}
-                          />
+                
+                {data.employeeId && selectedEmployee ? (
+                  // Show selected employee as badge with details
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="flex max-w-[600px] items-center gap-2 px-3 py-5 text-sm font-normal"
+                    >
+                      <Avatar className="h-7 w-7 rounded-full">
+                        <AvatarImage 
+                          src={getEmployeeAvatar(selectedEmployee) || undefined} 
+                          alt={selectedEmployee.name}
+                        />
+                        <AvatarFallback className="rounded-full bg-primary/10 text-xs text-primary">
+                          {getEmployeeInitials(selectedEmployee)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-xs font-medium">
+                            {selectedEmployee.name}
+                          </span>
                         </div>
+                        
                       </div>
-                      <SelectGroup>
-                        {filteredEmployeeOptions.length === 0 ? (
-                          <div className="px-2 py-2 text-center text-sm text-muted-foreground">
-                            No employees found
-                          </div>
-                        ) : (
-                          filteredEmployeeOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
+                      <button
+                        onClick={handleRemoveEmployee}
+                        className="flex-shrink-0 rounded-full p-0.5 transition-colors hover:bg-muted"
+                      >
+                        <HugeiconsIcon
+                          icon={CancelIcon}
+                          strokeWidth={2}
+                          className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground"
+                        />
+                      </button>
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearchOpen(true)}
+                      className="text-xs flex-shrink-0"
+                    >
+                      <HugeiconsIcon
+                        icon={PlusSignIcon}
+                        strokeWidth={2}
+                        className="mr-1 h-3 w-3"
+                      />
+                      Change
+                    </Button>
+                  </div>
+                ) : data.employeeId ? (
+                  // Fallback when employee not found in employee_data
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="px-3 py-2">
+                      <span className="text-xs">ID: {data.employeeId}</span>
+                      <button
+                        onClick={handleRemoveEmployee}
+                        className="ml-2 flex-shrink-0 rounded-full p-0.5 transition-colors hover:bg-muted"
+                      >
+                        <HugeiconsIcon
+                          icon={CancelIcon}
+                          strokeWidth={2}
+                          className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground"
+                        />
+                      </button>
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearchOpen(true)}
+                      className="text-xs flex-shrink-0"
+                    >
+                      <HugeiconsIcon
+                        icon={PlusSignIcon}
+                        strokeWidth={2}
+                        className="mr-1 h-3 w-3"
+                      />
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  // Show select button
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                    onClick={() => setSearchOpen(true)}
+                  >
+                    <HugeiconsIcon
+                      icon={Search01Icon}
+                      strokeWidth={2}
+                      className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0"
+                    />
+                    <span className="truncate">Search and select an employee...</span>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
           <Separator />
         </>
       )}
+
+      {/* Employee Search Command Dialog */}
+      <CommandDialog
+        open={searchOpen}
+        onOpenChange={(newOpen) => {
+          setSearchOpen(newOpen)
+          if (!newOpen) {
+            setSearchQuery("")
+          }
+        }}
+      >
+        <Command>
+          <div className="border-b px-3 py-2">
+            <CommandInput
+              placeholder="Search employees..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
+          </div>
+
+          <CommandList className="max-h-[400px] overflow-y-auto">
+            <CommandEmpty>No employees found.</CommandEmpty>
+
+            <CommandGroup>
+              {filteredEmployees.map((option) => {
+                const isSelected = data.employeeId === option.value
+                const employee = option.employee
+                const avatarUrl = getEmployeeAvatar(employee)
+                const initials = getEmployeeInitials(employee)
+                
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => handleSelectEmployee(option)}
+                    className="group flex cursor-pointer items-center gap-3 px-3 py-2"
+                  >
+                    <Avatar className="h-8 w-8 rounded-full">
+                      <AvatarImage 
+                        src={avatarUrl || undefined} 
+                        alt={employee?.name || option.label}
+                      />
+                      <AvatarFallback className="rounded-full bg-primary/10 text-xs text-primary">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-medium">
+                          {employee.name}
+                        </span>
+                        {isSelected && (
+                          <Badge variant="outline" className="text-[10px] flex-shrink-0">
+                            Selected
+                          </Badge>
+                        )}
+                      </div>
+                      {employee && (
+                        <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                          {employee.dept_dat && (
+                            <>
+                              <span className="truncate max-w-[120px]">Dept: {employee.dept_dat}</span>
+                            </>
+                          )}
+                          {employee.team && (
+                            <>
+                              <span className="mx-0.5">•</span>
+                              <span className="truncate max-w-[120px]">Team: {employee.team}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CommandItem>
+                )
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </CommandDialog>
 
       {/* Certified Level Section */}
       <div>

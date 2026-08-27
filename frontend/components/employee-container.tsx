@@ -323,7 +323,54 @@ export function EmployeeContainer({
     courses,
     fetch_SkillData,
     skillData,
+    profile
   } = mainStore()
+
+  const currentUserId = profile?.id || null
+  const userRole = profile.role.toLowerCase();
+  const isAdmin = userRole === "admin"
+  const isApprover = userRole === "approver"
+  const isLearner = userRole === "learner"
+  const isDepartmentHead = userRole === "department_head"
+  const isDivisionHead = userRole === "division_head"
+
+  // Check permissions
+  const canManageAll = isAdmin // Admin can manage all
+  const canManageFiltered = isApprover || isDepartmentHead || isDivisionHead // Can manage filtered employees
+  const canViewAll = isAdmin || isApprover || isDepartmentHead || isDivisionHead || isLearner // All roles can view all
+  const isReadOnly = isLearner // Learner is read-only
+  const canCRUD = isAdmin || canManageFiltered // Admin and filtered managers can CRUD
+
+  // Check if the current user can edit/delete a specific employee.
+  // Admin: always true (no filter needed).
+  // Approver: only employees on their own team.
+  // Department Head: only employees in their own department.
+  // Division Head: only employees in their own division.
+  // Learner (and everyone else): never (view-only).
+  const canManageEmployee = (employee: Employee) => {
+    if (isAdmin) return true
+    if (isApprover) return employee.team === profile?.team
+    if (isDepartmentHead) return employee.dept_dat === profile?.deptDat
+    if (isDivisionHead) return employee.div_name === profile?.divName
+    return false
+  }
+
+  // Get employees that the user can manage (for CRUD operations)
+  const getManageableEmployees = (employees: Employee[]) => {
+    if (isAdmin) {
+      // Admin can manage all employees
+      return employees
+    }
+    return employees.filter((emp) => canManageEmployee(emp))
+  }
+
+  // For viewing - all roles can see all employees
+  const viewableEmployees = employee_data
+  const manageableEmployees = getManageableEmployees(employee_data)
+
+  // Use viewableEmployees for display, manageableEmployees for CRUD operations
+  const filteredEmployeeData = viewableEmployees
+
 
   // Fetch skills if not already loaded
   useEffect(() => {
@@ -445,7 +492,7 @@ export function EmployeeContainer({
     { field: "doorlog", header_name: "DoorLog" },
     { field: "dept", header_name: "Dept" },
     { field: "team", header_name: "Team" },
-    { field: "joinedDate", header_name: "Joined Date" },
+    { field: "serviceYear", header_name: "Service Year" },
     { field: "status", header_name: "Status" },
     { field: "role", header_name: "Role" },
   ]
@@ -453,7 +500,7 @@ export function EmployeeContainer({
   // Get unique values for each view
   const getUniqueValues = (field: keyof Employee) => {
     const values = new Set<string>()
-    employee_data.forEach((employee) => {
+    viewableEmployees.forEach((employee) => {
       const value = employee[field] as string
       if (value && value.trim()) {
         values.add(value.trim())
@@ -490,7 +537,7 @@ export function EmployeeContainer({
   // Get unique values for filter fields
   const getFilterUniqueValues = (field: keyof Employee) => {
     const values = new Set<string>()
-    employee_data.forEach((employee) => {
+    viewableEmployees.forEach((employee) => {
       const value = employee[field] as string
       if (value && value.trim()) {
         values.add(value.trim())
@@ -501,20 +548,21 @@ export function EmployeeContainer({
 
   // Get employees by category (division, department, or team)
   const getEmployeesByCategory = (category: string, field: keyof Employee) => {
-    return employee_data.filter((employee) => employee[field] === category)
+    return viewableEmployees.filter((employee) => employee[field] === category)
   }
 
   // Get employees with empty category
   const getEmployeesWithEmptyCategory = (field: keyof Employee) => {
-    return employee_data.filter((employee) => {
+    return viewableEmployees.filter((employee) => {
       const value = employee[field] as string
       return !value || value.trim() === ""
     })
   }
 
   // Filter employees based on active view
+  // Filter employees based on active view
   const getFilteredData = () => {
-    const data = employee_data
+    const data = viewableEmployees
 
     // Apply view filter
     if (activeView === "divisions") {
@@ -524,7 +572,6 @@ export function EmployeeContainer({
           item.toLowerCase().includes(searchTerm.toLowerCase())
         )
         : divs
-      // Add "Others" category if there are employees with empty div_name
       const othersCount = getEmployeesWithEmptyCategory("div_name").length
       if (othersCount > 0) {
         return [...filteredDivs, "Others"]
@@ -537,7 +584,6 @@ export function EmployeeContainer({
           item.toLowerCase().includes(searchTerm.toLowerCase())
         )
         : depts
-      // Add "Others" category if there are employees with empty dept_dat
       const othersCount = getEmployeesWithEmptyCategory("dept_dat").length
       if (othersCount > 0) {
         return [...filteredDepts, "Others"]
@@ -550,13 +596,13 @@ export function EmployeeContainer({
           item.toLowerCase().includes(searchTerm.toLowerCase())
         )
         : teams
-      // Add "Others" category if there are employees with empty team
       const othersCount = getEmployeesWithEmptyCategory("team").length
       if (othersCount > 0) {
         return [...filteredTeams, "Others"]
       }
       return filteredTeams
     }
+
 
     // Default: employees view - APPLY ALL FILTERS HERE
     return data.filter((employee) => {
@@ -630,9 +676,22 @@ export function EmployeeContainer({
   // For non-employee views, we show list items (divisions, departments, teams)
   const isListView = activeView !== "employees"
   const listItems = isListView ? (viewData as string[]) : []
-  const filteredEmployees = isListView
+  const employeesForView = isListView
     ? employee_data
     : (viewData as Employee[])
+
+  // For approver/department_head/division_head: show their own filtered
+  // (manageable) employees first, then everyone else they can only view.
+  // Admin has no filter (sees everyone in original order) and learner is
+  // view-only for all, so neither needs this reordering.
+  const filteredEmployees =
+    !isListView && canManageFiltered
+      ? [...employeesForView].sort((a, b) => {
+        const aManageable = canManageEmployee(a) ? 0 : 1
+        const bManageable = canManageEmployee(b) ? 0 : 1
+        return aManageable - bManageable
+      })
+      : employeesForView
 
   // Calculate pagination for employees view
   const totalPages = isListView
@@ -646,26 +705,27 @@ export function EmployeeContainer({
 
   // Get counts for each tab
   const tabCounts = {
-    employees: employee_data.length,
+    employees: viewableEmployees.length,
     divisions: getUniqueValues("div_name").length,
     departments: getUniqueValues("dept_dat").length,
     teams: getUniqueValues("team").length,
   }
 
   const handleNewEmployee = () => {
+    if (!canCRUD) return // Only admin and filtered managers can create
     setIsNewEmployeeDrawerOpen(true)
   }
 
   const handleNewItem = () => {
+    if (!canCRUD) return
     setAddDialogOpen(true)
   }
 
   // Handle edit item - opens edit dialog for division/department/team
   const handleEditItem = (item: string) => {
-    // Don't allow editing "Others" category
+    if (!canCRUD) return
     if (item === "Others") return
     setSelectedItemForEdit(item)
-    // Set the dialog item type based on the active view
     setDialogItemType(
       activeView === "divisions"
         ? "division"
@@ -782,9 +842,9 @@ export function EmployeeContainer({
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
 
-  // Handle select all - selects ALL filtered employees across all pages
+  // Handle select all - only allow if user can manage all
   const handleSelectAll = () => {
-    if (isListView) return
+    if (isListView || isReadOnly) return
 
     const allSelected = filteredEmployees.every(
       (employee) => rowSelection[employee.id.toString()]
@@ -795,7 +855,10 @@ export function EmployeeContainer({
     } else {
       const newSelection: Record<string, boolean> = {}
       filteredEmployees.forEach((employee) => {
-        newSelection[employee.id.toString()] = true
+        // Only allow selection if user can manage this employee
+        if (canManageEmployee(employee) || isAdmin) {
+          newSelection[employee.id.toString()] = true
+        }
       })
       setRowSelection(newSelection)
     }
@@ -803,14 +866,22 @@ export function EmployeeContainer({
 
   // Handle individual row selection
   const handleRowSelect = (employeeId: string) => {
-    if (isListView) return
+    if (isListView || isReadOnly) return
+    const employee = employee_data.find(
+      (emp) => emp.id.toString() === employeeId
+    )
+    // Only allow selecting rows the user can actually manage (CRUD)
+    if (employee && !isAdmin && !canManageEmployee(employee)) return
     setRowSelection((prev) => ({
       ...prev,
       [employeeId]: !prev[employeeId],
     }))
   }
 
-  // Handle row click to open edit drawer - REMOVED THE CONDITION
+  // Handle row click to open the employee drawer. Viewing is available to
+  // every role (including learners and employees outside the current
+  // user's managed scope) — the drawer itself decides whether to show the
+  // Edit button based on canManageEmployee.
   const handleRowClick = (employee: Employee) => {
     setSelectedEmployee(employee)
     setEditDrawerOpen(true)
@@ -853,23 +924,34 @@ export function EmployeeContainer({
 
   // Handle bulk delete click
   const handleBulkDeleteClick = () => {
+    if (!canCRUD) return
     setBulkDeleteDialogOpen(true)
   }
 
-  // Handle bulk delete confirm
   const handleBulkDeleteConfirm = async () => {
+    if (!canCRUD) return
+
     const selectedEmployees = getSelectedEmployees()
     if (selectedEmployees.length === 0) return
 
+    // Check if user can manage all selected employees
+    const canManageAllSelected = selectedEmployees.every(
+      (emp) => canManageEmployee(emp) || isAdmin
+    )
+
+    if (!canManageAllSelected) {
+      alert("You don't have permission to delete all selected employees")
+      return
+    }
+
     try {
       const selectedIds = selectedEmployees.map((emp) => emp.id)
-
       const result = await delete_EmployeeData(selectedIds)
       alert(result)
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
 
-      const newTotalPages = Math.ceil(employee_data.length / itemsPerPage)
+      const newTotalPages = Math.ceil(viewableEmployees.length / itemsPerPage)
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages)
       } else if (newTotalPages === 0) {
@@ -883,6 +965,10 @@ export function EmployeeContainer({
   // Handle individual employee delete confirm
   const handleIndividualDeleteConfirm = async () => {
     if (!employeeToDelete) return
+    if (!canManageEmployee(employeeToDelete) && !isAdmin) {
+      alert("You don't have permission to delete this employee")
+      return
+    }
 
     setIsDeleting(true)
     try {
@@ -890,8 +976,6 @@ export function EmployeeContainer({
       alert(result)
       setDeleteDialogOpen(false)
       setEmployeeToDelete(null)
-
-      // Refresh data after deletion
       await fetch_EmployeeData()
     } catch (error) {
       console.error("Failed to delete employee:", error)
@@ -934,6 +1018,7 @@ export function EmployeeContainer({
   // Check if all filtered employees are selected (for the header checkbox)
   const areAllFilteredSelected =
     !isListView &&
+    !isReadOnly &&
     filteredEmployees.length > 0 &&
     filteredEmployees.every((employee) => rowSelection[employee.id.toString()])
 
@@ -1013,9 +1098,9 @@ export function EmployeeContainer({
                 </div>
                 <div>
                   <span className="block text-xs text-muted-foreground uppercase">
-                    DoorLog
+                    Service Year
                   </span>
-                  {employee.doorlog || "-"}
+                  {employee.serviceYear || "-"}
                 </div>
                 <div className="col-span-2">
                   <span className="block text-xs text-muted-foreground uppercase">
@@ -1026,18 +1111,6 @@ export function EmployeeContainer({
                 <div className="col-span-3 text-muted-foreground">
                   {employee.email || "-"}
                 </div>
-                <div className="col-span-2">
-                  <span className="block text-xs text-muted-foreground uppercase">
-                    Joined Date
-                  </span>
-                  {employee.joinedDate || "-"}
-                </div>
-                <div className="col-span-2">
-                  <span className="block text-xs text-muted-foreground uppercase">
-                    Service Year
-                  </span>
-                  {employee.serviceYear || "-"}
-                </div>
                 <div className="absolute top-0 right-3">
                   <Badge className={getStatusBadge(employee.emp_status)}>
                     {statusLabels[
@@ -1045,21 +1118,23 @@ export function EmployeeContainer({
                     ] || employee.emp_status}
                   </Badge>
                 </div>
-                {/* Delete Button - Bottom Right Corner - Hidden by default, shown on hover */}
-                <div className="absolute right-3 bottom-[-3] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDeleteEmployee}
-                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
-                  >
-                    <HugeiconsIcon
-                      icon={Delete02Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                  </Button>
-                </div>
+                {/* Delete Button - Only show if user can manage this employee */}
+                {(canManageEmployee(employee) || isAdmin) && (
+                  <div className="absolute right-3 bottom-[-3] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDeleteEmployee}
+                      className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
+                    >
+                      <HugeiconsIcon
+                        icon={Delete02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Skills Section */}
@@ -1286,7 +1361,7 @@ export function EmployeeContainer({
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-1">
-            {!isOthers && (
+            {isAdmin && canCRUD && !isOthers && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -1388,6 +1463,16 @@ export function EmployeeContainer({
     // For department drill-down, filter by selected team
     if (activeView === "departments" && selectedTeam !== "All") {
       employees = employees.filter((emp) => emp.team === selectedTeam)
+    }
+
+    // Same as the main employees view: for filtered managers, surface the
+    // employees they can actually manage above the view-only ones.
+    if (canManageFiltered) {
+      employees = [...employees].sort((a, b) => {
+        const aManageable = canManageEmployee(a) ? 0 : 1
+        const bManageable = canManageEmployee(b) ? 0 : 1
+        return aManageable - bManageable
+      })
     }
 
     return employees
@@ -2190,7 +2275,9 @@ export function EmployeeContainer({
                 </>
               )}
 
-              {!isListView && !isDrillDown && (
+              {/* Creation is a CRUD action: hidden entirely for learners
+                  (view-only) and only enabled for admin */}
+              {isAdmin && !isListView && !isDrillDown && (
                 <Button
                   variant="default"
                   onClick={handleNewEmployee}
@@ -2200,7 +2287,7 @@ export function EmployeeContainer({
                   New
                 </Button>
               )}
-              {isListView && !isDrillDown && (
+              {isAdmin && isListView && !isDrillDown && (
                 <Button
                   variant="default"
                   onClick={() => {
@@ -2423,21 +2510,28 @@ export function EmployeeContainer({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <BorderedTableHead className="w-auto min-w-[32px] align-middle whitespace-nowrap">
-                      <Checkbox
-                        checked={areAllFilteredSelected}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
-                      />
-                    </BorderedTableHead>
-                    {employeeHeaders.slice(1).map((header) => (
-                      <BorderedTableHead
-                        key={header.field}
-                        className="align-middle whitespace-nowrap"
-                      >
-                        {header.header_name}
+                    {!isReadOnly && (
+                      <BorderedTableHead className="w-auto min-w-[32px] align-middle whitespace-nowrap">
+                        <Checkbox
+                          checked={areAllFilteredSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
                       </BorderedTableHead>
-                    ))}
+                    )}
+                    {employeeHeaders.slice(1).map((header) => {
+                      // Skip the "select" header if it's the first one and we're in read-only mode
+                      if (isReadOnly && header.field === "select") return null
+                      if (!isAdmin && (header.field === "doorlog" || header.field === "staff_id")) return null
+                      return (
+                        <BorderedTableHead
+                          key={header.field}
+                          className="align-middle whitespace-nowrap"
+                        >
+                          {header.header_name}
+                        </BorderedTableHead>
+                      )
+                    })}
                   </TableRow>
                 </TableHeader>
 
@@ -2468,41 +2562,43 @@ export function EmployeeContainer({
                       if (!isEmployee(employee)) return null
 
                       const isSelected = !!rowSelection[employee.id.toString()]
+                      const isManageable = isAdmin || canManageEmployee(employee)
                       return (
                         <TableRow
                           key={employee.id}
-                          className="cursor-pointer transition-colors hover:bg-muted/50"
+                          className={`cursor-pointer transition-colors hover:bg-muted/50`}
                           onClick={() => handleRowClick(employee)}
                         >
-                          <BorderedTableCell
-                            className="w-10"
-                            selected={isSelected}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() =>
-                                handleRowSelect(employee.id.toString())
-                              }
-                              aria-label={`Select ${employee.name}`}
-                            />
-                          </BorderedTableCell>
+                          {/* Only show checkbox if not read-only. Disabled for
+                              employees outside the user's filtered scope, since
+                              those rows are view-only for that user. */}
+                          {!isReadOnly && (
+                            <BorderedTableCell
+                              className="w-10"
+                              selected={isSelected}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                disabled={!isManageable}
+                                onCheckedChange={() => handleRowSelect(employee.id.toString())}
+                                aria-label={`Select ${employee.name}`}
+                              />
+                            </BorderedTableCell>
+                          )}
+                          {/* Adjust index for read-only mode */}
                           <BorderedTableCell selected={isSelected}>
                             {startIndex + index + 1}
                           </BorderedTableCell>
                           <BorderedTableCell selected={isSelected}>
                             {employee.div_name}
                           </BorderedTableCell>
-                          <BorderedTableCell
-                            className="text-sm"
-                            selected={isSelected}
-                          >
-                            {employee.id}
-                          </BorderedTableCell>
-                          <BorderedTableCell
-                            className="font-medium"
-                            selected={isSelected}
-                          >
+                          {isAdmin &&
+                            <BorderedTableCell className="text-sm" selected={isSelected}>
+                              {employee.id}
+                            </BorderedTableCell>
+                          }
+                          <BorderedTableCell className="font-medium" selected={isSelected}>
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8">
                                 <AvatarImage
@@ -2519,9 +2615,11 @@ export function EmployeeContainer({
                           <BorderedTableCell selected={isSelected}>
                             {employee.email || "-"}
                           </BorderedTableCell>
-                          <BorderedTableCell selected={isSelected}>
-                            {employee.doorlog}
-                          </BorderedTableCell>
+                          {isAdmin &&
+                            <BorderedTableCell selected={isSelected}>
+                              {employee.doorlog}
+                            </BorderedTableCell>
+                          }
                           <BorderedTableCell selected={isSelected}>
                             {employee.dept_dat}
                           </BorderedTableCell>
@@ -2529,12 +2627,10 @@ export function EmployeeContainer({
                             {employee.team}
                           </BorderedTableCell>
                           <BorderedTableCell selected={isSelected}>
-                            {employee.joinedDate || "-"}
+                            {employee.serviceYear || "-"}
                           </BorderedTableCell>
                           <BorderedTableCell selected={isSelected}>
-                            <Badge
-                              className={getStatusBadge(employee.emp_status)}
-                            >
+                            <Badge className={getStatusBadge(employee.emp_status)}>
                               {statusLabels[
                                 employee.emp_status as keyof typeof statusLabels
                               ] || employee.emp_status}
@@ -2809,6 +2905,20 @@ export function EmployeeContainer({
         onOpenChange={setEditDrawerOpen}
         employee={selectedEmployee}
         courses={courses}
+        canEdit={
+          !isReadOnly &&
+          !!selectedEmployee &&
+          (isAdmin || canManageEmployee(selectedEmployee))
+        }
+        onSuccess={() => {
+          // Refresh employee data to reflect changes
+          fetch_EmployeeData()
+          // Also refresh divisions, departments, teams in case they changed
+          fetch_divisions()
+          fetch_dat_departments()
+          fetch_teams()
+          fetch_roles()
+        }}
       />
 
       <AddDivDeptTeamDialog

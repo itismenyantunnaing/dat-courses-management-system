@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.dat_management.backend.dto.AnnouncementDto;
 import com.dat_management.backend.entity.Announcement;
+import com.dat_management.backend.entity.Employee;
 import com.dat_management.backend.entity.AnnouncementCategory;
 import com.dat_management.backend.repository.AnnouncementRepository;
 import com.dat_management.backend.repository.EmployeeRepository;
@@ -25,15 +26,36 @@ public class AnnouncementService {
     }
 
     private AnnouncementDto convertToDto(Announcement announcement) {
-        
+        Employee employee=employeeRepository.findById(announcement.getCreatedBy()).get();
         AnnouncementDto dto = new AnnouncementDto();
         dto.setId(announcement.getId());
         dto.setTitle(announcement.getTitle());
         dto.setText(announcement.getText());
         dto.setCategory(announcement.getCategory().name());
-        dto.setCreatedBy(announcement.getCreatedBy());
+        dto.setCreatedBy(employee.getName());
         dto.setCreatedAt(announcement.getCreatedAt() != null ? announcement.getCreatedAt().toString() : null);
         dto.setUpdatedAt(announcement.getUpdatedAt() != null ? announcement.getUpdatedAt().toString() : null);
+        if (employee.getTeam() != null) {
+    dto.setTeamName(employee.getTeam().getTeamName());
+} else {
+    dto.setTeamName(null);
+}
+
+// Department Name
+if (employee.getTeam() != null && employee.getTeam().getDepartmentDat() != null) {
+    dto.setDepartmentName(employee.getTeam().getDepartmentDat().getDeptName());
+} else {
+    dto.setDepartmentName(null);
+}
+
+// Division Name
+if (employee.getTeam() != null && 
+    employee.getTeam().getDepartmentDat() != null && 
+    employee.getTeam().getDepartmentDat().getDivision() != null) {
+    dto.setDivisionName(employee.getTeam().getDepartmentDat().getDivision().getDivisionName());
+} else {
+    dto.setDivisionName(null);
+}
         return dto;
     }
 
@@ -51,7 +73,6 @@ public class AnnouncementService {
         announcement.setText(dto.getText());
         announcement.setCategory(AnnouncementCategory.valueOf(dto.getCategory()));
         announcement.setCreatedBy(dto.getCreatedBy());  // ✅ Just set the string
-        
         Announcement saved = announcementRepository.save(announcement);
         return convertToDto(saved);
     }

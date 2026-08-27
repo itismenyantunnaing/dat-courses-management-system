@@ -115,7 +115,11 @@ export function EmployeeForm({
     enrollments,
     departmentDirOptions,
     fetchDepartmentDirOptions,
+    profile,
   } = mainStore()
+
+  const userRole = profile.role.toLowerCase();
+  const isAdmin = userRole === "admin"
 
   useEffect(() => {
     const loadData = async () => {
@@ -320,6 +324,7 @@ export function EmployeeForm({
               value={data.div}
               onValueChange={handleDivisionChange}
               onOpenChange={onDropdownOpenChange}
+              disabled={!isAdmin}
               required
             >
               <SelectTrigger className="w-full">
@@ -367,6 +372,7 @@ export function EmployeeForm({
               value={data.dept_dat}
               onValueChange={handleDepartmentChange}
               onOpenChange={onDropdownOpenChange}
+              disabled={!isAdmin}
               required
             >
               <SelectTrigger className="w-full">
@@ -433,6 +439,7 @@ export function EmployeeForm({
               value={data.team}
               onValueChange={(value) => handleInputChange("team", value)}
               onOpenChange={onDropdownOpenChange}
+              disabled={!isAdmin}
             >
               <SelectTrigger className="w-full">
                 <SelectValue
@@ -500,6 +507,7 @@ export function EmployeeForm({
               value={data.role}
               onValueChange={(value) => handleInputChange("role", value)}
               onOpenChange={onDropdownOpenChange}
+              disabled={!isAdmin}
               required
             >
               <SelectTrigger className="w-full">
