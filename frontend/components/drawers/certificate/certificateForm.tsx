@@ -21,7 +21,7 @@ import {
 } from "@/types/certificate"
 import { mainStore } from "@/store/mainStore"
 import { compressFile } from "@/lib/compressImage"
-import { resolveUploadUrl} from "@/lib/utils"
+import { resolveUploadUrl } from "@/lib/utils"
 
 interface CertificateFormData {
   certificateType: (typeof CERTIFICATE_TYPES)[number] | ""
@@ -67,13 +67,17 @@ export const CertificateForm = forwardRef<
     })
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string | null>(
-        resolveUploadUrl(initialImage)
+      resolveUploadUrl(initialImage)
     )
     const [isDragging, setIsDragging] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const initialFormDataRef = useRef<CertificateFormData | null>(null)
-    const { certificateData } = mainStore()
+    const { certificateData, fetch_SystemConfig, systemConfig } = mainStore()
+
+    useEffect(() => {
+      fetch_SystemConfig()
+    }, [systemConfig])
 
     // Get existing certificate combinations
     const existingCertificates = certificateData || []
@@ -141,7 +145,7 @@ export const CertificateForm = forwardRef<
       if (mode === "edit" && initialFormDataRef.current) {
         const hasFormChanges =
           formData.certificateType !==
-            initialFormDataRef.current.certificateType ||
+          initialFormDataRef.current.certificateType ||
           formData.level !== initialFormDataRef.current.level ||
           selectedFile !== null
 
@@ -192,10 +196,12 @@ export const CertificateForm = forwardRef<
         }
 
         try {
-          // Try to compress the file
-          const compressed = await compressFile(file)
+          const maxSizeMB = systemConfig?.fileUploadSizeMb || 0.75
+          // COMPRESS THE IMAGE HERE
+          const compressed = await compressFile(file, maxSizeMB)
+
           setSelectedFile(compressed)
-          
+
           // Create preview from compressed file
           const reader = new FileReader()
           reader.onloadend = () => {
@@ -206,7 +212,7 @@ export const CertificateForm = forwardRef<
           // Fallback: use original file if compression fails
           console.warn('Compression failed, using original file:', error)
           setSelectedFile(file)
-          
+
           // Create preview from original file
           const reader = new FileReader()
           reader.onloadend = () => {
@@ -269,11 +275,10 @@ export const CertificateForm = forwardRef<
 
     const ImageUploadArea = () => (
       <div
-        className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
-          isDragging
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25"
-        }`}
+        className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${isDragging
+          ? "border-primary bg-primary/5"
+          : "border-muted-foreground/25"
+          }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -305,7 +310,7 @@ export const CertificateForm = forwardRef<
                   ? "Current image uploaded"
                   : "Choose an image or drag & drop it here"}
             </p>
-           
+
           </div>
           <input
             type="file"

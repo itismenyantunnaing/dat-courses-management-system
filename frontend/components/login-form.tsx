@@ -20,6 +20,7 @@ import ChangePassword from "./dialogs/changePassword-dialog"
 import { login, sendOtp, verifyOtp, resetPassword } from "@/app/actions/auth"
 import { EyeIcon, ViewOffIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { toast } from "sonner"
 
 export function LoginForm({
   className,
@@ -144,7 +145,7 @@ export function LoginForm({
       if (result.success) {
         setForgotPasswordOpen(false)
         resetForm()
-        alert("Password reset successfully! Please login with your new password.")
+        toast.success("Password reset successfully! Please login with your new password.")
       } else {
         setForgotPasswordError(result.message || "Failed to reset password")
       }

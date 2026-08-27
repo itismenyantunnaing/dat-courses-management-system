@@ -16,7 +16,7 @@ import { ExamsContainer } from "@/components/exams-container"
 import { SkillContainer } from "@/components/skill-container"
 import { HolidaysContainer } from "@/components/holidays-container"
 import ChangePassword from "@/components/dialogs/changePassword-dialog"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CurrentTargetContainer } from "@/components/current-target-container"
 import { ExamProgressReportContainer } from "@/components/examProgress-report-container"
 import { mainStore } from "@/store/mainStore"
@@ -30,6 +30,7 @@ import {
   MailSend02Icon,
   NotificationIcon,
   Download02Icon,
+  CheckmarkCircle01Icon,
 } from "@hugeicons/core-free-icons"
 import AdminDashboardContainer from "@/components/Dashboard/adminDashboard-container"
 import ApproverDashboardContainer from "@/components/Dashboard/approverDashboard-container"
@@ -42,6 +43,7 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import type { SessionData } from "@/types/session"
 import { AnnouncementContainer } from "@/components/announcement-container"
+import { getAuthToken, logout } from "@/app/actions/auth"
 
 interface DashboardClientProps {
   userData: SessionData
@@ -51,10 +53,13 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const [activeTab, setActiveTab] = useState("")
   const [mounted, setMounted] = useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
   const [isProfileLoaded, setIsProfileLoaded] = useState(false)
   const [sendMailOpen, setSendMailOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [countdown, setCountdown] = useState(5)
 
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
   const [selectedCertificateId, setSelectedCertificateId] = useState<
@@ -129,6 +134,24 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       ; (window as any).mainStore = mainStore
     }
   }, [])
+
+  // Countdown timer for auto-logout
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    
+    if (isSuccessDialogOpen && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1)
+      }, 1000)
+    } else if (isSuccessDialogOpen && countdown === 0) {
+      // Auto logout when countdown reaches 0
+      handleSuccessConfirm()
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer)
+    }
+  }, [isSuccessDialogOpen, countdown])
 
   // Show alert when new notification arrives
   useEffect(() => {
@@ -406,6 +429,23 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     },
   ]
 
+  // Handle password update success
+  const handlePasswordUpdateSuccess = (message: string) => {
+    setSuccessMessage(message)
+    setIsChangePasswordOpen(false)
+    setCountdown(5) // Reset countdown to 5 seconds
+    // Show success dialog after a small delay to allow the change password dialog to close
+    setTimeout(() => {
+      setIsSuccessDialogOpen(true)
+    }, 300)
+  }
+
+  // Handle success dialog confirm
+  const handleSuccessConfirm = async () => {
+    setIsSuccessDialogOpen(false)
+    await logout();
+  }
+
   if (!mounted) {
     return (
       <div className="flex h-screen w-full">
@@ -444,17 +484,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                {/* Export Button */}
-                {/* <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportTemplate}
-                  disabled={isExporting}
-                  className="gap-2"
-                >
-                  {isExporting ? 'Downloading...' : 'Export Template'}
-                </Button> */}
-
                 {/* Notification Bell */}
                 <div className="relative">
                   <Button
@@ -551,7 +580,48 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             step="old-password"
             force={true}
             onClose={() => setIsChangePasswordOpen(false)}
+            onPasswordUpdate={(data) => {
+              // Handle password update success
+              handlePasswordUpdateSuccess("Password changed successfully!\nPlease login with your new password.")
+            }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog */}
+      <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+        <DialogContent
+          className="sm:max-w-[425px] text-center"
+          showCloseButton={false}
+        >
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/20">
+                <HugeiconsIcon
+                  icon={CheckmarkCircle01Icon}
+                  strokeWidth={2}
+                  className="h-12 w-12 text-green-600 dark:text-green-400"
+                />
+              </div>
+            </div>
+            <DialogTitle className="text-2xl">Success!</DialogTitle>
+            <DialogDescription className="text-base whitespace-pre-line">
+              {successMessage || "Password changed successfully!"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <div className="flex items-center gap-3">
+              <Button
+                className="w-full sm:w-auto"
+                onClick={handleSuccessConfirm}
+              >
+                Continue
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                ({countdown}s)
+              </span>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

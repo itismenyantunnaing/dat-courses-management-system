@@ -135,7 +135,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       groupChangeSuccess,
       clearGroupChangeState,
       fetch_HolidayData,
-      holiday_data
+      holiday_data,
+      fetch_SystemConfig, 
+      systemConfig
     } = mainStore()
 
     // Fetch employees on mount if not already loaded
@@ -146,6 +148,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       if (holiday_data.length === 0) {
         fetch_HolidayData()
       }
+      fetch_SystemConfig()
     }, [employee_data.length, fetch_EmployeeData])
 
     // Fetch categories on mount if not already loaded
@@ -203,7 +206,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
     const [selectedImage, setSelectedImage] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string | null>(
-        resolveUploadUrl(initialImage)
+      resolveUploadUrl(initialImage)
     )
     const [isDragging, setIsDragging] = useState(false)
     const [activeGroupTab, setActiveGroupTab] = useState<string>(
@@ -391,7 +394,10 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
     const handleImageChange = async (file: File | null) => {
       if (file) {
         try {
-          const compressedFile = await compressFile(file)
+          const maxSizeMB = systemConfig?.fileUploadSizeMb || 0.75
+          // COMPRESS THE IMAGE HERE
+          const compressedFile = await compressFile(file, maxSizeMB)
+
           setSelectedImage(compressedFile)
 
           // Create preview from compressed file

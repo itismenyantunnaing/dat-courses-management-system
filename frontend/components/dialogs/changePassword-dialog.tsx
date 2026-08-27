@@ -24,6 +24,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface ChangePasswordProps {
   step?: string
@@ -78,7 +79,7 @@ export default function ChangePassword({
   // Countdown states for OTP
   const [countdown, setCountdown] = useState(0)
   const [errorTimeout, setErrorTimeout] = useState<NodeJS.Timeout>()
-  
+
   // Password validation rules
   const passwordRules = {
     minLength: (password: string) => password.length >= 8,
@@ -119,7 +120,18 @@ export default function ChangePassword({
   // Get token for change password flow
   useEffect(() => {
     if (flow === "change") {
-      getAuthToken().then(setToken)
+      getAuthToken()
+        .then(fetchedToken => {
+          console.log("Token retrieved:", fetchedToken ? `${fetchedToken.substring(0, 20)}...` : "null")
+          setToken(fetchedToken)
+          if (!fetchedToken) {
+            toast.error("Authentication session not found. Please login again.")
+          }
+        })
+        .catch(err => {
+          console.error("Failed to get token:", err)
+          toast.error("Failed to authenticate. Please login again.")
+        })
     }
   }, [flow])
 
@@ -221,10 +233,12 @@ export default function ChangePassword({
           errorMessage = text || errorMessage
         }
         setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Send OTP error:", err)
       setError("Network error. Please try again.")
+      toast.error("Network error. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -265,6 +279,7 @@ export default function ChangePassword({
         }
         handleStepChange("reset")
         setOtpError("")
+        toast.success("OTP verified successfully!")
       } else {
         let errorMessage = "Invalid OTP. Please try again."
         try {
@@ -274,10 +289,12 @@ export default function ChangePassword({
           errorMessage = text || errorMessage
         }
         setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Verify OTP error:", err)
       setError("Network error. Please try again.")
+      toast.error("Network error. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -306,6 +323,7 @@ export default function ChangePassword({
       if (response.ok) {
         setCountdown(60)
         setOtpSuccess("OTP resent successfully!")
+        toast.success("OTP resent successfully!")
         setTimeout(() => setOtpSuccess(""), 3000)
       } else {
         let errorMessage = "Failed to resend OTP"
@@ -316,14 +334,27 @@ export default function ChangePassword({
           errorMessage = text || errorMessage
         }
         setError(errorMessage)
+        toast.error(errorMessage)
         setTimeout(() => setError(""), 3000)
       }
     } catch (err) {
       console.error("Resend OTP error:", err)
       setError("Network error. Please try again.")
+      toast.error("Network error. Please try again.")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Helper function to get fresh token
+  const getFreshToken = async () => {
+    if (token) return token
+    const freshToken = await getAuthToken()
+    if (freshToken) {
+      setToken(freshToken)
+      return freshToken
+    }
+    return null
   }
 
   // Handle old password submission
@@ -333,8 +364,10 @@ export default function ChangePassword({
       return
     }
 
-    if (flow === "change" && !token) {
+    const currentToken = await getFreshToken()
+    if (flow === "change" && !currentToken) {
       setError("Authentication session expired. Please login again.")
+      toast.error("Please login again")
       return
     }
 
@@ -348,7 +381,7 @@ export default function ChangePassword({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${currentToken}`,
           },
           credentials: "include",
           body: JSON.stringify({ currentPassword: oldPassword }),
@@ -359,6 +392,7 @@ export default function ChangePassword({
 
       if (response.ok) {
         handleStepChange("new-password")
+        toast.success("Current password verified!")
       } else {
         let errorMessage = "Current password is incorrect. Please try again."
         try {
@@ -368,10 +402,12 @@ export default function ChangePassword({
           errorMessage = text || errorMessage
         }
         setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Verify password error:", err)
       setError("Network error. Please try again.")
+      toast.error("Network error. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -381,18 +417,21 @@ export default function ChangePassword({
   const handlePasswordUpdate = async () => {
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match")
+      toast.error("Passwords do not match")
       return
     }
 
     // Only check if new password is same as current password when NOT force
     if (flow === "change" && !force && newPassword === oldPassword) {
       setError("New password cannot be the same as your current password")
+      toast.error("New password cannot be the same as your current password")
       return
     }
 
     if (!isPasswordValid(newPassword)) {
       setError("Password does not meet the required criteria")
       setPasswordTouched(true)
+      toast.error("Password does not meet security requirements")
       return
     }
 
@@ -425,6 +464,7 @@ export default function ChangePassword({
           setError(
             "OTP verification session expired. Please go back and verify again."
           )
+          toast.error("OTP verification expired")
           setIsLoading(false)
           return
         }
@@ -448,6 +488,7 @@ export default function ChangePassword({
           (resetText.toLowerCase().includes("success") ||
             resetText.toLowerCase().includes("successful"))
         ) {
+          // Call parent callback instead of alert
           if (onPasswordUpdate) {
             onPasswordUpdate({ staffId: email, newPassword })
           }
@@ -455,9 +496,7 @@ export default function ChangePassword({
             onClose()
           }
           resetForm()
-          alert(
-            "Password updated successfully! Please login with your new password."
-          )
+          // The parent will show the success dialog
         } else {
           let errorMessage = "Failed to update password"
           try {
@@ -467,34 +506,47 @@ export default function ChangePassword({
             errorMessage = resetText || errorMessage
           }
           setError(errorMessage)
+          toast.error(errorMessage)
         }
       } else {
         // For change password flow
+        const currentToken = await getFreshToken()
+
+        if (!currentToken) {
+          setError("Authentication session expired. Please login again.")
+          toast.error("Please login again")
+          setIsLoading(false)
+          return
+        }
+
+
         const changeResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/security/api/auth/change-password`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${currentToken}`,
             },
             credentials: "include",
-            body: JSON.stringify({ 
-              newPassword, 
+            body: JSON.stringify({
+              newPassword,
               confirmPassword,
-              force: force // Pass force flag to API if needed
             }),
           }
         )
 
-        const changeText = await changeResponse.text()
-        
-        if (
-          changeResponse.ok &&
-          (changeText.toLowerCase().includes("success") ||
-            changeText.toLowerCase().includes("successful") ||
-            changeText.toLowerCase().includes("changed"))
-        ) {
+        // Parse response
+        let responseData;
+        const changeText = await changeResponse.text();
+        try {
+          responseData = JSON.parse(changeText);
+        } catch (e) {
+          responseData = { message: changeText };
+        }
+
+        if (changeResponse.ok) {
+          // Call parent callback instead of alert
           if (onPasswordUpdate) {
             onPasswordUpdate({ staffId: email, newPassword })
           }
@@ -502,19 +554,18 @@ export default function ChangePassword({
             onClose()
           }
           resetForm()
-          alert(
-            "Password changed successfully! You will be logged out for security."
-          )
-          await logout()
-        } else {
-          let errorMessage = "Failed to change password"
-          try {
-            const json = JSON.parse(changeText)
-            errorMessage = json.message || errorMessage
-          } catch (e) {
-            errorMessage = changeText || errorMessage
+          // The parent will show the success dialog and handle logout
+
+          // If not force mode, we still want to logout for security
+          if (!force) {
+            toast.success("Password changed successfully!")
+            await logout()
+            return
           }
+        } else {
+          const errorMessage = responseData.message || "Failed to change password"
           setError(errorMessage)
+          toast.error(errorMessage)
         }
       }
     } catch (err) {
@@ -552,13 +603,12 @@ export default function ChangePassword({
             value={value}
             onChange={onChange}
             onBlur={onBlur}
-            className={`pr-10 ${
-              shouldShowValidation && !isValid
+            className={`pr-10 ${shouldShowValidation && !isValid
                 ? "border-red-400 focus-visible:ring-red-400"
                 : shouldShowValidation && isValid
                   ? "border-green-400 focus-visible:ring-green-400"
                   : ""
-            }`}
+              }`}
           />
           <button
             type="button"
@@ -650,7 +700,7 @@ export default function ChangePassword({
                 className="h-3 w-3"
               />
               <span>
-                At least one special character (!@#$%^&*(),.?":{}|&lt;&gt;)
+                At least one special character (!@#$%^&*(),.?":{ }|&lt;&gt;)
               </span>
             </div>
           </div>
@@ -665,7 +715,7 @@ export default function ChangePassword({
     const description =
       flow === "forgot"
         ? "Enter your new password below."
-        : force 
+        : force
           ? "You must change your password at first login. Enter your new password below."
           : "Enter your new password below. Make sure it's secure and easy to remember."
 
