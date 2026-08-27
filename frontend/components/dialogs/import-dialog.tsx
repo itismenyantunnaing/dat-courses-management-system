@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import React, { useState, useEffect, useMemo, useRef } from "react"
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,7 @@ export function ImportDialog({
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   // Get the filtered tabs based on label prop
   const filteredTabs = useMemo(() => {
@@ -75,6 +76,10 @@ export function ImportDialog({
       setSelectedFile(null)
       setIsDragging(false)
       setIsProcessing(false)
+      // Reset file input ref
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }, [open, showTabs, filteredTabs])
 
@@ -84,6 +89,10 @@ export function ImportDialog({
     setSelectedFile(null)
     setIsDragging(false)
     setIsProcessing(false)
+    // Reset file input ref
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const handleFileChange = (file: File | null) => {
@@ -148,90 +157,128 @@ export function ImportDialog({
     onOpenChange(false)
   }
 
-  // File upload area component
-  const FileUploadArea = () => (
-    <div className="space-y-4">
-      <div
-        className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-          isDragging
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25"
-        } ${isProcessing ? "pointer-events-none opacity-60" : ""}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <div className="flex flex-col items-center gap-4">
-          <div className="rounded-full bg-muted p-3">
-            <HugeiconsIcon
-              icon={Upload05Icon}
-              strokeWidth={1.5}
-              className="size-8 text-muted-foreground"
-            />
-          </div>
-          <div className="space-y-2 text-center">
-            <p className="text-sm">
-              {selectedFile ? (
-                selectedFile.name
-              ) : (
-                <>
-                  Choose a excel file or drag & drop it here.
-                  <br />
-                  Your excel file tab name has to be <span className="font-bold text-blue-600">{currentTabData?.label}</span>.
-                </>
+  // File upload area component - FIXED with useCallback
+  const FileUploadArea = useCallback(() => {
+    // Use a more reliable click handler
+    const handleBrowseClick = (e: React.MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      // Direct click without setTimeout
+      if (!isProcessing && fileInputRef.current) {
+        fileInputRef.current.click()
+      }
+    }
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] || null
+      if (file && currentTabData) {
+        setSelectedFile(file)
+      }
+      // Reset input value to allow selecting same file again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+
+    // Also try using the button's onClick directly without ref
+    const handleButtonClick = () => {
+      if (!isProcessing && fileInputRef.current) {
+        fileInputRef.current.click()
+      }
+    }
+
+    return (
+      <div className="space-y-4">
+        <div
+          className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragging
+              ? "border-primary bg-primary/5"
+              : "border-muted-foreground/25"
+            } ${!selectedFile && !isProcessing ? "cursor-pointer hover:border-muted-foreground/50" : ""} ${isProcessing ? "pointer-events-none opacity-60" : ""
+            }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-full bg-muted p-3 pointer-events-none">
+              <HugeiconsIcon
+                icon={Upload05Icon}
+                strokeWidth={1.5}
+                className="size-8 text-muted-foreground"
+              />
+            </div>
+            <div className="space-y-2 text-center pointer-events-none">
+              <p className="text-sm">
+                {selectedFile ? (
+                  selectedFile.name
+                ) : (
+                  <>
+                    Choose a excel file or drag & drop it here.
+                    <br />
+                    Your excel file tab name has to be <span className="font-bold text-blue-600">{currentTabData?.label}</span>.
+                  </>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Maximum {currentTabData?.maxSize || 10} MB file size
+              </p>
+              {selectedFile && (
+                <p className="text-xs text-green-600">
+                  ✓ File selected: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
               )}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Maximum {currentTabData?.maxSize || 10} MB file size
-            </p>
-            {selectedFile && (
-              <p className="text-xs text-green-600">
-                ✓ File selected: {(selectedFile.size / 1024 / 1024).toFixed(2)}{" "}
-                MB
-              </p>
-            )}
-            {isProcessing && (
-              <p className="text-xs text-blue-600 animate-pulse">
-                Processing import...
-              </p>
-            )}
-          </div>
-          <input
-            type="file"
-            id="file-upload"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
-            accept={currentTabData?.accept}
-            disabled={isProcessing}
-          />
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
+              {isProcessing && (
+                <p className="text-xs text-blue-600 animate-pulse">
+                  Processing import...
+                </p>
+              )}
+            </div>
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleInputChange}
+              accept={currentTabData?.accept}
               disabled={isProcessing}
-            >
-              Browse Files
-            </Button>
-            {selectedFile && !isProcessing && (
+              key={`file-input-${currentTabData?.id || 'default'}-${open}`}
+            />
+            <div className="flex gap-2 pointer-events-auto">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={() => {
-                  setSelectedFile(null)
-                }}
+                onClick={handleButtonClick}
+                disabled={isProcessing}
+                className="relative z-10 cursor-pointer hover:bg-muted/80"
               >
-                Clear
+                Browse Files
               </Button>
-            )}
+              {selectedFile && !isProcessing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setSelectedFile(null)
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = ''
+                    }
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }, [isDragging, isProcessing, selectedFile, currentTabData, open])
+
 
   // Single tab view (no tab selector)
   if (!showTabs) {
@@ -246,7 +293,9 @@ export function ImportDialog({
             const target = e.target as HTMLElement
             if (
               target.closest('[role="menu"]') ||
-              target.closest('[role="listbox"]')
+              target.closest('[role="listbox"]') ||
+              target.closest('button') ||
+              target.closest('input')
             ) {
               e.preventDefault()
             }
@@ -265,8 +314,8 @@ export function ImportDialog({
           <FileUploadArea />
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleCancel}
               disabled={isProcessing}
             >
@@ -301,7 +350,9 @@ export function ImportDialog({
           const target = e.target as HTMLElement
           if (
             target.closest('[role="menu"]') ||
-            target.closest('[role="listbox"]')
+            target.closest('[role="listbox"]') ||
+            target.closest('button') ||
+            target.closest('input')
           ) {
             e.preventDefault()
           }
@@ -340,6 +391,9 @@ export function ImportDialog({
                       setSelectedFile(null)
                       setIsDragging(false)
                       setIsProcessing(false)
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = ''
+                      }
                     }}
                   >
                     {tab.label}
@@ -375,6 +429,9 @@ export function ImportDialog({
                         setSelectedFile(null)
                         setIsDragging(false)
                         setIsProcessing(false)
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = ''
+                        }
                       }}
                       className="flex items-center justify-between"
                     >
@@ -397,9 +454,9 @@ export function ImportDialog({
         </Tabs>
 
         <DialogFooter className="flex">
-          <Button 
-            variant="outline" 
-            className="flex-1" 
+          <Button
+            variant="outline"
+            className="flex-1"
             onClick={handleCancel}
             disabled={isProcessing}
           >

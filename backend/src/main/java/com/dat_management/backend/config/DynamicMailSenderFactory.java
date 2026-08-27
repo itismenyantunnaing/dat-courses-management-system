@@ -47,7 +47,7 @@ public class DynamicMailSenderFactory {
             defaultConfig.setJwtExpiryHours(24);
             defaultConfig.setMaxLoginAttempts(5);
             defaultConfig.setSessionTimeoutMinutes(30);
-            defaultConfig.setFileUploadSizeMb(10);
+            defaultConfig.setFileUploadSizeMb(0.5);
             
             systemConfigRepository.save(defaultConfig);
             log.warn("Default mail configuration created with ID: {}. Please update with actual SMTP settings via admin panel.", defaultConfig.getId());

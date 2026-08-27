@@ -1014,6 +1014,8 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const data = await response.json()
 
+      await get().fetch_EmployeeData(true);
+
       set((state: Employee_StoreType) => ({
         ...state,
         isUpdatingDepartmentPosition: false,

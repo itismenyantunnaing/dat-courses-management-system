@@ -207,6 +207,7 @@ export function LoginForm({
                     placeholder="Enter your staff id"
                     required
                     disabled={loading}
+                    autoFocus={true}
                   />
                 </Field>
                 <Field>
@@ -266,14 +267,6 @@ export function LoginForm({
                     {error}
                   </div>
                 )}
-                <Field orientation="horizontal">
-                  <div className="flex gap-2">
-                    <Checkbox id="remember-me" defaultChecked />
-                    <FieldLabel htmlFor="remember-me" className="font-normal">
-                      Remember me
-                    </FieldLabel>
-                  </div>
-                </Field>
                 <Field>
                   <Button type="submit" disabled={loading}>
                     {loading ? "Logging in..." : "Login"}

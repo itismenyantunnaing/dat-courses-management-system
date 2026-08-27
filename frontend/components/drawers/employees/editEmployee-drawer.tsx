@@ -49,7 +49,7 @@ export function EditEmployeeDrawer({
     useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
-  const { update_EmployeeData, add_division } = mainStore()
+  const { update_EmployeeData, add_division, updateEmployeeDepartmentPosition } = mainStore()
 
   // State for Add Item Dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -177,6 +177,8 @@ export function EditEmployeeDrawer({
     setIsSubmitting(true)
 
     try {
+
+
       // Map form data to Employee type - PRESERVE ALL ORIGINAL FIELDS
       const updatedEmployee: Employee = {
         ...employee!,
@@ -199,8 +201,9 @@ export function EditEmployeeDrawer({
         profile_photo_path: employee?.profile_photo_path || "",
       }
 
-      // Call the store's update method
+      // First, update the employee via the regular API
       const result = await update_EmployeeData(employee!.id, updatedEmployee)
+
       if (
         result &&
         (result.includes("not found") ||
@@ -209,15 +212,34 @@ export function EditEmployeeDrawer({
       ) {
         alert(result)
         return
-      } else {
-        alert(result)
       }
+
+      // Then, if dept_dir or position has changed, update via the department-position API
+      const deptDirChanged = formData.dept_dir !== employee?.dept_dir
+      const positionChanged = formData.position !== employee?.position
+
+      if (deptDirChanged || positionChanged) {
+        const deptPosResult = await updateEmployeeDepartmentPosition({
+          employeeId: employee!.id,
+          departmentDirName: formData.dept_dir || "",  
+          position: formData.position || "",
+          isCorePersonnel: employee?.is_core_personnel || false,
+          hasJapanBusinessTrip: employee?.has_japan_business_trip || false,
+        })
+        if (deptPosResult && !deptPosResult.success) {
+          alert(`Failed to update department/position: ${deptPosResult.message}`)
+          return
+        }
+      }
+
+      alert(result)
 
       setIsEditMode(false)
       onOpenChange(false)
       onSuccess?.()
     } catch (error) {
       console.error("Failed to update employee:", error)
+      alert("Failed to update employee. Please try again.")
     } finally {
       setIsSubmitting(false)
     }

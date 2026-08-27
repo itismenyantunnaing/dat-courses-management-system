@@ -39,7 +39,8 @@ export function CreateEmployeeDrawer({
     add_dat_department,
     add_team,
     divisions,
-    dat_departments
+    dat_departments,
+    updateEmployeeDepartmentPosition
   } = mainStore()
 
   // State for Add Item Dialog
@@ -93,6 +94,8 @@ export function CreateEmployeeDrawer({
     setIsSubmitting(true)
 
     try {
+
+
       // Map form data to Employee type
       const newEmployee: Employee = {
         id: formData.staff_id,
@@ -114,16 +117,31 @@ export function CreateEmployeeDrawer({
         profile_photo_path: "",
       }
 
+      // First, create the employee
       const result = await add_EmployeeData(newEmployee)
-      if (
-        result &&
-        (result.includes("already exists") || result.includes("Failed"))
-      ) {
+
+      if (result && (result.includes("already exists") || result.includes("Failed"))) {
         alert(result)
         return
-      } else {
-        alert(result)
       }
+
+      // Then, if dept_dir or position has a value, update via department-position API
+      if (formData.dept_dir || formData.position) {
+        const deptPosResult = await updateEmployeeDepartmentPosition({
+          employeeId: formData.staff_id,
+          departmentDirName: formData.dept_dir || "",
+          position: formData.position || "",
+          isCorePersonnel: false,
+          hasJapanBusinessTrip: false,
+        })
+
+        if (deptPosResult && !deptPosResult.success) {
+          alert(`Employee created but failed to update department/position: ${deptPosResult.message}`)
+          return
+        }
+      }
+
+      alert(result || "Employee created successfully")
 
       // Reset form
       setFormData({
@@ -133,6 +151,7 @@ export function CreateEmployeeDrawer({
         doorlog: "",
         dept_dat: "",
         dept_dir: "",
+        position: "",
         team: "",
         emp_status: "active",
         role: "",
@@ -144,6 +163,7 @@ export function CreateEmployeeDrawer({
       onSuccess?.()
     } catch (error) {
       console.error("Failed to create employee:", error)
+      alert("Failed to create employee. Please try again.")
     } finally {
       setIsSubmitting(false)
     }

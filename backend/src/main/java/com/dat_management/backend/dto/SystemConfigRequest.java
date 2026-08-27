@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class SystemConfigRequest {
 
-    private Integer fileUploadSizeMb;
+    private Double fileUploadSizeMb;
     private Integer sessionTimeoutMinutes;
     private Integer jwtExpiryHours;
     private Integer maxLoginAttempts;

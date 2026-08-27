@@ -19,7 +19,7 @@ public class SystemConfig {
     private Long id;
 
     @Column(name = "file_upload_size_mb", nullable = false)
-    private Integer fileUploadSizeMb = 5;
+    private Double fileUploadSizeMb = 0.5;
 
     @Column(name = "session_timeout_minutes", nullable = false)
     private Integer sessionTimeoutMinutes = 30;

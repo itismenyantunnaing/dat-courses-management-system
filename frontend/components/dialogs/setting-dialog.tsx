@@ -43,9 +43,9 @@ export function SettingDialog({
   open,
   onOpenChange,
 }: SettingsDialogProps) {
-  const { 
-    systemConfig, 
-    fetch_SystemConfig, 
+  const {
+    systemConfig,
+    fetch_SystemConfig,
     update_SystemConfig,
     notificationSettings: storeNotificationSettings,
     fetch_NotificationSettings,
@@ -108,7 +108,7 @@ export function SettingDialog({
   const [hasChanges, setHasChanges] = useState(false)
   const [showGmailPassword, setShowGmailPassword] = useState(false)
   const [showOutlookPassword, setShowOutlookPassword] = useState(false)
-  
+
   // Local copy of notification settings for editing
   const [localSettings, setLocalSettings] = useState({
     courseAnnouncements: true,
@@ -162,7 +162,7 @@ export function SettingDialog({
       const newInitialConfig = getInitialConfig()
       setConfig(newInitialConfig)
       setInitialConfig(newInitialConfig)
-      
+
       if (storeNotificationSettings) {
         setLocalSettings({
           courseAnnouncements: storeNotificationSettings.courseAnnouncements ?? true,
@@ -179,10 +179,10 @@ export function SettingDialog({
   const configEqual = (a: any, b: any) => {
     if (a === b) return true
     if (!a || !b) return false
-    
+
     const keys = Object.keys(a)
     if (keys.length !== Object.keys(b).length) return false
-    
+
     for (const key of keys) {
       if (key === "smtp") {
         const smtpKeys = Object.keys(a[key])
@@ -202,15 +202,15 @@ export function SettingDialog({
     if (!storeNotificationSettings) return
 
     const configChanged = !configEqual(config, initialConfig)
-    
+
     const storeSettings = {
       courseAnnouncements: storeNotificationSettings.courseAnnouncements ?? true,
       examAnnouncements: storeNotificationSettings.examAnnouncements ?? true,
       certificateUpdates: storeNotificationSettings.certificateUpdates ?? true,
       emailNotifications: storeNotificationSettings.emailNotifications ?? true,
     }
-    
-    const notificationChanged = 
+
+    const notificationChanged =
       localSettings.courseAnnouncements !== storeSettings.courseAnnouncements ||
       localSettings.examAnnouncements !== storeSettings.examAnnouncements ||
       localSettings.certificateUpdates !== storeSettings.certificateUpdates ||
@@ -250,8 +250,8 @@ export function SettingDialog({
         certificateUpdates: storeNotificationSettings?.certificateUpdates ?? true,
         emailNotifications: storeNotificationSettings?.emailNotifications ?? true,
       }
-      
-      const notificationChanged = 
+
+      const notificationChanged =
         localSettings.courseAnnouncements !== storeSettings.courseAnnouncements ||
         localSettings.examAnnouncements !== storeSettings.examAnnouncements ||
         localSettings.certificateUpdates !== storeSettings.certificateUpdates ||
@@ -265,7 +265,7 @@ export function SettingDialog({
           certificateUpdates: localSettings.certificateUpdates,
           emailNotifications: localSettings.emailNotifications,
         }
-        
+
         await update_NotificationSettings(settingsToSave)
         await fetch_NotificationSettings(employeeId)
       }
@@ -300,7 +300,7 @@ export function SettingDialog({
   }
 
   const isNotificationSaving = isUpdating || isLoading
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[650px]">
@@ -339,7 +339,7 @@ export function SettingDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col items-start gap-2">
                     <Label className="text-sm font-medium">
-                      File Upload Size
+                      Image Compress Size
                     </Label>
                     <div className="flex w-full items-center gap-2">
                       <Input
@@ -438,129 +438,12 @@ export function SettingDialog({
                   </Label>
 
                   <div className="flex flex-col gap-4">
-                    {/* Outlook */}
-                    <div className="flex flex-col gap-2">
-                      <div className="flex justify-between">
-                        <Label className="text-sm font-medium">Outlook</Label>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="outlook-default"
-                            checked={config.smtp.outlookDefault}
-                            onCheckedChange={handleOutlookDefaultChange}
-                            disabled={isSaving || isLoading}
-                          />
-                          <Label
-                            htmlFor="outlook-default"
-                            className="cursor-pointer text-sm"
-                          >
-                            Use as Default
-                          </Label>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          type="text"
-                          value={config.smtp.outlookHost}
-                          onChange={(e) =>
-                            setConfig({
-                              ...config,
-                              smtp: {
-                                ...config.smtp,
-                                outlookHost: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="smtp.office365.com"
-                          disabled={isSaving || isLoading}
-                        />
-                        <Input
-                          type="number"
-                          value={config.smtp.outlookPort}
-                          onChange={(e) =>
-                            setConfig({
-                              ...config,
-                              smtp: {
-                                ...config.smtp,
-                                outlookPort: parseInt(e.target.value) || 587,
-                              },
-                            })
-                          }
-                          placeholder="Port"
-                          disabled={isSaving || isLoading}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          type="email"
-                          value={config.smtp.outlookUsername}
-                          onChange={(e) =>
-                            setConfig({
-                              ...config,
-                              smtp: {
-                                ...config.smtp,
-                                outlookUsername: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Outlook Email"
-                          disabled={isSaving || isLoading}
-                        />
-                        <div className="relative">
-                          <Input
-                            type={showOutlookPassword ? "text" : "password"}
-                            value={config.smtp.outlookPassword}
-                            onChange={(e) =>
-                              setConfig({
-                                ...config,
-                                smtp: {
-                                  ...config.smtp,
-                                  outlookPassword: e.target.value,
-                                },
-                              })
-                            }
-                            className="pr-10"
-                            placeholder="Outlook Password"
-                            disabled={isSaving || isLoading}
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setShowOutlookPassword(!showOutlookPassword)
-                            }
-                            className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            disabled={isSaving || isLoading}
-                          >
-                            <HugeiconsIcon
-                              icon={showOutlookPassword ? ViewOffIcon : EyeIcon}
-                              strokeWidth={2}
-                              className="h-4 w-4"
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+
 
                     {/* Gmail */}
                     <div className="flex flex-col gap-2">
-                      <div className="flex justify-between gap-2">
-                        <Label className="text-sm font-medium">Gmail</Label>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="gmail-default"
-                            checked={config.smtp.gmailDefault}
-                            onCheckedChange={handleGmailDefaultChange}
-                            disabled={isSaving || isLoading}
-                          />
-                          <Label
-                            htmlFor="gmail-default"
-                            className="cursor-pointer text-sm"
-                          >
-                            Use as Default
-                          </Label>
-                        </div>
-                      </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <Input
+                        {/* <Input
                           type="text"
                           value={config.smtp.gmailHost}
                           onChange={(e) =>
@@ -589,25 +472,33 @@ export function SettingDialog({
                           }
                           placeholder="Port"
                           disabled={isSaving || isLoading}
-                        />
+                        /> */}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          type="email"
-                          value={config.smtp.gmailUsername}
-                          onChange={(e) =>
-                            setConfig({
-                              ...config,
-                              smtp: {
-                                ...config.smtp,
-                                gmailUsername: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Gmail Email"
-                          disabled={isSaving || isLoading}
-                        />
+                        <div>
+                          <Label className="text-sm font-medium">
+                            Gmail
+                          </Label>
+                          <Input
+                            type="email"
+                            value={config.smtp.gmailUsername}
+                            onChange={(e) =>
+                              setConfig({
+                                ...config,
+                                smtp: {
+                                  ...config.smtp,
+                                  gmailUsername: e.target.value,
+                                },
+                              })
+                            }
+                            placeholder="Gmail Email"
+                            disabled={isSaving || isLoading}
+                          />
+                        </div>
                         <div className="relative">
+                          <Label className="text-sm font-medium">
+                            Gmail Password
+                          </Label>
                           <Input
                             type={showGmailPassword ? "text" : "password"}
                             value={config.smtp.gmailPassword}
@@ -620,7 +511,7 @@ export function SettingDialog({
                                 },
                               })
                             }
-                            className="pr-10"
+                            className="pr-10 relative"
                             placeholder="Gmail Password"
                             disabled={isSaving || isLoading}
                           />
@@ -629,7 +520,7 @@ export function SettingDialog({
                             onClick={() =>
                               setShowGmailPassword(!showGmailPassword)
                             }
-                            className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            className="absolute bottom-0 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             disabled={isSaving || isLoading}
                           >
                             <HugeiconsIcon
@@ -804,9 +695,9 @@ export function SettingDialog({
             className="flex-1"
             onClick={handleSave}
             disabled={
-              isSaving || 
-              isLoading || 
-              isLoadingInitial || 
+              isSaving ||
+              isLoading ||
+              isLoadingInitial ||
               isNotificationSaving ||
               !hasChanges
             }
