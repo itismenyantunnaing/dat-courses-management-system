@@ -57,7 +57,7 @@ export function DictionaryDrawer({
 }: DictionaryDrawerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
+  const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [formData, setFormData] = useState<DictionaryFormData>({
     englishText: "",
@@ -77,6 +77,16 @@ export function DictionaryDrawer({
   const isLoadingMoreRef = useRef(false)
   const searchTermRef = useRef(searchTerm)
 
+  // Refs to track dialog states to prevent drawer from closing.
+  // Combined into one flag with a short delay before clearing — mirrors the
+  // dropdown-close-timer pattern used in other drawers. Without the delay,
+  // the ref flips to false the instant the dialog's open state changes,
+  // which can be before Radix's focus-restoration (onCloseAutoFocus) has
+  // finished firing — leaving no guard up when the drawer's dismiss logic
+  // reacts to that trailing focus/pointer event.
+  const isDialogInteractingRef = useRef(false)
+  const dialogCloseTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   const {
     dictionary,
     fetch_dictionary,
@@ -89,6 +99,26 @@ export function DictionaryDrawer({
   useEffect(() => {
     searchTermRef.current = searchTerm
   }, [searchTerm])
+
+  // Update the combined dialog-interacting ref whenever either dialog's
+  // open state changes. Opening sets it immediately; closing waits 150ms
+  // before clearing it, so the drawer stays guarded through any trailing
+  // focus/pointer events caused by the dialog's close/unmount.
+  useEffect(() => {
+    if (dialogCloseTimerRef.current) {
+      clearTimeout(dialogCloseTimerRef.current)
+      dialogCloseTimerRef.current = null
+    }
+
+    if (formDialogOpen || deleteDialogOpen) {
+      isDialogInteractingRef.current = true
+    } else {
+      dialogCloseTimerRef.current = setTimeout(() => {
+        isDialogInteractingRef.current = false
+        dialogCloseTimerRef.current = null
+      }, 150)
+    }
+  }, [formDialogOpen, deleteDialogOpen])
 
   // Filter dictionary entries based on search term
   const filteredDictionary = useMemo(() => {
@@ -132,8 +162,14 @@ export function DictionaryDrawer({
     }
   }
 
-  // Reset form when drawer opens/closes or editing entry changes
+  // Reset form when drawer opens/closes
   const handleOpenChange = (newOpen: boolean) => {
+    // Check if a dialog is open (or just closed within the grace period)
+    // before allowing the drawer to close
+    if (!newOpen && isDialogInteractingRef.current) {
+      return
+    }
+
     if (!newOpen) {
       // Reset form when closing
       setFormData({
@@ -141,7 +177,7 @@ export function DictionaryDrawer({
         japaneseText: "",
       })
       setEditingEntry(null)
-      setShowForm(false)
+      setFormDialogOpen(false)
       setEntryToDelete(null)
       setDeleteDialogOpen(false)
       setSearchTerm("")
@@ -156,11 +192,7 @@ export function DictionaryDrawer({
       englishText: "",
       japaneseText: "",
     })
-    setShowForm(true)
-    // Scroll to top to see the form
-    if (listContainerRef.current) {
-      listContainerRef.current.scrollTop = 0
-    }
+    setFormDialogOpen(true)
   }
 
   const handleEdit = (entry: DictionaryEntry) => {
@@ -169,11 +201,7 @@ export function DictionaryDrawer({
       englishText: entry.englishText,
       japaneseText: entry.japaneseText,
     })
-    setShowForm(true)
-    // Scroll to top to see the form
-    if (listContainerRef.current) {
-      listContainerRef.current.scrollTop = 0
-    }
+    setFormDialogOpen(true)
   }
 
   const handleCancelForm = () => {
@@ -182,7 +210,7 @@ export function DictionaryDrawer({
       englishText: "",
       japaneseText: "",
     })
-    setShowForm(false)
+    setFormDialogOpen(false)
   }
 
   const handleDeleteClick = (entry: DictionaryEntry) => {
@@ -237,13 +265,13 @@ export function DictionaryDrawer({
       // Refresh the dictionary list
       await loadDictionary()
 
-      // Reset form and hide it
+      // Reset form and close dialog
       setFormData({
         englishText: "",
         japaneseText: "",
       })
       setEditingEntry(null)
-      setShowForm(false)
+      setFormDialogOpen(false)
 
       // Trigger success callback
       onSuccess?.()
@@ -307,20 +335,63 @@ export function DictionaryDrawer({
     }
   }, [dictionary, isLoading])
 
+  // Handle form dialog open change
+  const handleFormDialogOpenChange = (newOpen: boolean) => {
+    setFormDialogOpen(newOpen)
+    if (!newOpen) {
+      // Reset form when dialog closes
+      setEditingEntry(null)
+      setFormData({
+        englishText: "",
+        japaneseText: "",
+      })
+    }
+  }
+
+  // Handle delete dialog open change
+  const handleDeleteDialogOpenChange = (newOpen: boolean) => {
+    setDeleteDialogOpen(newOpen)
+    if (!newOpen) {
+      setEntryToDelete(null)
+    }
+  }
+
+  // Guard against the drawer treating clicks inside a portaled Dialog (or
+  // any dropdown/listbox) as "outside" clicks
+  const handlePointerDownOutside = (e: Event) => {
+    if (isDialogInteractingRef.current) {
+      e.preventDefault()
+      return
+    }
+    const target = e.target as HTMLElement
+    if (
+      target.closest('[role="dialog"]') ||
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
+
   return (
     <>
       <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
-        <DrawerContent className="right-0 left-auto h-full w-[75%] sm:w-[60%] md:w-[50%] lg:w-[40%] xl:w-[30%]">
+        <DrawerContent
+          className="right-0 left-auto h-full w-[75%] sm:w-[60%] md:w-[50%] lg:w-[40%] xl:w-[30%]"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            if (isDialogInteractingRef.current) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DrawerHeader className="shrink-0 border-b">
             <div className="flex items-center justify-between">
               <div>
                 <DrawerTitle>Translations for the skillset table</DrawerTitle>
               </div>
-              <Button
-                size="sm"
-                onClick={handleAddNew}
-                variant={showForm ? "secondary" : "default"}
-              >
+              <Button size="sm" onClick={handleAddNew}>
                 <HugeiconsIcon
                   icon={Add01Icon}
                   strokeWidth={2}
@@ -331,7 +402,7 @@ export function DictionaryDrawer({
             </div>
 
             {/* Search Bar */}
-            <div className="shrink-0 pt-3">
+            <div className="shrink-0 pt-1">
               <div className="relative">
                 <HugeiconsIcon
                   icon={Search01Icon}
@@ -354,79 +425,6 @@ export function DictionaryDrawer({
             onScroll={handleScroll}
           >
             <div className="px-6 py-4">
-              {/* Edit/Create Form - Always at the top when visible */}
-              {showForm && (
-                <div className="mb-6 rounded-lg border p-4">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">
-                      {editingEntry ? "Edit Entry" : "Add New Entry"}
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCancelForm}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* English Text */}
-                    <div className="space-y-2">
-                      <Label htmlFor="englishText">
-                        English Text <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="englishText"
-                        placeholder="Enter English text (e.g., Yes)"
-                        value={formData.englishText}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            englishText: e.target.value,
-                          })
-                        }
-                        required
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Japanese Text */}
-                    <div className="space-y-2">
-                      <Label htmlFor="japaneseText">
-                        Japanese Text <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="japaneseText"
-                        placeholder="Enter Japanese translation (e.g., はい)"
-                        value={formData.japaneseText}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            japaneseText: e.target.value,
-                          })
-                        }
-                        required
-                        className="w-full"
-                      />
-                    </div>
-                    <Button
-                      className="w-full"
-                      onClick={handleSubmit}
-                      disabled={isSubmitting || !isFormValid}
-                    >
-                      {isSubmitting
-                        ? editingEntry
-                          ? "Updating..."
-                          : "Adding..."
-                        : editingEntry
-                          ? "Update Entry"
-                          : "Add Entry"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {/* Dictionary List */}
               <div>
                 <h3 className="mb-4 text-lg font-semibold">
@@ -554,9 +552,136 @@ export function DictionaryDrawer({
         </DrawerContent>
       </Drawer>
 
+      {/* Form Dialog - Add/Edit Entry */}
+      <Dialog
+        open={formDialogOpen}
+        onOpenChange={handleFormDialogOpenChange}
+        modal={true}
+      >
+        <DialogContent
+          className="sm:max-w-[500px]"
+          onPointerDownOutside={(e) => {
+            // Prevent closing the dialog when clicking outside
+            e.preventDefault()
+          }}
+          onCloseAutoFocus={(e) => {
+            // Prevent Radix from returning focus to the trigger button on
+            // close — that refocus fires while the Drawer's own focus trap
+            // is still active, and is what actually causes the Drawer to
+            // dismiss itself right after this dialog closes.
+            e.preventDefault()
+          }}
+          onEscapeKeyDown={(e) => {
+            // Close the dialog on Escape, but don't close the drawer
+            setFormDialogOpen(false)
+            setEditingEntry(null)
+            setFormData({
+              englishText: "",
+              japaneseText: "",
+            })
+            e.preventDefault()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {editingEntry ? "Edit Translation" : "Add New Translation"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingEntry
+                ? "Update the translation for this entry."
+                : "Create a new translation entry for the skillset table."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* English Text */}
+            <div className="space-y-2">
+              <Label htmlFor="englishText">
+                English Text <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="englishText"
+                placeholder="Enter English text (e.g., Yes)"
+                value={formData.englishText}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    englishText: e.target.value,
+                  })
+                }
+                required
+                className="w-full"
+                autoFocus
+              />
+            </div>
+
+            {/* Japanese Text */}
+            <div className="space-y-2">
+              <Label htmlFor="japaneseText">
+                Japanese Text <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="japaneseText"
+                placeholder="Enter Japanese translation (e.g., はい)"
+                value={formData.japaneseText}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    japaneseText: e.target.value,
+                  })
+                }
+                required
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelForm}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !isFormValid}
+            >
+              {isSubmitting
+                ? editingEntry
+                  ? "Updating..."
+                  : "Adding..."
+                : editingEntry
+                  ? "Update Entry"
+                  : "Add Entry"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={handleDeleteDialogOpenChange}
+        modal={true}
+      >
+        <DialogContent
+          onPointerDownOutside={(e) => {
+            // Prevent closing the dialog when clicking outside
+            e.preventDefault()
+          }}
+          onCloseAutoFocus={(e) => {
+            // Same reasoning as the form dialog above
+            e.preventDefault()
+          }}
+          onEscapeKeyDown={(e) => {
+            // Close the dialog on Escape, but don't close the drawer
+            setDeleteDialogOpen(false)
+            setEntryToDelete(null)
+            e.preventDefault()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Delete Dictionary Entry</DialogTitle>
             <DialogDescription>

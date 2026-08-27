@@ -559,25 +559,6 @@ export function TechnicalAbilityHeadersDrawer({
                   Add Category
                 </Button>
               )}
-
-              <div className="rounded-md bg-blue-50 p-4">
-                <p className="text-sm text-blue-800">
-                  <span className="font-semibold">{categories.length}</span>{" "}
-                  categor{categories.length !== 1 ? "ies" : "y"} configured
-                </p>
-                <p className="mt-1 text-xs text-blue-600">
-                  Total sub-categories:{" "}
-                  {categories.reduce(
-                    (acc, cat) => acc + cat.skillSubCategories.length,
-                    0
-                  )}
-                </p>
-                {hasChanges() && (
-                  <p className="mt-1 text-xs text-orange-600">
-                    You have unsaved changes
-                  </p>
-                )}
-              </div>
             </div>
           </div>
         </div>

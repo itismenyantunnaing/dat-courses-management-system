@@ -353,7 +353,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       case "exams":
         return "Exam Management"
       case "skills":
-        return "Skills"
+        return "Employees' Skills"
       case "holidays":
         return "Holidays"
       case "japanese-certificates":

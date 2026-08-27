@@ -50,6 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
@@ -208,7 +209,10 @@ export function AnnouncementContainer() {
 
   // Check if user can delete this specific announcement
   const canDelete = (announcement: AnnouncementDto) => {
-    return (isAdmin || isApprover) && announcement.createdBy === profile?.name
+    // Admin can delete all, Approver can only delete their own
+    if (isAdmin) return true
+    if (isApprover) return announcement.createdBy === profile?.name
+    return false
   }
 
   // Check if any filters are active
@@ -522,46 +526,28 @@ export function AnnouncementContainer() {
               </InputGroup>
 
               <div className="flex items-center gap-2">
-                {/* View Mode Toggle */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={viewMode === "list" ? "default" : "outline"}
-                      size="icon"
-                      onClick={() => setViewMode("list")}
-                      className="h-9 w-9"
-                    >
+                {/* View Mode Tabs */}
+                <Tabs
+                  value={viewMode}
+                  onValueChange={(value) => setViewMode(value as ViewMode)}
+                >
+                  <TabsList className="h-9">
+                    <TabsTrigger value="list">
                       <HugeiconsIcon
                         icon={ListViewIcon}
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>List View</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={viewMode === "card" ? "default" : "outline"}
-                      size="icon"
-                      onClick={() => setViewMode("card")}
-                      className="h-9 w-9"
-                    >
+                    </TabsTrigger>
+                    <TabsTrigger value="card">
                       <HugeiconsIcon
                         icon={GridViewIcon}
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Card View</p>
-                  </TooltipContent>
-                </Tooltip>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
 
                 {/* Sort Buttons */}
                 <Tooltip>
@@ -713,11 +699,10 @@ export function AnnouncementContainer() {
           {/* Message Display */}
           {message && (
             <div
-              className={`mx-4 mb-4 rounded p-4 ${
-                message.type === "success"
+              className={`mx-4 mb-4 rounded p-4 ${message.type === "success"
                   ? "bg-green-100 text-green-700"
                   : "bg-red-100 text-red-700"
-              }`}
+                }`}
             >
               {message.text}
             </div>
@@ -947,7 +932,7 @@ export function AnnouncementContainer() {
                               }}
                               className={
                                 currentPage === 1 ||
-                                filteredAndSortedAnnouncements.length === 0
+                                  filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -980,7 +965,7 @@ export function AnnouncementContainer() {
                               }}
                               className={
                                 currentPage === totalPages ||
-                                filteredAndSortedAnnouncements.length === 0
+                                  filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }

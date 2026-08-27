@@ -324,11 +324,11 @@ export function EmployeeContainer({
     courses,
     fetch_SkillData,
     skillData,
-    profile
+    profile,
   } = mainStore()
 
   const currentUserId = profile?.id || null
-  const userRole = profile.role.toLowerCase();
+  const userRole = profile.role.toLowerCase()
   const isAdmin = userRole === "admin"
   const isApprover = userRole === "approver"
   const isLearner = userRole === "learner"
@@ -338,7 +338,8 @@ export function EmployeeContainer({
   // Check permissions
   const canManageAll = isAdmin // Admin can manage all
   const canManageFiltered = isApprover || isDepartmentHead || isDivisionHead // Can manage filtered employees
-  const canViewAll = isAdmin || isApprover || isDepartmentHead || isDivisionHead || isLearner // All roles can view all
+  const canViewAll =
+    isAdmin || isApprover || isDepartmentHead || isDivisionHead || isLearner // All roles can view all
   const isReadOnly = isLearner // Learner is read-only
   const canCRUD = isAdmin || canManageFiltered // Admin and filtered managers can CRUD
 
@@ -371,7 +372,6 @@ export function EmployeeContainer({
 
   // Use viewableEmployees for display, manageableEmployees for CRUD operations
   const filteredEmployeeData = viewableEmployees
-
 
   // Fetch skills if not already loaded
   useEffect(() => {
@@ -570,8 +570,8 @@ export function EmployeeContainer({
       const divs = getUniqueValues("div_name")
       const filteredDivs = searchTerm.trim()
         ? divs.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : divs
       const othersCount = getEmployeesWithEmptyCategory("div_name").length
       if (othersCount > 0) {
@@ -582,8 +582,8 @@ export function EmployeeContainer({
       const depts = getUniqueValues("dept_dat")
       const filteredDepts = searchTerm.trim()
         ? depts.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : depts
       const othersCount = getEmployeesWithEmptyCategory("dept_dat").length
       if (othersCount > 0) {
@@ -594,8 +594,8 @@ export function EmployeeContainer({
       const teams = getUniqueValues("team")
       const filteredTeams = searchTerm.trim()
         ? teams.filter((item) =>
-          item.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         : teams
       const othersCount = getEmployeesWithEmptyCategory("team").length
       if (othersCount > 0) {
@@ -603,7 +603,6 @@ export function EmployeeContainer({
       }
       return filteredTeams
     }
-
 
     // Default: employees view - APPLY ALL FILTERS HERE
     return data.filter((employee) => {
@@ -677,9 +676,7 @@ export function EmployeeContainer({
   // For non-employee views, we show list items (divisions, departments, teams)
   const isListView = activeView !== "employees"
   const listItems = isListView ? (viewData as string[]) : []
-  const employeesForView = isListView
-    ? employee_data
-    : (viewData as Employee[])
+  const employeesForView = isListView ? employee_data : (viewData as Employee[])
 
   // For approver/department_head/division_head: show their own filtered
   // (manageable) employees first, then everyone else they can only view.
@@ -688,10 +685,10 @@ export function EmployeeContainer({
   const filteredEmployees =
     !isListView && canManageFiltered
       ? [...employeesForView].sort((a, b) => {
-        const aManageable = canManageEmployee(a) ? 0 : 1
-        const bManageable = canManageEmployee(b) ? 0 : 1
-        return aManageable - bManageable
-      })
+          const aManageable = canManageEmployee(a) ? 0 : 1
+          const bManageable = canManageEmployee(b) ? 0 : 1
+          return aManageable - bManageable
+        })
       : employeesForView
 
   // Calculate pagination for employees view
@@ -1140,7 +1137,7 @@ export function EmployeeContainer({
 
               {/* Skills Section */}
               {topSkills.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-border/50">
+                <div className="mt-4 border-t border-border/50 pt-3">
                   <div className="flex flex-wrap items-center gap-2">
                     {topSkills.map((skill, idx) => (
                       <Tooltip key={skill.id || idx}>
@@ -1148,7 +1145,7 @@ export function EmployeeContainer({
                           <Badge
                             variant="outline"
                             className={cn(
-                              "text-xs font-normal px-2 py-0 h-5 cursor-help",
+                              "h-5 cursor-help px-2 py-0 text-xs font-normal",
                               getYearColor(skill.yearsOfExperience || 0)
                             )}
                           >
@@ -1160,15 +1157,34 @@ export function EmployeeContainer({
                         </TooltipTrigger>
                         <TooltipContent>
                           <div className="space-y-1 text-xs">
-                            <p><span className="font-medium">Skill:</span> {skill.skillName}</p>
-                            <p><span className="font-medium">Years:</span> {skill.yearsOfExperience?.toFixed(1) || "0"}</p>
-                            <p><span className="font-medium">Level:</span> {skill.experienceLevel || "N/A"}</p>
-                            {skill.categoryName && !skill.categoryName.includes("empty") && (
-                              <p><span className="font-medium">Category:</span> {skill.categoryName}</p>
-                            )}
-                            {skill.subCategoryName && !skill.subCategoryName.includes("empty") && (
-                              <p><span className="font-medium">Sub-Category:</span> {skill.subCategoryName}</p>
-                            )}
+                            <p>
+                              <span className="font-medium">Skill:</span>{" "}
+                              {skill.skillName}
+                            </p>
+                            <p>
+                              <span className="font-medium">Years:</span>{" "}
+                              {skill.yearsOfExperience?.toFixed(1) || "0"}
+                            </p>
+                            <p>
+                              <span className="font-medium">Level:</span>{" "}
+                              {skill.experienceLevel || "N/A"}
+                            </p>
+                            {skill.categoryName &&
+                              !skill.categoryName.includes("empty") && (
+                                <p>
+                                  <span className="font-medium">Category:</span>{" "}
+                                  {skill.categoryName}
+                                </p>
+                              )}
+                            {skill.subCategoryName &&
+                              !skill.subCategoryName.includes("empty") && (
+                                <p>
+                                  <span className="font-medium">
+                                    Sub-Category:
+                                  </span>{" "}
+                                  {skill.subCategoryName}
+                                </p>
+                              )}
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -1176,7 +1192,7 @@ export function EmployeeContainer({
                     {employeeSkills.length > 3 && (
                       <Badge
                         variant="secondary"
-                        className="text-xs font-normal px-2 py-0 h-5"
+                        className="h-5 px-2 py-0 text-xs font-normal"
                       >
                         +{employeeSkills.length - 3} more
                       </Badge>
@@ -2071,46 +2087,28 @@ export function EmployeeContainer({
 
               {!isListView && !isDrillDown && (
                 <>
-                  {/* View Mode Toggle */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={viewMode === "list" ? "default" : "outline"}
-                        size="icon"
-                        onClick={() => setViewMode("list")}
-                        className="h-9 w-9"
-                      >
+                  {/* View Mode Tabs */}
+                  <Tabs
+                    value={viewMode}
+                    onValueChange={(value) => setViewMode(value as ViewMode)}
+                  >
+                    <TabsList className="h-9">
+                      <TabsTrigger value="list">
                         <HugeiconsIcon
                           icon={ListViewIcon}
                           strokeWidth={2}
                           className="h-4 w-4"
                         />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>List View</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={viewMode === "card" ? "default" : "outline"}
-                        size="icon"
-                        onClick={() => setViewMode("card")}
-                        className="h-9 w-9"
-                      >
+                      </TabsTrigger>
+                      <TabsTrigger value="card">
                         <HugeiconsIcon
                           icon={GridViewIcon}
                           strokeWidth={2}
                           className="h-4 w-4"
                         />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Card View</p>
-                    </TooltipContent>
-                  </Tooltip>
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
 
                   {/* Filter Dropdown */}
                   <DropdownMenu>
@@ -2453,7 +2451,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === 1 ||
-                              drillDownEmployees.length === 0
+                            drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -2488,7 +2486,7 @@ export function EmployeeContainer({
                           }}
                           className={
                             drillDownPage === drillDownTotalPages ||
-                              drillDownEmployees.length === 0
+                            drillDownEmployees.length === 0
                               ? "pointer-events-none opacity-50"
                               : ""
                           }
@@ -2520,7 +2518,12 @@ export function EmployeeContainer({
                     {employeeHeaders.slice(1).map((header) => {
                       // Skip the "select" header if it's the first one and we're in read-only mode
                       if (isReadOnly && header.field === "select") return null
-                      if (!isAdmin && (header.field === "doorlog" || header.field === "staff_id")) return null
+                      if (
+                        !isAdmin &&
+                        (header.field === "doorlog" ||
+                          header.field === "staff_id")
+                      )
+                        return null
                       return (
                         <BorderedTableHead
                           key={header.field}
@@ -2560,7 +2563,8 @@ export function EmployeeContainer({
                       if (!isEmployee(employee)) return null
 
                       const isSelected = !!rowSelection[employee.id.toString()]
-                      const isManageable = isAdmin || canManageEmployee(employee)
+                      const isManageable =
+                        isAdmin || canManageEmployee(employee)
                       return (
                         <TableRow
                           key={employee.id}
@@ -2579,7 +2583,9 @@ export function EmployeeContainer({
                               <Checkbox
                                 checked={isSelected}
                                 disabled={!isManageable}
-                                onCheckedChange={() => handleRowSelect(employee.id.toString())}
+                                onCheckedChange={() =>
+                                  handleRowSelect(employee.id.toString())
+                                }
                                 aria-label={`Select ${employee.name}`}
                               />
                             </BorderedTableCell>
@@ -2591,16 +2597,26 @@ export function EmployeeContainer({
                           <BorderedTableCell selected={isSelected}>
                             {employee.div_name}
                           </BorderedTableCell>
-                          {isAdmin &&
-                            <BorderedTableCell className="text-sm" selected={isSelected}>
+                          {isAdmin && (
+                            <BorderedTableCell
+                              className="text-sm"
+                              selected={isSelected}
+                            >
                               {employee.id}
                             </BorderedTableCell>
-                          }
-                          <BorderedTableCell className="font-medium" selected={isSelected}>
+                          )}
+                          <BorderedTableCell
+                            className="font-medium"
+                            selected={isSelected}
+                          >
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8">
                                 <AvatarImage
-                                  src={resolveUploadUrl(employee.profile_photo_path) || null}
+                                  src={
+                                    resolveUploadUrl(
+                                      employee.profile_photo_path
+                                    ) || null
+                                  }
                                   alt={employee.name}
                                 />
                                 <AvatarFallback className="text-xs text-primary">
@@ -2613,11 +2629,11 @@ export function EmployeeContainer({
                           <BorderedTableCell selected={isSelected}>
                             {employee.email || "-"}
                           </BorderedTableCell>
-                          {isAdmin &&
+                          {isAdmin && (
                             <BorderedTableCell selected={isSelected}>
                               {employee.doorlog}
                             </BorderedTableCell>
-                          }
+                          )}
                           <BorderedTableCell selected={isSelected}>
                             {employee.dept_dat}
                           </BorderedTableCell>
@@ -2628,7 +2644,9 @@ export function EmployeeContainer({
                             {employee.serviceYear || "-"}
                           </BorderedTableCell>
                           <BorderedTableCell selected={isSelected}>
-                            <Badge className={getStatusBadge(employee.emp_status)}>
+                            <Badge
+                              className={getStatusBadge(employee.emp_status)}
+                            >
                               {statusLabels[
                                 employee.emp_status as keyof typeof statusLabels
                               ] || employee.emp_status}
@@ -2801,7 +2819,7 @@ export function EmployeeContainer({
                       }}
                       className={
                         currentPage === totalPages ||
-                          filteredEmployees.length === 0
+                        filteredEmployees.length === 0
                           ? "pointer-events-none opacity-50"
                           : ""
                       }

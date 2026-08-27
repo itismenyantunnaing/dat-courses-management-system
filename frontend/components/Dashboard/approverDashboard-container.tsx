@@ -52,6 +52,7 @@ import {
   BookOpenIcon,
   ChampionIcon,
   CourseIcon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import { StatCard } from "../charts/stat-card"
 import { CHART_COLORS, JLPT_COLORS } from "../charts/chart-config"
@@ -59,6 +60,29 @@ import { mainStore } from "@/store/mainStore"
 import type { RiskDTO } from "@/types/dashboard"
 import type { LevelCounts } from "@/types/exam_progress_report"
 import type { Employee } from "@/types/employee"
+import { cn } from "@/lib/utils"
+
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+    />
+  )
+}
+
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
+}
 
 // Chart config for Team Attendance
 const attendanceChartConfig = {
@@ -1216,12 +1240,9 @@ export default function ApproverDashboardContainer() {
   // If loading, show loading state
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex h-96 items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
-            <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-          </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <LoadingSpinner text="Loading dashboard..." />
         </div>
       </div>
     )
@@ -1276,12 +1297,6 @@ export default function ApproverDashboardContainer() {
                       : "Overall course completion rate"
             }
           />
-          {/* <StatCard
-          title="Employees at Risk"
-          value={atRiskCount}
-          icon={AlertCircleIcon}
-          description="Need attention"
-        /> */}
         </div>
 
         {/* Course Statistics - Category Select (Filtered by Role) */}

@@ -310,7 +310,7 @@ export function EditEmployeeDrawer({
     <>
       <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
         <DrawerContent
-          className="right-0 left-auto h-full w-[85%] sm:w-[70%] md:w-[60%] lg:w-[50%] xl:w-[40%]"
+          className="right-0 left-auto h-full w-[85%] sm:w-[75%] md:w-[65%] lg:w-[55%] xl:w-[45%]"
           onPointerDownOutside={handlePointerDownOutside}
           onEscapeKeyDown={(e) => {
             // Prevent escape key from closing when dropdown is open
