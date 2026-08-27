@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable react-hooks/preserve-manual-memoization */
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -56,8 +54,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { mainStore } from "@/store/mainStore"
-
-
 
 // Certification Types - dynamically generated from the data
 const getCertificationTypes = (overallCertificateStats: any) => {
@@ -127,7 +123,17 @@ const certificationChartConfig = {
 }
 
 // Colors for pie chart
-const COLORS = ['#FF6B6B', '#FFB74D', '#FFD93D', '#8EC5FF', '#2B7FFF', '#FF8A65', '#A1887F', '#4DB6AC', '#7986CB']
+const COLORS = [
+  "#FF6B6B",
+  "#FFB74D",
+  "#FFD93D",
+  "#8EC5FF",
+  "#2B7FFF",
+  "#FF8A65",
+  "#A1887F",
+  "#4DB6AC",
+  "#7986CB",
+]
 
 // Custom renderer for bar labels
 const renderCustomLabel = (props: any) => {
@@ -207,7 +213,8 @@ export default function AdminDashboardContainer() {
 
   const [selectedCategory, setSelectedCategory] =
     useState<string>("JLPT Exam Target")
-  const [selectedAttendanceCourseGroup, setSelectedAttendanceCourseGroup] = useState<string>("all")
+  const [selectedAttendanceCourseGroup, setSelectedAttendanceCourseGroup] =
+    useState<string>("all")
   const [selectedCertType, setSelectedCertType] = useState<string>("JLPT")
   const [timeRange, setTimeRange] = useState<string>("90d")
   const [isLoading, setIsLoading] = useState(true)
@@ -239,7 +246,7 @@ export default function AdminDashboardContainer() {
     dailyAttendance,
 
     fetchActiveLearnerCount,
-    activeLearnersCount
+    activeLearnersCount,
   } = mainStore()
 
   useEffect(() => {
@@ -279,14 +286,13 @@ export default function AdminDashboardContainer() {
       // Map DepartmentData to the expected shape
       const mappedDepartments = dat_departments.map((dept: any) => ({
         id: dept.id?.toString() || dept.deptId?.toString() || "",
-        deptName: dept.deptName || dept.department || dept.name || ""
+        deptName: dept.deptName || dept.department || dept.name || "",
       }))
       options.push(...mappedDepartments)
     }
 
     return options
   }, [dat_departments])
-
 
   // Get unique teams from teamDisplayData
   const allTeams = useMemo(() => {
@@ -302,7 +308,11 @@ export default function AdminDashboardContainer() {
 
   // Calculate overall completion rate from courseStats
   const overallCompletionRate = useMemo(() => {
-    if (!courseStats || !Array.isArray(courseStats) || courseStats.length === 0) {
+    if (
+      !courseStats ||
+      !Array.isArray(courseStats) ||
+      courseStats.length === 0
+    ) {
       return 0
     }
 
@@ -317,7 +327,6 @@ export default function AdminDashboardContainer() {
     // Round to nearest integer
     return Math.round(average)
   }, [courseStats])
-
 
   const combinedCourseCategories = useMemo(() => {
     if (!courseCategory_data) return []
@@ -347,24 +356,30 @@ export default function AdminDashboardContainer() {
 
   // Extract course group attendance data from dailyAttendance - AGGREGATED BY DATE
   const courseGroupAttendanceData = useMemo(() => {
-    const result: Record<string, {
-      courseName: string,
-      groupName: string,
-      dailyAttendance: Array<{
-        date: string;
-        attendance: number;
-        presentCount: number;
-        absentCount: number;
-        excusedCount: number;
-        lateCount: number;
-        totalStudents: number;
-      }>
-    }> = {}
+    const result: Record<
+      string,
+      {
+        courseName: string
+        groupName: string
+        dailyAttendance: Array<{
+          date: string
+          attendance: number
+          presentCount: number
+          absentCount: number
+          excusedCount: number
+          lateCount: number
+          totalStudents: number
+        }>
+      }
+    > = {}
 
-    if (!dailyAttendance || !Array.isArray(dailyAttendance) || dailyAttendance.length === 0) {
+    if (
+      !dailyAttendance ||
+      !Array.isArray(dailyAttendance) ||
+      dailyAttendance.length === 0
+    ) {
       return result
     }
-
 
     dailyAttendance.forEach((division: any) => {
       // Handle new data structure: division -> departments -> teams -> courses -> groups
@@ -383,12 +398,15 @@ export default function AdminDashboardContainer() {
                         result[key] = {
                           courseName: course.courseName,
                           groupName: group.groupName,
-                          dailyAttendance: []
+                          dailyAttendance: [],
                         }
                       }
 
                       // Aggregate attendance by date
-                      if (group.dailyAttendance && Array.isArray(group.dailyAttendance)) {
+                      if (
+                        group.dailyAttendance &&
+                        Array.isArray(group.dailyAttendance)
+                      ) {
                         group.dailyAttendance.forEach((day: any) => {
                           const existingDay = result[key].dailyAttendance.find(
                             (item) => item.date === day.date
@@ -410,7 +428,7 @@ export default function AdminDashboardContainer() {
                               absentCount: day.absentCount || 0,
                               excusedCount: day.excusedCount || 0,
                               lateCount: day.lateCount || 0,
-                              totalStudents: day.totalStudents || 0
+                              totalStudents: day.totalStudents || 0,
                             })
                           }
                         })
@@ -435,7 +453,7 @@ export default function AdminDashboardContainer() {
     // Add "All" option for admin to show all data combined
     options.push({
       value: "all",
-      label: "All Course Groups"
+      label: "All Course Groups",
     })
 
     const keys = Object.keys(courseGroupAttendanceData)
@@ -443,7 +461,7 @@ export default function AdminDashboardContainer() {
       const data = courseGroupAttendanceData[key]
       options.push({
         value: key,
-        label: `${data.courseName} (${data.groupName})`
+        label: `${data.courseName} (${data.groupName})`,
       })
     })
 
@@ -460,7 +478,7 @@ export default function AdminDashboardContainer() {
     if (attendanceCourseGroupOptions.length > 0) {
       setSelectedAttendanceCourseGroup("all")
     }
-  }, [combinedCourseCategories, attendanceCourseGroupOptions]);
+  }, [combinedCourseCategories, attendanceCourseGroupOptions])
 
   // Get available certification types
   const certificationTypes = useMemo(() => {
@@ -640,26 +658,29 @@ export default function AdminDashboardContainer() {
   // Get attendance data for selected course group from dailyAttendance - AGGREGATED
   const getAttendanceData = () => {
     let allData: {
-      date: string;
-      attendance?: number;
-      presentCount: number;
-      absentCount: number;
-      excusedCount: number;
-      lateCount: number;
-      totalStudents: number;
+      date: string
+      attendance?: number
+      presentCount: number
+      absentCount: number
+      excusedCount: number
+      lateCount: number
+      totalStudents: number
     }[] = []
 
     // If "All" is selected, aggregate all course groups
     if (selectedAttendanceCourseGroup === "all") {
       // Aggregate data across all course groups by date
-      const aggregatedMap: Record<string, {
-        date: string;
-        presentCount: number;
-        absentCount: number;
-        excusedCount: number;
-        lateCount: number;
-        totalStudents: number;
-      }> = {}
+      const aggregatedMap: Record<
+        string,
+        {
+          date: string
+          presentCount: number
+          absentCount: number
+          excusedCount: number
+          lateCount: number
+          totalStudents: number
+        }
+      > = {}
 
       Object.keys(courseGroupAttendanceData).forEach((key) => {
         const data = courseGroupAttendanceData[key]
@@ -686,7 +707,8 @@ export default function AdminDashboardContainer() {
       allData = Object.values(aggregatedMap)
     } else {
       // Get data for specific course group
-      const selectedData = courseGroupAttendanceData[selectedAttendanceCourseGroup]
+      const selectedData =
+        courseGroupAttendanceData[selectedAttendanceCourseGroup]
       if (selectedData) {
         allData = selectedData.dailyAttendance.map((item: any) => ({
           date: item.date,
@@ -721,11 +743,24 @@ export default function AdminDashboardContainer() {
     const currentYear = referenceDate.getFullYear()
 
     return allData.filter((item) => {
-      const dateParts = item.date.split(' ')
+      const dateParts = item.date.split(" ")
       if (dateParts.length === 2) {
         const month = dateParts[0]
         const day = parseInt(dateParts[1])
-        const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(month)
+        const monthIndex = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ].indexOf(month)
         if (monthIndex !== -1) {
           let fullDate = new Date(currentYear, monthIndex, day)
           if (fullDate > referenceDate) {
@@ -744,24 +779,23 @@ export default function AdminDashboardContainer() {
   // Calculate attendance trend (percentage change)
   const attendanceTrend = useMemo(() => {
     const data = filteredAttendanceData
-    if (!data || data.length < 2) return { value: 0, direction: 'up' as const }
+    if (!data || data.length < 2) return { value: 0, direction: "up" as const }
 
     // Get first and last attendance values
     const firstValue = data[0]?.attendance || 0
     const lastValue = data[data.length - 1]?.attendance || 0
 
-    if (firstValue === 0) return { value: 0, direction: 'up' as const }
+    if (firstValue === 0) return { value: 0, direction: "up" as const }
 
     // Calculate percentage change
     const change = ((lastValue - firstValue) / firstValue) * 100
-    const direction = change >= 0 ? 'up' as const : 'down' as const
+    const direction = change >= 0 ? ("up" as const) : ("down" as const)
 
     return {
       value: Math.abs(Math.round(change * 10) / 10),
-      direction
+      direction,
     }
   }, [filteredAttendanceData])
-
 
   // Get certification data based on selected type
   const getCertificationData = () => {
@@ -775,8 +809,8 @@ export default function AdminDashboardContainer() {
     // Convert the stat object to array format for pie chart
     return Object.entries(selectedStat).map(([level, value], index) => ({
       name: level,
-      value: typeof value === 'number' ? value : 0,
-      fill: COLORS[index % COLORS.length]
+      value: typeof value === "number" ? value : 0,
+      fill: COLORS[index % COLORS.length],
     }))
   }
 
@@ -809,652 +843,664 @@ export default function AdminDashboardContainer() {
   }
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
-      {/* Stats Row */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard
-          title="Total Employees"
-          value={employee_data?.length}
-          icon={UserGroupIcon}
-          description="Active in the system"
-        />
-        <StatCard
-          title="Active Learners"
-          value={activeLearnersCount?.totalActiveLearners || 0}
-          icon={BookOpenIcon}
-          description={`${Math.round(((activeLearnersCount?.totalActiveLearners || 0) / employee_data?.length) * 100)}% of employees`}
-        />
-        <StatCard
-          title="Total Courses"
-          value={courses?.length}
-          icon={CourseIcon}
-          description="Available for learning"
-        />
-        <StatCard
-          title="Completion Rate"
-          value={`${overallCompletionRate}%`}
-          icon={ChampionIcon}
-          description="Overall course completion"
-        />
-      </div>
+    <div className="flex flex-col pt-4 pb-6">
+      <CardContent className="space-y-4 px-4">
+        {/* Stats Row */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <StatCard
+            title="Total Employees"
+            value={employee_data?.length}
+            icon={UserGroupIcon}
+            description="Active in the system"
+          />
+          <StatCard
+            title="Active Learners"
+            value={activeLearnersCount?.totalActiveLearners || 0}
+            icon={BookOpenIcon}
+            description={`${Math.round(((activeLearnersCount?.totalActiveLearners || 0) / employee_data?.length) * 100)}% of employees`}
+          />
+          <StatCard
+            title="Total Courses"
+            value={courses?.length}
+            icon={CourseIcon}
+            description="Available for learning"
+          />
+          <StatCard
+            title="Completion Rate"
+            value={`${overallCompletionRate}%`}
+            icon={ChampionIcon}
+            description="Overall course completion"
+          />
+        </div>
 
-      {/* Course Statistics - Category Select */}
-      <Card className="col-span-full">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Course Statistics</CardTitle>
-            <CardDescription>
-              Enrollment and completion by course
-            </CardDescription>
-          </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="max-w-[200px]">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {combinedCourseCategories.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>
-                    {category.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer
-            config={courseChartConfig}
-            className="h-[400px] w-full"
-          >
-            <BarChart
-              accessibilityLayer
-              data={filteredCourseData}
-              margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
-              width={800}
-              height={400}
-            >
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="name"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-                angle={-45}
-                textAnchor="end"
-                height={100}
-                interval={0}
-              />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-
-              <Bar dataKey="enrolled" fill="#8EC5FF" radius={4}>
-                <LabelList dataKey="enrolled" content={renderCustomLabel} />
-              </Bar>
-              <Bar dataKey="completed" fill="#2B7FFF" radius={4}>
-                <LabelList dataKey="completed" content={renderCustomLabel} />
-              </Bar>
-            </BarChart>
-          </ChartContainer>
-        </CardContent>
-        <CardFooter className="flex-col items-center gap-2 text-sm">
-          <div className="flex items-center gap-2 leading-none text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-[#8EC5FF]" />
-              <span>Enrolled</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-[#2B7FFF]" />
-              <span>Completed</span>
-            </div>
-          </div>
-        </CardFooter>
-      </Card>
-
-      {/* Second Row - JLPT Statistics and Communication Level */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* JLPT Statistics with Department and Team Select */}
-        <Card>
+        {/* Course Statistics - Category Select */}
+        <Card className="col-span-full">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>JLPT Statistics</CardTitle>
-              <CardDescription>Current vs target JLPT levels</CardDescription>
+              <CardTitle>Course Statistics</CardTitle>
+              <CardDescription>
+                Enrollment and completion by course
+              </CardDescription>
             </div>
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-              <Select
-                value={jlptDepartment}
-                onValueChange={handleJlptDepartmentChange}
-              >
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {departmentOptions.map((dept: any) => (
-                      <TruncatedSelectItem
-                        key={dept.id || dept.deptName}
-                        value={dept.deptName}
-                        label={dept.deptName}
-                        maxLength={28}
-                      />
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-
-              <Select value={jlptTeam} onValueChange={setJlptTeam}>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Select team" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {getJlptTeams(jlptDepartment).map((team) => (
-                      <SelectItem key={team} value={team}>
-                        {team}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+            >
+              <SelectTrigger className="max-w-[200px]">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {combinedCourseCategories.map((category) => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent>
             <ChartContainer
-              config={jlptChartConfig}
-              className="h-[250px] w-full"
+              config={courseChartConfig}
+              className="h-[400px] w-full"
             >
               <BarChart
                 accessibilityLayer
-                data={filteredJLPTData}
+                data={filteredCourseData}
                 margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+                width={800}
+                height={400}
               >
                 <CartesianGrid vertical={false} />
                 <XAxis
-                  dataKey="level"
+                  dataKey="name"
                   tickLine={false}
                   tickMargin={10}
                   axisLine={false}
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                  interval={0}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={<ChartTooltipContent />}
                 />
-                <Bar dataKey="current" fill="#8EC5FF" radius={4}>
-                  <LabelList dataKey="current" content={renderCustomLabel} />
+
+                <Bar dataKey="enrolled" fill="#8EC5FF" radius={4}>
+                  <LabelList dataKey="enrolled" content={renderCustomLabel} />
                 </Bar>
-                <Bar dataKey="target" fill="#2B7FFF" radius={4}>
-                  <LabelList dataKey="target" content={renderCustomLabel} />
+                <Bar dataKey="completed" fill="#2B7FFF" radius={4}>
+                  <LabelList dataKey="completed" content={renderCustomLabel} />
                 </Bar>
               </BarChart>
             </ChartContainer>
           </CardContent>
           <CardFooter className="flex-col items-center gap-2 text-sm">
-            <div className="flex gap-2 leading-none font-medium">
-              Target distribution shows improvement across all levels
-            </div>
             <div className="flex items-center gap-2 leading-none text-muted-foreground">
               <div className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-[#8EC5FF]" />
-                <span>Current</span>
+                <span>Enrolled</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-[#2B7FFF]" />
-                <span>Target</span>
+                <span>Completed</span>
               </div>
             </div>
           </CardFooter>
         </Card>
 
-        {/* Communication Level Statistics with Department and Team Select */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Communication Level Statistics</CardTitle>
+        {/* Second Row - JLPT Statistics and Communication Level */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* JLPT Statistics with Department and Team Select */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>JLPT Statistics</CardTitle>
+                <CardDescription>Current vs target JLPT levels</CardDescription>
+              </div>
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+                <Select
+                  value={jlptDepartment}
+                  onValueChange={handleJlptDepartmentChange}
+                >
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {departmentOptions.map((dept: any) => (
+                        <TruncatedSelectItem
+                          key={dept.id || dept.deptName}
+                          value={dept.deptName}
+                          label={dept.deptName}
+                          maxLength={28}
+                        />
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+
+                <Select value={jlptTeam} onValueChange={setJlptTeam}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Select team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {getJlptTeams(jlptDepartment).map((team) => (
+                        <SelectItem key={team} value={team}>
+                          {team}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={jlptChartConfig}
+                className="h-[250px] w-full"
+              >
+                <BarChart
+                  accessibilityLayer
+                  data={filteredJLPTData}
+                  margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="level"
+                    tickLine={false}
+                    tickMargin={10}
+                    axisLine={false}
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent />}
+                  />
+                  <Bar dataKey="current" fill="#8EC5FF" radius={4}>
+                    <LabelList dataKey="current" content={renderCustomLabel} />
+                  </Bar>
+                  <Bar dataKey="target" fill="#2B7FFF" radius={4}>
+                    <LabelList dataKey="target" content={renderCustomLabel} />
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+            <CardFooter className="flex-col items-center gap-2 text-sm">
+              <div className="flex gap-2 leading-none font-medium">
+                Target distribution shows improvement across all levels
+              </div>
+              <div className="flex items-center gap-2 leading-none text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[#8EC5FF]" />
+                  <span>Current</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[#2B7FFF]" />
+                  <span>Target</span>
+                </div>
+              </div>
+            </CardFooter>
+          </Card>
+
+          {/* Communication Level Statistics with Department and Team Select */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Communication Level Statistics</CardTitle>
+                <CardDescription>
+                  Current vs target communication levels
+                </CardDescription>
+              </div>
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+                <Select
+                  value={commDepartment}
+                  onValueChange={handleCommDepartmentChange}
+                >
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {departmentOptions.map((dept: any) => (
+                        <TruncatedSelectItem
+                          key={dept.id || dept.deptName}
+                          value={dept.deptName}
+                          label={dept.deptName}
+                          maxLength={28}
+                        />
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+
+                <Select value={commTeam} onValueChange={setCommTeam}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Select team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {getCommTeams(commDepartment).map((team) => (
+                        <SelectItem key={team} value={team}>
+                          {team}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={communicationChartConfig}
+                className="h-[300px] w-full"
+              >
+                <BarChart
+                  accessibilityLayer
+                  data={filteredCommunicationData}
+                  layout="vertical"
+                  margin={{
+                    right: 10,
+                  }}
+                >
+                  <CartesianGrid horizontal={false} />
+                  <YAxis
+                    dataKey="level"
+                    type="category"
+                    tickLine={false}
+                    tickMargin={10}
+                    axisLine={false}
+                    tickFormatter={(value) => value}
+                    width={90}
+                  />
+                  <XAxis type="number" hide />
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent indicator="line" />}
+                  />
+                  <Bar dataKey="current" fill="#8EC5FF" radius={4}>
+                    <LabelList
+                      dataKey="current"
+                      position="right"
+                      offset={8}
+                      className="fill-foreground"
+                      fontSize={12}
+                    />
+                  </Bar>
+                  <Bar dataKey="target" fill="#2B7FFF" radius={4}>
+                    <LabelList
+                      dataKey="target"
+                      position="right"
+                      offset={8}
+                      className="fill-foreground"
+                      fontSize={12}
+                    />
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+            <CardFooter className="flex-col items-start gap-2 text-sm">
+              <div className="flex gap-2 leading-none font-medium">
+                <HugeiconsIcon
+                  icon={AnalyticsUpIcon}
+                  strokeWidth={2}
+                  className="h-4 w-4 text-green-600"
+                />
+                Communication levels showing improvement
+              </div>
+              <div className="flex flex-wrap items-center gap-2 leading-none text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[#8EC5FF]" />
+                  <span>Current</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[#2B7FFF]" />
+                  <span>Target</span>
+                </div>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
+
+        {/* Third Row - Attendance Analysis Full Width - Interactive Stacked Bar Chart */}
+        <Card className="pt-0">
+          <CardHeader className="flex flex-row items-center gap-2 space-y-0 py-5 sm:flex-row">
+            <div className="grid flex-1 gap-1">
+              <CardTitle>Attendance Analysis</CardTitle>
               <CardDescription>
-                Current vs target communication levels
+                Daily attendance breakdown by course group
               </CardDescription>
             </div>
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+            <div className="flex items-center gap-2">
               <Select
-                value={commDepartment}
-                onValueChange={handleCommDepartmentChange}
+                value={selectedAttendanceCourseGroup}
+                onValueChange={setSelectedAttendanceCourseGroup}
               >
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Select department" />
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select course group" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {departmentOptions.map((dept: any) => (
-                      <TruncatedSelectItem
-                        key={dept.id || dept.deptName}
-                        value={dept.deptName}
-                        label={dept.deptName}
-                        maxLength={28}
-                      />
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-
-              <Select value={commTeam} onValueChange={setCommTeam}>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Select team" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {getCommTeams(commDepartment).map((team) => (
-                      <SelectItem key={team} value={team}>
-                        {team}
+                    {attendanceCourseGroupOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <span
+                          className="block max-w-[180px] truncate"
+                          title={option.label}
+                        >
+                          {option.label}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger
+                  className="w-[140px] rounded-lg"
+                  aria-label="Select time range"
+                >
+                  <SelectValue placeholder="Last 3 months" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectGroup>
+                    <SelectItem value="90d" className="rounded-lg">
+                      Last 3 months
+                    </SelectItem>
+                    <SelectItem value="30d" className="rounded-lg">
+                      Last 30 days
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={communicationChartConfig}
-              className="h-[300px] w-full"
-            >
-              <BarChart
-                accessibilityLayer
-                data={filteredCommunicationData}
-                layout="vertical"
-                margin={{
-                  right: 10,
-                }}
+          <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+            {filteredAttendanceData.length === 0 ? (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                No attendance data available
+              </div>
+            ) : (
+              <ChartContainer
+                config={attendanceChartConfig}
+                className="aspect-auto h-[350px] w-full"
               >
-                <CartesianGrid horizontal={false} />
-                <YAxis
-                  dataKey="level"
-                  type="category"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                  tickFormatter={(value) => value}
-                  width={90}
-                />
-                <XAxis type="number" hide />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="line" />}
-                />
-                <Bar dataKey="current" fill="#8EC5FF" radius={4}>
-                  <LabelList
-                    dataKey="current"
-                    position="right"
-                    offset={8}
-                    className="fill-foreground"
-                    fontSize={12}
+                <BarChart
+                  accessibilityLayer
+                  data={filteredAttendanceData}
+                  margin={{
+                    top: 20,
+                    left: 20,
+                    right: 20,
+                    bottom: 20,
+                  }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    minTickGap={10}
+                    interval={0}
+                    tickFormatter={(value) => {
+                      if (value && value.includes(" ")) {
+                        return value
+                      }
+                      try {
+                        const date = new Date(value)
+                        return date.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      } catch {
+                        return value
+                      }
+                    }}
                   />
-                </Bar>
-                <Bar dataKey="target" fill="#2B7FFF" radius={4}>
-                  <LabelList
-                    dataKey="target"
-                    position="right"
-                    offset={8}
-                    className="fill-foreground"
-                    fontSize={12}
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    allowDecimals={false}
+                    tickFormatter={(value) => `${value}`}
                   />
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(value) => {
+                          if (value && value.includes(" ")) {
+                            return value
+                          }
+                          try {
+                            return new Date(value).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })
+                          } catch {
+                            return value
+                          }
+                        }}
+                        indicator="dot"
+                      />
+                    }
+                  />
+                  <Bar
+                    dataKey="presentCount"
+                    stackId="a"
+                    fill="#22c55e"
+                    radius={[4, 4, 0, 0]}
+                    name="Present"
+                  />
+                  <Bar
+                    dataKey="lateCount"
+                    stackId="a"
+                    fill="#eab308"
+                    radius={[0, 0, 0, 0]}
+                    name="Late"
+                  />
+                  <Bar
+                    dataKey="excusedCount"
+                    stackId="a"
+                    fill="#0505be"
+                    radius={[0, 0, 0, 0]}
+                    name="Excused"
+                  />
+                  <Bar
+                    dataKey="absentCount"
+                    stackId="a"
+                    fill="#ef4444"
+                    radius={[0, 0, 4, 4]}
+                    name="Absent"
+                  />
+                </BarChart>
+              </ChartContainer>
+            )}
           </CardContent>
-          <CardFooter className="flex-col items-start gap-2 text-sm">
+          <CardFooter className="flex flex-col items-start gap-2">
+            <div className="flex flex-wrap items-center gap-4 text-sm leading-none">
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full bg-[#22c55e]" />
+                <span>Present</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full bg-[#eab308]" />
+                <span>Late</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full bg-[#0505be]" />
+                <span>Excused</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full bg-[#ef4444]" />
+                <span>Absent</span>
+              </div>
+            </div>
+            {filteredAttendanceData.length > 0 && (
+              <div className="flex items-center gap-2 leading-none font-medium text-muted-foreground">
+                {selectedAttendanceCourseGroup === "all"
+                  ? "Showing combined attendance for all course groups"
+                  : `Showing attendance breakdown for ${courseGroupAttendanceData[selectedAttendanceCourseGroup]?.courseName || selectedAttendanceCourseGroup}`}
+              </div>
+            )}
+          </CardFooter>
+        </Card>
+
+        {/* Certification Progress - Pie Chart with Type Select */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Certification Progress</CardTitle>
+              <CardDescription>Certification completion status</CardDescription>
+            </div>
+            <Select
+              value={selectedCertType}
+              onValueChange={setSelectedCertType}
+            >
+              <SelectTrigger className="w-full sm:w-[120px]">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {certificationTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            {filteredCertificationData.length === 0 ? (
+              <div className="flex h-[250px] items-center justify-center text-muted-foreground">
+                No data available
+              </div>
+            ) : (
+              <ChartContainer
+                config={certificationChartConfig}
+                className="mx-auto aspect-square max-h-[250px] w-full pb-0 [&_.recharts-pie-label-text]:fill-foreground"
+              >
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                  <Pie
+                    data={filteredCertificationData}
+                    dataKey="value"
+                    label
+                    nameKey="name"
+                  >
+                    {filteredCertificationData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+          <CardFooter className="flex-col items-center gap-2 text-sm">
             <div className="flex gap-2 leading-none font-medium">
               <HugeiconsIcon
                 icon={AnalyticsUpIcon}
                 strokeWidth={2}
                 className="h-4 w-4 text-green-600"
               />
-              Communication levels showing improvement
+              {selectedCertType} progress showing improvement
             </div>
             <div className="flex flex-wrap items-center gap-2 leading-none text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#8EC5FF]" />
-                <span>Current</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#2B7FFF]" />
-                <span>Target</span>
-              </div>
+              {filteredCertificationData.map((item) => (
+                <div key={item.name} className="flex items-center gap-1">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: item.fill }}
+                  />
+                  <span className="text-xs">{item.name}</span>
+                </div>
+              ))}
             </div>
           </CardFooter>
         </Card>
-      </div>
 
-      {/* Third Row - Attendance Analysis Full Width - Interactive Stacked Bar Chart */}
-      <Card className="pt-0">
-        <CardHeader className="flex flex-row items-center gap-2 space-y-0 py-5 sm:flex-row">
-          <div className="grid flex-1 gap-1">
-            <CardTitle>Attendance Analysis</CardTitle>
-            <CardDescription>
-              Daily attendance breakdown by course group
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select
-              value={selectedAttendanceCourseGroup}
-              onValueChange={setSelectedAttendanceCourseGroup}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select course group" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {attendanceCourseGroupOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <span className="block truncate max-w-[180px]" title={option.label}>
-                        {option.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger
-                className="w-[140px] rounded-lg"
-                aria-label="Select time range"
-              >
-                <SelectValue placeholder="Last 3 months" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectGroup>
-                  <SelectItem value="90d" className="rounded-lg">
-                    Last 3 months
-                  </SelectItem>
-                  <SelectItem value="30d" className="rounded-lg">
-                    Last 30 days
-                  </SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-          {filteredAttendanceData.length === 0 ? (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-              No attendance data available
-            </div>
-          ) : (
-            <ChartContainer
-              config={attendanceChartConfig}
-              className="aspect-auto h-[350px] w-full"
-            >
-              <BarChart
-                accessibilityLayer
-                data={filteredAttendanceData}
-                margin={{
-                  top: 20,
-                  left: 20,
-                  right: 20,
-                  bottom: 20,
-                }}
-              >
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  minTickGap={10}
-                  interval={0}
-                  tickFormatter={(value) => {
-                    if (value && value.includes(' ')) {
-                      return value
-                    }
-                    try {
-                      const date = new Date(value)
-                      return date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })
-                    } catch {
-                      return value
-                    }
-                  }}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  allowDecimals={false}
-                  tickFormatter={(value) => `${value}`}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      labelFormatter={(value) => {
-                        if (value && value.includes(' ')) {
-                          return value
-                        }
-                        try {
-                          return new Date(value).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })
-                        } catch {
-                          return value
-                        }
-                      }}
-                      indicator="dot"
-                    />
-                  }
-                />
-                <Bar
-                  dataKey="presentCount"
-                  stackId="a"
-                  fill="#22c55e"
-                  radius={[4, 4, 0, 0]}
-                  name="Present"
-                />
-                <Bar
-                  dataKey="lateCount"
-                  stackId="a"
-                  fill="#eab308"
-                  radius={[0, 0, 0, 0]}
-                  name="Late"
-                />
-                <Bar
-                  dataKey="excusedCount"
-                  stackId="a"
-                  fill="#0505be"
-                  radius={[0, 0, 0, 0]}
-                  name="Excused"
-                />
-                <Bar
-                  dataKey="absentCount"
-                  stackId="a"
-                  fill="#ef4444"
-                  radius={[0, 0, 4, 4]}
-                  name="Absent"
-                />
-              </BarChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-        <CardFooter className="flex flex-col items-start gap-2">
-          <div className="flex flex-wrap items-center gap-4 leading-none text-sm">
-            <div className="flex items-center gap-1">
-              <span className="h-3 w-3 rounded-full bg-[#22c55e]" />
-              <span>Present</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-3 w-3 rounded-full bg-[#eab308]" />
-              <span>Late</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-3 w-3 rounded-full bg-[#0505be]" />
-              <span>Excused</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-3 w-3 rounded-full bg-[#ef4444]" />
-              <span>Absent</span>
-            </div>
-          </div>
-          {filteredAttendanceData.length > 0 && (
-            <div className="flex items-center gap-2 leading-none font-medium text-muted-foreground">
-              {selectedAttendanceCourseGroup === "all"
-                ? "Showing combined attendance for all course groups"
-                : `Showing attendance breakdown for ${courseGroupAttendanceData[selectedAttendanceCourseGroup]?.courseName || selectedAttendanceCourseGroup}`
-              }
-            </div>
-          )}
-        </CardFooter>
-      </Card>
-
-      {/* Certification Progress - Pie Chart with Type Select */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Certification Progress</CardTitle>
-            <CardDescription>Certification completion status</CardDescription>
-          </div>
-          <Select
-            value={selectedCertType}
-            onValueChange={setSelectedCertType}
-          >
-            <SelectTrigger className="w-full sm:w-[120px]">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {certificationTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </CardHeader>
-        <CardContent>
-          {filteredCertificationData.length === 0 ? (
-            <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-              No data available
-            </div>
-          ) : (
-            <ChartContainer
-              config={certificationChartConfig}
-              className="mx-auto aspect-square max-h-[250px] w-full pb-0 [&_.recharts-pie-label-text]:fill-foreground"
-            >
-              <PieChart>
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                <Pie
-                  data={filteredCertificationData}
-                  dataKey="value"
-                  label
-                  nameKey="name"
-                >
-                  {filteredCertificationData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-        <CardFooter className="flex-col items-center gap-2 text-sm">
-          <div className="flex gap-2 leading-none font-medium">
-            <HugeiconsIcon
-              icon={AnalyticsUpIcon}
-              strokeWidth={2}
-              className="h-4 w-4 text-green-600"
-            />
-            {selectedCertType} progress showing improvement
-          </div>
-          <div className="flex flex-wrap items-center gap-2 leading-none text-muted-foreground">
-            {filteredCertificationData.map((item) => (
-              <div key={item.name} className="flex items-center gap-1">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: item.fill }}
-                />
-                <span className="text-xs">{item.name}</span>
+        {/* Employees at Risk with Department and Team */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Employees at Risk</CardTitle>
+            <CardDescription>Employees needing attention</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
               </div>
-            ))}
-          </div>
-        </CardFooter>
-      </Card>
-
-      {/* Employees at Risk with Department and Team */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Employees at Risk</CardTitle>
-          <CardDescription>Employees needing attention</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-            </div>
-          ) : !riskData ||
-            !riskData.atRiskStudents ||
-            riskData.atRiskStudents.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              No employees at risk at this time
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left text-sm font-medium text-muted-foreground">
-                    <th className="pr-4 pb-2">Name</th>
-                    <th className="pr-4 pb-2">Department</th>
-                    <th className="pr-4 pb-2">Team</th>
-                    <th className="pr-4 pb-2">Course</th>
-                    <th className="pr-4 pb-2">Issue</th>
-                    <th className="pb-2">Risk</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {riskData.atRiskStudents.map((employee: any, index: number) => (
-                    <tr key={index} className="border-b last:border-0">
-                      <td className="py-2 pr-4 text-sm font-medium">
-                        {employee.name}
-                      </td>
-                      <td className="py-2 pr-4 text-sm text-muted-foreground">
-                        <span
-                          className="block max-w-[150px] truncate"
-                          title={employee.department}
-                        >
-                          {employee.department}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-4 text-sm text-muted-foreground">
-                        {employee.team}
-                      </td>
-                      <td className="py-2 pr-4 text-sm text-muted-foreground">
-                        {employee.course || "-"}
-                      </td>
-                      <td className="py-2 pr-4 text-sm text-muted-foreground">
-                        {employee.issue}
-                      </td>
-                      <td className="py-2">
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={employee.risk}
-                            className="h-2 w-20"
-                          />
-                          <Badge
-                            variant={
-                              employee.risk > 75 ? "destructive" : "outline"
-                            }
-                          >
-                            {employee.risk}%
-                          </Badge>
-                        </div>
-                      </td>
+            ) : !riskData ||
+              !riskData.atRiskStudents ||
+              riskData.atRiskStudents.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                No employees at risk at this time
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b text-left text-sm font-medium text-muted-foreground">
+                      <th className="pr-4 pb-2">Name</th>
+                      <th className="pr-4 pb-2">Department</th>
+                      <th className="pr-4 pb-2">Team</th>
+                      <th className="pr-4 pb-2">Course</th>
+                      <th className="pr-4 pb-2">Issue</th>
+                      <th className="pb-2">Risk</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </thead>
+                  <tbody>
+                    {riskData.atRiskStudents.map(
+                      (employee: any, index: number) => (
+                        <tr key={index} className="border-b last:border-0">
+                          <td className="py-2 pr-4 text-sm font-medium">
+                            {employee.name}
+                          </td>
+                          <td className="py-2 pr-4 text-sm text-muted-foreground">
+                            <span
+                              className="block max-w-[150px] truncate"
+                              title={employee.department}
+                            >
+                              {employee.department}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-4 text-sm text-muted-foreground">
+                            {employee.team}
+                          </td>
+                          <td className="py-2 pr-4 text-sm text-muted-foreground">
+                            {employee.course || "-"}
+                          </td>
+                          <td className="py-2 pr-4 text-sm text-muted-foreground">
+                            {employee.issue}
+                          </td>
+                          <td className="py-2">
+                            <div className="flex items-center gap-2">
+                              <Progress
+                                value={employee.risk}
+                                className="h-2 w-20"
+                              />
+                              <Badge
+                                variant={
+                                  employee.risk > 75 ? "destructive" : "outline"
+                                }
+                              >
+                                {employee.risk}%
+                              </Badge>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </CardContent>
     </div>
   )
 }

@@ -109,14 +109,14 @@ export function FeedbackDetailDialog({
                 <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
                   {feedback.department && (
                     <>
-                      <span className="max-w-full truncate">
+                      <span className="max-w-[50%] truncate">
                         {feedback.department}
                       </span>
                       <span>•</span>
                     </>
                   )}
                   {feedback.team && (
-                    <span className="max-w-full truncate">{feedback.team}</span>
+                    <span className="max-w-[50%] truncate">{feedback.team}</span>
                   )}
                 </div>
               </div>

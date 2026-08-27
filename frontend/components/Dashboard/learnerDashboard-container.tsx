@@ -182,11 +182,10 @@ export default function LearnerDashboardContainer({
 
       setIsLoading(true)
       try {
-          await fetchEmployeeCourseStats(profile.id)
-          await fetchEmployeeAttendance(profile.id)
-          await fetchAllUpcomingSessions(profile.id)
-          await fetchEmployeeTargetLevel(profile.id)
-
+        await fetchEmployeeCourseStats(profile.id)
+        await fetchEmployeeAttendance(profile.id)
+        await fetchAllUpcomingSessions(profile.id)
+        await fetchEmployeeTargetLevel(profile.id)
 
         // Fetch study progress for self-study courses
         const selfStudyCourses = upcomingAllSessionsData.filter(
@@ -640,535 +639,545 @@ export default function LearnerDashboardContainer({
 
   return (
     <>
-      <div className="container mx-auto space-y-6 p-6">
-        {/* Stats Row - 4 cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <StatCard
-            title="Total Courses"
-            value={employeeCourseStats?.totalCourses || 0}
-            icon={BookOpenIcon}
-            description={`${employeeCourseStats?.completedCourses || 0} completed`}
-          />
-          <StatCard
-            title="Average Attendance"
-            value={`${Math.round(employeeAttendance?.courses?.averageAttendance) || 0}%`}
-            icon={CalendarIcon}
-            description="Daily Attendance average"
-          />
-          <StatCard
-            title="Total Sessions"
-            value={employeeCourseStats?.totalSessions || 0}
-            icon={DashboardBrowsingIcon}
-            description={`${employeeCourseStats?.activeSessions || 0} active`}
-          />
-          <StatCard
-            title="JLPT Level"
-            value={employeeTargetLevel?.jlptHighestLevel || "None"}
-            icon={ChampionIcon}
-            description={
-              employeeTargetLevel?.targetJlptNatLevel
-                ? `Target: ${employeeTargetLevel.targetJlptNatLevel} by ${employeeTargetLevel.targetDate ? new Date(employeeTargetLevel.targetDate).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Not set"}`
-                : ""
-            }
-          />
-        </div>
+      <div className="flex flex-col pt-4 pb-6">
+        <CardContent className="space-y-4 px-4">
+          {/* Stats Row - 4 cards */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <StatCard
+              title="Total Courses"
+              value={employeeCourseStats?.totalCourses || 0}
+              icon={BookOpenIcon}
+              description={`${employeeCourseStats?.completedCourses || 0} completed`}
+            />
+            <StatCard
+              title="Average Attendance"
+              value={`${Math.round(employeeAttendance?.courses?.averageAttendance) || 0}%`}
+              icon={CalendarIcon}
+              description="Daily Attendance average"
+            />
+            <StatCard
+              title="Total Sessions"
+              value={employeeCourseStats?.totalSessions || 0}
+              icon={DashboardBrowsingIcon}
+              description={`${employeeCourseStats?.activeSessions || 0} active`}
+            />
+            <StatCard
+              title="JLPT Level"
+              value={employeeTargetLevel?.jlptHighestLevel || "None"}
+              icon={ChampionIcon}
+              description={
+                employeeTargetLevel?.targetJlptNatLevel
+                  ? `Target: ${employeeTargetLevel.targetJlptNatLevel} by ${employeeTargetLevel.targetDate ? new Date(employeeTargetLevel.targetDate).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Not set"}`
+                  : ""
+              }
+            />
+          </div>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Overall Attendance */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Overall Attendance</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {employeeCourseStats?.courses?.map(
-                (course: EmployeeCourseDetailDTO, index: number) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
+          {/* Main Content Grid */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Overall Attendance */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Overall Attendance</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {employeeCourseStats?.courses?.map(
+                  (course: EmployeeCourseDetailDTO, index: number) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-medium">
+                            {course.courseName}
+                          </span>
+                        </div>
                         <span className="text-sm font-medium">
-                          {course.courseName}
+                          {course.attendance}%
                         </span>
                       </div>
-                      <span className="text-sm font-medium">
-                        {course.attendance}%
-                      </span>
+                      <Progress value={course.attendance} className="h-2" />
                     </div>
-                    <Progress value={course.attendance} className="h-2" />
-                  </div>
-                )
-              )}
-            </CardContent>
-          </Card>
+                  )
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Daily Attendance Rate */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Daily Attendance Rate</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {employeeAttendance?.courses?.map(
-                (course: any, index: number) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
+            {/* Daily Attendance Rate */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Daily Attendance Rate</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {employeeAttendance?.courses?.map(
+                  (course: any, index: number) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-medium">
+                            {course.courseName}
+                          </span>
+                        </div>
                         <span className="text-sm font-medium">
-                          {course.courseName}
+                          {course.attendance}%
                         </span>
                       </div>
-                      <span className="text-sm font-medium">
-                        {course.attendance}%
-                      </span>
+                      <Progress value={course.attendance} className="h-2" />
                     </div>
-                    <Progress value={course.attendance} className="h-2" />
-                  </div>
-                )
-              )}
-            </CardContent>
-            <CardFooter>
-              <div className="flex w-full items-start gap-2 text-sm">
-                <div className="grid gap-2">
-                  <div className="flex items-center gap-2 leading-none font-medium">
-                    Average attendance:{" "}
-                    {Math.round(
-                      employeeAttendance?.courses?.averageAttendance || 0
-                    )}
-                    %
+                  )
+                )}
+              </CardContent>
+              <CardFooter>
+                <div className="flex w-full items-start gap-2 text-sm">
+                  <div className="grid gap-2">
+                    <div className="flex items-center gap-2 leading-none font-medium">
+                      Average attendance:{" "}
+                      {Math.round(
+                        employeeAttendance?.courses?.averageAttendance || 0
+                      )}
+                      %
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardFooter>
-          </Card>
+              </CardFooter>
+            </Card>
 
-          {/* Upcoming Sessions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Upcoming Sessions</CardTitle>
-              <CardDescription>
-                Your scheduled learning sessions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="max-h-[500px] space-y-4 overflow-y-auto">
-              {filteredSessions.map((session, index) => {
-                const key = `${session.sessionId}`
-                const isSaving =
-                  isUpdatingAttendance && key === `${session.sessionId}`
-                const isSaved = savedAttendance[key]
-                const canEdit = canEditAttendance(session.sessionDate)
-                const sessionDate = session.sessionDate
-                  ? new Date(session.sessionDate)
-                  : null
-                const isToday = sessionDate
-                  ? sessionDate.toDateString() === new Date().toDateString()
-                  : false
+            {/* Upcoming Sessions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Upcoming Sessions</CardTitle>
+                <CardDescription>
+                  Your scheduled learning sessions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="max-h-[500px] space-y-4 overflow-y-auto">
+                {filteredSessions.map((session, index) => {
+                  const key = `${session.sessionId}`
+                  const isSaving =
+                    isUpdatingAttendance && key === `${session.sessionId}`
+                  const isSaved = savedAttendance[key]
+                  const canEdit = canEditAttendance(session.sessionDate)
+                  const sessionDate = session.sessionDate
+                    ? new Date(session.sessionDate)
+                    : null
+                  const isToday = sessionDate
+                    ? sessionDate.toDateString() === new Date().toDateString()
+                    : false
 
-                // Self-study progress
-                const progress = savedProgress[session.sessionId?.toString()]
-                const isSavingProgress = savingSessions[session.sessionId]
-                const inputs = selfStudyInputs[session.sessionId] || {
-                  kanjiCount: 0,
-                  vocabularyCount: 0,
-                  grammarCount: 0,
-                  readingMinutes: 0,
-                  listeningMinutes: 0,
-                }
+                  // Self-study progress
+                  const progress = savedProgress[session.sessionId?.toString()]
+                  const isSavingProgress = savingSessions[session.sessionId]
+                  const inputs = selfStudyInputs[session.sessionId] || {
+                    kanjiCount: 0,
+                    vocabularyCount: 0,
+                    grammarCount: 0,
+                    readingMinutes: 0,
+                    listeningMinutes: 0,
+                  }
 
-                // Calculate overall progress
-                const overallProgress = progress
-                  ? Math.round(
-                      ((progress.kanji_progress_percent || 0) +
-                        (progress.vocabulary_progress_percent || 0) +
-                        (progress.grammar_progress_percent || 0) +
-                        (progress.reading_progress_percent || 0) +
-                        (progress.listening_progress_percent || 0)) /
-                        5
-                    )
-                  : 0
+                  // Calculate overall progress
+                  const overallProgress = progress
+                    ? Math.round(
+                        ((progress.kanji_progress_percent || 0) +
+                          (progress.vocabulary_progress_percent || 0) +
+                          (progress.grammar_progress_percent || 0) +
+                          (progress.reading_progress_percent || 0) +
+                          (progress.listening_progress_percent || 0)) /
+                          5
+                      )
+                    : 0
 
-                const isCompleted = progress?.completion_status === "COMPLETED"
+                  const isCompleted =
+                    progress?.completion_status === "COMPLETED"
 
-                return (
-                  <div
-                    key={index}
-                    className={cn(
-                      "rounded-lg border p-4 transition-colors hover:bg-muted/50",
-                      !canEdit &&
-                        sessionDate &&
-                        sessionDate > new Date() &&
-                        "opacity-70"
-                    )}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium">{session.courseName}</h4>
-                          {session.courseType === "TRAINER_PROVIDED" ? (
-                            <Badge variant="outline" className="text-xs">
-                              <HugeiconsIcon
-                                icon={UserGroupIcon}
-                                strokeWidth={2}
-                                className="mr-1 h-3 w-3"
-                              />
-                              Trainer-led
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs">
-                              <HugeiconsIcon
-                                icon={BookOpenIcon}
-                                strokeWidth={2}
-                                className="mr-1 h-3 w-3"
-                              />
-                              Self-study
-                            </Badge>
-                          )}
-                          {isCompleted && (
-                            <Badge className="bg-green-500 text-[10px] text-white">
-                              <HugeiconsIcon
-                                icon={CheckmarkCircle01Icon}
-                                strokeWidth={2}
-                                className="mr-1 h-3 w-3"
-                              />
-                              Completed
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <HugeiconsIcon
-                            icon={CalendarIcon}
-                            strokeWidth={2}
-                            className="h-3.5 w-3.5"
-                          />
-                          <span>
-                            {new Date(
-                              session.sessionDate || session.sessionDeadline
-                            ).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </span>
-                          {session.courseType === "TRAINER_PROVIDED" &&
-                            session.startTime &&
-                            session.endTime && (
-                              <>
-                                <span>•</span>
-                                <HugeiconsIcon
-                                  icon={ClockIcon}
-                                  strokeWidth={2}
-                                  className="h-3.5 w-3.5"
-                                />
-                                <span>
-                                  {session.startTime.slice(0, 5)} -{" "}
-                                  {session.endTime.slice(0, 5)}
-                                </span>
-                              </>
-                            )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        {session.courseType === "SELF_STUDY"
-                          ? getStatusBadge(getSelfStudySessionStatus(session))
-                          : getStatusBadge(session.status)}
-                      </div>
-                    </div>
-
-                    {/* Trainer-led session - Attendance dropdown for learners */}
-                    {session.courseType === "TRAINER_PROVIDED" && (
-                      <div className="mt-3">
-                        <div className="flex items-center gap-4">
+                  return (
+                    <div
+                      key={index}
+                      className={cn(
+                        "rounded-lg border p-4 transition-colors hover:bg-muted/50",
+                        !canEdit &&
+                          sessionDate &&
+                          sessionDate > new Date() &&
+                          "opacity-70"
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">
-                              Attendance:
-                            </span>
-                            {session.attendanceStatus ? (
-                              getAttendanceStatusBadge(session.attendanceStatus)
+                            <h4 className="font-medium">
+                              {session.courseName}
+                            </h4>
+                            {session.courseType === "TRAINER_PROVIDED" ? (
+                              <Badge variant="outline" className="text-xs">
+                                <HugeiconsIcon
+                                  icon={UserGroupIcon}
+                                  strokeWidth={2}
+                                  className="mr-1 h-3 w-3"
+                                />
+                                Trainer-led
+                              </Badge>
                             ) : (
-                              <span className="text-sm text-muted-foreground">
-                                Not marked
-                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                <HugeiconsIcon
+                                  icon={BookOpenIcon}
+                                  strokeWidth={2}
+                                  className="mr-1 h-3 w-3"
+                                />
+                                Self-study
+                              </Badge>
                             )}
-                          </div>
-                          {canEdit ? (
-                            <div className="flex items-center gap-2">
-                              <Select
-                                value={session.attendanceStatus || ""}
-                                onValueChange={(value) =>
-                                  handleAttendanceChange(session, value)
-                                }
-                                disabled={isSaving || attendanceLoading}
-                              >
-                                <SelectTrigger className="h-8 w-[140px] text-xs">
-                                  <SelectValue placeholder="Mark status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {ATTENDANCE_OPTIONS.map((option) => (
-                                    <SelectItem
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span
-                                          className={cn(
-                                            "h-2 w-2 rounded-full",
-                                            option.value === "PRESENT" &&
-                                              "bg-green-500",
-                                            option.value === "ABSENT" &&
-                                              "bg-red-500",
-                                            option.value === "LATE" &&
-                                              "bg-yellow-500",
-                                            option.value === "EXCUSED" &&
-                                              "bg-blue-500"
-                                          )}
-                                        />
-                                        {option.label}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {isSaving ? (
-                                <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></span>
-                              ) : isSaved ? (
+                            {isCompleted && (
+                              <Badge className="bg-green-500 text-[10px] text-white">
                                 <HugeiconsIcon
                                   icon={CheckmarkCircle01Icon}
                                   strokeWidth={2}
-                                  className="h-4 w-4 text-green-500"
+                                  className="mr-1 h-3 w-3"
                                 />
-                              ) : (
-                                session.attendanceStatus && (
-                                  <span className="h-4 w-4"></span>
+                                Completed
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <HugeiconsIcon
+                              icon={CalendarIcon}
+                              strokeWidth={2}
+                              className="h-3.5 w-3.5"
+                            />
+                            <span>
+                              {new Date(
+                                session.sessionDate || session.sessionDeadline
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </span>
+                            {session.courseType === "TRAINER_PROVIDED" &&
+                              session.startTime &&
+                              session.endTime && (
+                                <>
+                                  <span>•</span>
+                                  <HugeiconsIcon
+                                    icon={ClockIcon}
+                                    strokeWidth={2}
+                                    className="h-3.5 w-3.5"
+                                  />
+                                  <span>
+                                    {session.startTime.slice(0, 5)} -{" "}
+                                    {session.endTime.slice(0, 5)}
+                                  </span>
+                                </>
+                              )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {session.courseType === "SELF_STUDY"
+                            ? getStatusBadge(getSelfStudySessionStatus(session))
+                            : getStatusBadge(session.status)}
+                        </div>
+                      </div>
+
+                      {/* Trainer-led session - Attendance dropdown for learners */}
+                      {session.courseType === "TRAINER_PROVIDED" && (
+                        <div className="mt-3">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">
+                                Attendance:
+                              </span>
+                              {session.attendanceStatus ? (
+                                getAttendanceStatusBadge(
+                                  session.attendanceStatus
                                 )
+                              ) : (
+                                <span className="text-sm text-muted-foreground">
+                                  Not marked
+                                </span>
                               )}
                             </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              {sessionDate && sessionDate > new Date() ? (
-                                <span className="flex items-center gap-1 text-blue-500">
+                            {canEdit ? (
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={session.attendanceStatus || ""}
+                                  onValueChange={(value) =>
+                                    handleAttendanceChange(session, value)
+                                  }
+                                  disabled={isSaving || attendanceLoading}
+                                >
+                                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                                    <SelectValue placeholder="Mark status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {ATTENDANCE_OPTIONS.map((option) => (
+                                      <SelectItem
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <span
+                                            className={cn(
+                                              "h-2 w-2 rounded-full",
+                                              option.value === "PRESENT" &&
+                                                "bg-green-500",
+                                              option.value === "ABSENT" &&
+                                                "bg-red-500",
+                                              option.value === "LATE" &&
+                                                "bg-yellow-500",
+                                              option.value === "EXCUSED" &&
+                                                "bg-blue-500"
+                                            )}
+                                          />
+                                          {option.label}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {isSaving ? (
+                                  <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></span>
+                                ) : isSaved ? (
                                   <HugeiconsIcon
-                                    icon={CalendarIcon}
+                                    icon={CheckmarkCircle01Icon}
                                     strokeWidth={2}
-                                    className="h-3 w-3"
+                                    className="h-4 w-4 text-green-500"
                                   />
-                                  Available on session day
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  Locked
-                                </span>
-                              )}
-                            </span>
+                                ) : (
+                                  session.attendanceStatus && (
+                                    <span className="h-4 w-4"></span>
+                                  )
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                {sessionDate && sessionDate > new Date() ? (
+                                  <span className="flex items-center gap-1 text-blue-500">
+                                    <HugeiconsIcon
+                                      icon={CalendarIcon}
+                                      strokeWidth={2}
+                                      className="h-3 w-3"
+                                    />
+                                    Available on session day
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    Locked
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                          {attendanceError && (
+                            <div className="mt-2 text-sm text-red-500">
+                              Error: {attendanceError}
+                            </div>
                           )}
                         </div>
-                        {attendanceError && (
-                          <div className="mt-2 text-sm text-red-500">
-                            Error: {attendanceError}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Self-study session - Progress */}
-                    {session.courseType === "SELF_STUDY" && (
-                      <div className="mt-4 space-y-3">
-                        {/* Input fields for progress */}
-                        {!isCompleted && (
-                          <>
-                            <div className="grid grid-cols-5 gap-2">
-                              {[
-                                {
-                                  key: "kanjiCount",
-                                  label: "Kanji",
-                                  target: session.kanjiTarget || 0,
-                                },
-                                {
-                                  key: "vocabularyCount",
-                                  label: "Vocab",
-                                  target: session.vocabularyTarget || 0,
-                                },
-                                {
-                                  key: "grammarCount",
-                                  label: "Grammar",
-                                  target: session.grammarTarget || 0,
-                                },
-                                {
-                                  key: "readingMinutes",
-                                  label: "Reading (min)",
-                                  target: session.readingTargetMinutes || 0,
-                                },
-                                {
-                                  key: "listeningMinutes",
-                                  label: "Listening (min)",
-                                  target: session.listeningTargetMinutes || 0,
-                                },
-                              ].map((item) => {
-                                const currentValue =
-                                  inputs[item.key as keyof typeof inputs] || 0
-                                const targetValue = item.target
-
-                                return (
-                                  <div key={item.key} className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">
-                                      {item.label}
-                                    </Label>
-                                    <div className="flex items-center gap-1">
-                                      <Input
-                                        type="number"
-                                        value={currentValue}
-                                        onChange={(e) =>
-                                          handleSessionInputChange(
-                                            session.sessionId,
-                                            item.key,
-                                            e.target.value
-                                          )
-                                        }
-                                        className="h-8 text-center text-xs"
-                                        min={0}
-                                        max={targetValue || 999}
-                                        disabled={
-                                          isSavingProgress || isUpdatingProgress
-                                        }
-                                      />
-                                    </div>
-                                    <div className="text-center text-[10px] text-muted-foreground">
-                                      Target: {targetValue}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                            <Button
-                              size="sm"
-                              className="w-full gap-2"
-                              onClick={() => handleSaveProgress(session)}
-                              disabled={isSavingProgress || isUpdatingProgress}
-                            >
-                              {isSavingProgress || isUpdatingProgress ? (
-                                <>
-                                  <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current"></span>
-                                  Saving...
-                                </>
-                              ) : (
-                                <>
-                                  <HugeiconsIcon
-                                    icon={SaveIcon}
-                                    strokeWidth={2}
-                                    className="h-4 w-4"
-                                  />
-                                  Save Progress
-                                </>
-                              )}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </CardContent>
-          </Card>
-
-          {/* Notifications - Using real data from store */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between border-b py-0">
-              <div>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>
-                  Important updates and reminders
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                className="justify-center gap-2 text-muted-foreground hover:text-foreground"
-                onClick={() => setNotificationsDrawerOpen(true)}
-              >
-                All Notifications
-                {totalNotificationsCount > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="ml-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs"
-                  >
-                    {totalNotificationsCount}
-                  </Badge>
-                )}
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  strokeWidth={2}
-                  className="h-4 w-4"
-                />
-              </Button>
-            </CardHeader>
-            <CardContent className="max-h-[400px] scrollbar-thin space-y-4 overflow-y-auto">
-              {displayNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <HugeiconsIcon
-                    icon={NotificationIcon}
-                    strokeWidth={2}
-                    className="mb-2 h-8 w-8 text-gray-300"
-                  />
-                  <p className="text-sm text-gray-400">No notifications</p>
-                </div>
-              ) : (
-                displayNotifications.map((notification, index) => {
-                  const isLast = index === displayNotifications.length - 1
-                  return (
-                    <div
-                      key={notification.id}
-                      className={cn(
-                        "group relative flex gap-3 transition-colors",
-                        !isLast && "border-b border-gray-100 pb-4"
                       )}
-                    >
-                      {/* System Icon */}
-                      <div className="flex-shrink-0 pt-0.5">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                          <HugeiconsIcon
-                            icon={NotificationIcon}
-                            strokeWidth={2}
-                            className="h-5 w-5 text-gray-500"
-                          />
-                        </div>
-                      </div>
 
-                      {/* Content */}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[15px] leading-snug text-gray-900">
-                          {notification.message}
-                        </p>
-                        <p className="mt-1 text-[13px] text-gray-400">
-                          {notification.time}
-                        </p>
-                        {notification.hasAction && notification.courseId && (
-                          <div className="mt-3 flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                // Use the navigation callback
-                                if (onNavigateToCourse) {
-                                  onNavigateToCourse(notification.courseId)
+                      {/* Self-study session - Progress */}
+                      {session.courseType === "SELF_STUDY" && (
+                        <div className="mt-4 space-y-3">
+                          {/* Input fields for progress */}
+                          {!isCompleted && (
+                            <>
+                              <div className="grid grid-cols-5 gap-2">
+                                {[
+                                  {
+                                    key: "kanjiCount",
+                                    label: "Kanji",
+                                    target: session.kanjiTarget || 0,
+                                  },
+                                  {
+                                    key: "vocabularyCount",
+                                    label: "Vocab",
+                                    target: session.vocabularyTarget || 0,
+                                  },
+                                  {
+                                    key: "grammarCount",
+                                    label: "Grammar",
+                                    target: session.grammarTarget || 0,
+                                  },
+                                  {
+                                    key: "readingMinutes",
+                                    label: "Reading (min)",
+                                    target: session.readingTargetMinutes || 0,
+                                  },
+                                  {
+                                    key: "listeningMinutes",
+                                    label: "Listening (min)",
+                                    target: session.listeningTargetMinutes || 0,
+                                  },
+                                ].map((item) => {
+                                  const currentValue =
+                                    inputs[item.key as keyof typeof inputs] || 0
+                                  const targetValue = item.target
+
+                                  return (
+                                    <div key={item.key} className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">
+                                        {item.label}
+                                      </Label>
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          type="number"
+                                          value={currentValue}
+                                          onChange={(e) =>
+                                            handleSessionInputChange(
+                                              session.sessionId,
+                                              item.key,
+                                              e.target.value
+                                            )
+                                          }
+                                          className="h-8 text-center text-xs"
+                                          min={0}
+                                          max={targetValue || 999}
+                                          disabled={
+                                            isSavingProgress ||
+                                            isUpdatingProgress
+                                          }
+                                        />
+                                      </div>
+                                      <div className="text-center text-[10px] text-muted-foreground">
+                                        Target: {targetValue}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                              <Button
+                                size="sm"
+                                className="w-full gap-2"
+                                onClick={() => handleSaveProgress(session)}
+                                disabled={
+                                  isSavingProgress || isUpdatingProgress
                                 }
-                              }}
-                            >
-                              View Course
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                      {notification.unread && (
-                        <div className="flex-shrink-0 pt-2">
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                              >
+                                {isSavingProgress || isUpdatingProgress ? (
+                                  <>
+                                    <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current"></span>
+                                    Saving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <HugeiconsIcon
+                                      icon={SaveIcon}
+                                      strokeWidth={2}
+                                      className="h-4 w-4"
+                                    />
+                                    Save Progress
+                                  </>
+                                )}
+                              </Button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
                   )
-                })
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Notifications - Using real data from store */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between border-b py-0">
+                <div>
+                  <CardTitle>Notifications</CardTitle>
+                  <CardDescription>
+                    Important updates and reminders
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="justify-center gap-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setNotificationsDrawerOpen(true)}
+                >
+                  All Notifications
+                  {totalNotificationsCount > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs"
+                    >
+                      {totalNotificationsCount}
+                    </Badge>
+                  )}
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    strokeWidth={2}
+                    className="h-4 w-4"
+                  />
+                </Button>
+              </CardHeader>
+              <CardContent className="max-h-[400px] scrollbar-thin space-y-4 overflow-y-auto">
+                {displayNotifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <HugeiconsIcon
+                      icon={NotificationIcon}
+                      strokeWidth={2}
+                      className="mb-2 h-8 w-8 text-gray-300"
+                    />
+                    <p className="text-sm text-gray-400">No notifications</p>
+                  </div>
+                ) : (
+                  displayNotifications.map((notification, index) => {
+                    const isLast = index === displayNotifications.length - 1
+                    return (
+                      <div
+                        key={notification.id}
+                        className={cn(
+                          "group relative flex gap-3 transition-colors",
+                          !isLast && "border-b border-gray-100 pb-4"
+                        )}
+                      >
+                        {/* System Icon */}
+                        <div className="flex-shrink-0 pt-0.5">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                            <HugeiconsIcon
+                              icon={NotificationIcon}
+                              strokeWidth={2}
+                              className="h-5 w-5 text-gray-500"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[15px] leading-snug text-gray-900">
+                            {notification.message}
+                          </p>
+                          <p className="mt-1 text-[13px] text-gray-400">
+                            {notification.time}
+                          </p>
+                          {notification.hasAction && notification.courseId && (
+                            <div className="mt-3 flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  // Use the navigation callback
+                                  if (onNavigateToCourse) {
+                                    onNavigateToCourse(notification.courseId)
+                                  }
+                                }}
+                              >
+                                View Course
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        {notification.unread && (
+                          <div className="flex-shrink-0 pt-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
       </div>
 
       {/* Notifications Drawer */}
