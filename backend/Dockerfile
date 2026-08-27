@@ -20,7 +20,7 @@ WORKDIR /app
 
 RUN useradd --create-home --shell /bin/bash appuser
 
-COPY --from=builder /app/target/*.jar /app/app.jar
+COPY --from=builder /app/target/*.[jw]ar /app/app.jar
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 

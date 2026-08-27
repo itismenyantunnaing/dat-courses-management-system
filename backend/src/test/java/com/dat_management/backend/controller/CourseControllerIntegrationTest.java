@@ -121,7 +121,7 @@ class CourseControllerIntegrationTest {
         config.setGmailPort(587);
         config.setGmailUsername("test@gmail.com");
         config.setGmailPassword("password");
-        config.setFileUploadSizeMb(5);
+        config.setFileUploadSizeMb(0.5);
         config.setSessionTimeoutMinutes(30);
         config.setJwtExpiryHours(24);
         config.setMaxLoginAttempts(5);

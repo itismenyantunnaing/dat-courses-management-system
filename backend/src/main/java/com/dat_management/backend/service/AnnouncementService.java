@@ -26,36 +26,24 @@ public class AnnouncementService {
     }
 
     private AnnouncementDto convertToDto(Announcement announcement) {
-        Employee employee=employeeRepository.findById(announcement.getCreatedBy()).get();
+        Employee employee = employeeRepository.findById(announcement.getCreatedBy()).orElse(null);
         AnnouncementDto dto = new AnnouncementDto();
         dto.setId(announcement.getId());
         dto.setTitle(announcement.getTitle());
         dto.setText(announcement.getText());
         dto.setCategory(announcement.getCategory().name());
-        dto.setCreatedBy(employee.getName());
+        dto.setCreatedBy(employee != null ? employee.getName() : announcement.getCreatedBy());
         dto.setCreatedAt(announcement.getCreatedAt() != null ? announcement.getCreatedAt().toString() : null);
         dto.setUpdatedAt(announcement.getUpdatedAt() != null ? announcement.getUpdatedAt().toString() : null);
-        if (employee.getTeam() != null) {
-    dto.setTeamName(employee.getTeam().getTeamName());
-} else {
-    dto.setTeamName(null);
-}
-
-// Department Name
-if (employee.getTeam() != null && employee.getTeam().getDepartmentDat() != null) {
-    dto.setDepartmentName(employee.getTeam().getDepartmentDat().getDeptName());
-} else {
-    dto.setDepartmentName(null);
-}
-
-// Division Name
-if (employee.getTeam() != null && 
-    employee.getTeam().getDepartmentDat() != null && 
-    employee.getTeam().getDepartmentDat().getDivision() != null) {
-    dto.setDivisionName(employee.getTeam().getDepartmentDat().getDivision().getDivisionName());
-} else {
-    dto.setDivisionName(null);
-}
+        if (employee != null && employee.getTeam() != null) {
+            dto.setTeamName(employee.getTeam().getTeamName());
+            if (employee.getTeam().getDepartmentDat() != null) {
+                dto.setDepartmentName(employee.getTeam().getDepartmentDat().getDeptName());
+                if (employee.getTeam().getDepartmentDat().getDivision() != null) {
+                    dto.setDivisionName(employee.getTeam().getDepartmentDat().getDivision().getDivisionName());
+                }
+            }
+        }
         return dto;
     }
 
