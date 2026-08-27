@@ -673,14 +673,7 @@ export default function ChangePassword({
       <>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {force && flow === "change" && (
-            <DialogDescription>
-              <span className="text-sm font-normal text-destructive">
-                You must change your password at first login.
-              </span>
-            </DialogDescription>
-          )}
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription className="text-destructive">{description}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {renderPasswordInput(

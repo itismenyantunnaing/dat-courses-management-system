@@ -327,7 +327,7 @@ export function CreateEmployeeDrawer({
           </DrawerHeader>
 
           <div className="flex-1 overflow-y-auto">
-            <div className="px-6 py-4">
+            <div className="p-4">
               <EmployeeForm
                 data={formData}
                 onChange={setFormData}
