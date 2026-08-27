@@ -12,7 +12,6 @@ import {
 } from "../../components/ui/sidebar"
 import { EmployeeContainer } from "@/components/employee-container"
 import { CoursesContainer } from "@/components/courses-container"
-import { SeminarContainer } from "@/components/seminar-container"
 import { ExamsContainer } from "@/components/exams-container"
 import { SkillContainer } from "@/components/skill-container"
 import { HolidaysContainer } from "@/components/holidays-container"
@@ -327,8 +326,6 @@ useEffect(() => {
         return "Courses"
       case "jlpt_target_level":
         return "JLPT Target Level"
-      case "seminar":
-        return "Seminar Management"
       case "exams":
         return "Exam Management"
       case "skills":
@@ -340,7 +337,6 @@ useEffect(() => {
       case "certificates-requests":
         return "Requested Certificates"
       case "announcement":
-        // Dynamic label based on user role
         return "Announcements"
       case "feedback":
         // Dynamic label based on user role
@@ -382,7 +378,6 @@ useEffect(() => {
         selectedCourseId: selectedCourseId,
       },
     },
-    { value: "seminar", component: SeminarContainer },
     { value: "exams", component: ExamsContainer },
     { value: "announcement", component: AnnouncementContainer },
     { value: "feedback", component: FeedbackContainer },

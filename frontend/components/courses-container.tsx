@@ -26,7 +26,6 @@ import {
   Search01Icon,
   ArrowLeft01Icon,
   CourseIcon,
-  AlertCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { Course, CourseFormSubmitData } from "@/types/course"
 import { CourseCard } from "../components/cards/course-card"

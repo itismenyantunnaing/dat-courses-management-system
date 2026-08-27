@@ -632,7 +632,7 @@ export function AuditLogsContainer() {
                   />
                 </InputGroupAddon>
                 <InputGroupAddon align="inline-end">
-                  <Kbd>⌘K</Kbd>
+                  <Kbd>Ctrl + K</Kbd>
                 </InputGroupAddon>
               </InputGroup>
 

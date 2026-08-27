@@ -1141,9 +1141,6 @@ export function EmployeeContainer({
               {topSkills.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-border/50">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-muted-foreground uppercase mr-1">
-                      Skills:
-                    </span>
                     {topSkills.map((skill, idx) => (
                       <Tooltip key={skill.id || idx}>
                         <TooltipTrigger asChild>
