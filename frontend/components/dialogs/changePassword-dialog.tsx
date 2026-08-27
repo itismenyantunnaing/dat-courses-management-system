@@ -122,7 +122,6 @@ export default function ChangePassword({
     if (flow === "change") {
       getAuthToken()
         .then(fetchedToken => {
-          console.log("Token retrieved:", fetchedToken ? `${fetchedToken.substring(0, 20)}...` : "null")
           setToken(fetchedToken)
           if (!fetchedToken) {
             toast.error("Authentication session not found. Please login again.")

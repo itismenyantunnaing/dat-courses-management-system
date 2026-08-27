@@ -44,6 +44,7 @@ import { NotificationsDrawer } from "../drawers/notifications-drawer"
 import { mainStore } from "@/store/mainStore"
 import type { Course, CourseSession } from "@/types/course"
 import type { EmployeeCourseDetailDTO } from "@/types/dashboard"
+import { toast } from "sonner"
 
 interface LearnerDashboardContainerProps {
   onNavigateToCourse?: (courseId: number) => void
@@ -403,7 +404,7 @@ export default function LearnerDashboardContainer({
     const values = selfStudyInputs[sessionId]
 
     if (!values) {
-      alert("No progress data to save")
+      toast.warning("No progress data to save")
       return
     }
 
@@ -455,16 +456,16 @@ export default function LearnerDashboardContainer({
 
         // Show success message
         if (allTargetsMet) {
-          alert(`🎉 Session completed!`)
+          toast.success(`🎉 Session completed!`)
         } else {
-          alert(`Progress saved successfully for ${session.courseName}`)
+          toast.success(`Progress saved successfully for ${session.courseName}`)
         }
       } else {
-        alert(result.message || "Failed to save progress")
+        toast.error(result.message || "Failed to save progress")
       }
     } catch (error) {
       console.error("Error saving progress:", error)
-      alert("An error occurred while saving progress")
+      toast.error("An error occurred while saving progress")
     } finally {
       setSavingSessions((prev) => ({
         ...prev,

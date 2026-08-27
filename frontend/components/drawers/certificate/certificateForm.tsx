@@ -22,6 +22,7 @@ import {
 import { mainStore } from "@/store/mainStore"
 import { compressFile } from "@/lib/compressImage"
 import { resolveUploadUrl } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface CertificateFormData {
   certificateType: (typeof CERTIFICATE_TYPES)[number] | ""
@@ -131,7 +132,7 @@ export const CertificateForm = forwardRef<
       return type === "NAT_TEST" ? "NAT-test" : type === "TOP_J" ? "TopJ" : type
     }
 
-    // ✅ Check if form is valid and update changes
+    //  Check if form is valid and update changes
     useEffect(() => {
       const hasCertificateType = !!formData.certificateType
       const hasLevel = !!formData.level
@@ -141,7 +142,7 @@ export const CertificateForm = forwardRef<
       const valid = hasCertificateType && hasLevel && hasFile && !isDuplicate
       setIsFormValid(valid)
 
-      // ✅ Check for changes
+      //  Check for changes
       if (mode === "edit" && initialFormDataRef.current) {
         const hasFormChanges =
           formData.certificateType !==
@@ -171,7 +172,7 @@ export const CertificateForm = forwardRef<
       }
     }, [initialData, mode])
 
-    // ✅ Update image preview when initialImage changes
+    //  Update image preview when initialImage changes
     useEffect(() => {
       if (mode === "edit" && initialImage) {
         setImagePreview(resolveUploadUrl(initialImage))
@@ -191,7 +192,7 @@ export const CertificateForm = forwardRef<
     const handleImageChange = async (file: File | null) => {
       if (file) {
         if (!file.type.startsWith("image/")) {
-          alert("Please select an image file")
+          toast.warning("Please select an image file")
           return
         }
 
@@ -248,17 +249,17 @@ export const CertificateForm = forwardRef<
       e.preventDefault()
 
       if (!formData.certificateType || !formData.level) {
-        alert("Please select certificate type and level")
+        toast.info("Please select certificate type and level")
         return
       }
 
       if (mode === "add" && !selectedFile) {
-        alert("Please select an image file")
+        toast.info("Please select an image file")
         return
       }
 
       if (isDuplicateSelection()) {
-        alert(
+        toast.info(
           `A certificate with type "${getDisplayLabel(formData.certificateType)}" and level "${formData.level}" already exists. Please select a different combination.`
         )
         return

@@ -22,6 +22,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload05Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { importTabs, VISIBLE_TABS_COUNT } from "../nav/tabs-config"
+import { toast } from "sonner"
 
 interface ImportDialogProps {
   open: boolean
@@ -122,7 +123,7 @@ export function ImportDialog({
   // Import logic based on tab config
   const handleImport = async () => {
     if (!currentTabData || !selectedFile) {
-      alert("Please select a file first")
+      toast.warning("Please select a file first")
       return
     }
 
@@ -138,12 +139,12 @@ export function ImportDialog({
           onOpenChange(false)
         }
       } else {
-        alert(`✅ Successfully imported ${currentTabData.label} data!`)
+        toast.success(` Successfully imported ${currentTabData.label} data!`)
         onOpenChange(false)
       }
     } catch (error) {
       console.error("❌ Import error:", error)
-      alert(
+      toast.error(
         `❌ Failed to import: ${error instanceof Error ? error.message : "Unknown error"}`
       )
     } finally {

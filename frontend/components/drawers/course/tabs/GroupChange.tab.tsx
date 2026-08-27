@@ -22,6 +22,7 @@ import {
   AlertCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { dialog } from "@/components/dialogs/import-export-confirm-dialog"
 
 interface GroupChangeTabProps {
   course: any
@@ -66,7 +67,7 @@ export function GroupChangeTab({
     useState<string>("")
   const [isRequestingGroupChange, setIsRequestingGroupChange] = useState(false)
 
-  const handleRequest = () => {
+  const handleRequest = async () => {
     if (!selectedRequestGroupId) {
       alert("Please select a group to request")
       return
@@ -77,9 +78,14 @@ export function GroupChangeTab({
     )
     const groupName = selectedGroup?.name || `Group ${selectedRequestGroupId}`
 
-    if (
-      !confirm(`Are you sure you want to request to change to "${groupName}"?`)
-    ) {
+    const confirmed = await dialog.confirm(
+      "Confirm Group Change Request",
+      `Are you sure you want to request to change to "${groupName}"?`,
+      "Yes, Request Change",
+      "Cancel"
+    )
+
+    if (!confirmed) {
       return
     }
 

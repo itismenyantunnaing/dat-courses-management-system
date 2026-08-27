@@ -30,6 +30,7 @@ import { format } from "date-fns"
 import Image from "next/image"
 import { Cancel01Icon, ImageNotFound01Icon } from "@hugeicons/core-free-icons"
 import {resolveUploadUrl} from "@/lib/utils";
+import { toast } from "sonner"
 
 interface ApproveCertificateDrawerProps {
   open: boolean
@@ -120,17 +121,17 @@ export function ApproveCertificateDrawer({
       const result = await verify_CertificateData(certificate.id, remark)
 
       if (result.includes("successfully")) {
-        alert("✅ Certificate approved successfully!")
+        toast.success(" Certificate approved successfully!")
         onOpenChange(false)
         if (onApprove) {
           await onApprove(certificate.id, remark)
         }
       } else {
-        alert("❌ " + result)
+        toast.error("❌ " + result)
       }
     } catch (error) {
       console.error("❌ Error approving certificate:", error)
-      alert("❌ Failed to approve certificate")
+      toast.error("❌ Failed to approve certificate")
     } finally {
       setIsSubmitting(false)
     }
@@ -143,7 +144,7 @@ export function ApproveCertificateDrawer({
     }
 
     if (!remark.trim()) {
-      alert("❌ Please provide a reason for denying this certificate")
+      toast.error("❌ Please provide a reason for denying this certificate")
       return
     }
 
@@ -154,17 +155,17 @@ export function ApproveCertificateDrawer({
       const result = await reject_CertificateData(certificate.id, remark)
 
       if (result.includes("successfully")) {
-        alert("✅ Certificate denied successfully!")
+        toast.success(" Certificate denied successfully!")
         onOpenChange(false)
         if (onDeny) {
           await onDeny(certificate.id, remark)
         }
       } else {
-        alert("❌ " + result)
+        toast.error("❌ " + result)
       }
     } catch (error) {
       console.error("❌ Error denying certificate:", error)
-      alert("❌ Failed to deny certificate")
+      toast.error("❌ Failed to deny certificate")
     } finally {
       setIsSubmitting(false)
     }

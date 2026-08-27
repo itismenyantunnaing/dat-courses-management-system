@@ -198,7 +198,7 @@ export function FeedbackContainer() {
   const isAdminOrApprover = isAdmin || isApprover
   const canCreateFeedback = isLearner
   const canEditFeedback = isLearner
-  const canDeleteFeedback = isAdmin
+  const canDeleteFeedback = isAdmin || isLearner
   const canFilter = isAdmin || isApprover // Only admin and approver can filter
 
   // Get the appropriate icon based on role
@@ -321,7 +321,7 @@ export function FeedbackContainer() {
         feedbackItem.description?.toLowerCase().includes(searchLower) ||
         feedbackItem.department?.toLowerCase().includes(searchLower) ||
         feedbackItem.team?.toLowerCase().includes(searchLower) ||
-        feedbackItem.category?.toLowerCase().includes(searchLower) // ✅ Add category search
+        feedbackItem.category?.toLowerCase().includes(searchLower) //  Add category search
 
       // Department filter
       const matchesDepartment =
@@ -336,7 +336,7 @@ export function FeedbackContainer() {
         filters.team.length === 0 ||
         (feedbackItem.team && filters.team.includes(feedbackItem.team))
 
-      // Category filter - ✅ Add category filter
+      // Category filter -  Add category filter
       const matchesCategory =
         !canFilter ||
         filters.category.length === 0 ||

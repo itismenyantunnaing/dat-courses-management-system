@@ -17,6 +17,7 @@ import {
 import { AddDivDeptTeamDialog } from "@/components/dialogs/createDivDeptTeam-dialog"
 import { mainStore } from "@/store/mainStore"
 import { Employee } from "@/types/employee"
+import { toast } from "sonner"
 
 interface CreateEmployeeDrawerProps {
   open: boolean
@@ -88,6 +89,7 @@ export function CreateEmployeeDrawer({
       !formData.emp_status
     ) {
       console.error("Please fill in all required fields")
+      toast.error("Please fill in all required fields")
       return
     }
 
@@ -121,7 +123,7 @@ export function CreateEmployeeDrawer({
       const result = await add_EmployeeData(newEmployee)
 
       if (result && (result.includes("already exists") || result.includes("Failed"))) {
-        alert(result)
+        toast.warning(result)
         return
       }
 
@@ -136,12 +138,12 @@ export function CreateEmployeeDrawer({
         })
 
         if (deptPosResult && !deptPosResult.success) {
-          alert(`Employee created but failed to update department/position: ${deptPosResult.message}`)
+          toast.error(`Employee created but failed to update department/position: ${deptPosResult.message}`)
           return
         }
       }
 
-      alert(result || "Employee created successfully")
+      toast.success(result || "Employee created successfully")
 
       // Reset form
       setFormData({
@@ -163,7 +165,7 @@ export function CreateEmployeeDrawer({
       onSuccess?.()
     } catch (error) {
       console.error("Failed to create employee:", error)
-      alert("Failed to create employee. Please try again.")
+      toast.error("Failed to create employee. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -182,10 +184,10 @@ export function CreateEmployeeDrawer({
       result = await add_division(name);
 
       if (result && result.success) {
-        alert(`✅ Division "${name}" added successfully!`);
+        toast.success(` Division "${name}" added successfully!`);
         setFormData((prev) => ({ ...prev, div: name }));
       } else {
-        alert(`❌ Failed to add division: ${result?.error || 'Unknown error'}`);
+        toast.error(`❌ Failed to add division: ${result?.error || 'Unknown error'}`);
       }
 
     } else if (addItemType === "department") {
@@ -197,7 +199,7 @@ export function CreateEmployeeDrawer({
       );
 
       if (!selectedDivision) {
-        alert('❌ Please select a division first before adding a department');
+        toast.error('❌ Please select a division first before adding a department');
         return;
       }
 
@@ -221,17 +223,17 @@ export function CreateEmployeeDrawer({
       }
 
       if (!finalDivisionId) {
-        alert('❌ Could not find division ID. Please select a valid division.');
+        toast.error('❌ Could not find division ID. Please select a valid division.');
         return;
       }
 
       result = await add_dat_department(finalDivisionId, name);
 
       if (result && result.success) {
-        alert(`✅ Department "${name}" added successfully!`);
+        toast.success(` Department "${name}" added successfully!`);
         setFormData((prev) => ({ ...prev, dept_dat: name }));
       } else {
-        alert(`❌ Failed to add department: ${result?.error || 'Unknown error'}`);
+        toast.error(`❌ Failed to add department: ${result?.error || 'Unknown error'}`);
       }
 
     } else if (addItemType === "team") {
@@ -242,24 +244,24 @@ export function CreateEmployeeDrawer({
       );
 
       if (!selectedDepartment) {
-        alert('❌ Please select a department first before adding a team');
+        toast.error('❌ Please select a department first before adding a team');
         return;
       }
 
       const departmentId = selectedDepartment.id || selectedDepartment.departmentDatId;
 
       if (!departmentId) {
-        alert('❌ Could not find department ID. Please select a valid department.');
+        toast.error('❌ Could not find department ID. Please select a valid department.');
         return;
       }
 
       result = await add_team(departmentId, name);
 
       if (result && result.success) {
-        alert(`✅ Team "${name}" added successfully!`);
+        toast.success(` Team "${name}" added successfully!`);
         setFormData((prev) => ({ ...prev, team: name }));
       } else {
-        alert(`❌ Failed to add team: ${result?.error || 'Unknown error'}`);
+        toast.error(`❌ Failed to add team: ${result?.error || 'Unknown error'}`);
       }
     }
   }

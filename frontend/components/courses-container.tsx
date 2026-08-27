@@ -32,11 +32,12 @@ import { CourseCard } from "../components/cards/course-card"
 import { CourseDetail } from "../components/drawers/course/course-detail"
 import { Trainer_CourseForm } from "./drawers/course/trainer-views/trainer-CourseForm"
 import { mainStore } from "@/store/mainStore"
-// ✅ NEW: subscribe to the websocket notification store so we can react to
+//  NEW: subscribe to the websocket notification store so we can react to
 // incoming course notifications and auto-refetch the course list.
 import { webScoketStore } from "@/store/websocketStore"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 const STROKE_WIDTH = 2
 
@@ -123,7 +124,7 @@ export function CoursesContainer({
   const [isSuccessfullySaved, setIsSuccessfullySaved] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // ✅ NEW: live notifications from the websocket store
+  //  NEW: live notifications from the websocket store
   const notifications = webScoketStore((state) => state.notifications)
   // Tracks how many notifications we've already reacted to, so the refetch
   // effect only fires for NEW notifications - not on mount, not on every
@@ -155,7 +156,7 @@ export function CoursesContainer({
     loadData()
   }, [fetchAll_CourseData, fetch_courseCategories])
 
-  // ✅ NEW: auto-refetch courses as soon as a NEW course notification
+  //  NEW: auto-refetch courses as soon as a NEW course notification
   // arrives over the websocket (e.g. someone enrolls, a course is
   // published/updated, a session changes elsewhere). We compare against the
   // count we last processed so this only runs for genuinely new
@@ -186,10 +187,9 @@ export function CoursesContainer({
     )
 
     if (hasCourseNotification) {
-      console.log('🔄 Refetching courses due to new notification');
       fetchAll_CourseData();
 
-      // ✅ Also fetch categories if needed
+      //  Also fetch categories if needed
       // fetch_courseCategories();
     }
   }, [notifications, fetchAll_CourseData])
@@ -272,8 +272,6 @@ export function CoursesContainer({
     return { all, draft, active }
   }, [courses])
 
-  console.log("AAAAAAAAAAAAAa")
-  console.log(enrollments)
 
   // Get counts for each tab (learner)
   const getLearnerTabCounts = useMemo(() => {
@@ -421,7 +419,7 @@ export function CoursesContainer({
 
     // If we were creating a new course, show a brief notification
     if (wasCreating) {
-      alert("Course creation cancelled");
+      toast.success("Course creation cancelled");
     }
   };
 
@@ -436,7 +434,7 @@ export function CoursesContainer({
         setIsFormVisible(false)
         await fetchAll_CourseData()
       } else {
-        alert(result.message || "Failed to delete course")
+        toast.error(result.message || "Failed to delete course")
       }
     }
   }
@@ -448,7 +446,7 @@ export function CoursesContainer({
       const categoryId = data.course_category_id
 
       if (!categoryId) {
-        alert("Please select a valid category")
+        toast.warning("Please select a valid category")
         setIsSubmitting(false)
         return
       }
@@ -722,11 +720,11 @@ export function CoursesContainer({
           await fetch_courseEnrollments(editingCourse.id);
         }
       } else {
-        alert(result.message || "Failed to save course");
+        toast.error(result.message || "Failed to save course");
       }
     } catch (error) {
       console.error("Failed to save course:", error)
-      alert("An error occurred while saving the course")
+      toast.error("An error occurred while saving the course")
     } finally {
       setIsSubmitting(false)
     }

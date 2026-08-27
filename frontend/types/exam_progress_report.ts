@@ -90,7 +90,7 @@ export interface NoCertMemberData {
 
 // Frontend display types
 export interface DeptWithCounts {
-  id: number;           // ✅ Added
+  id: number;           //  Added
   dept_name: string;
   N1: number;
   N2: number;

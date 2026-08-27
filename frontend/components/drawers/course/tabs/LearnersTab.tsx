@@ -64,6 +64,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { AddLearnerDialogs } from "@/components/dialogs/addLearner-dialog"
+import { toast } from "sonner"
+import { dialog } from "@/components/dialogs/import-export-confirm-dialog"
 
 interface LearnersTabProps {
   enrollments: any[]
@@ -288,7 +290,7 @@ export function LearnersTab({
   // Updated: Accept either employee object or employee ID + groupId
   const handleEnrollEmployee = async (employeeOrId: any, groupId?: number) => {
     if (!onEnrollEmployee) {
-      alert("Enroll function not available")
+      toast.info("Enroll function not available")
       return
     }
 
@@ -297,17 +299,15 @@ export function LearnersTab({
 
     const isTrainer = course?.courseType === "trainer"
 
-    console.log(`📝 Enrolling ${employeeName} (ID: ${employeeId}) to group:`, groupId)
 
     if (isTrainer && !groupId) {
       console.error('No group ID provided for trainer course')
-      alert('Please select a group for this course')
+      toast.info('Please select a group for this course')
       return
     }
 
     try {
       await onEnrollEmployee(employeeId, groupId)
-      console.log(`✅ Successfully enrolled ${employeeName}`)
     } catch (error) {
       console.error(`❌ Error enrolling ${employeeName}:`, error)
       throw error // Re-throw so AddLearnerDialogs can catch it
@@ -319,14 +319,22 @@ export function LearnersTab({
     employeeName: string
   ) => {
     if (!onUnenrollEmployee) {
-      alert("Unenroll function not available")
+      toast.info("Unenroll function not available")
       return
     }
+    const confirmed = await dialog.confirm(
+      "Confirm Unenrollment",
+      `Are you sure you want to unenroll ${employeeName}?`,
+      "Yes, Unenroll",
+      "Cancel",
+      undefined,
+      true // isDestructive
+    )
 
-    if (!confirm(`Are you sure you want to unenroll ${employeeName}?`)) {
+    if (!confirmed) {
       return
     }
-
+    
     setIsUnenrollingEmployee(enrollmentId)
     try {
       await onUnenrollEmployee(enrollmentId)
@@ -340,7 +348,7 @@ export function LearnersTab({
       }
     } catch (error) {
       console.error("Error unenrolling employee:", error)
-      alert("Failed to unenroll employee")
+      toast.error("Failed to unenroll employee")
     } finally {
       setIsUnenrollingEmployee(null)
     }

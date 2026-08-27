@@ -38,7 +38,7 @@ export const AnnouncementDataStore = (set: StoreSet, get: StoreGet) => ({
     const employeeId = currentProfile?.id || 'Unknown User';
     const employeeName = currentProfile?.name || 'Unknown User';
 
-    // ✅ Set createdBy from profile
+    //  Set createdBy from profile
     const announcementWithCreator = {
       ...newAnnouncement,
       createdBy: employeeId,

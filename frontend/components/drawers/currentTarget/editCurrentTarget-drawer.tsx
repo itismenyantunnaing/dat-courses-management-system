@@ -18,6 +18,7 @@ import {
 } from "@/components/drawers/currentTarget/currentTargetForm"
 import type { EmployeeJapaneseLevel } from "@/types/current_target"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 interface EditCurrentTargetDrawerProps {
   open: boolean
@@ -184,7 +185,7 @@ export function EditCurrentTargetDrawer({
       }
 
       const result = await edit_EmployeeJapaneseLevel(profile.id, requestData)
-      alert(result)
+      toast.info(result)
 
       onOpenChange(false)
       onSuccess?.()

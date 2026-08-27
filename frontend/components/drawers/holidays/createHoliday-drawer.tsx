@@ -18,6 +18,7 @@ import { mainStore } from "@/store/mainStore"
 import { Holiday } from "@/types/holiday"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {  Cancel01Icon } from "@hugeicons/core-free-icons"
+import { toast } from "sonner"
 
 interface CreateHolidayDrawerProps {
   open: boolean
@@ -61,10 +62,10 @@ export function CreateHolidayDrawer({
         result &&
         (result.includes("already exists") || result.includes("Failed"))
       ) {
-        alert(result)
+        toast.warning(result)
         return
       } else {
-        alert(result)
+        toast.success(result)
       }
 
       // Reset for

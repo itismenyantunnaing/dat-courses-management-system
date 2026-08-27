@@ -17,6 +17,7 @@ import {
   CurrentTargetFormData,
 } from "@/components/drawers/currentTarget/currentTargetForm"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 interface CreateCurrentTargetDrawerProps {
   open: boolean
@@ -132,7 +133,7 @@ export function CreateCurrentTargetDrawer({
       }
 
       const result = await add_EmployeeJapaneseLevel(requestData)
-      alert(result)
+      toast.info(result)
 
       // Reset form
       setFormData(defaultFormData)

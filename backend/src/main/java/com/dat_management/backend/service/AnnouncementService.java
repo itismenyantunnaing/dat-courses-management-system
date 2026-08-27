@@ -72,7 +72,7 @@ if (employee.getTeam() != null &&
         announcement.setTitle(dto.getTitle());
         announcement.setText(dto.getText());
         announcement.setCategory(AnnouncementCategory.valueOf(dto.getCategory()));
-        announcement.setCreatedBy(dto.getCreatedBy());  // ✅ Just set the string
+        announcement.setCreatedBy(dto.getCreatedBy());  //  Just set the string
         Announcement saved = announcementRepository.save(announcement);
         return convertToDto(saved);
     }

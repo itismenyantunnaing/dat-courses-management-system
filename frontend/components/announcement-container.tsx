@@ -194,7 +194,22 @@ export function AnnouncementContainer() {
   } = mainStore()
 
   const userRole = profile?.role?.toLowerCase() || ""
-  const canEdit = userRole !== "learner"
+  const isAdmin = userRole === "admin"
+  const isApprover = userRole === "approver"
+  const isLearner = userRole === "learner"
+
+  // Permissions based on role and creator
+  const canCreate = isAdmin || isApprover
+
+  // Check if user can edit this specific announcement
+  const canEdit = (announcement: AnnouncementDto) => {
+    return (isAdmin || isApprover) && announcement.createdBy === profile?.name
+  }
+
+  // Check if user can delete this specific announcement
+  const canDelete = (announcement: AnnouncementDto) => {
+    return (isAdmin || isApprover) && announcement.createdBy === profile?.name
+  }
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(
@@ -680,7 +695,7 @@ export function AnnouncementContainer() {
                   </DropdownMenu>
                 )}
 
-                {canEdit && (
+                {canCreate && (
                   <Button
                     variant="default"
                     onClick={handleNewAnnouncement}
@@ -745,12 +760,13 @@ export function AnnouncementContainer() {
                             }
                             onDelete={handleDeleteClick}
                             onEdit={
-                              canEdit
+                              canEdit(announcement)
                                 ? (e) => handleEditClick(e, announcement)
                                 : undefined
                             }
                             formatTime={formatTime}
-                            canEdit={canEdit}
+                            canEdit={canEdit(announcement)}
+                            canDelete={canDelete(announcement)}
                           />
                         )
                       )}
@@ -838,7 +854,7 @@ export function AnnouncementContainer() {
                                 </TableCell>
                                 <TableCell className="text-right whitespace-nowrap">
                                   <div className="flex items-center justify-end gap-1">
-                                    {canEdit && (
+                                    {canEdit(announcement) && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -855,21 +871,23 @@ export function AnnouncementContainer() {
                                         />
                                       </Button>
                                     )}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleDeleteClick(e, announcement.id!)
-                                      }}
-                                    >
-                                      <HugeiconsIcon
-                                        icon={Delete02Icon}
-                                        strokeWidth={2}
-                                        className="h-4 w-4"
-                                      />
-                                    </Button>
+                                    {canDelete(announcement) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleDeleteClick(e, announcement.id!)
+                                        }}
+                                      >
+                                        <HugeiconsIcon
+                                          icon={Delete02Icon}
+                                          strokeWidth={2}
+                                          className="h-4 w-4"
+                                        />
+                                      </Button>
+                                    )}
                                   </div>
                                 </TableCell>
                               </TableRow>
@@ -1009,7 +1027,7 @@ export function AnnouncementContainer() {
                         Clear Filters
                       </Button>
                     )}
-                    {canEdit && !searchTerm && !hasActiveFilters && (
+                    {canCreate && !searchTerm && !hasActiveFilters && (
                       <Button
                         variant="default"
                         onClick={handleNewAnnouncement}
@@ -1095,7 +1113,7 @@ export function AnnouncementContainer() {
       </Dialog>
 
       {/* New Announcement Dialog */}
-      {canEdit && (
+      {canCreate && (
         <NewAnnouncementDialog
           open={newAnnouncementDialogOpen}
           onOpenChange={setNewAnnouncementDialogOpen}
@@ -1105,7 +1123,7 @@ export function AnnouncementContainer() {
       )}
 
       {/* Edit Announcement Dialog */}
-      {canEdit && announcementToEdit && (
+      {announcementToEdit && canEdit(announcementToEdit) && (
         <EditAnnouncementDialog
           open={editAnnouncementDialogOpen}
           onOpenChange={setEditAnnouncementDialogOpen}

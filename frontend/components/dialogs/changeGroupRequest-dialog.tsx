@@ -50,6 +50,8 @@ import {
 import { cn, resolveUploadUrl } from "@/lib/utils"
 import { Course } from "@/types/course"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
+import { dialog } from "./import-export-confirm-dialog"
 
 interface EnrolledEmployee {
   id: number
@@ -138,9 +140,9 @@ export function ChangeGroupRequestDialogs({
 }: ChangeGroupDialogsProps) {
   const [selectedRequestGroupId, setSelectedRequestGroupId] = useState<string>("")
 
-  const handleRequest = () => {
+  const handleRequest = async () => {
     if (!selectedRequestGroupId) {
-      alert("Please select a group to request")
+      toast.warning("Please select a group to request")
       return
     }
 
@@ -149,7 +151,14 @@ export function ChangeGroupRequestDialogs({
     )
     const groupName = selectedGroup?.name || `Group ${selectedRequestGroupId}`
 
-    if (!confirm(`Are you sure you want to request to change to "${groupName}"?`)) {
+    const confirmed = await dialog.confirm(
+      "Confirm Group Change Request",
+      `Are you sure you want to request to change to "${groupName}"?`,
+      "Yes, Request Change",
+      "Cancel"
+    )
+
+    if (!confirmed) {
       return
     }
 
@@ -274,19 +283,21 @@ export function ChangeGroupRequestDialogs({
       }
 
       let message = ""
-      if (successEmployees.length > 0) {
-        message += `✅ Successfully moved ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
-      }
-      if (failedEmployees.length > 0) {
-        message += `❌ Failed to move ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
-      }
+
 
       if (failedEmployees.length === 0) {
-        alert(`✅ All ${successEmployees.length} employee(s) moved successfully!`)
+        toast.success(` All ${successEmployees.length} employee(s) moved successfully!`)
       } else if (successEmployees.length === 0) {
-        alert(`❌ Failed to move all employees. Please try again.`)
+        toast.error(`❌ Failed to move all employees. Please try again.`)
       } else {
-        alert(message)
+        if (successEmployees.length > 0) {
+          message += ` Successfully moved ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
+          toast.success(message)
+        }
+        if (failedEmployees.length > 0) {
+          message += `❌ Failed to move ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
+          toast.error(message)
+        }
       }
 
       if (course.id) {
@@ -303,7 +314,7 @@ export function ChangeGroupRequestDialogs({
 
     } catch (error: any) {
       console.error('❌ Error in group change process:', error)
-      alert(`❌ Failed to change groups: ${error.message || 'Unknown error'}`)
+      toast.error(`❌ Failed to change groups: ${error.message || 'Unknown error'}`)
     } finally {
       setIsSubmitting(false)
       setProgress({ current: 0, total: 0 })

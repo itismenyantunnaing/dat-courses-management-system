@@ -26,7 +26,7 @@ interface EditAnnouncementDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   announcement: AnnouncementDto
-  onSubmit: (id: number, title: string, category: AnnouncementCategory, text: string) => Promise<void>  // ✅ Removed createdBy
+  onSubmit: (id: number, title: string, category: AnnouncementCategory, text: string) => Promise<void>  //  Removed createdBy
   isLoading: boolean
 }
 

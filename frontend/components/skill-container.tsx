@@ -215,6 +215,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
   const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   const {
+    profile,
     fetch_EmployeeData,
     employee_data,
     fetch_managementScoreData,
@@ -389,12 +390,46 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     loadData()
   }, [])
 
-  // Employee data
+  // Employee data with role-based filtering
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
-      setEmployees(employee_data)
+      let filteredData = [...employee_data]
+
+      const userRole = profile?.role?.toLowerCase() || "admin"
+
+      if (userRole === "approver") {
+        const userTeam = profile?.team
+        if (userTeam) {
+          filteredData = filteredData.filter(
+            (employee: Employee) => employee.team === userTeam
+          )
+        } else {
+          filteredData = []
+        }
+      } else if (userRole === "department_head") {
+        const userDepartment = profile?.deptDat
+        if (userDepartment) {
+          filteredData = filteredData.filter(
+            (employee: Employee) => employee.dept_dat === userDepartment
+          )
+        } else {
+          filteredData = []
+        }
+      } else if (userRole === "division_head") {
+        const userDivision = profile?.divName
+        if (userDivision) {
+          filteredData = filteredData.filter(
+            (employee: Employee) => employee.div_name === userDivision
+          )
+        } else {
+          filteredData = []
+        }
+      }
+      // Admin: no filter applied
+
+      setEmployees(filteredData)
     }
-  }, [employee_data])
+  }, [employee_data, profile])
 
   // Build Japanese level map for quick lookup: employee_id -> jlptHighestLevel
   useEffect(() => {
@@ -526,40 +561,40 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       category: string
       sub_category: string
     }[] = []
-    ;(skill_headers || []).forEach((category: SkillCategory) => {
-      // API returns: categoryName, skillSubCategories
-      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-        // API returns: subCategoryName, skills
-        subCategory.skills?.forEach((skill: Skill) => {
-          // API returns: id, skillName
-          skills.push({
-            id: skill.id,
-            name: skill.skillName,
-            category: category.categoryName,
-            sub_category: subCategory.subCategoryName,
+      ; (skill_headers || []).forEach((category: SkillCategory) => {
+        // API returns: categoryName, skillSubCategories
+        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+          // API returns: subCategoryName, skills
+          subCategory.skills?.forEach((skill: Skill) => {
+            // API returns: id, skillName
+            skills.push({
+              id: skill.id,
+              name: skill.skillName,
+              category: category.categoryName,
+              sub_category: subCategory.subCategoryName,
+            })
           })
         })
       })
-    })
     return skills
   }, [skill_headers])
 
   // Group skills by category
   const dynamicSkillsByCategory = useMemo(() => {
     const grouped: Record<string, GroupedSkill[]> = {}
-    ;(skill_headers || []).forEach((category: SkillCategory) => {
-      const categoryName = category.categoryName
-      grouped[categoryName] = []
-      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-        subCategory.skills?.forEach((skill: Skill) => {
-          grouped[categoryName].push({
-            skill_id: skill.id,
-            skill_name: skill.skillName,
-            sub_category_name: subCategory.subCategoryName,
+      ; (skill_headers || []).forEach((category: SkillCategory) => {
+        const categoryName = category.categoryName
+        grouped[categoryName] = []
+        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+          subCategory.skills?.forEach((skill: Skill) => {
+            grouped[categoryName].push({
+              skill_id: skill.id,
+              skill_name: skill.skillName,
+              sub_category_name: subCategory.subCategoryName,
+            })
           })
         })
       })
-    })
     return grouped
   }, [skill_headers])
 
@@ -968,8 +1003,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           colSpan={
                             devCap_headers?.length !== 0
                               ? devCap_headers?.length &&
-                                languageSkillHeaders.length +
-                                  devCap_headers.length * 2
+                              languageSkillHeaders.length +
+                              devCap_headers.length * 2
                               : languageSkillHeaders.length
                           }
                           className="cursor-pointer align-middle whitespace-nowrap transition-colors hover:bg-muted/70"
@@ -1661,7 +1696,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         }}
                         className={
                           currentPage === totalPages ||
-                          filteredEmployees.length === 0
+                            filteredEmployees.length === 0
                             ? "pointer-events-none opacity-50"
                             : ""
                         }

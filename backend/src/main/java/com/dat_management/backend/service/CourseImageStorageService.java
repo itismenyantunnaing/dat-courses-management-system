@@ -34,9 +34,9 @@ public class CourseImageStorageService {
             if (!Files.exists(uploadPath)) {
                 System.out.println("📁 Directory does not exist, creating...");
                 Files.createDirectories(uploadPath);
-                System.out.println("✅ Created course upload directory: " + uploadPath);
+                System.out.println(" Created course upload directory: " + uploadPath);
             } else {
-                System.out.println("✅ Directory exists: " + uploadPath);
+                System.out.println(" Directory exists: " + uploadPath);
             }
         } catch (Exception e) {
             System.err.println("❌ Failed to create directory: " + e.getMessage());
@@ -72,11 +72,11 @@ public class CourseImageStorageService {
         try {
             System.out.println("💾 Saving course image to: " + filePath.toAbsolutePath());
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("✅ Course image saved successfully!");
+            System.out.println(" Course image saved successfully!");
 
             // Verify file exists
             if (Files.exists(filePath)) {
-                System.out.println("✅ Verified: File exists at: " + filePath.toAbsolutePath());
+                System.out.println(" Verified: File exists at: " + filePath.toAbsolutePath());
             } else {
                 System.err.println("❌ Warning: File not found after save!");
             }
@@ -95,7 +95,7 @@ public class CourseImageStorageService {
             Path path = uploadPath.resolve(filename);
             if (Files.exists(path)) {
                 Files.delete(path);
-                System.out.println("✅ Course image deleted: " + filename);
+                System.out.println(" Course image deleted: " + filename);
             }
         }
     }

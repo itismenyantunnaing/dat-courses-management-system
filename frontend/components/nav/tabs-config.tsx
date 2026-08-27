@@ -1,3 +1,4 @@
+// lib/tabs-config.ts
 import {
   UserGroupIcon,
   CodeIcon,
@@ -47,6 +48,7 @@ import {
 } from "@/lib/export/Export-currentTargetData"
 import type { Employee } from "@/types/employee"
 import { excelExportStore } from "@/store/excelExportStore"
+import { dialog } from "@/components/dialogs/import-export-confirm-dialog"
 
 // Helper: Normalize string for comparison
 function normalizeString(str: any): string {
@@ -165,6 +167,7 @@ function filterExistingSkills(
 
   return filteredCategories
 }
+
 export const allTabs = [
   {
     id: "employees",
@@ -183,9 +186,11 @@ export const allTabs = [
         // Get current store data
         const store = (window as any).mainStore?.getState()
         if (!store || !store.bulkCreate_EmployeeData) {
-          throw new Error(
+          await dialog.error(
+            "System Error",
             "System store not initialized. Please refresh and try again."
           )
+          return { success: false, message: "Store not initialized" }
         }
 
         // ===== FETCH LATEST EMPLOYEE DATA FIRST =====
@@ -199,7 +204,10 @@ export const allTabs = [
         const employeeData = await extractEmployeeDataFromExcel(file)
 
         if (employeeData.length === 0) {
-          alert("No employee data found in the Excel file.")
+          await dialog.warning(
+            "No Data Found",
+            "No employee data found in the Excel file."
+          )
           return { success: false, message: "No data found" }
         }
 
@@ -255,7 +263,10 @@ export const allTabs = [
         const { valid, invalid } = validateEmployeeData(employeeData)
 
         if (valid.length === 0) {
-          alert("No valid employee records found.")
+          await dialog.warning(
+            "No Valid Records",
+            "No valid employee records found."
+          )
           return { success: false, message: "No valid data" }
         }
 
@@ -263,7 +274,7 @@ export const allTabs = [
         let confirmMsg = `📊 Import Summary\n\n`
         confirmMsg += `📄 ${employeeData.length} rows in Excel\n`
         confirmMsg += `👥 ${currentEmployees.length} employees in system\n`
-        confirmMsg += `✅ ${valid.length} valid records\n`
+        confirmMsg += ` ${valid.length} valid records\n`
 
         if (invalid.length > 0) {
           confirmMsg += `⚠️ ${invalid.length} invalid (skipped)\n`
@@ -289,7 +300,14 @@ export const allTabs = [
           confirmMsg += `\n⚠️ ${employeesToDelete.length} employees will be DELETED`
         }
 
-        if (!confirm(confirmMsg)) {
+        const confirmed = await dialog.confirm(
+          "Confirm Import",
+          confirmMsg,
+          "Import",
+          "Cancel"
+        )
+
+        if (!confirmed) {
           return { success: false, message: "Import cancelled" }
         }
 
@@ -345,7 +363,8 @@ export const allTabs = [
           importedCount = employeeDtos.length
         } catch (error) {
           console.error("❌ Bulk import failed:", error)
-          alert(
+          await dialog.warning(
+            "Bulk Import Failed",
             `Bulk import of ${employeeDtos.length} employees failed. Trying one by one...`
           )
 
@@ -369,7 +388,7 @@ export const allTabs = [
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
 
         // ===== FINAL CONCISE SUMMARY =====
-        let resultMsg = `✅ Import complete (${totalTime}s)\n\n`
+        let resultMsg = ` Import complete (${totalTime}s)\n\n`
         resultMsg += `📥 Imported: ${importedCount}/${valid.length}\n`
         resultMsg += `🗑️ Deleted: ${deletedCount}\n`
         resultMsg += `🛡️ Protected: ${systemEmployeesProtected.length} system account(s)\n`
@@ -388,7 +407,7 @@ export const allTabs = [
           }
         }
 
-        alert(resultMsg)
+        await dialog.success("Import Complete", resultMsg)
 
         return {
           success: importedCount > 0,
@@ -407,7 +426,8 @@ export const allTabs = [
         }
       } catch (error) {
         console.error("Employee import error:", error)
-        alert(
+        await dialog.error(
+          "Import Failed",
           `❌ Import failed: ${error instanceof Error ? error.message : "Unknown error"}`
         )
         throw error
@@ -418,7 +438,7 @@ export const allTabs = [
       const { employee_data } = store || { employee_data: [] }
 
       if (!employee_data || employee_data.length === 0) {
-        alert("No employee data to export")
+        await dialog.warning("No Data", "No employee data to export")
         return
       }
 
@@ -432,11 +452,15 @@ export const allTabs = [
         } else if (format === "pdf") {
           await exportEmployeesToPDF(employee_data)
         } else {
-          alert(`Export format "${format}" is not supported for employees.`)
+          await dialog.warning(
+            "Unsupported Format",
+            `Export format "${format}" is not supported for employees.`
+          )
         }
       } catch (error) {
         console.error("❌ Export failed:", error)
-        alert(
+        await dialog.error(
+          "Export Failed",
           `Failed to export employees data: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       }
@@ -449,7 +473,8 @@ export const allTabs = [
         await store.delete_EmployeeData(employeeIds)
       } catch (error) {
         console.error("❌ Error deleting employees:", error)
-        alert(
+        await dialog.error(
+          "Delete Failed",
           `Failed to delete employees: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       }
@@ -471,9 +496,11 @@ export const allTabs = [
         const store = (window as any).mainStore?.getState()
 
         if (!store) {
-          throw new Error(
+          await dialog.error(
+            "System Error",
             "System store not initialized. Please refresh and try again."
           )
+          return { success: false, message: "Store not initialized" }
         }
 
         // ===== ADD THESE COUNTERS =====
@@ -508,13 +535,19 @@ export const allTabs = [
 
         // ===== SEE FULL HEADERS =====
         if (!extractionResult.success) {
-          alert(`❌ Extraction failed: ${extractionResult.error}`)
+          await dialog.error(
+            "Extraction Failed",
+            `❌ Extraction failed: ${extractionResult.error}`
+          )
           return { success: false, message: extractionResult.error }
         }
 
         const employees = extractionResult.employees
         if (employees.length === 0) {
-          alert("⚠️ No data found in the Excel file.")
+          await dialog.warning(
+            "No Data Found",
+            "⚠️ No data found in the Excel file."
+          )
           return { success: false, message: "No data found" }
         }
 
@@ -1398,7 +1431,7 @@ export const allTabs = [
           if (skippedEmployees.size > 0) {
             msg += ` ${skippedEmployees.size} employees were skipped because they don't exist in the system.`
           }
-          alert(msg)
+          await dialog.warning("No Data to Import", msg)
           return { success: false, message: "No data to import" }
         }
 
@@ -1424,10 +1457,16 @@ export const allTabs = [
 
         confirmMsg += `\n\nContinue?`
 
-        const shouldProceed = confirm(confirmMsg)
+        const shouldProceed = await dialog.confirm(
+          "Confirm Import",
+          confirmMsg,
+          "Import",
+          "Cancel"
+        )
 
-        if (!shouldProceed)
+        if (!shouldProceed) {
           return { success: false, message: "Import cancelled" }
+        }
 
         // ===== PERFORM OPERATIONS =====
         let successCount = 0
@@ -1543,12 +1582,12 @@ export const allTabs = [
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
 
         // ===== FINAL SUMMARY (skills/management/language/development/technical only) =====
-        let finalMsg = `✅ Import completed in ${totalTime}s!\n\n`
+        let finalMsg = ` Import completed in ${totalTime}s!\n\n`
         finalMsg += `📊 ${successCount} skill records processed\n`
         if (departmentPendingUpdates.length > 0) {
           finalMsg += `⏳ ${departmentPendingUpdates.length} department update(s) pending (employees not in system)\n`
         }
-        alert(finalMsg)
+        await dialog.success("Import Complete", finalMsg)
 
         // ===== 🆕 DEPARTMENT / RANK-POSITION / CORE PERSONNEL / JAPAN TRIP UPDATES (BULK) =====
         // Runs only AFTER everything above has completed and the main
@@ -1593,7 +1632,7 @@ export const allTabs = [
           }
 
           let deptMsg = `🏢 Department updates completed!\n\n`
-          deptMsg += `✅ Successful: ${departmentUpdatesCount}\n`
+          deptMsg += ` Successful: ${departmentUpdatesCount}\n`
           if (departmentPendingUpdates.length > 0) {
             deptMsg += `⏳ Pending (employee not in system): ${departmentPendingUpdates.length}\n`
           }
@@ -1606,7 +1645,7 @@ export const allTabs = [
               deptMsg += `   ... and ${departmentFailedUpdates.length - 5} more\n`
             }
           }
-          alert(deptMsg)
+          await dialog.info("Department Updates", deptMsg)
         }
 
         return {
@@ -1615,7 +1654,8 @@ export const allTabs = [
         }
       } catch (error) {
         console.error("❌ Skills import error:", error)
-        alert(
+        await dialog.error(
+          "Import Failed",
           `❌ Failed to import: ${error instanceof Error ? error.message : "Unknown error"}`
         )
         return {
@@ -1628,7 +1668,10 @@ export const allTabs = [
       if ((format === "excel" || format === "xlsx") && language) {
         excelExportStore.getState().exportSkillset(language)
       } else {
-        alert(`Export format "${format}" is not supported for skills data.`)
+        await dialog.warning(
+          "Unsupported Format",
+          `Export format "${format}" is not supported for skills data.`
+        )
       }
     },
   },
@@ -1651,7 +1694,8 @@ export const allTabs = [
         const extractedData = await extractCurrentTargetDataFromExcel(file)
 
         if (!extractedData.success || extractedData.data.length === 0) {
-          alert(
+          await dialog.warning(
+            "No Data Found",
             "No current target data found in the Excel file. Please check the data."
           )
           return {
@@ -1663,9 +1707,11 @@ export const allTabs = [
         // Access store via window
         const store = (window as any).mainStore?.getState()
         if (!store || !store.bulkCreate_CurrentTargetData) {
-          throw new Error(
+          await dialog.error(
+            "System Error",
             "System store not initialized. Please refresh and try again."
           )
+          return { success: false, message: "Store not initialized" }
         }
 
         // ===== FETCH EMPLOYEE DATA FIRST =====
@@ -1748,7 +1794,7 @@ export const allTabs = [
           )
 
           let message = `⚠️ ${invalid.length} rows have issues:\n\n`
-          message += `✅ Valid rows: ${valid.length}\n`
+          message += ` Valid rows: ${valid.length}\n`
           message += `❌ Invalid rows: ${invalid.length}\n\n`
 
           if (missingEmployeeErrors.length > 0) {
@@ -1764,14 +1810,23 @@ export const allTabs = [
 
           message += `Continue with ${valid.length} valid rows?`
 
-          const shouldContinue = confirm(message)
+          const shouldContinue = await dialog.confirm(
+            "Validation Issues",
+            message,
+            "Continue",
+            "Cancel"
+          )
+
           if (!shouldContinue) {
             return { success: false, message: "Import cancelled by user" }
           }
         }
 
         if (valid.length === 0) {
-          alert("No valid current target records found. Please check the data.")
+          await dialog.warning(
+            "No Valid Records",
+            "No valid current target records found. Please check the data."
+          )
           return { success: false, message: "No valid data" }
         }
 
@@ -1806,14 +1861,16 @@ export const allTabs = [
 
           const skippedCount = apiData.length - filteredApiData.length
           if (skippedCount > 0) {
-            alert(
+            await dialog.info(
+              "Skipped Records",
               `ℹ️ ${skippedCount} records were skipped because the employee IDs don't exist in the system.\n\nContinuing with ${filteredApiData.length} records.`
             )
           }
         }
 
         if (filteredApiData.length === 0) {
-          alert(
+          await dialog.error(
+            "No Valid Records",
             "No valid records to import. All records have invalid employee IDs."
           )
           return { success: false, message: "No valid records to import" }
@@ -1928,7 +1985,13 @@ export const allTabs = [
           confirmMessage += `📊 Records to import: ${filteredApiData.length}\n\n`
           confirmMessage += `Continue?`
 
-          const shouldProceed = confirm(confirmMessage)
+          const shouldProceed = await dialog.confirm(
+            "Confirm Target Dates",
+            confirmMessage,
+            "Proceed",
+            "Cancel"
+          )
+
           if (!shouldProceed) {
             return { success: false, message: "Import cancelled by user" }
           }
@@ -1952,10 +2015,11 @@ export const allTabs = [
               errorMessage
             )
 
-            const continueImport = confirm(
-              `⚠️ Failed to update/create global target dates:\n\n` +
-                `${errorMessage}\n\n` +
-                `Do you want to continue with the main data import?`
+            const continueImport = await dialog.confirm(
+              "Target Dates Failed",
+              `⚠️ Failed to update/create global target dates:\n\n${errorMessage}\n\nDo you want to continue with the main data import?`,
+              "Continue Import",
+              "Cancel"
             )
 
             if (!continueImport) {
@@ -1967,40 +2031,6 @@ export const allTabs = [
           }
         }
 
-        // // ===== IMPORT CURRENT TARGET DATA (the main data) =====
-        // const BATCH_SIZE = 25
-        // let importedCount = 0
-        // const totalBatches = Math.ceil(filteredApiData.length / BATCH_SIZE)
-
-        // for (let i = 0; i < filteredApiData.length; i += BATCH_SIZE) {
-        //   const batch = filteredApiData.slice(i, i + BATCH_SIZE)
-        //   const batchNumber = Math.floor(i / BATCH_SIZE) + 1
-        //   const startIndex = i
-
-        //   try {
-        //     await store.bulkCreate_CurrentTargetData(batch)
-        //     importedCount += batch.length
-        //   } catch (error) {
-        //     console.warn(
-        //       `⚠️ Batch ${batchNumber} failed as batch, retrying individually...`
-        //     )
-
-        //     let successCount = 0
-        //     for (let j = 0; j < batch.length; j++) {
-        //       const recordIndex = startIndex + j
-        //       try {
-        //         await store.bulkCreate_CurrentTargetData([batch[j]])
-        //         importedCount++
-        //         successCount++
-        //       } catch (retryError) {
-        //         console.debug(
-        //           `   ⚠️ Record ${recordIndex + 1} (${batch[j].employeeId || "NO_ID"}) failed`
-        //         )
-        //       }
-        //     }
-        //   }
-        // }
-
         // ===== IMPORT CURRENT TARGET DATA (all at once - NO BATCHING) =====
         let importedCount = 0
 
@@ -2010,7 +2040,8 @@ export const allTabs = [
           importedCount = filteredApiData.length
         } catch (error) {
           console.error("❌ Bulk import failed:", error)
-          alert(
+          await dialog.warning(
+            "Bulk Import Failed",
             `Bulk import of ${filteredApiData.length} records failed. Trying one by one...`
           )
 
@@ -2031,13 +2062,13 @@ export const allTabs = [
         const totalTime = ((performance.now() - startTime) / 1000).toFixed(1)
 
         let targetDatesStatus = "⚠️ Not set"
-        if (targetDatesCreated) targetDatesStatus = "✅ Created"
-        else if (targetDatesUpdated) targetDatesStatus = "✅ Updated"
+        if (targetDatesCreated) targetDatesStatus = " Created"
+        else if (targetDatesUpdated) targetDatesStatus = " Updated"
         else if (targetDatesSkipped)
           targetDatesStatus = "⏭️ Skipped (no dates found)"
 
         const finalMessage =
-          `✅ Import completed in ${totalTime}s!\n\n` +
+          ` Import completed in ${totalTime}s!\n\n` +
           `📊 Current Target Data: ${importedCount} records imported\n` +
           `📅 Global Target Dates: ${targetDatesStatus}\n\n` +
           `📅 Dates applied:\n` +
@@ -2045,12 +2076,13 @@ export const allTabs = [
           `  • Target 1: ${target1Date || "Not set"}\n` +
           `  • Target 2: ${target2Date || "Not set"}`
 
-        alert(finalMessage)
+        await dialog.success("Import Complete", finalMessage)
 
         return { success: true, message: finalMessage }
       } catch (error) {
         console.error("❌ Import failed:", error)
-        alert(
+        await dialog.error(
+          "Import Failed",
           `❌ Import failed: ${error instanceof Error ? error.message : "Unknown error"}`
         )
         return {
@@ -2076,7 +2108,7 @@ export const allTabs = [
         !employeeJapaneseLevel_Data ||
         employeeJapaneseLevel_Data.length === 0
       ) {
-        alert("No current target data to export")
+        await dialog.warning("No Data", "No current target data to export")
         return
       }
 
@@ -2087,7 +2119,7 @@ export const allTabs = [
             employee_data,
             japaneseTargetDates_Data,
             {
-              templatePath: "/templates/current_target_template.xlsx", // 👈 Add this
+              templatePath: "/templates/current_target_template.xlsx",
             }
           )
         } else if (format === "csv") {
@@ -2103,19 +2135,18 @@ export const allTabs = [
             japaneseTargetDates_Data
           )
         } else {
-          alert(
+          await dialog.warning(
+            "Unsupported Format",
             `Export format "${format}" is not supported for current target data.`
           )
         }
       } catch (error) {
         console.error("❌ Export failed:", error)
-        alert(
+        await dialog.error(
+          "Export Failed",
           `Failed to export current target data: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       }
-    },
-    onDelete: (selectedItems: string[]) => {
-      console.log("Deleting current target data", selectedItems)
     },
   },
   {
@@ -2133,15 +2164,21 @@ export const allTabs = [
         const holidayData = await extractHolidayDataFromExcel(file)
 
         if (holidayData.length === 0) {
-          alert("No valid holidays found in the Excel file.")
+          await dialog.warning(
+            "No Data Found",
+            "No valid holidays found in the Excel file."
+          )
           return { success: false, message: "No data found" }
         }
 
-        if (
-          !confirm(
-            `You are about to import ${holidayData.length} holidays into the database. Continue?`
-          )
-        ) {
+        const confirmed = await dialog.confirm(
+          "Confirm Import",
+          `You are about to import ${holidayData.length} holidays into the database. Continue?`,
+          "Import",
+          "Cancel"
+        )
+
+        if (!confirmed) {
           return { success: false, message: "Import cancelled by user" }
         }
 
@@ -2153,9 +2190,11 @@ export const allTabs = [
         // Access store via window
         const store = (window as any).mainStore?.getState()
         if (!store || !store.bulkCreate_HolidayData) {
-          throw new Error(
+          await dialog.error(
+            "System Error",
             "System store not initialized. Please refresh and try again."
           )
+          return { success: false, message: "Store not initialized" }
         }
 
         await store.bulkCreate_HolidayData(holidayDtos)
@@ -2174,7 +2213,7 @@ export const allTabs = [
       const { holiday_data } = store || { holiday_data: [] }
 
       if (!holiday_data || holiday_data.length === 0) {
-        alert("No holiday data to export")
+        await dialog.warning("No Data", "No holiday data to export")
         return
       }
 
@@ -2186,11 +2225,15 @@ export const allTabs = [
         } else if (format === "pdf") {
           await exportHolidaysToPDF(holiday_data)
         } else {
-          alert(`Export format "${format}" is not supported for holidays.`)
+          await dialog.warning(
+            "Unsupported Format",
+            `Export format "${format}" is not supported for holidays.`
+          )
         }
       } catch (error) {
         console.error("❌ Export failed:", error)
-        alert(
+        await dialog.error(
+          "Export Failed",
           `Failed to export holidays data: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       }
@@ -2211,7 +2254,8 @@ export const allTabs = [
         await store.delete_HolidayData(holidayIds)
       } catch (error) {
         console.error("❌ Error deleting holidays:", error)
-        alert(
+        await dialog.error(
+          "Delete Failed",
           `Failed to delete holidays: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       }
@@ -2238,12 +2282,15 @@ export const allTabs = [
     onExport: async (format: string, courseId?: number) => {
       // Only Excel is supported
       if (format !== "excel" && format !== "xlsx") {
-        alert("Only Excel export is supported for Self-Study Progress report.")
+        await dialog.warning(
+          "Unsupported Format",
+          "Only Excel export is supported for Self-Study Progress report."
+        )
         return
       }
 
       if (!courseId) {
-        alert("Please select a course first.")
+        await dialog.warning("No Course Selected", "Please select a course first.")
         return
       }
 
@@ -2262,7 +2309,10 @@ export const allTabs = [
       const store = (window as any).mainStore?.getState()
 
       if (!store) {
-        alert("System store not initialized. Please refresh and try again.")
+        await dialog.error(
+          "System Error",
+          "System store not initialized. Please refresh and try again."
+        )
         return
       }
 
@@ -2292,7 +2342,8 @@ export const allTabs = [
           feedbackData = freshStore?.feedback || []
         } catch (error) {
           console.error("❌ Error fetching feedback data:", error)
-          alert(
+          await dialog.error(
+            "Fetch Failed",
             `Failed to fetch feedback data: ${error instanceof Error ? error.message : "Unknown error"}`
           )
           return
@@ -2301,7 +2352,7 @@ export const allTabs = [
 
       // Check if we have data to export
       if (!feedbackData || feedbackData.length === 0) {
-        alert("No feedback data to export")
+        await dialog.warning("No Data", "No feedback data to export")
         return
       }
 
@@ -2324,15 +2375,16 @@ export const allTabs = [
         } else if (format === "all") {
           await exportFilteredFeedback(feedbackData, { format: "all" })
         } else {
-          alert(`Export format "${format}" is not supported for feedback.`)
+          await dialog.warning(
+            "Unsupported Format",
+            `Export format "${format}" is not supported for feedback.`
+          )
           return
         }
-
-        // Optional: Show success message
-        console.log(`✅ Feedback exported successfully as ${format}`)
       } catch (error) {
         console.error("❌ Export failed:", error)
-        alert(
+        await dialog.error(
+          "Export Failed",
           `Failed to export feedback data: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       }

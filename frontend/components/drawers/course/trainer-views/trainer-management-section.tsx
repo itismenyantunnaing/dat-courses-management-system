@@ -48,6 +48,7 @@ import {
 } from "@/types/course"
 import { cn } from "@/lib/utils"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 const DEFAULT_SESSION_DAYS = [4, 5]
 
@@ -588,7 +589,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       const enrolledCount = getGroupEnrolledCount(groupId)
 
       if (enrolledCount > 0) {
-        alert(`Cannot delete this group because it has ${enrolledCount} enrolled employee(s). Please remove all enrolled employees first.`)
+        toast.warning(`Cannot delete this group because it has ${enrolledCount} enrolled employee(s). Please remove all enrolled employees first.`)
         return
       }
 
@@ -826,7 +827,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
       }
 
       if (group.endDate && nextDate > group.endDate) {
-        alert("Cannot add session: would exceed the group end date")
+        toast.warning("Cannot add session: would exceed the group end date")
         return
       }
 

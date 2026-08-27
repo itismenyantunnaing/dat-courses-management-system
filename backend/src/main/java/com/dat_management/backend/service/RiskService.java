@@ -151,7 +151,7 @@ public class RiskService {
                 if (risk != null) {
                     risks.add(risk);
                     atRiskCount++;
-                    log.info("✅ Enrollment {} is AT RISK ({}: {}%)", 
+                    log.info(" Enrollment {} is AT RISK ({}: {}%)", 
                         enrollment.getId(), risk.issue(), risk.risk());
                 } else {
                     log.info("❌ Enrollment {} is NOT at risk (Attendance >= {}%)", 
@@ -275,7 +275,7 @@ public class RiskService {
             return createRiskDTO(employee, course, "Low attendance", attendancePercentage);
         }
 
-        log.info("✅ Enrollment {} is NOT at risk: {}% attendance (above {}% threshold)", 
+        log.info(" Enrollment {} is NOT at risk: {}% attendance (above {}% threshold)", 
             enrollment.getId(), roundedPercentage, THRESHOLD);
         return null;
     }
@@ -333,7 +333,7 @@ public class RiskService {
                 if (risk != null) {
                     risks.add(risk);
                     atRiskCount++;
-                    log.info("✅ Self-Study Enrollment {} is AT RISK ({}: {}%)", 
+                    log.info(" Self-Study Enrollment {} is AT RISK ({}: {}%)", 
                         enrollment.getId(), risk.issue(), risk.risk());
                 } else {
                     log.info("❌ Self-Study Enrollment {} is NOT at risk (Progress >= {}%)", 
@@ -475,7 +475,7 @@ public class RiskService {
             return createRiskDTO(employee, course, "Low progress", avgCompletionPercentage);
         }
 
-        log.info("✅ Self-Study Enrollment {} is NOT at risk: {}% average completion (above {}% threshold)", 
+        log.info(" Self-Study Enrollment {} is NOT at risk: {}% average completion (above {}% threshold)", 
             enrollment.getId(), roundedPercentage, THRESHOLD);
         return null;
     }

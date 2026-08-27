@@ -1,4 +1,6 @@
 import ExcelJS from "exceljs";
+import { dialog } from "@/components/dialogs/import-export-confirm-dialog"
+import { toast } from "sonner";
 
 const JP_TO_EN_MAP: Record<string, string> = {
   // Name / ID
@@ -328,11 +330,12 @@ export async function extractEmployeesFromExcel(
       const availableSheets = sheetNames.length > 0 ? sheetNames.join(', ') : 'No sheets found';
 
       // Show alert
-      alert(
+      await dialog.error(
+        "Required Sheet Not Found",
         `Required sheet not found!\n\n` +
         `Expected sheet names: ${ALLOWED_SHEET_NAMES.join(', ')}\n\n` +
         `Please ensure your Excel file contains a sheet with one of the expected names and try again.`
-      );
+      )
 
       return {
         success: false,
@@ -394,12 +397,13 @@ export async function extractEmployeesFromExcel(
       const sheetNames = workbook.worksheets.map(ws => ws.name);
       const availableSheets = sheetNames.length > 0 ? sheetNames.join(', ') : 'No sheets found';
 
-      alert(
+      await dialog.error(
+        "Valid Data Sheet Not Found",
         `❌ ERROR: Could not find a valid data sheet!\n\n` +
         `Expected sheet names: ${ALLOWED_SHEET_NAMES.join(', ')}\n\n` +
         `Available sheets: ${availableSheets}\n\n` +
         `Please ensure your Excel file contains a sheet with "Original data" or "元データ" and try again.`
-      );
+      )
 
       return {
         success: false,
@@ -431,10 +435,11 @@ export async function extractEmployeesFromExcel(
     }
 
     if (anchorRow === -1) {
-      alert(
+      await dialog.error(
+        "Missing Required Columns",
         `❌ ERROR: Could not find ID and Name columns!\n\n` +
         `Please ensure your Excel file contains "ID" and "Name" columns in the header row.`
-      );
+      )
       return {
         success: false,
         headers: [],
@@ -591,7 +596,6 @@ export async function extractEmployeesFromExcel(
       }
 
       if (limit && employees.length >= limit) {
-        console.log(`📊 Stopping extraction after ${limit} employees (limit reached)`);
         break;
       }
     }
@@ -604,7 +608,7 @@ export async function extractEmployeesFromExcel(
 
   } catch (err) {
     console.error("Extraction error:", err);
-    alert(
+    toast.error(
       `❌ Extraction failed: ${err instanceof Error ? err.message : "An unexpected parsing error occurred"}`
     );
     return {

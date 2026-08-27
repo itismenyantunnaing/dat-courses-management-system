@@ -97,8 +97,6 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             
             const mergedEnrollments = Array.from(enrollmentMap.values());
             
-            console.log(`📊 Enrollments merged: ${mergedEnrollments.length} total (${enrollmentsData.length} new from group ${groupId})`);
-
             set((state: Course_StoreType) => ({ 
                 ...state, 
                 enrollments: mergedEnrollments,
@@ -164,12 +162,6 @@ export const courseAttendanceStore = (set: StoreSet, get: StoreGet) => ({
             
             const mergedAttendances = Array.from(attendanceMap.values());
             
-            console.log(`📊 Attendance merged: ${mergedAttendances.length} total (${attendanceData.length} new from group ${groupId})`);
-            console.log(`📊 Attendance by group:`, mergedAttendances.reduce((acc: any, att: AttendanceResponse) => {
-                const gId = att.groupId || 'unknown';
-                acc[gId] = (acc[gId] || 0) + 1;
-                return acc;
-            }, {}));
 
             set((state: Course_StoreType) => ({ 
                 ...state, 

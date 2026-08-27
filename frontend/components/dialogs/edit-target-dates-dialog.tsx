@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TargetDates } from "@/types/current_target"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 interface EditTargetDatesDialogProps {
   open: boolean
@@ -61,11 +62,11 @@ export function EditTargetDatesDialog({
         target2Date: formData.target2Date,
         examDate: formData.examDate,
       })
-      alert("✅ Target dates updated successfully!")
+      toast.success(" Target dates updated successfully!")
       onOpenChange(false)
     } catch (error) {
       console.error("Failed to update target dates:", error)
-      alert("Failed to update target dates. Please try again.")
+      toast.error("Failed to update target dates. Please try again.")
     } finally {
       setIsLoading(false)
     }

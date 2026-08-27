@@ -29,6 +29,7 @@ import {
   Search01Icon,
 } from "@hugeicons/core-free-icons"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 interface DictionaryDrawerProps {
   open: boolean
@@ -207,7 +208,7 @@ export function DictionaryDrawer({
       onSuccess?.()
     } catch (error) {
       console.error("Failed to delete dictionary entry:", error)
-      alert(error instanceof Error ? error.message : "Failed to delete entry")
+      toast.error(error instanceof Error ? error.message : "Failed to delete entry")
     } finally {
       setIsDeleting(false)
     }
@@ -251,7 +252,7 @@ export function DictionaryDrawer({
         `Failed to ${editingEntry ? "update" : "create"} dictionary entry:`,
         error
       )
-      alert(error instanceof Error ? error.message : "An error occurred")
+      toast.error(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsSubmitting(false)
     }

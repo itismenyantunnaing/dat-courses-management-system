@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PlusSignIcon } from "@hugeicons/core-free-icons"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 interface AddDivDeptTeamDialogProps {
   open: boolean
@@ -78,12 +79,12 @@ export function AddDivDeptTeamDialog({
 
     // Validate parent selection
     if (itemType === "department" && !selectedDivisionId) {
-      alert("Please select a division first")
+      toast.warning("Please select a division first")
       return
     }
 
     if (itemType === "team" && !selectedDepartmentId) {
-      alert("Please select a department first")
+      toast.warning("Please select a department first")
       return
     }
 
@@ -105,7 +106,7 @@ export function AddDivDeptTeamDialog({
       onOpenChange(false)
     } catch (error) {
       console.error("Error adding item:", error)
-      alert(`Failed to add ${itemType}. Please try again.`)
+      toast.error(`Failed to add ${itemType}. Please try again.`)
     } finally {
       setIsSubmitting(false)
     }

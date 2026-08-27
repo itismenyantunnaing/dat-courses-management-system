@@ -153,7 +153,7 @@ export const courseStore = (set: StoreSet, get: StoreGet) => ({
 
     let calculatedDaysPerSession: number | undefined = course.session_per_days;
 
-    // ✅ IMPROVED: Get category ID from multiple possible sources
+    //  IMPROVED: Get category ID from multiple possible sources
     const categoryId = course.category?.id ||
       course.course_category_id ||
       (course.category as any)?.courseCategoryId ||

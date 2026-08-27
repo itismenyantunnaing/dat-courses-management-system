@@ -16,7 +16,7 @@ export const notificationStore = (set: StoreSet, get: StoreGet): NotificationSto
   isLoading: false,
   isUpdating: false,
 
-  // ✅ NEW: Add WebSocket notification to mainStore
+  //  NEW: Add WebSocket notification to mainStore
   addWebSocketNotification: (wsNotification: any) => {
     const { notifications, unreadCount } = get();
     
@@ -38,7 +38,6 @@ export const notificationStore = (set: StoreSet, get: StoreGet): NotificationSto
         notifications: [dbNotification, ...notifications],
         unreadCount: unreadCount + 1,
       });
-      console.log('✅ Notification synced to mainStore');
       return true;
     }
     return false;

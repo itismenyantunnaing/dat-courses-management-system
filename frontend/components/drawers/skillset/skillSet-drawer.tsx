@@ -20,6 +20,7 @@ import {
   ManagementSkillData,
   TechnicalSkillData,
 } from "./skillsetForm"
+import { toast } from "sonner"
 
 interface SkillsetDrawerProps {
   open: boolean
@@ -271,7 +272,7 @@ export function SkillsetDrawer({
 
   const handleSubmit = async () => {
     if (!employee) {
-      alert("No employee selected")
+      toast.info("No employee selected")
       return
     }
 
@@ -433,12 +434,12 @@ export function SkillsetDrawer({
         fetch_SkillData(),
       ])
 
-      alert("Skillset updated successfully!")
+      toast.success("Skillset updated successfully!")
       onOpenChange(false)
       onSuccess?.()
     } catch (error) {
       console.error("Failed to save skillset:", error)
-      alert("Failed to save skillset. Please try again.")
+      toast.error("Failed to save skillset. Please try again.")
     } finally {
       setIsSubmitting(false)
     }

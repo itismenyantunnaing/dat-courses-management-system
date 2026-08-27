@@ -65,7 +65,7 @@ public Notification send(NotificationType type,
     }
 
     Notification notification = notificationRepository.save(builder.build());
-    log.info("✅ Notification saved with ID: {}", notification.getId());
+    log.info(" Notification saved with ID: {}", notification.getId());
 
     List<Employee> employees = employeeRepository.findAllByIsDeletedFalse();
     log.info("📋 Found {} active employees", employees.size());
@@ -90,7 +90,7 @@ public Notification send(NotificationType type,
             continue;
         }
 
-        log.debug("✅ Creating recipient for employee: {}", employee.getId());
+        log.debug(" Creating recipient for employee: {}", employee.getId());
         
         // Create recipient record
         NotificationRecipient recipient = new NotificationRecipient();
@@ -156,7 +156,7 @@ public Notification send(NotificationType type,
         }
 
         Notification notification = notificationRepository.save(builder.build());
-        log.info("✅ Admin notification saved with ID: {}", notification.getId());
+        log.info(" Admin notification saved with ID: {}", notification.getId());
 
         List<Employee> admins = employeeRepository.findAllByIsDeletedFalse().stream()
                 .filter(this::isAdmin)
@@ -214,7 +214,7 @@ public Notification send(NotificationType type,
         }
 
         Notification notification = notificationRepository.save(builder.build());
-        log.info("✅ Personal notification saved with ID: {} for employee: {}", notification.getId(), employee.getId());
+        log.info(" Personal notification saved with ID: {} for employee: {}", notification.getId(), employee.getId());
 
         // Create recipient record for the specific employee
         NotificationRecipient recipient = new NotificationRecipient();

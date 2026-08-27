@@ -47,6 +47,7 @@ import {
 import { cn, resolveUploadUrl } from "@/lib/utils"
 import { Course } from "@/types/course"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 interface EnrolledEmployee {
   id: number
@@ -201,11 +202,11 @@ export function ChangeGroupDialogs({
       // Loop through each employee and change their group individually
       for (let i = 0; i < selectedEmployeesForChange.length; i++) {
         const employee = selectedEmployeesForChange[i]
-        
-        try {          
+
+        try {
           // Call the individual adminChangeGroup API
           const result = await adminChangeGroup(employee.id, newGroupId)
-          
+
           if (result.success) {
             successEmployees.push(employee.employeeName)
           } else {
@@ -222,19 +223,21 @@ export function ChangeGroupDialogs({
 
       // Show results
       let message = ""
-      if (successEmployees.length > 0) {
-        message += `✅ Successfully moved ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
-      }
-      if (failedEmployees.length > 0) {
-        message += `❌ Failed to move ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
-      }
 
       if (failedEmployees.length === 0) {
-        alert(`✅ All ${successEmployees.length} employee(s) moved successfully!`)
+        toast.success(` All ${successEmployees.length} employee(s) moved successfully!`)
       } else if (successEmployees.length === 0) {
-        alert(`❌ Failed to move all employees. Please try again.`)
+        toast.error(`❌ Failed to move all employees. Please try again.`)
       } else {
-        alert(message)
+        if (successEmployees.length > 0) {
+          message += ` Successfully moved ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
+          toast.success(message)
+        }
+        if (failedEmployees.length > 0) {
+          message += `❌ Failed to move ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
+          toast.error(message)
+        }
+
       }
 
       // Refresh enrollments data
@@ -254,7 +257,7 @@ export function ChangeGroupDialogs({
 
     } catch (error: any) {
       console.error('❌ Error in group change process:', error)
-      alert(`❌ Failed to change groups: ${error.message || 'Unknown error'}`)
+      toast.error(`❌ Failed to change groups: ${error.message || 'Unknown error'}`)
     } finally {
       setIsSubmitting(false)
       setProgress({ current: 0, total: 0 })
@@ -410,7 +413,7 @@ export function ChangeGroupDialogs({
                     className={cn(
                       "w-full",
                       (selectedEmployeesForChange.length === 0 || isSubmitting) &&
-                        "cursor-not-allowed opacity-50"
+                      "cursor-not-allowed opacity-50"
                     )}
                   >
                     <SelectValue
@@ -468,7 +471,7 @@ export function ChangeGroupDialogs({
                             const remaining = capacity - currentCount
                             const totalSelected =
                               selectedEmployeesForChange.length
-                            
+
                             // Check if group is full
                             const isFull = capacity > 0 && remaining < totalSelected
 

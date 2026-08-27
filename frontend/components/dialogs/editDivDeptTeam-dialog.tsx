@@ -138,7 +138,7 @@ export function EditDivDeptTeamDialog({
 
   const handleSubmit = async () => {
     if (!name.trim()) {
-      alert(`${itemType} name is required`)
+      toast.warning(`${itemType} name is required`)
       return
     }
 
@@ -154,13 +154,13 @@ export function EditDivDeptTeamDialog({
 
     // Validate parent selection for department
     if (itemType === "department" && !selectedDivisionId) {
-      alert("Please select a division")
+      toast.warning("Please select a division")
       return
     }
 
     // Validate parent selection for team
     if (itemType === "team" && !selectedDepartmentId) {
-      alert("Please select a department")
+      toast.warning("Please select a department")
       return
     }
 
@@ -184,7 +184,7 @@ export function EditDivDeptTeamDialog({
       onOpenChange(false)
     } catch (error) {
       console.error("Error updating item:", error)
-      alert(`Failed to update ${itemType}. Please try again.`)
+      toast.error(`Failed to update ${itemType}. Please try again.`)
     } finally {
       setIsSubmitting(false)
     }

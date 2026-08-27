@@ -43,6 +43,8 @@ import { format } from "date-fns"
 import { mainStore } from "@/store/mainStore"
 import { MentionedLearner } from "@/types/course"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import { dialog } from "@/components/dialogs/import-export-confirm-dialog"
 
 interface EnrollEmployeesSectionProps {
   allEmployees: MentionedLearner[]
@@ -229,7 +231,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
           return
         }
 
-        // ✅ If groups were removed, redistribute employees from removed groups to remaining groups
+        //  If groups were removed, redistribute employees from removed groups to remaining groups
         if (currentGroupCount < prevGroupCount) {
           const remainingGroupIds = newGroups.map((g) =>
             parseInt(String(g.id).replace("g", ""))
@@ -296,7 +298,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
           return
         }
 
-        // ✅ Groups were added - find which groups are new (temporary)
+        //  Groups were added - find which groups are new (temporary)
         const tempGroups = newGroups.filter((g) => isTemporaryGroupId(g.id))
         const existingGroups = newGroups.filter(
           (g) => !isTemporaryGroupId(g.id)
@@ -447,7 +449,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
     }
   }, [groups, isTrainer, courseId, isLoading, redistributeEnrollmentsUI])
 
-  // ✅ Use actualEnrollments for logic (add/remove employee checks)
+  //  Use actualEnrollments for logic (add/remove employee checks)
   const currentGroupEnrolledIds = useMemo(() => {
     if (!isTrainer) return new Set()
 
@@ -482,7 +484,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
     return allEmployees.filter((learner) => !allEnrolledIds.has(learner.id))
   }, [allEmployees, isTrainer, currentGroupEnrolledIds, allEnrolledIds])
 
-  // ✅ Use displayEnrollments for UI rendering
+  //  Use displayEnrollments for UI rendering
   const enrolledEmployees = useMemo(() => {
     if (!displayEnrollments || displayEnrollments.length === 0) return []
 
@@ -574,18 +576,18 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
     }
   }, [learnersCommandOpen])
 
-  // ✅ Fixed admin group change handler with better logging
+  //  Fixed admin group change handler with better logging
   const handleAdminGroupChange = useCallback(
     async (enrollmentId: number, newGroupId: string) => {
       if (!onAdminChangeGroup) {
-        alert("Admin group change function not available")
+        toast.warning("Admin group change function not available")
         return
       }
 
       // Find the employee in actualEnrollments (source of truth)
       const employee = actualEnrollments.find((e: any) => e.id === enrollmentId)
       if (!employee) {
-        alert("Employee not found. Please refresh and try again.")
+        toast.warning("Employee not found. Please refresh and try again.")
         setChangingEmployeeId(null)
         setSelectedNewGroupId("")
         setShowConfirmDialog(false)
@@ -594,7 +596,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
 
       // Check if target group is temporary
       if (isTemporaryGroupId(newGroupId)) {
-        alert("Cannot move to a temporary group. Please save the course first.")
+        toast.warning("Cannot move to a temporary group. Please save the course first.")
         setChangingEmployeeId(null)
         setSelectedNewGroupId("")
         setShowConfirmDialog(false)
@@ -603,7 +605,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
 
       // Check if employee is in a temporary group
       if (isEnrollmentInTemporaryGroup(employee, groups)) {
-        alert(
+        toast.warning(
           "Cannot change group for an employee in a temporary group. Please save the course first."
         )
         setChangingEmployeeId(null)
@@ -612,7 +614,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
         return
       }
 
-      // ✅ Get current group ID as number with better handling
+      //  Get current group ID as number with better handling
       let currentGroupId: number
       if (typeof employee.courseGroupId === "string") {
         currentGroupId = parseInt(employee.courseGroupId.replace("g", ""))
@@ -622,9 +624,9 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
 
       const newNumericGroupId = parseInt(newGroupId.replace("g", ""))
 
-      // ✅ Check if changing to the same group
+      //  Check if changing to the same group
       if (currentGroupId === newNumericGroupId) {
-        alert("⚠️ Employee is already in this group.")
+        toast.warning("Employee is already in this group.")
         setChangingEmployeeId(null)
         setSelectedNewGroupId("")
         setShowConfirmDialog(false)
@@ -651,7 +653,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
         }
       } catch (error) {
         console.error("Error changing group:", error)
-        alert(error instanceof Error ? error.message : "Failed to change group")
+        toast.error(error instanceof Error ? error.message : "Failed to change group")
       }
     },
     [
@@ -667,7 +669,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
   const handleEnrollEmployee = useCallback(
     async (employee: MentionedLearner) => {
       if (!courseId) {
-        alert("Course ID is required to enroll")
+        toast.info("Course ID is required to enroll")
         return
       }
 
@@ -685,7 +687,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
         : allEnrolledIds.has(employee.id)
 
       if (isAlreadyEnrolled) {
-        alert(
+        toast.info(
           `${employee.name} is already enrolled in this ${isTrainer ? "group" : "course"}`
         )
         return
@@ -697,22 +699,28 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
             e.employeeId === employee.id && e.enrollmentStatus !== "CANCELLED"
         )
         if (existingEnrollment) {
-          if (
-            !confirm(
-              `${employee.name} is currently in "${existingEnrollment.courseGroupName}". Do you want to move them to the current group?`
-            )
-          ) {
+          const confirmed = await dialog.confirm(
+            "Move Employee to New Group",
+            `${employee.name} is currently in "${existingEnrollment.courseGroupName}". Do you want to move them to the current group?`,
+            "Yes, Move",
+            "Cancel"
+          )
+
+          if (!confirmed) {
             return
           }
           await unenrollEmployee(courseId, existingEnrollment.id)
         }
       }
 
-      if (
-        !confirm(
-          `Are you sure you want to enroll ${employee.name} in this ${isTrainer ? "group" : "course"}?`
-        )
-      ) {
+      const confirmed = await dialog.confirm(
+        `Enroll in ${isTrainer ? "Group" : "Course"}`,
+        `Are you sure you want to enroll ${employee.name} in this ${isTrainer ? "group" : "course"}?`,
+        "Yes, Enroll",
+        "Cancel"
+      )
+
+      if (!confirmed) {
         return
       }
 
@@ -721,7 +729,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
         const result = await enrollEmployee(courseId, groupId, employee.id)
 
         if (result.success) {
-          alert(`✅ ${employee.name} enrolled successfully!`)
+          toast.success(` ${employee.name} enrolled successfully!`)
           setSearchQuery("")
           setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
           setLearnersCommandOpen(false)
@@ -731,11 +739,11 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
             await onRefreshEnrollments()
           }
         } else {
-          alert(result.message || "Failed to enroll employee")
+          toast.error(result.message || "Failed to enroll employee")
         }
       } catch (error) {
         console.error("Error enrolling employee:", error)
-        alert("An error occurred while enrolling")
+        toast.error("An error occurred while enrolling")
       } finally {
         setIsEnrollingEmployee(false)
       }
@@ -758,15 +766,20 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
   const handleUnenrollEmployee = useCallback(
     async (enrollmentId: number, employeeName: string) => {
       if (!courseId) {
-        alert("Course ID is required to unenroll")
+        toast.info("Course ID is required to unenroll")
         return
       }
 
-      if (
-        !confirm(
-          `Are you sure you want to unenroll ${employeeName} from this ${isTrainer ? "group" : "course"}?`
-        )
-      ) {
+      const confirmed = await dialog.confirm(
+        isTrainer ? "Unenroll from Group" : "Unenroll from Course",
+        `Are you sure you want to unenroll ${employeeName} from this ${isTrainer ? "group" : "course"}?`,
+        "Yes, Unenroll",
+        "Cancel",
+        undefined,
+        true // isDestructive
+      )
+
+      if (!confirmed) {
         return
       }
 
@@ -775,18 +788,18 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
         const result = await unenrollEmployee(courseId, enrollmentId)
 
         if (result.success) {
-          alert(`✅ ${employeeName} unenrolled successfully!`)
+          toast.success(` ${employeeName} unenrolled successfully!`)
 
           await fetch_courseEnrollments(courseId)
           if (onRefreshEnrollments) {
             await onRefreshEnrollments()
           }
         } else {
-          alert(result.message || "Failed to unenroll employee")
+          toast.error(result.message || "Failed to unenroll employee")
         }
       } catch (error) {
         console.error("Error unenrolling employee:", error)
-        alert("An error occurred while unenrolling")
+        toast.error("An error occurred while unenrolling")
       } finally {
         setIsUnenrollingEmployee(null)
       }
@@ -873,7 +886,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
       )}
       {groupChangeSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-2 text-sm text-green-600">
-          <span>✅</span>
+          <span></span>
           {groupChangeSuccess}
         </div>
       )}
@@ -893,7 +906,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
             )}
           </span>
         </Label>
-        {/* ✅ REMOVED isTrainer check - Now available to all users */}
+        {/*  REMOVED isTrainer check - Now available to all users */}
         {!isActiveGroupTemporary && (
           <Button
             type="button"
@@ -928,20 +941,20 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
 
             const availableGroups = isTrainer
               ? groups.filter((g) => {
-                  // Skip temporary groups
-                  if (isTemporaryGroupId(g.id)) {
-                    return false
-                  }
+                // Skip temporary groups
+                if (isTemporaryGroupId(g.id)) {
+                  return false
+                }
 
-                  const groupId = parseInt(String(g.id).replace("g", ""))
-                  const currentGroupId =
-                    typeof employee.courseGroupId === "string"
-                      ? parseInt(employee.courseGroupId.replace("g", ""))
-                      : employee.courseGroupId
+                const groupId = parseInt(String(g.id).replace("g", ""))
+                const currentGroupId =
+                  typeof employee.courseGroupId === "string"
+                    ? parseInt(employee.courseGroupId.replace("g", ""))
+                    : employee.courseGroupId
 
-                  // ✅ Skip the current group
-                  return groupId !== currentGroupId
-                })
+                //  Skip the current group
+                return groupId !== currentGroupId
+              })
               : []
 
             return (
@@ -995,7 +1008,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
                     <span className="text-xs text-muted-foreground">
                       {format(new Date(employee.enrolledAt), "MMM d, yyyy")}
                     </span>
-                    {/* ✅ REMOVED isInTemporaryGroup check for unenroll button */}
+                    {/*  REMOVED isInTemporaryGroup check for unenroll button */}
                     <Button
                       type="button"
                       variant="ghost"
@@ -1078,7 +1091,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
                                   const isFull =
                                     group.capacity !== undefined &&
                                     groupEmployees.length >=
-                                      ((group.capacity as number) || 0)
+                                    ((group.capacity as number) || 0)
 
                                   return (
                                     <SelectItem
@@ -1192,7 +1205,7 @@ export const EnrollEmployeesSection: React.FC<EnrollEmployeesSectionProps> = ({
         </div>
       )}
 
-      {/* ✅ REMOVED isTrainer check - CommandDialog available to all users */}
+      {/*  REMOVED isTrainer check - CommandDialog available to all users */}
       {!isActiveGroupTemporary && (
         <CommandDialog
           open={learnersCommandOpen}

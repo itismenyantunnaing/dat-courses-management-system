@@ -579,8 +579,6 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     try {
       const token = getAuthToken();
       const idsPath = idsToDelete.join(',');
-      console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
-      console.log(token)
 
       const response = await fetch(`${apiUrl}/api/employees/${idsPath}`, {
         method: 'DELETE',

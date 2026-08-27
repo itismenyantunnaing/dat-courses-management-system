@@ -28,6 +28,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons"
 import { deleteOptions, allTabs } from "../nav/nav-group"
+import { dialog } from "./import-export-confirm-dialog"
 
 interface DeleteDialogProps {
   open: boolean
@@ -107,7 +108,7 @@ export function DeleteDialog({
     }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedItems.length === 0) return
 
     // Get labels for all selected items
@@ -116,8 +117,17 @@ export function DeleteDialog({
       .join(', ');
 
     // Show ONE confirmation for all items
-    if (!confirm(`Are you sure you want to delete: ${itemLabels}?\n\nThis action cannot be undone!`)) {
-      return;
+    const confirmed = await dialog.confirm(
+      "Confirm Deletion",
+      `Are you sure you want to delete: ${itemLabels}?\n\nThis action cannot be undone!`,
+      "Yes, Delete",
+      "Cancel",
+      undefined,
+      true // isDestructive
+    )
+
+    if (!confirmed) {
+      return
     }
 
     setIsDeleting(true)

@@ -49,6 +49,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group"
+import { toast } from "sonner"
 
 interface Employee {
   id: number
@@ -146,7 +147,6 @@ export function AddLearnerDialogs({
     // Get groups from course
     const courseGroups = course.groups || groups || []
 
-    console.log('Raw course groups:', courseGroups)
 
     // Only show groups that exist in the course
     return courseGroups
@@ -160,7 +160,6 @@ export function AddLearnerDialogs({
           groupId = typeof group.id === 'string' ? parseInt(group.id) : group.id
         }
 
-        console.log('Parsed group ID:', groupId, 'from:', group.id)
 
         const enrolledInGroup = getEnrolledEmployees(enrollments).filter(
           (emp) => emp.courseGroupId === groupId
@@ -185,7 +184,6 @@ export function AddLearnerDialogs({
     if (course.courseType === "trainer" && selectedEmployees.length > 0 && !selectedGroup) {
       const groups = getUniqueGroups()
       if (groups.length === 1) {
-        console.log('Auto-selecting the only available group:', groups[0].id)
         setSelectedGroup(String(groups[0].id))
       }
     }
@@ -268,7 +266,7 @@ export function AddLearnerDialogs({
 
   const handleEnroll = async () => {
   if (selectedEmployees.length === 0) {
-    alert('Please select at least one employee')
+    toast.warning('Please select at least one employee')
     return
   }
 
@@ -276,14 +274,13 @@ export function AddLearnerDialogs({
   if (course.courseType === "trainer" && !selectedGroup) {
     const groups = getUniqueGroups()
     if (groups.length === 1) {
-      console.log('Auto-selecting the only group:', groups[0].id)
       setSelectedGroup(String(groups[0].id))
       setTimeout(() => {
         handleEnroll()
       }, 100)
       return
     }
-    alert('Please select a group for the employees')
+    toast.warning('Please select a group for the employees')
     return
   }
 
@@ -293,7 +290,7 @@ export function AddLearnerDialogs({
     const group = getUniqueGroups().find((g) => g.id === groupId)
 
     if (group && group.capacity !== 0 && group.remaining < selectedEmployees.length) {
-      alert(`The selected group only has ${group.remaining} spot${group.remaining > 1 ? 's' : ''} left, but you selected ${selectedEmployees.length} employees. Please select a group with enough capacity.`)
+      toast.warning(`The selected group only has ${group.remaining} spot${group.remaining > 1 ? 's' : ''} left, but you selected ${selectedEmployees.length} employees. Please select a group with enough capacity.`)
       return
     }
   }
@@ -309,21 +306,15 @@ export function AddLearnerDialogs({
 
     if (course.courseType === "trainer" && selectedGroup) {
       groupId = parseInt(selectedGroup)
-      console.log('📝 Enrolling all selected employees to group:', groupId)
-    } else {
-      console.log('📝 Enrolling to self-study course (no group)')
-    }
-
+    } 
     // Process employees with sequential enrollment to avoid race conditions
     for (let i = 0; i < selectedEmployees.length; i++) {
       const employee = selectedEmployees[i]
-      console.log(`📝 Attempting to enroll ${employee.name} (${i + 1}/${selectedEmployees.length})`)
 
       try {
         if (onEnrollEmployee) {
           await onEnrollEmployee(employee.id, groupId)
           successEmployees.push(employee.name)
-          console.log(`✅ Successfully enrolled ${employee.name}`)
         } else {
           throw new Error("Enroll function not available")
         }
@@ -346,11 +337,11 @@ export function AddLearnerDialogs({
 
     // Show results - ONLY ONCE at the end
     if (successEmployees.length > 0 && failedEmployees.length === 0) {
-      alert(`✅ All ${successEmployees.length} employee(s) enrolled successfully!`)
+      toast.success(` All ${successEmployees.length} employee(s) enrolled successfully!`)
     } else if (successEmployees.length > 0 && failedEmployees.length > 0) {
-      alert(`✅ Successfully enrolled ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n\n❌ Failed to enroll ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`)
+      toast.success(` Successfully enrolled ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n\n❌ Failed to enroll ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`)
     } else if (successEmployees.length === 0 && failedEmployees.length > 0) {
-      alert(`❌ Failed to enroll all ${failedEmployees.length} employee(s). Please try again.`)
+      toast.error(`❌ Failed to enroll all ${failedEmployees.length} employee(s). Please try again.`)
     }
 
     // Refresh enrollments data
@@ -373,7 +364,7 @@ export function AddLearnerDialogs({
 
   } catch (error: any) {
     console.error('❌ Error in enrollment process:', error)
-    alert(`❌ Failed to enroll employees: ${error.message || 'Unknown error'}`)
+    toast.error(`❌ Failed to enroll employees: ${error.message || 'Unknown error'}`)
   } finally {
     setIsSubmitting(false)
     setProgress({ current: 0, total: 0 })
@@ -551,7 +542,6 @@ export function AddLearnerDialogs({
                   <Select
                     value={selectedGroup}
                     onValueChange={(value) => {
-                      console.log('Selected group value changed to:', value)
                       setSelectedGroup(value)
                     }}
                     disabled={selectedEmployees.length === 0 || isSubmitting}

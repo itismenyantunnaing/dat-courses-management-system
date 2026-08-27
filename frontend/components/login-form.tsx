@@ -1,7 +1,7 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -21,6 +21,7 @@ import { login, sendOtp, verifyOtp, resetPassword } from "@/app/actions/auth"
 import { EyeIcon, ViewOffIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { toast } from "sonner"
+import { mainStore } from "@/store/mainStore"
 
 export function LoginForm({
   className,
@@ -37,6 +38,16 @@ export function LoginForm({
   const [forgotPasswordOtp, setForgotPasswordOtp] = useState("")
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
   const [forgotPasswordError, setForgotPasswordError] = useState("")
+
+  const { fetch_SystemConfig, systemConfig } = mainStore()
+
+  useEffect(() => {
+    const load = async () => {
+      await fetch_SystemConfig()
+    }
+    load()
+  }, [])
+
 
   // Reset form
   const resetForm = () => {
@@ -57,10 +68,14 @@ export function LoginForm({
     setError("")
 
     try {
+      //  Get session timeout from systemConfig (default to 30 if not available)
+      const sessionTimeout = systemConfig?.sessionTimeoutMinutes || 30
+
+      //  Pass sessionTimeout to login action
       const result = await login({
         staff_Id: credentials.staff_Id,
         password: credentials.password,
-      })
+      }, sessionTimeout)
 
       if (result.success) {
         window.location.href = "/dashboard"
@@ -87,7 +102,7 @@ export function LoginForm({
 
     try {
       const result = await sendOtp(forgotPasswordEmail)
-      
+
       if (result.success) {
         setForgotPasswordStep("otp")
         setForgotPasswordError("")
@@ -114,7 +129,7 @@ export function LoginForm({
 
     try {
       const result = await verifyOtp(forgotPasswordEmail, forgotPasswordOtp)
-      
+
       if (result.success) {
         setForgotPasswordStep("reset-password")
         setForgotPasswordError("")
@@ -141,7 +156,7 @@ export function LoginForm({
 
     try {
       const result = await resetPassword(forgotPasswordEmail, newPassword)
-      
+
       if (result.success) {
         setForgotPasswordOpen(false)
         resetForm()
@@ -239,6 +254,9 @@ export function LoginForm({
                       required
                       disabled={loading}
                       className="pr-10"
+                      autoComplete="new-password"
+                      readOnly={false}  // Add this
+                      onFocus={(e) => e.target.removeAttribute('readonly')}
                     />
                     <button
                       type="button"

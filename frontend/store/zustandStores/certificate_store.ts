@@ -38,8 +38,6 @@ const transformCertificate = (cert: any): JapaneseCertificate => {
   if (!['approved', 'pending', 'rejected'].includes(status)) {
     status = 'pending';
   }
-  console.log("AAAAAAAAAAAaa")
-  console.log(cert)
 
   return {
     id: String(cert.id || ''),
@@ -142,7 +140,6 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return transformedData
 
     } catch (error) {
-      console.log('❌ Error fetching certificates:', error);
       set(() => ({ certificateData: [] }))
       return []
     }
@@ -178,7 +175,6 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return transformedData
 
     } catch (error) {
-      console.log('❌ Error fetching pending certificates:', error);
       set(() => ({ pendingCertificates: [] }))
       return []
     }
@@ -214,7 +210,6 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return transformedData
 
     } catch (error) {
-      console.log('❌ Error fetching all certificates:', error);
       set(() => ({ allCertificates: [] }))
       return []
     }
@@ -281,7 +276,6 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return 'Certificate added successfully';
 
     } catch (error) {
-      console.log('❌ Error adding certificate:', error);
       set(() => ({ certificateData: previousData }));
       return `Failed to add certificate: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
@@ -339,7 +333,6 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return 'Certificate updated successfully.';
 
     } catch (error) {
-      console.log('❌ Error updating certificate:', error);
       set(() => ({ certificateData: previousData }));
       return `Failed to update certificate: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
@@ -375,7 +368,6 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return 'Certificate deleted successfully.';
 
     } catch (error) {
-      console.log('❌ Error deleting certificate:', error);
       set(() => ({ certificateData: previousData }));
       return `Failed to delete certificate: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
@@ -415,7 +407,6 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return 'Certificate verified successfully.';
 
     } catch (error) {
-      console.log('❌ Error verifying certificate:', error);
       return `Failed to verify certificate: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   },
@@ -454,7 +445,6 @@ export const certificateDataStore = (set: StoreSet, get: StoreGet) => ({
       return 'Certificate rejected successfully.';
 
     } catch (error) {
-      console.log('❌ Error rejecting certificate:', error);
       return `Failed to reject certificate: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   },

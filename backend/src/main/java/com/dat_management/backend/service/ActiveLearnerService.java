@@ -65,7 +65,7 @@ public class ActiveLearnerService {
 
             if (isActive) {
                 activeEmployeeIds.add(employeeId);
-                log.info("✅ Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
+                log.info(" Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
                     employeeId, employeeName, reason, course.getCourseName(), courseType);
             } else {
                 log.info("❌ Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 
@@ -191,7 +191,7 @@ public class ActiveLearnerService {
 
             if (isActive) {
                 activeEmployeeIds.add(empId);
-                log.info("✅ Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
+                log.info(" Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
                     empId, employeeName, reason, course.getCourseName(), courseType);
             } else {
                 log.info("❌ Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 

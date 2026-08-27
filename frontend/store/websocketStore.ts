@@ -101,8 +101,6 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
         // Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
 
-      // Debug logging
-      // debug: (str) => { console.log('📡 STOMP Debug:', str); },
 
       // This runs when connection is SUCCESSFUL (including every reconnect)
       onConnect: () => {
@@ -114,7 +112,7 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
         const profile = mainStoreState.profile;
         const employeeId = profile?.id;
 
-        // ✅ Subscribe to user-specific topic (where backend sends notifications)
+        //  Subscribe to user-specific topic (where backend sends notifications)
         if (employeeId) {
           // Unsubscribe any stale subscription before creating a new one.
           // This is what actually prevents duplicate handling after a reconnect.
@@ -126,20 +124,6 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
             try {
               // Parse the notification data
               const data = JSON.parse(message.body);
-
-              // TEMP DEBUG: log every raw payload the socket receives.
-              // If a course action logs this block TWICE with two different
-              // notificationId/id values, the backend is publishing two
-              // separate messages - the frontend has nothing to dedupe against.
-              // Remove this once the root cause is confirmed.
-              console.log('📨 WS raw payload:', {
-                notificationId: data.notificationId,
-                id: data.id,
-                courseId: data.courseId,
-                referenceId: data.referenceId,
-                notificationType: data.notificationType,
-                receivedAt: new Date().toISOString(),
-              });
 
               // Create notification object for websocket store
               const notification: Notification = {
@@ -153,7 +137,7 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
                 certificateId: data.certificateId,
               };
 
-              // ✅ Update webScoketStore
+              //  Update webScoketStore
               set((state) => {
                 // Exact id dedupe - catches the same message delivered twice
                 const idDuplicate = state.notifications.some(
@@ -192,7 +176,7 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
                 };
               });
 
-              // ✅ ALSO update mainStore's notification store
+              //  ALSO update mainStore's notification store
               try {
                 const mainStoreState = mainStore.getState();
                 const currentNotifications = mainStoreState.notifications || [];
@@ -256,7 +240,6 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
 
       // Handle disconnection
       onDisconnect: () => {
-        console.log('❌ STOMP connection disconnected');
         set({ isConnected: false });
       },
 

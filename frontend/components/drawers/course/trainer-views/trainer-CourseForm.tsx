@@ -52,6 +52,7 @@ import { formatGroupsForAPI } from "./trainer-management-section"
 import { formatSelfStudySessionsForAPI } from "./self-study-management-section"
 import { EnrollEmployeesSection } from "./EnrollEmployeesSection"
 import { compressFile } from "@/lib/compressImage"
+import { toast } from "sonner"
 
 // Add this helper function near the top of the file, after the imports
 const safelyCompareDates = (date1: Date | string | undefined, date2: Date | string | undefined): boolean => {
@@ -136,7 +137,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       clearGroupChangeState,
       fetch_HolidayData,
       holiday_data,
-      fetch_SystemConfig, 
+      fetch_SystemConfig,
       systemConfig
     } = mainStore()
 
@@ -345,7 +346,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           formData.courseType !== initialFormDataRef.current.courseType ||
           formData.category !== initialFormDataRef.current.category ||
           formData.categoryId !== initialFormDataRef.current.categoryId ||
-          // ✅ FIX: Use safe date comparison instead of direct .getTime()
+          //  FIX: Use safe date comparison instead of direct .getTime()
           !safelyCompareDates(
             formData.registrationDeadline,
             initialFormDataRef.current.registrationDeadline
@@ -560,11 +561,11 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         const firstError = errors[firstErrorKey]
 
         if (firstError === "Group name is required") {
-          alert(`Please provide names for all ${formData.groups.length} groups before submitting.`)
+          toast.info(`Please provide names for all ${formData.groups.length} groups before submitting.`)
         } else if (firstError === "Capacity is required when multiple groups exist") {
-          alert(`Please set capacities for all  groups before submitting.`)
+          toast.info(`Please set capacities for all  groups before submitting.`)
         } else {
-          alert(firstError)
+          toast.error(firstError)
         }
         return
       }
@@ -601,7 +602,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
     const handleAdminChangeGroup = async (enrollmentId: number, newGroupId: number) => {
       if (!initialData?.id) {
         console.error('Course ID is required for group change');
-        alert('Course ID is required for group change');
+        toast.warning('Course ID is required for group change');
         return;
       }
 
@@ -617,13 +618,13 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           await fetch_courseEnrollments(courseId);
 
           // Show success toast
-          alert('Group changed successfully!');
+          toast.success('Group changed successfully!');
         } else {
-          alert(result.message || 'Failed to change group');
+          toast.error(result.message || 'Failed to change group');
         }
       } catch (error) {
         console.error('Failed to change group:', error);
-        alert(error instanceof Error ? error.message : 'Failed to change group');
+        toast.error(error instanceof Error ? error.message : 'Failed to change group');
       }
     };
 
@@ -833,7 +834,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                 </Select>
                 {/* <p className="text-xs text-muted-foreground">
                   {formData.status === "draft" && "📝 Course is being created, not visible to learners"}
-                  {formData.status === "active" && "✅ Course is open for enrollment"}
+                  {formData.status === "active" && " Course is open for enrollment"}
                   {formData.status === "upcoming" && "📅 Course is scheduled but not yet open"}
                   {formData.status === "completed" && "🏁 Course has finished"}
                 </p> */}

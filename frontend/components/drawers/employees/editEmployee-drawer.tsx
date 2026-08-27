@@ -21,6 +21,7 @@ import { mainStore } from "@/store/mainStore"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, Edit03Icon } from "@hugeicons/core-free-icons"
 import type { Course } from "@/types/course"
+import { toast } from "sonner"
 
 interface EditEmployeeDrawerProps {
   open: boolean
@@ -140,8 +141,8 @@ export function EditEmployeeDrawer({
 
   const handleItemAdded = async (name: string) => {
     await add_division(name)
-    alert(
-      `✅ ${addItemType.charAt(0).toUpperCase() + addItemType.slice(1)} "${name}" added successfully!`
+    toast.success(
+      ` ${addItemType.charAt(0).toUpperCase() + addItemType.slice(1)} "${name}" added successfully!`
     )
 
     if (addItemType === "division") {
@@ -174,6 +175,7 @@ export function EditEmployeeDrawer({
       !formData.emp_status
     ) {
       console.error("Please fill in all required fields")
+      toast.error("Please fill in all required fields")
       return
     }
 
@@ -211,7 +213,7 @@ export function EditEmployeeDrawer({
           result.includes("already exists") ||
           result.includes("Failed"))
       ) {
-        alert(result)
+        toast.info(result)
         return
       }
 
@@ -228,21 +230,21 @@ export function EditEmployeeDrawer({
           hasJapanBusinessTrip: employee?.has_japan_business_trip || false,
         })
         if (deptPosResult && !deptPosResult.success) {
-          alert(
+          toast.error(
             `Failed to update department/position: ${deptPosResult.message}`
           )
           return
         }
       }
 
-      alert(result)
+      toast.info(result)
 
       setIsEditMode(false)
       onOpenChange(false)
       onSuccess?.()
     } catch (error) {
       console.error("Failed to update employee:", error)
-      alert("Failed to update employee. Please try again.")
+      toast.error("Failed to update employee. Please try again.")
     } finally {
       setIsSubmitting(false)
     }

@@ -380,7 +380,7 @@ export function TechnicalAbilityHeadersDrawer({
                         </Badge>
                       )}
                     </Label>
-                    {/* ✅ Only show delete icon for categories WITHOUT id (new categories) */}
+                    {/*  Only show delete icon for categories WITHOUT id (new categories) */}
                     {!category.id && !editingCategory && (
                       <Button
                         variant="ghost"
@@ -431,7 +431,7 @@ export function TechnicalAbilityHeadersDrawer({
                               </Badge>
                             )}
                           </Label>
-                          {/* ✅ Only show delete icon for sub-categories WITHOUT id (new) */}
+                          {/*  Only show delete icon for sub-categories WITHOUT id (new) */}
                           {!sub.id && !editingCategory && (
                             <Button
                               variant="ghost"
@@ -489,7 +489,7 @@ export function TechnicalAbilityHeadersDrawer({
                                   className="text-sm"
                                 />
                               </div>
-                              {/* ✅ Only show delete icon for skills WITHOUT id (new) */}
+                              {/*  Only show delete icon for skills WITHOUT id (new) */}
                               {!skill.id && !editingCategory && (
                                 <Button
                                   variant="ghost"

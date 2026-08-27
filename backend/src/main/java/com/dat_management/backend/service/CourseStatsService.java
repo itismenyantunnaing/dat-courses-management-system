@@ -40,7 +40,7 @@ public class CourseStatsService {
         List<Course> courses = courseRepository.findByIsDeletedFalse();
         log.info("Found {} courses to process", courses.size());
         
-        // ✅ FILTER: Exclude "other" type self-study courses
+        //  FILTER: Exclude "other" type self-study courses
         List<Course> filteredCourses = courses.stream()
             .filter(course -> {
                 boolean isotherType = course.getCourseCategory().getCourseType() == CourseCategory.CourseType.SELF_STUDY
@@ -146,7 +146,7 @@ public class CourseStatsService {
             
             if (attendancePercentage >= COMPLETION_THRESHOLD) {
                 completedCount++;
-                log.info("✅ Enrollment {} COMPLETED (Group: {}, {}/{} sessions)", 
+                log.info(" Enrollment {} COMPLETED (Group: {}, {}/{} sessions)", 
                     enrollment.getId(), studentGroup.getGroupName(), presentCount, totalGroupSessions);
             } else {
                 log.info("❌ Enrollment {} NOT completed (Group: {}, {}/{} sessions)", 
@@ -222,7 +222,7 @@ public class CourseStatsService {
             
             if (averageCompletion >= COMPLETION_THRESHOLD * 100) {
                 completedCount++;
-                log.info("✅ Self-Study Enrollment {} COMPLETED (Average: {}%)", 
+                log.info(" Self-Study Enrollment {} COMPLETED (Average: {}%)", 
                     enrollment.getId(), averageCompletion * 100);
             } else {
                 log.info("❌ Self-Study Enrollment {} NOT completed (Average: {}%)", 
@@ -348,7 +348,7 @@ public class CourseStatsService {
             log.info("--- Course #{}/{}: {} (ID: {}, Type: {}) ---", 
                 courseIndex, totalCourses, course.getCourseName(), course.getId(), courseType);
 
-            // ✅ CHECK: Is this "other" type self-study?
+            //  CHECK: Is this "other" type self-study?
             boolean isotherType = courseType == CourseCategory.CourseType.SELF_STUDY 
                 && course.getSelfStudyType() != null 
                 && course.getSelfStudyType().equals("other");
@@ -357,7 +357,7 @@ public class CourseStatsService {
                 log.info("   ⏭️ 'other' type self-study course: {} (excluded from response)", 
                     course.getCourseName());
                 
-                // ✅ SKIP adding to courses array - don't count in totals
+                //  SKIP adding to courses array - don't count in totals
                 continue;
             }
 
@@ -386,7 +386,7 @@ public class CourseStatsService {
             
             if ("COMPLETED".equals(courseDetail.status())) {
                 completedCourses++;
-                log.info("   ✅ Course '{}' is COMPLETED", course.getCourseName());
+                log.info("    Course '{}' is COMPLETED", course.getCourseName());
             } else if ("IN_PROGRESS".equals(courseDetail.status())) {
                 inProgressCourses++;
                 log.info("   ⏳ Course '{}' is IN_PROGRESS", course.getCourseName());
@@ -619,7 +619,7 @@ public class CourseStatsService {
                 if (courseType == CourseCategory.CourseType.TRAINER_PROVIDED) {
                     isCompleted = isTrainerCourseCompletedForEmployee(enrollment);
                 } else if (courseType == CourseCategory.CourseType.SELF_STUDY) {
-                    // ✅ SKIP "other" type for summary (no tracking)
+                    //  SKIP "other" type for summary (no tracking)
                     if (course.getSelfStudyType() != null && course.getSelfStudyType().equals("other")) {
                         continue;
                     }
@@ -760,7 +760,7 @@ public class CourseStatsService {
             long activeCount = courseSessionRepository.countActiveSessionsByGroupId(group.getId(), today);
             return (int) activeCount;
         } else if (courseType == CourseCategory.CourseType.SELF_STUDY) {
-            // ✅ Skip "other" type - they won't reach here because they're excluded
+            //  Skip "other" type - they won't reach here because they're excluded
             List<SelfStudySessionProgress> progressRecords = progressRepository.findByEnrollmentId(enrollment.getId());
             if (progressRecords.isEmpty()) {
                 List<SelfStudySession> sessions = sessionRepository.findByCourseId(course.getId());

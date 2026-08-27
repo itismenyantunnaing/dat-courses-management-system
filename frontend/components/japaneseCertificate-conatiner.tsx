@@ -54,6 +54,7 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from "./ui/dropdown-menu"
+import { toast } from "sonner"
 
 const STROKE_WIDTH = 2
 
@@ -245,10 +246,7 @@ export function JapaneseCertificateContainer({
           (c) => c.id === certIdStr
         )
         if (refreshedCertificate) {
-          console.log(
-            "✅ Found certificate after refresh:",
-            refreshedCertificate.id
-          )
+
           handleCardClick(refreshedCertificate)
         } else {
           console.error(
@@ -363,16 +361,16 @@ export function JapaneseCertificateContainer({
     try {
       const result = await delete_CertificateData(certificate.id)
       if (result.includes("successfully")) {
-        alert("✅ Certificate deleted successfully!")
+        toast.success(" Certificate deleted successfully!")
         await fetch_CertificateData(getUserId() || "")
         setIsDetailDrawerOpen(false)
         setEditingCertificate(null)
       } else {
-        alert("❌ " + result)
+        toast.error("❌ " + result)
       }
     } catch (error) {
       console.error("❌ Error deleting certificate:", error)
-      alert("❌ Failed to delete certificate")
+      toast.error("❌ Failed to delete certificate")
     }
   }
 

@@ -38,6 +38,7 @@ import { mainStore } from "@/store/mainStore"
 import { CERTIFICATE_TYPES, CERTIFICATE_LEVELS } from "@/types/certificate"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { toast } from "sonner"
 
 interface CertificateDetailDrawerProps {
   open: boolean
@@ -174,7 +175,7 @@ export function CertificateDetailDrawer({
       })
 
       if (result.includes("successfully")) {
-        alert("✅ Certificate updated successfully!")
+        toast.success(" Certificate updated successfully!")
         // Refresh data with the user ID
         const userId = getUserId()
         if (userId) {
@@ -187,11 +188,11 @@ export function CertificateDetailDrawer({
         // Close the drawer after successful update
         onOpenChange(false)
       } else {
-        alert("❌ " + result)
+        toast.error("❌ " + result)
       }
     } catch (error) {
       console.error("❌ Error updating certificate:", error)
-      alert("❌ Failed to update certificate")
+      toast.error("❌ Failed to update certificate")
     } finally {
       setIsSubmitting(false)
     }
@@ -210,7 +211,7 @@ export function CertificateDetailDrawer({
   const handleDeleteClick = () => {
     // Check if certificate is approved - don't allow deletion
     if (status?.toLowerCase() === "approved") {
-      alert("❌ Cannot delete an approved certificate")
+      toast.error("❌ Cannot delete an approved certificate")
       return
     }
     setDeleteDialogOpen(true)
@@ -225,7 +226,7 @@ export function CertificateDetailDrawer({
       setDeleteDialogOpen(false)
     } catch (error) {
       console.error("❌ Error deleting certificate:", error)
-      alert("❌ Failed to delete certificate")
+      toast.error("❌ Failed to delete certificate")
     } finally {
       setIsDeleting(false)
     }

@@ -23,39 +23,30 @@ interface LoginResponse {
     lockedUntil?: string
 }
 
-// Session configuration - 1 HOUR
-const SESSION_CONFIG = {
-    DURATION_HOURS: 1,
-    DURATION_MS: 60 * 60 * 1000, // 1 hour in milliseconds
-    COOKIE_NAME: 'auth_session',
-    COOKIE_OPTIONS: {
-        httpOnly: true,
-        secure: process.env.COOKIE_SECURE === 'true',
-        sameSite: 'lax' as const,
-        path: '/',
-    }
-}
-
 // Set session cookie with user data
 export async function setSessionCookie(
     token: string,
     userId: string,
+    sessionTimeoutMinutes: number = 30 // Default 30 minutes
 ) {
     const cookieStore = await cookies()
-    const expiresAt = Date.now() + SESSION_CONFIG.DURATION_MS
+    const expiresAt = Date.now() + (sessionTimeoutMinutes * 60 * 1000)
 
     const sessionData: SessionData = {
         token,
         userId,
-        expiresAt, 
+        expiresAt,
     }
 
     cookieStore.set(
-        SESSION_CONFIG.COOKIE_NAME,
+        'auth_session',
         JSON.stringify(sessionData),
         {
-            ...SESSION_CONFIG.COOKIE_OPTIONS,
-            maxAge: SESSION_CONFIG.DURATION_MS / 1000, // 3600 seconds = 1 hour
+            httpOnly: true,
+            secure: true,
+            sameSite: 'lax' as const,
+            path: '/',
+            maxAge: sessionTimeoutMinutes * 60, // Convert to seconds
         }
     )
 }
@@ -63,7 +54,7 @@ export async function setSessionCookie(
 // Get session from cookie with expiration check
 export async function getSession(): Promise<SessionData | null> {
     const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get(SESSION_CONFIG.COOKIE_NAME)
+    const sessionCookie = cookieStore.get('auth_session')
 
     if (!sessionCookie) {
         return null
@@ -71,13 +62,13 @@ export async function getSession(): Promise<SessionData | null> {
 
     try {
         const sessionData: SessionData = JSON.parse(sessionCookie.value)
-        
+
         // Check if session has expired
         if (Date.now() >= sessionData.expiresAt) {
             await clearSession()
             return null
         }
-        
+
         return sessionData
     } catch {
         return null
@@ -87,7 +78,7 @@ export async function getSession(): Promise<SessionData | null> {
 // Clear session (logout)
 export async function clearSession() {
     const cookieStore = await cookies()
-    cookieStore.delete(SESSION_CONFIG.COOKIE_NAME)
+    cookieStore.delete('auth_session')
 }
 
 // Check if session is valid
@@ -112,16 +103,16 @@ export async function getUserId(): Promise<string | null> {
 export async function getRemainingSessionTime(): Promise<number> {
     const session = await getSession()
     if (!session) return 0
-    
+
     const remaining = session.expiresAt - Date.now()
     return Math.max(0, remaining)
 }
 
-// Extend session (refresh timeout - resets to 1 hour)
-export async function extendSession(): Promise<boolean> {
+// Extend session (refresh timeout)
+export async function extendSession(sessionTimeoutMinutes: number = 30): Promise<boolean> {
     const session = await getSession()
     if (session) {
-        await setSessionCookie(session.token, session.userId)
+        await setSessionCookie(session.token, session.userId, sessionTimeoutMinutes)
         return true
     }
     return false
@@ -134,7 +125,7 @@ export async function isSessionExpiringSoon(thresholdMinutes: number = 5): Promi
 }
 
 // Login action
-export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
+export async function login(credentials: LoginCredentials, sessionTimeoutMinutes: number = 30): Promise<LoginResponse> {
     try {
         const response = await fetch(`${API_BASE_URL}/security/api/auth/login`, {
             method: "POST",
@@ -171,10 +162,11 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
                 }
             }
 
-            // Set session cookie with expiration
+            //  Pass sessionTimeoutMinutes 
             await setSessionCookie(
                 data.token,
                 data.userId,
+                sessionTimeoutMinutes
             )
 
             return {

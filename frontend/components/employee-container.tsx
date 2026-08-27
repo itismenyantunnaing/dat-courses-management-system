@@ -107,6 +107,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { toast } from "sonner"
 
 const STROKE_WIDTH = 2
 
@@ -743,23 +744,23 @@ export function EmployeeContainer({
       result = await add_division(name)
     } else if (dialogItemType === "department") {
       if (!parentId) {
-        alert("Division ID is required")
+        toast.warning("Division ID is required")
         return
       }
       result = await add_dat_department(parentId, name)
     } else if (dialogItemType === "team") {
       if (!parentId) {
-        alert("Department ID is required")
+        toast.warning("Department ID is required")
         return
       }
       result = await add_team(parentId, name)
     }
 
     if (result?.success) {
-      alert(`✅ ${dialogItemType} "${name}" added successfully!`)
+      toast.success(` ${dialogItemType} "${name}" added successfully!`)
       await fetch_EmployeeData()
     } else {
-      alert(`❌ Failed to add: ${result?.error || "Unknown error"}`)
+      toast.error(`❌ Failed to add: ${result?.error || "Unknown error"}`)
     }
   }
 
@@ -776,7 +777,7 @@ export function EmployeeContainer({
         // Find the division ID
         const division = divisions.find((d: any) => d.divisionName === oldName)
         if (!division) {
-          alert("❌ Division not found")
+          toast.warning("❌ Division not found")
           return
         }
         result = await update_division(division.id, newName)
@@ -786,12 +787,12 @@ export function EmployeeContainer({
           (d: any) => d.deptName === oldName
         )
         if (!department) {
-          alert("❌ Department not found")
+          toast.warning("❌ Department not found")
           return
         }
         // Department update needs divisionId and deptName
         if (!parentId) {
-          alert("❌ Division ID is required for department update")
+          toast.warning("❌ Division ID is required for department update")
           return
         }
         result = await update_department(department.id, parentId, newName)
@@ -799,20 +800,20 @@ export function EmployeeContainer({
         // Find the team ID
         const team = teams.find((t: any) => t.teamName === oldName)
         if (!team) {
-          alert("❌ Team not found")
+          toast.warning("❌ Team not found")
           return
         }
         // Team update needs departmentDatId and teamName
         if (!parentId) {
-          alert("❌ Department ID is required for team update")
+          toast.warning("❌ Department ID is required for team update")
           return
         }
         result = await update_team(team.id, parentId, newName)
       }
 
       if (result?.success) {
-        alert(
-          `✅ ${dialogItemType.charAt(0).toUpperCase() + dialogItemType.slice(1)} updated successfully!`
+        toast.success(
+          ` ${dialogItemType.charAt(0).toUpperCase() + dialogItemType.slice(1)} updated successfully!`
         )
 
         // Refresh ALL data
@@ -822,11 +823,11 @@ export function EmployeeContainer({
         await fetch_teams()
         await fetch_roles()
       } else {
-        alert(`❌ Failed to update: ${result?.error || "Unknown error"}`)
+        toast.error(`❌ Failed to update: ${result?.error || "Unknown error"}`)
       }
     } catch (error) {
       console.error("Error updating item:", error)
-      alert(`❌ Failed to update ${dialogItemType}. Please try again.`)
+      toast.error(`❌ Failed to update ${dialogItemType}. Please try again.`)
     }
   }
 
@@ -940,14 +941,14 @@ export function EmployeeContainer({
     )
 
     if (!canManageAllSelected) {
-      alert("You don't have permission to delete all selected employees")
+      toast.warning("You don't have permission to delete all selected employees")
       return
     }
 
     try {
       const selectedIds = selectedEmployees.map((emp) => emp.id)
       const result = await delete_EmployeeData(selectedIds)
-      alert(result)
+      toast.success(result)
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
 
@@ -966,20 +967,20 @@ export function EmployeeContainer({
   const handleIndividualDeleteConfirm = async () => {
     if (!employeeToDelete) return
     if (!canManageEmployee(employeeToDelete) && !isAdmin) {
-      alert("You don't have permission to delete this employee")
+      toast.warning("You don't have permission to delete this employee")
       return
     }
 
     setIsDeleting(true)
     try {
       const result = await delete_EmployeeData([employeeToDelete.id])
-      alert(result)
+      toast.success(result)
       setDeleteDialogOpen(false)
       setEmployeeToDelete(null)
       await fetch_EmployeeData()
     } catch (error) {
       console.error("Failed to delete employee:", error)
-      alert("Failed to delete employee. Please try again.")
+      toast.error("Failed to delete employee. Please try again.")
     } finally {
       setIsDeleting(false)
     }

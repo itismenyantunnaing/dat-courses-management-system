@@ -25,6 +25,7 @@ import { Course, isJLPTType } from "@/types/course"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 interface SessionsTabProps {
   course: Course
@@ -219,7 +220,7 @@ export function SessionsTab({
     )
 
     if (!session) {
-      alert("Session not found")
+      toast.warning("Session not found")
       return
     }
 
@@ -267,20 +268,20 @@ export function SessionsTab({
 
       if (result.success) {
         await fetch_studyProgress(course.id)
-        alert(
+        toast.success(
           `Progress saved successfully for Session ${session.session_no || session.sessionNo || ""
           }`
         )
 
         if (allTargetsMet) {
-          alert("🎉 Congratulations! Session completed!")
+          toast.success("🎉 Congratulations! Session completed!")
         }
       } else {
-        alert(result.message || "Failed to save progress")
+        toast.error(result.message || "Failed to save progress")
       }
     } catch (error) {
       console.error(error)
-      alert("An error occurred while saving progress")
+      toast.error("An error occurred while saving progress")
     } finally {
       setSavingSessions((prev) => ({
         ...prev,
@@ -291,12 +292,12 @@ export function SessionsTab({
 
  const handleSaveMockTest = async () => {
   if (!currentUserEnrollment) {
-    alert("You are not enrolled in this course")
+    toast.info("You are not enrolled in this course")
     return
   }
 
   if (mockTestAttempt < 0) {
-    alert("Mock test attempt cannot be negative")
+    toast.warning("Mock test attempt cannot be negative")
     return
   }
 
@@ -309,17 +310,17 @@ export function SessionsTab({
     )
 
     if (result.success) {
-      alert("Mock test attempt updated successfully!")
+      toast.success("Mock test attempt updated successfully!")
       // No refetch needed - the mockTestAttempt state already has the updated value
       // The UI will stay consistent with the local state
     } else {
-      alert(result.message || "Failed to update mock test attempt")
+      toast.error(result.message || "Failed to update mock test attempt")
       // Revert to previous value on error
       setMockTestAttempt(currentUserEnrollment.mockTestAttempt || 0)
     }
   } catch (error) {
     console.error("Error updating mock test:", error)
-    alert("An error occurred while updating mock test attempt")
+    toast.error("An error occurred while updating mock test attempt")
     // Revert to previous value on error
     setMockTestAttempt(currentUserEnrollment.mockTestAttempt || 0)
   } finally {

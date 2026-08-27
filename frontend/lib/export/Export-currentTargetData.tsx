@@ -13,7 +13,7 @@ function getCellValue(value: any): any {
         return null;
     }
 
-    // ✅ CASE 1: Date detection (MM/DD/YYYY, DD/MM/YYYY, etc.)
+    //  CASE 1: Date detection (MM/DD/YYYY, DD/MM/YYYY, etc.)
     const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/;
     if (dateRegex.test(strValue)) {
         const date = new Date(strValue);
@@ -22,7 +22,7 @@ function getCellValue(value: any): any {
         }
     }
 
-    // ✅ CASE 2: Pure number (no leading zeros, no special characters)
+    //  CASE 2: Pure number (no leading zeros, no special characters)
     if (/^-?\d+(\.\d+)?$/.test(strValue) && !strValue.startsWith('0')) {
         const num = Number(strValue);
         if (!isNaN(num)) {
@@ -30,17 +30,17 @@ function getCellValue(value: any): any {
         }
     }
 
-    // ✅ CASE 3: Staff ID format: 05-00003, 25-00004 (keep as text)
+    //  CASE 3: Staff ID format: 05-00003, 25-00004 (keep as text)
     if (/^\d{2}-\d{5}$/.test(strValue) || /^\d{2}-\d{3}$/.test(strValue)) {
         return strValue;
     }
 
-    // ✅ CASE 4: Div format: 000-001, 000-003 (keep as text)
+    //  CASE 4: Div format: 000-001, 000-003 (keep as text)
     if (/^\d{3}-\d{3}$/.test(strValue)) {
         return strValue;
     }
 
-    // ✅ Default: return as text
+    //  Default: return as text
     return strValue;
 }
 
@@ -273,7 +273,6 @@ export const exportCurrentTargetToExcel = async (
         });
         saveAs(blob, fileName);
 
-        console.log(`✅ Exported ${employeeJapaneseLevel_Data.length} current target records successfully!`);
 
     } catch (error) {
         console.error('❌ Export error:', error);

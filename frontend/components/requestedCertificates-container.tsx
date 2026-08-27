@@ -66,7 +66,7 @@ import { cn } from "@/lib/utils"
 import { ApproveCertificateDrawer } from "@/components/drawers/certificate/approveCertificate-drawer"
 import { CertificateCard } from "@/components/cards/certificate-card"
 import { mainStore } from "@/store/mainStore"
-// ✅ NEW: subscribe to the websocket notification store so we can react to
+//  NEW: subscribe to the websocket notification store so we can react to
 // incoming certificate notifications and auto-refetch the list.
 import { webScoketStore } from "@/store/websocketStore"
 import { JapaneseCertificate } from "@/types/certificate"
@@ -248,7 +248,7 @@ export function CertificatesRequestsContainer({
   const [denyDrawerOpen, setDenyDrawerOpen] = useState(false)
   const { fetch_AllCertificates, allCertificates, profile } = mainStore()
 
-  // ✅ NEW: live notifications from the websocket store
+  //  NEW: live notifications from the websocket store
   const notifications = webScoketStore((state) => state.notifications)
   // Tracks how many notifications we've already reacted to, so the refetch
   // effect only fires for NEW notifications - not on initial mount and not
@@ -331,7 +331,7 @@ export function CertificatesRequestsContainer({
   const hasStatusData = uniqueStatuses.length > 0
   const hasFilterData = hasCertificateTypeData || hasLevelData || hasStatusData
 
-  // ✅ Get total count (unfiltered by status)
+  //  Get total count (unfiltered by status)
   const getTotalCount = () => {
     let filtered = transformedCertificates
 
@@ -368,7 +368,7 @@ export function CertificatesRequestsContainer({
     return filtered.length
   }
 
-  // ✅ Get counts for each status
+  //  Get counts for each status
   const getStatusCount = (status: string) => {
     let filtered = transformedCertificates
 
@@ -528,7 +528,7 @@ export function CertificatesRequestsContainer({
     loadData()
   }, [fetch_AllCertificates])
 
-  // ✅ NEW: auto-refetch certificates as soon as a NEW certificate
+  //  NEW: auto-refetch certificates as soon as a NEW certificate
   // notification arrives over the websocket (e.g. someone submits or an
   // approval/rejection happens elsewhere). We compare against the count we
   // last processed so this only runs for genuinely new notifications, not

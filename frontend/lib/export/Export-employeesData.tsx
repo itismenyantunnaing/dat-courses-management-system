@@ -14,7 +14,7 @@ function getCellValue(value: any): any {
         return null;
     }
     
-    // ✅ CASE 1: Date detection (MM/DD/YYYY, DD/MM/YYYY, etc.)
+    //  CASE 1: Date detection (MM/DD/YYYY, DD/MM/YYYY, etc.)
     const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/;
     if (dateRegex.test(strValue)) {
         const date = new Date(strValue);
@@ -23,7 +23,7 @@ function getCellValue(value: any): any {
         }
     }
     
-    // ✅ CASE 2: Pure number (no leading zeros, no special characters)
+    //  CASE 2: Pure number (no leading zeros, no special characters)
     // Handles: 123, 123.45, -123, 123.45
     if (/^-?\d+(\.\d+)?$/.test(strValue) && !strValue.startsWith('0')) {
         const num = Number(strValue);
@@ -32,17 +32,17 @@ function getCellValue(value: any): any {
         }
     }
     
-    // ✅ CASE 3: Staff ID format: 05-00003, 25-00004 (keep as text)
+    //  CASE 3: Staff ID format: 05-00003, 25-00004 (keep as text)
     if (/^\d{2}-\d{5}$/.test(strValue) || /^\d{2}-\d{3}$/.test(strValue)) {
         return strValue;
     }
     
-    // ✅ CASE 4: Div format: 000-001, 000-003 (keep as text)
+    //  CASE 4: Div format: 000-001, 000-003 (keep as text)
     if (/^\d{3}-\d{3}$/.test(strValue)) {
         return strValue;
     }
     
-    // ✅ CASE 5: DoorLog numbers - pure numbers only, no leading zeros
+    //  CASE 5: DoorLog numbers - pure numbers only, no leading zeros
     if (/^\d+$/.test(strValue) && !strValue.startsWith('0')) {
         const num = Number(strValue);
         if (!isNaN(num) && num > 0) {
@@ -50,12 +50,12 @@ function getCellValue(value: any): any {
         }
     }
     
-    // ✅ CASE 6: DoorLog with leading zeros - keep as text
+    //  CASE 6: DoorLog with leading zeros - keep as text
     if (/^0\d+$/.test(strValue)) {
         return strValue;
     }
     
-    // ✅ Default: return as text
+    //  Default: return as text
     return strValue;
 }
 
@@ -148,7 +148,7 @@ export const exportEmployeesToExcel = async (
                 workbook.creator = 'Employee Management System';
                 workbook.created = new Date();
 
-                // ✅ SET SHEET NAME TO "Employee_data"
+                //  SET SHEET NAME TO "Employee_data"
                 const sheetName = 'Employee_data';
                 worksheet = workbook.addWorksheet(sheetName, {
                     properties: { tabColor: { argb: 'FF4472C4' } }
@@ -294,7 +294,7 @@ export const exportEmployeesToExcel = async (
                             default: rawValue = (emp as any)[field] || '';
                         }
 
-                        // ✅ Determine correct type and format
+                        //  Determine correct type and format
                         const processedValue = getCellValue(rawValue);
                         const numberFormat = getExcelNumberFormat(field, rawValue);
 
@@ -311,7 +311,6 @@ export const exportEmployeesToExcel = async (
                     row.height = 20;
                 });
 
-                console.log(`✅ Template copied with ${employeeData.length} rows of data`);
 
             } catch (error) {
                 console.warn('⚠️ Template loading failed, using fallback:', error);
@@ -324,7 +323,7 @@ export const exportEmployeesToExcel = async (
             workbook.creator = 'Employee Management System';
             workbook.created = new Date();
 
-            // ✅ SET SHEET NAME TO "Employee_data"
+            //  SET SHEET NAME TO "Employee_data"
             worksheet = workbook.addWorksheet('Employee_data', {
                 properties: { tabColor: { argb: 'FF4472C4' } }
             });
@@ -402,7 +401,7 @@ export const exportEmployeesToExcel = async (
                 rawData.forEach((item, colIndex) => {
                     const cell = row.getCell(colIndex + 1);
                     
-                    // ✅ Smart type detection
+                    //  Smart type detection
                     if (item.field === 'sr') {
                         cell.value = item.value;
                         cell.numFmt = '0';
@@ -444,7 +443,6 @@ export const exportEmployeesToExcel = async (
         });
         saveAs(blob, fileName);
 
-        console.log(`✅ Exported ${employeeData.length} employees successfully!`);
 
     } catch (error) {
         console.error('❌ Export error:', error);

@@ -48,6 +48,8 @@ import {
 } from "@hugeicons/core-free-icons"
 import { mainStore } from "@/store/mainStore"
 import { compressFile } from "@/lib/compressImage"
+import { toast } from "sonner"
+import { dialog } from "./import-export-confirm-dialog"
 
 // Custom progress bar component
 const ProgressBar = ({
@@ -188,7 +190,6 @@ export function PersonalInformationDialog({
     }
   }, [open, employeeId, fetch_EmployeeProfile])
 
-  console.log(systemConfig?.fileUploadSizeMb)
 
   // Update form fields when profile data loads
   useEffect(() => {
@@ -298,7 +299,7 @@ export function PersonalInformationDialog({
 
       const validTypes = ["image/jpeg", "image/png", "image/gif"]
       if (!validTypes.includes(file.type)) {
-        alert("Please upload a valid image file (JPG, PNG, or GIF).")
+        toast.warning("Please upload a valid image file (JPG, PNG, or GIF).")
         return
       }
 
@@ -430,10 +431,18 @@ export function PersonalInformationDialog({
       return
     }
 
-    if (!confirm("Are you sure you want to delete this skill?")) {
+    const confirmed = await dialog.confirm(
+      "Confirm Deletion",
+      "Are you sure you want to delete this skill?",
+      "Yes, Delete",
+      "Cancel",
+      undefined,
+      true // isDestructive
+    )
+
+    if (!confirmed) {
       return
     }
-
     try {
       await delete_SkillData(parseInt(skillId))
 
@@ -447,7 +456,7 @@ export function PersonalInformationDialog({
   // Handle management skill update
   const handleManagementUpdate = async () => {
     if (!employeeId) {
-      alert("No employee ID found")
+      toast.warning("No employee ID found")
       return
     }
 
@@ -465,11 +474,11 @@ export function PersonalInformationDialog({
       if (profile?.managementSkill?.id) {
         // Update existing management skill
         await update_managementScoreData(profile.managementSkill.id, managementData)
-        alert("Management skills updated successfully!")
+        toast.success("Management skills updated successfully!")
       } else {
         // Add new management skill
         await add_managementScoreData(managementData)
-        alert("Management skills added successfully!")
+        toast.success("Management skills added successfully!")
       }
 
       // Refresh profile data
@@ -479,7 +488,7 @@ export function PersonalInformationDialog({
       setIsManagementEditing(false)
     } catch (error) {
       console.error("❌ Failed to update management skill:", error)
-      alert("Failed to update management skills")
+      toast.error("Failed to update management skills")
     } finally {
       setIsManagementUpdating(false)
     }
@@ -488,7 +497,7 @@ export function PersonalInformationDialog({
   // Handle language skill update
   const handleLanguageUpdate = async () => {
     if (!employeeId) {
-      alert("No employee ID found")
+      toast.warning("No employee ID found")
       return
     }
 
@@ -505,18 +514,18 @@ export function PersonalInformationDialog({
       if (profile?.languageSkill?.id) {
         // Update existing language skill using edit_EmployeeJapaneseLevel
         await edit_EmployeeJapaneseLevel(profile.languageSkill.id, languageData)
-        alert("Language skills updated successfully!")
+        toast.success("Language skills updated successfully!")
       } else {
         // Add new language skill using add_EmployeeJapaneseLevel
         await add_EmployeeJapaneseLevel(languageData)
-        alert("Language skills added successfully!")
+        toast.success("Language skills added successfully!")
       }
 
       // Refresh profile data
       await fetch_EmployeeProfile(employeeId)
     } catch (error) {
       console.error("❌ Failed to update language skill:", error)
-      alert("Failed to update language skills")
+      toast.error("Failed to update language skills")
     } finally {
       setIsLanguageUpdating(false)
     }
@@ -593,7 +602,6 @@ export function PersonalInformationDialog({
 
   // Handle development skill edit
   const handleDevSkillEdit = (skill: any) => {
-    console.log("📝 Editing development skill:", skill)
     setEditingDevSkillId(skill.id)
     setEditDevYears(skill.yearsOfExperience?.toString() || "")
     setEditDevProcessName(skill.processName || "")
@@ -602,12 +610,12 @@ export function PersonalInformationDialog({
   // Handle development skill update
   const handleDevSkillUpdate = async (skillId: string, developmentTypeName: string) => {
     if (!employeeId) {
-      alert("No employee ID found")
+      toast.warning("No employee ID found")
       return
     }
 
     if (!editDevYears || !editDevProcessName) {
-      alert("Please fill in both years and process name")
+      toast.warning("Please fill in both years and process name")
       return
     }
 
@@ -620,7 +628,7 @@ export function PersonalInformationDialog({
         yearsOfExperience: parseFloat(editDevYears),
       })
 
-      alert("Development skill updated successfully!")
+      toast.success("Development skill updated successfully!")
 
       // Refresh profile data
       await fetch_EmployeeProfile(employeeId)
@@ -631,7 +639,7 @@ export function PersonalInformationDialog({
       setEditDevProcessName("")
     } catch (error) {
       console.error("❌ Failed to update development skill:", error)
-      alert("Failed to update development skill")
+      toast.error("Failed to update development skill")
     } finally {
       setIsDevUpdating(false)
     }
@@ -640,12 +648,12 @@ export function PersonalInformationDialog({
   // Handle adding new development skill
   const handleAddDevSkill = async () => {
     if (!employeeId) {
-      alert("No employee ID found")
+      toast.warning("No employee ID found")
       return
     }
 
     if (!newDevTypeName || !newDevProcessName || !newDevYears) {
-      alert("Please fill in all fields")
+      toast.warning("Please fill in all fields")
       return
     }
 
@@ -658,7 +666,7 @@ export function PersonalInformationDialog({
         yearsOfExperience: parseFloat(newDevYears),
       })
 
-      alert("Development skill added successfully!")
+      toast.success("Development skill added successfully!")
 
       // Refresh profile data
       await fetch_EmployeeProfile(employeeId)
@@ -670,7 +678,7 @@ export function PersonalInformationDialog({
       setIsAddingDevSkill(false)
     } catch (error) {
       console.error("❌ Failed to add development skill:", error)
-      alert("Failed to add development skill")
+      toast.error("Failed to add development skill")
     } finally {
       setIsAddingDevLoading(false)
     }
@@ -1395,7 +1403,6 @@ export function PersonalInformationDialog({
                         value={newDevTypeName}
                         onValueChange={(value) => {
                           setNewDevTypeName(value)
-                          console.log("📝 Development type changed:", value)
                         }}
                       >
                         <SelectTrigger className="h-9 w-full">
@@ -1419,7 +1426,6 @@ export function PersonalInformationDialog({
                         value={newDevProcessName}
                         onChange={(e) => {
                           setNewDevProcessName(e.target.value)
-                          console.log("📝 Process name changed:", e.target.value)
                         }}
                         placeholder="e.g., Agile, Waterfall"
                         className="h-9 w-full"
@@ -1437,7 +1443,6 @@ export function PersonalInformationDialog({
                         value={newDevYears}
                         onChange={(e) => {
                           setNewDevYears(e.target.value)
-                          console.log("📝 New dev years:", e.target.value)
                         }}
                         placeholder="0.0"
                         className="h-9 w-full"
@@ -1573,7 +1578,6 @@ export function PersonalInformationDialog({
                                   value={editDevProcessName}
                                   onChange={(e) => {
                                     setEditDevProcessName(e.target.value)
-                                    console.log("📝 Edit process name:", e.target.value)
                                   }}
                                   placeholder="Process name"
                                   className="h-9"
@@ -1591,7 +1595,6 @@ export function PersonalInformationDialog({
                                   value={editDevYears}
                                   onChange={(e) => {
                                     setEditDevYears(e.target.value)
-                                    console.log("📝 Edit dev years:", e.target.value)
                                   }}
                                   placeholder="0.0"
                                   className="h-9"
@@ -1668,7 +1671,6 @@ export function PersonalInformationDialog({
                         value={String(languageLevel)}
                         onValueChange={(value) => {
                           setLanguageLevel(parseInt(value))
-                          console.log("📝 Language level changed:", value)
                         }}
                         disabled={isLanguageUpdating || isUpdating || isSaving}
                       >
@@ -1777,7 +1779,6 @@ export function PersonalInformationDialog({
                             value={String(managementEducation)}
                             onValueChange={(value) => {
                               setManagementEducation(parseInt(value))
-                              console.log("📝 Management education changed:", value)
                             }}
                             disabled={isManagementUpdating || isUpdating || isSaving}
                           >
@@ -1805,7 +1806,6 @@ export function PersonalInformationDialog({
                             value={String(managementExperience)}
                             onValueChange={(value) => {
                               setManagementExperience(parseInt(value))
-                              console.log("📝 Management experience changed:", value)
                             }}
                             disabled={isManagementUpdating || isUpdating || isSaving}
                           >
@@ -1833,7 +1833,6 @@ export function PersonalInformationDialog({
                             value={String(managementQcd)}
                             onValueChange={(value) => {
                               setManagementQcd(parseInt(value))
-                              console.log("📝 Management QCD changed:", value)
                             }}
                             disabled={isManagementUpdating || isUpdating || isSaving}
                           >
@@ -1861,7 +1860,6 @@ export function PersonalInformationDialog({
                             value={String(managementReportConsult)}
                             onValueChange={(value) => {
                               setManagementReportConsult(parseInt(value))
-                              console.log("📝 Management report/consult changed:", value)
                             }}
                             disabled={isManagementUpdating || isUpdating || isSaving}
                           >

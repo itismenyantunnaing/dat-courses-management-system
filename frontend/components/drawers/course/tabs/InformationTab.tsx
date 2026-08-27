@@ -38,6 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
 
 interface InformationTabProps {
   course: Course
@@ -90,7 +91,7 @@ const truncateText = (text: string, maxLength: number = 30) => {
 
 // Attendance status options with labels and icons
 const ATTENDANCE_OPTIONS = [
-  { value: "PRESENT", label: "Present", icon: "✅" },
+  { value: "PRESENT", label: "Present", icon: "" },
   { value: "ABSENT", label: "Absent", icon: "❌" },
   { value: "LATE", label: "Late", icon: "⏰" },
   { value: "EXCUSED", label: "Excused", icon: "📝" },
@@ -316,7 +317,7 @@ export function InformationTab({
     )
 
     if (!session) {
-      alert("Session not found")
+      toast.warning("Session not found")
       return
     }
 
@@ -364,21 +365,21 @@ export function InformationTab({
 
       if (result.success) {
         await fetch_studyProgress(course.id)
-        alert(
+        toast.success(
           `Progress saved successfully for Session ${
             session.session_no || session.sessionNo || ""
           }`
         )
 
         if (allTargetsMet) {
-          alert("🎉 Congratulations! Session completed!")
+          toast.success("🎉 Congratulations! Session completed!")
         }
       } else {
-        alert(result.message || "Failed to save progress")
+        toast.error(result.message || "Failed to save progress")
       }
     } catch (error) {
       console.error(error)
-      alert("An error occurred while saving progress")
+      toast.error("An error occurred while saving progress")
     } finally {
       setSavingSessions((prev) => ({
         ...prev,

@@ -235,7 +235,7 @@ export function ExportDialog({
 
       // For self-study tab, check if course is selected
       if (isSelfStudyTab && !selectedCourse) {
-        alert("Please select a course before exporting.")
+        toast.warning("Please select a course before exporting.")
         return
       }
 
@@ -291,7 +291,7 @@ export function ExportDialog({
         onOpenChange(false)
       } catch (error) {
         console.error("❌ Export failed:", error)
-        alert(
+        toast.error(
           `Failed to export: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       } finally {

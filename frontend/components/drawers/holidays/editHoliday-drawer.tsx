@@ -17,6 +17,7 @@ import {
 } from "@/components/drawers/holidays/holidayForm"
 import { mainStore } from "@/store/mainStore"
 import { Holiday } from "@/types/holiday"
+import { toast } from "sonner"
 
 interface EditHolidayDrawerProps {
   open: boolean
@@ -84,10 +85,10 @@ export function EditHolidayDrawer({
           result.includes("already exists") ||
           result.includes("Failed"))
       ) {
-        alert(result)
+        toast.warning(result)
         return
       } else {
-        alert(result)
+        toast.success(result)
       }
       // Close drawer and trigger success
       onOpenChange(false)

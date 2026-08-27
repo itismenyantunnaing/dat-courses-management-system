@@ -378,7 +378,6 @@ export default function SelfStudyProgressReportContainer() {
         }
       });
 
-      console.log("📊 Found employee IDs:", Array.from(employeeIds));
 
       // Fetch target level for EACH employee and store in a map
       const targetMap = new Map();
@@ -389,7 +388,6 @@ export default function SelfStudyProgressReportContainer() {
           const { employeeTargetLevel: currentTarget } = mainStore.getState();
           if (currentTarget) {
             targetMap.set(employeeId, currentTarget);
-            console.log(`✅ Target level fetched for employee ${employeeId}:`, currentTarget);
           }
         } catch (error) {
           console.error(`❌ Error fetching target level for employee ${employeeId}:`, error);

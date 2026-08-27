@@ -70,7 +70,7 @@ public class EmployeeProgressService {
             log.info("--- Course #{}/{}: {} (ID: {}, Type: {}) ---", 
                 courseIndex, enrollments.size(), course.getCourseName(), course.getId(), courseType);
 
-            // ✅ SKIP "other" type self-study courses completely
+            //  SKIP "other" type self-study courses completely
             if (courseType == CourseCategory.CourseType.SELF_STUDY 
                 && course.getSelfStudyType() != null 
                 && course.getSelfStudyType().equals("other")) {

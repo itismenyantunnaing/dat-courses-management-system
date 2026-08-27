@@ -25,6 +25,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { toast } from "sonner"
+import { dialog } from "@/components/dialogs/import-export-confirm-dialog"
 
 interface GroupRequestsTabProps {
   enrollments: any[]
@@ -96,19 +98,20 @@ export function GroupRequestsTab({
   const hasNoPendingRequests = pendingRequests.length === 0
 
   // Handle approve with capacity check
-  const handleApprove = (request: any) => {
+  const handleApprove = async (request: any) => {
     const targetGroupId = request.requestedCourseGroupId
 
     if (!targetGroupId) {
-      alert("❌ Error: No target group specified for this request.")
+      toast.error("❌ Error: No target group specified for this request.")
       return
     }
 
     const capacityInfo = getGroupCapacityInfo(targetGroupId, enrollments, course)
 
     if (capacityInfo && capacityInfo.isFull) {
-      // Show detailed alert when group is full
-      alert(
+
+      await dialog.warning(
+        "Group Capacity Reached",
         `⚠️ Cannot approve this request.\n\n` +
         `The target group "${capacityInfo.groupName}" is currently at full capacity.\n` +
         `Current: ${capacityInfo.currentCount}/${capacityInfo.capacity} members\n\n` +
@@ -117,11 +120,13 @@ export function GroupRequestsTab({
         `2. Increase the capacity of "${capacityInfo.groupName}"\n\n` +
         `Then try approving this request again.`
       )
+
       return
     }
 
     if (capacityInfo && capacityInfo.capacity > 0 && capacityInfo.remaining < 1) {
-      alert(
+      await dialog.warning(
+        "Insufficient Group Capacity",
         `⚠️ Cannot approve this request.\n\n` +
         `The target group "${capacityInfo.groupName}" has insufficient space.\n` +
         `Available spots: ${capacityInfo.remaining}\n` +
@@ -147,10 +152,16 @@ export function GroupRequestsTab({
       }
     }
 
-    if (!confirm(confirmMessage)) {
+    const confirmed = await dialog.confirm(
+      "Approve Group Change Request",
+      confirmMessage,
+      "Yes, Approve",
+      "Cancel"
+    )
+
+    if (!confirmed) {
       return
     }
-
     onApprove(request.id)
   }
 
@@ -272,7 +283,7 @@ export function GroupRequestsTab({
               </div>
 
               {/* Action Buttons - Bottom Right, only for pending requests */}
-              {isPending   && (
+              {isPending && (
                 <div className="absolute right-3 bottom-0 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   <Button
                     size="sm"

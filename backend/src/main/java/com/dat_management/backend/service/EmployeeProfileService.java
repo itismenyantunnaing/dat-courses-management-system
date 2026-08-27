@@ -46,9 +46,9 @@ public class EmployeeProfileService {
             if (!Files.exists(uploadPath)) {
                 System.out.println("📁 Directory does not exist, creating...");
                 Files.createDirectories(uploadPath);
-                System.out.println("✅ Created directory: " + uploadPath);
+                System.out.println(" Created directory: " + uploadPath);
             } else {
-                System.out.println("✅ Directory exists: " + uploadPath);
+                System.out.println(" Directory exists: " + uploadPath);
             }
         } catch (Exception e) {
             System.err.println("❌ Failed to create profile upload directory: " + e.getMessage());
@@ -94,10 +94,10 @@ public class EmployeeProfileService {
         try {
             System.out.println("💾 Saving profile image to: " + filePath.toAbsolutePath());
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("✅ Profile image saved successfully!");
+            System.out.println(" Profile image saved successfully!");
 
             if (Files.exists(filePath)) {
-                System.out.println("✅ Verified: File exists at: " + filePath.toAbsolutePath());
+                System.out.println(" Verified: File exists at: " + filePath.toAbsolutePath());
             } else {
                 System.err.println("❌ Warning: File not found after save!");
             }
@@ -114,8 +114,8 @@ public class EmployeeProfileService {
         employee.setUpdatedAt(LocalDateTime.now());
         employeeRepository.save(employee);
 
-        System.out.println("✅ Employee updated with new profile path: " + profilePath);
-        System.out.println("✅ Updated at: " + employee.getUpdatedAt());
+        System.out.println(" Employee updated with new profile path: " + profilePath);
+        System.out.println(" Updated at: " + employee.getUpdatedAt());
 
         return profilePath;
     }
@@ -148,7 +148,7 @@ public class EmployeeProfileService {
             Path path = uploadPath.resolve(filename);
             if (Files.exists(path)) {
                 Files.delete(path);
-                System.out.println("✅ Profile image deleted: " + filename);
+                System.out.println(" Profile image deleted: " + filename);
             }
         }
     }

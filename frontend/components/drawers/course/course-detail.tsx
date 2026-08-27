@@ -27,6 +27,8 @@ import { GroupChangeTab } from "@/components/drawers/course/tabs/GroupChange.tab
 import { GroupRequestsTab } from "@/components/drawers/course/tabs/GroupRequestTab"
 import { ChangeGroupDialogs } from "@/components/dialogs/changeGroup-dialog"
 import { ChangeGroupRequestDialogs } from "@/components/dialogs/changeGroupRequest-dialog"
+import { toast } from "sonner"
+import { dialog } from "@/components/dialogs/import-export-confirm-dialog"
 
 interface CourseDetailProps {
   course: Course
@@ -255,7 +257,6 @@ export function CourseDetail({
       })
 
       await Promise.all(attendancePromises)
-      console.log(`✅ Attendance loaded for ${course.groups.length} groups`)
     } catch (error) {
       console.error("Error loading attendance for groups:", error)
     } finally {
@@ -278,7 +279,7 @@ export function CourseDetail({
     groupId?: number
   ) => {
     if (!course.id) {
-      alert("Course ID is required to enroll")
+      toast.info("Course ID is required to enroll")
       return
     }
 
@@ -299,17 +300,17 @@ export function CourseDetail({
           const targetGroupId = groupId || parseInt(String(course.groups?.[0]?.id || "1").replace("g", ""))
           const result = await adminChangeGroup(existingEnrollment.id, targetGroupId)
           if (result.success) {
-            alert(`✅ Employee moved to Group ${targetGroupId} successfully!`)
+            toast.success(` Employee moved to Group ${targetGroupId} successfully!`)
             if (course.id) {
               await fetch_courseEnrollments(course.id)
               await refreshAllGroupAttendance()
             }
           } else {
-            alert(result.message || "Failed to change group")
+            toast.error(result.message || "Failed to change group")
           }
         } catch (error) {
           console.error("Error changing group:", error)
-          alert("Failed to change group")
+          toast.error("Failed to change group")
         }
         return
       }
@@ -327,7 +328,6 @@ export function CourseDetail({
       targetGroupId = 1
     }
 
-    console.log(`📝 Enrolling employee to group:`, targetGroupId)
 
     setIsEnrolling(true)
     try {
@@ -339,11 +339,11 @@ export function CourseDetail({
           await refreshAllGroupAttendance()
         }
       } else {
-        alert(result.message || "Failed to enroll employee")
+        toast.error(result.message || "Failed to enroll employee")
       }
     } catch (error) {
       console.error("Error enrolling employee:", error)
-      alert("An error occurred while enrolling")
+      toast.error("An error occurred while enrolling")
     } finally {
       setIsEnrolling(false)
     }
@@ -352,7 +352,7 @@ export function CourseDetail({
   // 🆕 Handle unenrolling employee from LearnersTab
   const handleUnenrollEmployee = async (enrollmentId: number) => {
     if (!course.id) {
-      alert("Course ID is required to unenroll")
+      toast.warning("Course ID is required to unenroll")
       return
     }
 
@@ -361,18 +361,18 @@ export function CourseDetail({
       const result = await unenrollEmployee(course.id, enrollmentId)
 
       if (result.success) {
-        alert(`✅ Employee unenrolled successfully!`)
+        toast.success(` Employee unenrolled successfully!`)
         // Refresh enrollments
         if (course.id) {
           await fetch_courseEnrollments(course.id)
           await refreshAllGroupAttendance()
         }
       } else {
-        alert(result.message || "Failed to unenroll employee")
+        toast.error(result.message || "Failed to unenroll employee")
       }
     } catch (error) {
       console.error("Error unenrolling employee:", error)
-      alert("An error occurred while unenrolling")
+      toast.error("An error occurred while unenrolling")
     } finally {
       setIsUnenrolling(false)
     }
@@ -381,7 +381,7 @@ export function CourseDetail({
   // Handle group change request
   const handleRequestGroupChange = async (groupId: string) => {
     if (!currentUserEnrollment) {
-      alert("You are not enrolled in this course")
+      toast.warning("You are not enrolled in this course")
       return
     }
 
@@ -393,17 +393,17 @@ export function CourseDetail({
       )
 
       if (result.success) {
-        alert(result.message || "Group change request submitted successfully!")
+        toast.success(result.message || "Group change request submitted successfully!")
         if (course.id) {
           await fetch_courseEnrollments(course.id)
         }
         setChangeGroupRequestDialogOpen(false)
       } else {
-        alert(result.message || "Failed to submit group change request")
+        toast.error(result.message || "Failed to submit group change request")
       }
     } catch (error) {
       console.error("Error requesting group change:", error)
-      alert("An error occurred while submitting your request")
+      toast.error("An error occurred while submitting your request")
     } finally {
       setIsRequestingGroupChange(false)
     }
@@ -411,9 +411,15 @@ export function CourseDetail({
 
   // Handle approve group change request
   const handleApproveRequest = async (enrollmentId: number) => {
-    if (
-      !confirm("Are you sure you want to approve this group change request?")
-    ) {
+
+    const confirmed = await dialog.confirm(
+      "Approve Group Change",
+      "Are you sure you want to approve this group change request?",
+      "Yes, Approve",
+      "Cancel"
+    )
+
+    if (!confirmed) {
       return
     }
 
@@ -422,17 +428,17 @@ export function CourseDetail({
       const result = await approveGroupChange(enrollmentId)
 
       if (result.success) {
-        alert(result.message || "Group change request approved successfully!")
+        toast.success(result.message || "Group change request approved successfully!")
         if (course.id) {
           await fetch_courseEnrollments(course.id)
           await refreshAllGroupAttendance()
         }
       } else {
-        alert(result.message || "Failed to approve group change request")
+        toast.error(result.message || "Failed to approve group change request")
       }
     } catch (error) {
       console.error("Error approving group change:", error)
-      alert("An error occurred while approving the request")
+      toast.error("An error occurred while approving the request")
     } finally {
       setIsProcessingRequest(false)
     }
@@ -440,9 +446,16 @@ export function CourseDetail({
 
   // Handle reject group change request
   const handleRejectRequest = async (enrollmentId: number) => {
-    if (
-      !confirm("Are you sure you want to reject this group change request?")
-    ) {
+    const confirmed = await dialog.confirm(
+      "Reject Group Change",
+      "Are you sure you want to reject this group change request?",
+      "Yes, Reject",
+      "Cancel",
+      undefined,
+      true // isDestructive
+    )
+
+    if (!confirmed) {
       return
     }
 
@@ -451,16 +464,16 @@ export function CourseDetail({
       const result = await rejectGroupChange(enrollmentId)
 
       if (result.success) {
-        alert(result.message || "Group change request rejected successfully!")
+        toast.success(result.message || "Group change request rejected successfully!")
         if (course.id) {
           await fetch_courseEnrollments(course.id)
         }
       } else {
-        alert(result.message || "Failed to reject group change request")
+        toast.error(result.message || "Failed to reject group change request")
       }
     } catch (error) {
       console.error("Error rejecting group change:", error)
-      alert("An error occurred while rejecting the request")
+      toast.error("An error occurred while rejecting the request")
     } finally {
       setIsProcessingRequest(false)
     }
@@ -478,13 +491,13 @@ export function CourseDetail({
           await fetch_courseEnrollments(course.id)
           await refreshAllGroupAttendance()
         }
-        alert("Group changed successfully!")
+        toast.success("Group changed successfully!")
       } else {
-        alert(result.message || "Failed to change group")
+        toast.error(result.message || "Failed to change group")
       }
     } catch (error) {
       console.error("Failed to change group:", error)
-      alert(error instanceof Error ? error.message : "Failed to change group")
+      toast.error(error instanceof Error ? error.message : "Failed to change group")
     }
   }
 
@@ -607,10 +620,8 @@ export function CourseDetail({
           existingAttendance.id,
           request
         )
-        console.log("✅ Attendance updated:", result)
       } else {
         result = await createAttendance(parseInt(course.id), groupId, request)
-        console.log("✅ Attendance created:", result)
       }
 
       // Refresh attendance for all groups after change
@@ -634,7 +645,7 @@ export function CourseDetail({
         return newState
       })
 
-      alert("Failed to save attendance. Please try again.")
+      toast.error("Failed to save attendance. Please try again.")
     } finally {
       setSavingAttendance((prev) => ({ ...prev, [key]: false }))
     }
@@ -643,7 +654,7 @@ export function CourseDetail({
   // Handle Register
   const handleRegister = async () => {
     if (!course.groups || course.groups.length === 0) {
-      alert("No groups available for enrollment")
+      toast.info("No groups available for enrollment")
       return
     }
 
@@ -655,7 +666,7 @@ export function CourseDetail({
       const result = await enrollEmployee(course.id, groupIdNum)
 
       if (result.success) {
-        alert(result.message || "Successfully enrolled in the course!")
+        toast.success(result.message || "Successfully enrolled in the course!")
         await fetch_courseEnrollments(course.id)
         await refreshAllGroupAttendance()
 
@@ -663,11 +674,11 @@ export function CourseDetail({
           onRegister(course)
         }
       } else {
-        alert(result.message || "Failed to enroll in the course")
+        toast.error(result.message || "Failed to enroll in the course")
       }
     } catch (error) {
       console.error("Error enrolling:", error)
-      alert("An error occurred while enrolling")
+      toast.error("An error occurred while enrolling")
     } finally {
       setIsEnrolling(false)
     }
@@ -676,11 +687,20 @@ export function CourseDetail({
   // Handle Unenroll
   const handleUnenroll = async () => {
     if (!currentUserEnrollment) {
-      alert("You are not enrolled in this course")
+      toast.info("You are not enrolled in this course")
       return
     }
 
-    if (!confirm("Are you sure you want to unenroll from this course?")) {
+    const confirmed = await dialog.confirm(
+      "Confirm Unenrollment",
+      "Are you sure you want to unenroll from this course?",
+      "Yes, Unenroll",
+      "Cancel",
+      undefined,
+      true // isDestructive
+    )
+
+    if (!confirmed) {
       return
     }
 
@@ -689,7 +709,7 @@ export function CourseDetail({
       const result = await unenrollEmployee(course.id, currentUserEnrollment.id)
 
       if (result.success) {
-        alert(result.message || "Successfully unenrolled from the course")
+        toast.success(result.message || "Successfully unenrolled from the course")
         setCurrentUserEnrollment(null)
         await fetch_courseEnrollments(course.id)
         await refreshAllGroupAttendance()
@@ -698,11 +718,11 @@ export function CourseDetail({
           onRegister(course)
         }
       } else {
-        alert(result.message || "Failed to unenroll from the course")
+        toast.error(result.message || "Failed to unenroll from the course")
       }
     } catch (error) {
       console.error("Error unenrolling:", error)
-      alert("An error occurred while unenrolling")
+      toast.error("An error occurred while unenrolling")
     } finally {
       setIsUnenrolling(false)
     }

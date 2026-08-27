@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { CERTIFICATE_TYPES, CERTIFICATE_LEVELS } from "@/types/certificate"
 import { CertificateForm } from "@/components/drawers/certificate/certificateForm"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 interface NewCertificateDrawerProps {
   open: boolean
@@ -46,7 +47,7 @@ export function NewCertificateDrawer({
     file?: File
   }) => {
     if (!data.file) {
-      alert("Please select an image file")
+      toast.info("Please select an image file")
       return
     }
 
@@ -61,15 +62,15 @@ export function NewCertificateDrawer({
       })
 
       if (result.includes("successfully")) {
-        alert("✅ Certificate added successfully!")
+        toast.success(" Certificate added successfully!")
         onOpenChange(false)
         await fetch_CertificateData()
       } else {
-        alert("❌ " + result)
+        toast.error("❌ " + result)
       }
     } catch (error) {
       console.error("❌ Error adding certificate:", error)
-      alert("❌ Failed to add certificate")
+      toast.error("❌ Failed to add certificate")
     } finally {
       setIsSubmitting(false)
     }

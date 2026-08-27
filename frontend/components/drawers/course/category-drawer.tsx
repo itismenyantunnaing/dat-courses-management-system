@@ -53,6 +53,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from "sonner"
 
 export function CategoryDrawer({
   open,
@@ -239,13 +240,13 @@ export function CategoryDrawer({
           onSelectCategory("")
         }
       } else {
-        alert(result.message || 'Failed to delete category')
+        toast.error(result.message || 'Failed to delete category')
         setDeleteDialogOpen(false)
         setCategoryToDelete(null)
       }
     } catch (error) {
       console.error("Failed to delete category:", error)
-      alert('An error occurred while deleting the category')
+      toast.error('An error occurred while deleting the category')
       setDeleteDialogOpen(false)
       setCategoryToDelete(null)
     }
@@ -331,10 +332,10 @@ export function CategoryDrawer({
           if (stillDuplicate) {
             setDuplicateError(`A category with the name "${categoryName}" and type "${COURSE_TYPE_LABELS[formData.type]}" already exists. Please use a different name.`)
           } else {
-            alert(result.message || 'Failed to save category')
+            toast.error(result.message || 'Failed to save category')
           }
         } else {
-          alert(result.message || 'Failed to save category')
+          toast.error(result.message || 'Failed to save category')
         }
       }
     } catch (error: any) {
@@ -353,10 +354,10 @@ export function CategoryDrawer({
         if (stillDuplicate) {
           setDuplicateError(`A category with the name "${categoryName}" and type "${COURSE_TYPE_LABELS[formData.type]}" already exists. Please use a different name.`)
         } else {
-          alert('An error occurred while saving the category')
+          toast.error('An error occurred while saving the category')
         }
       } else {
-        alert('An error occurred while saving the category')
+        toast.error('An error occurred while saving the category')
       }
     } finally {
       setIsSubmitting(false)

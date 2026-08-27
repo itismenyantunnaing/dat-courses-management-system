@@ -81,7 +81,7 @@ public class CourseService {
                 : CourseStatus.DRAFT);
         course.setIsDeleted(false);
         course = courseRepo.save(course);
-        log.info("✅ Course created with ID: {}", course.getId());
+        log.info(" Course created with ID: {}", course.getId());
 
         // Save groups + sessions
         if (req.getGroups() != null) {
@@ -199,7 +199,7 @@ public class CourseService {
             );
         }
         
-        log.info("✅ Course update completed for ID: {}", id);
+        log.info(" Course update completed for ID: {}", id);
         return toCourseDto(courseRepo.findById(course.getId()).get(), false);
     }
 
@@ -218,7 +218,7 @@ public class CourseService {
         course.setImagePath(null);
         course.setIsDeleted(true);
         courseRepo.save(course);
-        log.info("✅ Course ID: {} marked as deleted", id);
+        log.info(" Course ID: {} marked as deleted", id);
     }
 
     // =========================================================
@@ -230,7 +230,7 @@ public class CourseService {
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));
         course.setIsDeleted(false);
         Course restored = courseRepo.save(course);
-        log.info("✅ Course ID: {} restored", id);
+        log.info(" Course ID: {} restored", id);
         return toCourseDto(restored, false);
     }
 
@@ -269,7 +269,7 @@ public class CourseService {
                 .isDeleted(false)
                 .build();
         CategoryDto result = toCategoryDto(categoryRepo.save(cat));
-        log.info("✅ Category created with ID: {}", result.getId());
+        log.info(" Category created with ID: {}", result.getId());
         return result;
     }
 
@@ -289,7 +289,7 @@ public class CourseService {
             cat.setCourseType(CourseType.valueOf(type));
         }
         CategoryDto result = toCategoryDto(categoryRepo.save(cat));
-        log.info("✅ Category ID: {} updated", id);
+        log.info(" Category ID: {} updated", id);
         return result;
     }
 
@@ -302,7 +302,7 @@ public class CourseService {
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         cat.setIsDeleted(true);
         categoryRepo.save(cat);
-        log.info("✅ Category ID: {} marked as deleted", id);
+        log.info(" Category ID: {} marked as deleted", id);
     }
 
     // =========================================================
@@ -314,7 +314,7 @@ public class CourseService {
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         cat.setIsDeleted(false);
         CategoryDto result = toCategoryDto(categoryRepo.save(cat));
-        log.info("✅ Category ID: {} restored", id);
+        log.info(" Category ID: {} restored", id);
         return result;
     }
 
@@ -332,7 +332,7 @@ public class CourseService {
             String imagePath = courseImageStorageService.storeImage(file, id);
             course.setImagePath(imagePath);
             courseRepo.save(course);
-            log.info("✅ Image uploaded successfully for course ID: {}", id);
+            log.info(" Image uploaded successfully for course ID: {}", id);
             return toCourseDto(course, false);
         } catch (IOException e) {
             log.error("❌ Failed to upload image: {}", e.getMessage());
@@ -354,7 +354,7 @@ public class CourseService {
             courseImageStorageService.deleteImage(course.getImagePath());
             course.setImagePath(null);
             courseRepo.save(course);
-            log.info("✅ Image deleted for course ID: {}", id);
+            log.info(" Image deleted for course ID: {}", id);
             return toCourseDto(course, false);
         } catch (IOException e) {
             log.error("❌ Failed to delete image: {}", e.getMessage());
@@ -409,7 +409,7 @@ public class CourseService {
         CourseSession.SessionStatus status = CourseSession.SessionStatus.valueOf(sessionStatus.toUpperCase());
         session.setSessionStatus(status);
         CourseSession updated = sessionRepo.save(session);
-        log.info("✅ Session ID: {} status updated to: {}", sessionId, status);
+        log.info(" Session ID: {} status updated to: {}", sessionId, status);
         Map<String, Object> sessionData = new HashMap<>();
         sessionData.put("id", updated.getId());
         sessionData.put("session_status", updated.getSessionStatus().name());
@@ -488,7 +488,7 @@ public class CourseService {
             log.info("🔄 EXECUTING FIRST REDISTRIBUTION (Full Distribution)");
             log.info("========================================");
             handleFirstRedistribution(course, groupRequests, existingGroups);
-            log.info("✅ First redistribution completed.");
+            log.info(" First redistribution completed.");
             log.info("========================================");
             return;
         }
@@ -574,7 +574,7 @@ public class CourseService {
             log.info("🔄 Redistribution needed: Some groups are over capacity");
             redistributeWithMinimalChanges(course, existingGroups);
         } else {
-            log.info("✅ All groups within capacity. No redistribution needed.");
+            log.info(" All groups within capacity. No redistribution needed.");
             log.info("  (Keeping existing group assignments stable)");
         }
         
@@ -583,7 +583,7 @@ public class CourseService {
             deleteGroupsNotInRequest(course, existingGroups, requestGroupNames);
         }
         
-        log.info("✅ updateGroups completed for Course ID: {}", course.getId());
+        log.info(" updateGroups completed for Course ID: {}", course.getId());
         log.info("========================================");
     }
 
@@ -679,7 +679,7 @@ public class CourseService {
                     group.setGroupStatus(GroupStatus.valueOf(gReq.getGroupStatus()));
                 }
                 group = groupRepo.save(group);
-                log.info("    ✅ Updated group '{}': Capacity = {}", groupName, capacity);
+                log.info("     Updated group '{}': Capacity = {}", groupName, capacity);
             } else {
                 group = new CourseGroup();
                 group.setCourse(course);
@@ -689,7 +689,7 @@ public class CourseService {
                     ? GroupStatus.valueOf(gReq.getGroupStatus()) 
                     : GroupStatus.OPEN);
                 group = groupRepo.save(group);
-                log.info("    ✅ Created new group '{}': Capacity = {}", groupName, capacity);
+                log.info("     Created new group '{}': Capacity = {}", groupName, capacity);
                 copySessionsFromGroup(course, group, originalGroup);
             }
             
@@ -724,7 +724,7 @@ public class CourseService {
                 newGroup.setGroupStatus(GroupStatus.OPEN);
                 newGroup = groupRepo.save(newGroup);
                 
-                log.info("    ✅ Auto-created group '{}': Capacity = {}", newGroupName, autoCreateCapacity);
+                log.info("     Auto-created group '{}': Capacity = {}", newGroupName, autoCreateCapacity);
                 
                 copySessionsFromGroup(course, newGroup, originalGroup);
                 
@@ -753,7 +753,7 @@ public class CourseService {
         log.info("  🔄 Distributing {} members across {} groups", totalMembers, allGroups.size());
         redistributeAllMembersEvenly(course, allGroups);
         
-        log.info("✅ First Redistribution Completed");
+        log.info(" First Redistribution Completed");
         log.info("  - Groups after redistribution: {}", allGroups.size());
         for (CourseGroup group : allGroups) {
             long memberCount = groupRepo.countEnrollmentsByGroupId(group.getId());
@@ -832,14 +832,14 @@ public class CourseService {
                     group.setGroupStatus(GroupStatus.valueOf(gReq.getGroupStatus()));
                 }
                 groupRepo.save(group);
-                log.info("    ✅ Updated group '{}': Capacity = {}, Status = {}", 
+                log.info("     Updated group '{}': Capacity = {}, Status = {}", 
                     group.getGroupName(), group.getCapacity(), group.getGroupStatus());
                 updateSessionsForGroup(group, gReq.getSessions());
             } else {
                 CourseGroup newGroup = saveGroup(course, gReq);
                 saveSessionsForGroup(course, newGroup, gReq.getSessions());
                 existingGroups.add(newGroup);
-                log.info("    ✅ Created new group '{}': Capacity = {}", 
+                log.info("     Created new group '{}': Capacity = {}", 
                     newGroup.getGroupName(), newGroup.getCapacity());
             }
         }
@@ -879,13 +879,13 @@ public class CourseService {
                     group.getGroupName(), current, capacity);
             } else if (current < capacity) {
                 underCapacityGroups.add(group);
-                log.info("  ✅ Group '{}' has space: {} < {}", 
+                log.info("   Group '{}' has space: {} < {}", 
                     group.getGroupName(), current, capacity);
             }
         }
         
         if (overCapacityGroups.isEmpty()) {
-            log.info("✅ No over-capacity groups. No redistribution needed.");
+            log.info(" No over-capacity groups. No redistribution needed.");
             return;
         }
         
@@ -930,7 +930,7 @@ public class CourseService {
             }
         }
         
-        log.info("✅ Minimal redistribution completed. Total members moved: {}", totalMoved);
+        log.info(" Minimal redistribution completed. Total members moved: {}", totalMoved);
     }
 
     /**
@@ -971,7 +971,7 @@ public class CourseService {
             groupRepo.delete(groupToDelete);
         }
         
-        log.info("✅ Groups deletion completed. Deleted {} groups.", groupsToDelete.size());
+        log.info(" Groups deletion completed. Deleted {} groups.", groupsToDelete.size());
     }
 
     /**
@@ -981,7 +981,7 @@ public class CourseService {
         List<CourseEnrollment> members = enrollmentRepo.findByCourseGroupId(sourceGroup.getId());
         
         if (members.isEmpty()) {
-            log.info("  ✅ Group '{}' has no members to move", sourceGroup.getGroupName());
+            log.info("   Group '{}' has no members to move", sourceGroup.getGroupName());
             return true;
         }
         
@@ -1032,7 +1032,7 @@ public class CourseService {
             return false;
         }
         
-        log.info("  ✅ All {} members moved successfully", members.size());
+        log.info("   All {} members moved successfully", members.size());
         return true;
     }
 
@@ -1169,7 +1169,7 @@ public class CourseService {
             }
         }
         
-        log.info("  ✅ Sessions updated for group '{}'", group.getGroupName());
+        log.info("   Sessions updated for group '{}'", group.getGroupName());
     }
 
     // =========================================================
@@ -1291,7 +1291,7 @@ public class CourseService {
             }
         }
         
-        log.info("  ✅ Self-study sessions updated");
+        log.info("   Self-study sessions updated");
     }
 
     // =========================================================

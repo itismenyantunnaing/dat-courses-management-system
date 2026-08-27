@@ -66,7 +66,7 @@ const capitalizeFirstLetter = (str: string) => {
 
 // Attendance status options with labels and icons
 const ATTENDANCE_OPTIONS = [
-  { value: "PRESENT", label: "Present", icon: "✅" },
+  { value: "PRESENT", label: "Present", icon: "" },
   { value: "ABSENT", label: "Absent", icon: "❌" },
   { value: "LATE", label: "Late", icon: "⏰" },
   { value: "EXCUSED", label: "Excused", icon: "📝" },

@@ -35,9 +35,9 @@ public class CertificateFileStorageService {
             if (!Files.exists(uploadPath)) {
                 System.out.println("📁 Directory does not exist, creating...");
                 Files.createDirectories(uploadPath);
-                System.out.println("✅ Created directory: " + uploadPath);
+                System.out.println(" Created directory: " + uploadPath);
             } else {
-                System.out.println("✅ Directory exists: " + uploadPath);
+                System.out.println(" Directory exists: " + uploadPath);
             }
         } catch (Exception e) {
             System.err.println("❌ Failed to create directory: " + e.getMessage());
@@ -51,7 +51,7 @@ public class CertificateFileStorageService {
         System.out.println("=========================================");
         System.out.println("📁 Upload directory: " + uploadPath);
 
-        // ✅ Check if file is null or empty
+        //  Check if file is null or empty
         if (file == null || file.isEmpty()) {
             throw new IOException("File is null or empty");
         }
@@ -94,15 +94,15 @@ public class CertificateFileStorageService {
             filePath = uploadPath.resolve(fileName);
         }
 
-        // ✅ Save file with better error handling
+        //  Save file with better error handling
         try {
             System.out.println("💾 Saving file to: " + filePath.toAbsolutePath());
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("✅ File saved successfully!");
+            System.out.println(" File saved successfully!");
 
-            // ✅ Verify file exists after saving
+            //  Verify file exists after saving
             if (Files.exists(filePath)) {
-                System.out.println("✅ Verified: File exists at: " + filePath.toAbsolutePath());
+                System.out.println(" Verified: File exists at: " + filePath.toAbsolutePath());
             } else {
                 System.err.println("❌ Warning: File not found after save!");
             }

@@ -15,13 +15,13 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
   isEnrolling: false,
   isUnenrolling: false,
   isUpdatingEnrollment: false,
-  isLoadingEnrollments: false, // ✅ ADD THIS - declare the loading state
+  isLoadingEnrollments: false, //  ADD THIS - declare the loading state
 
   // ==================== COURSE ENROLLMENT API ENDPOINTS ====================
 
   // GET /api/courses/:courseId/enrollments - Fetch all enrollments for a course
   fetch_courseEnrollments: async (courseId: number | string) => {
-    // ✅ Clear old enrollments and set loading state
+    //  Clear old enrollments and set loading state
     set((state: Course_StoreType) => ({
       ...state,
       enrollments: [],
@@ -42,7 +42,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
 
       const data = await response.json()
 
-      // ✅ Add courseId to each enrollment and update state
+      //  Add courseId to each enrollment and update state
       const enrollmentsWithCourseId = (data || []).map((enrollment: any) => ({
         ...enrollment,
         courseId: parseInt(courseId.toString())
@@ -54,7 +54,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         ...state,
         enrollments: enrollmentsWithCourseId,
         enrollmentError: null,
-        isLoadingEnrollments: false // ✅ Set loading to false
+        isLoadingEnrollments: false //  Set loading to false
       }))
 
       // Return the data directly so the component can use it
@@ -68,7 +68,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         ...state,
         enrollments: [],
         enrollmentError: errorMessage,
-        isLoadingEnrollments: false // ✅ Set loading to false on error too
+        isLoadingEnrollments: false //  Set loading to false on error too
       }))
 
       return []

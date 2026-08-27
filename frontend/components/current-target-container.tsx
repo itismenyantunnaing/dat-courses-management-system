@@ -270,6 +270,7 @@ export function CurrentTargetContainer({
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const {
+    profile,
     fetch_EmployeeData,
     employee_data,
     fetch_TargetDates,
@@ -298,11 +299,46 @@ export function CurrentTargetContainer({
     loadData()
   }, [fetch_EmployeeData, fetch_TargetDates, fetch_EmployeeJapaneseLevel])
 
+  // Employee data with role-based filtering
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
-      setEmployees(employee_data)
+      let filteredData = [...employee_data]
+
+      const userRole = profile?.role?.toLowerCase() || "admin"
+
+      if (userRole === "approver") {
+        const userTeam = profile?.team
+        if (userTeam) {
+          filteredData = filteredData.filter(
+            (employee: Employee) => employee.team === userTeam
+          )
+        } else {
+          filteredData = []
+        }
+      } else if (userRole === "department_head") {
+        const userDepartment = profile?.deptDat
+        if (userDepartment) {
+          filteredData = filteredData.filter(
+            (employee: Employee) => employee.dept_dat === userDepartment
+          )
+        } else {
+          filteredData = []
+        }
+      } else if (userRole === "division_head") {
+        const userDivision = profile?.divName
+        if (userDivision) {
+          filteredData = filteredData.filter(
+            (employee: Employee) => employee.div_name === userDivision
+          )
+        } else {
+          filteredData = []
+        }
+      }
+      // Admin: no filter applied
+
+      setEmployees(filteredData)
     }
-  }, [employee_data])
+  }, [employee_data, profile]) // Add profile as dependency
 
   // Build the employee -> profile map when data changes
   useEffect(() => {
@@ -320,15 +356,50 @@ export function CurrentTargetContainer({
     setEmployeeProfileMap(map)
   }, [employeeJapaneseLevel_Data])
 
-  // Update employees list when employee_data or map changes
+  // Update employees list when employee_data, map, or profile changes
   useEffect(() => {
     if (employee_data && employee_data.length > 0) {
-      const filteredEmployees = employee_data.filter((employee: Employee) => {
+      // First filter by profile map (only employees with Japanese profile data)
+      let filteredEmployees = employee_data.filter((employee: Employee) => {
         return employeeProfileMap.has(employee.id)
       })
+
+      // Then apply role-based filtering
+      const userRole = profile?.role?.toLowerCase() || "admin"
+
+      if (userRole === "approver") {
+        const userTeam = profile?.team
+        if (userTeam) {
+          filteredEmployees = filteredEmployees.filter(
+            (employee: Employee) => employee.team === userTeam
+          )
+        } else {
+          filteredEmployees = []
+        }
+      } else if (userRole === "department_head") {
+        const userDepartment = profile?.deptDat
+        if (userDepartment) {
+          filteredEmployees = filteredEmployees.filter(
+            (employee: Employee) => employee.dept_dat === userDepartment
+          )
+        } else {
+          filteredEmployees = []
+        }
+      } else if (userRole === "division_head") {
+        const userDivision = profile?.divName
+        if (userDivision) {
+          filteredEmployees = filteredEmployees.filter(
+            (employee: Employee) => employee.div_name === userDivision
+          )
+        } else {
+          filteredEmployees = []
+        }
+      }
+      // Admin: no additional filter
+
       setEmployees(filteredEmployees)
     }
-  }, [employee_data, employeeProfileMap])
+  }, [employee_data, employeeProfileMap, profile])
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some(
@@ -1569,7 +1640,7 @@ export function CurrentTargetContainer({
                             "bg-muted/30 text-center align-middle whitespace-nowrap",
                             (group.groupName.includes("Target Level") ||
                               group.groupName.includes("JLPT Exam Target")) &&
-                              "cursor-pointer transition-colors hover:bg-muted/50"
+                            "cursor-pointer transition-colors hover:bg-muted/50"
                           )}
                           colSpan={group.children.length}
                           onClick={() => {
@@ -1596,7 +1667,7 @@ export function CurrentTargetContainer({
                               header.field === "target_1_communication_level" ||
                               header.field === "target_2_communication_level" ||
                               header.field === "current_learning_level") &&
-                              "w-48"
+                            "w-48"
                           )}
                         >
                           {header.header_name}
@@ -1717,12 +1788,12 @@ export function CurrentTargetContainer({
                                     (header.field ===
                                       "current_communication_level" ||
                                       header.field ===
-                                        "target_1_communication_level" ||
+                                      "target_1_communication_level" ||
                                       header.field ===
-                                        "target_2_communication_level" ||
+                                      "target_2_communication_level" ||
                                       header.field ===
-                                        "current_learning_level") &&
-                                      "w-48"
+                                      "current_learning_level") &&
+                                    "w-48"
                                   )}
                                 >
                                   {isTruncatable && displayValue !== "-" ? (
@@ -1883,7 +1954,7 @@ export function CurrentTargetContainer({
                         }}
                         className={
                           currentPage === totalPages ||
-                          filteredEmployees.length === 0
+                            filteredEmployees.length === 0
                             ? "pointer-events-none opacity-50"
                             : ""
                         }

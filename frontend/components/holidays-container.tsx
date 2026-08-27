@@ -70,6 +70,7 @@ import {
   SelectGroup,
   SelectItem,
 } from "./ui/select"
+import { toast } from "sonner"
 
 const STROKE_WIDTH = 2
 
@@ -332,7 +333,7 @@ export function HolidaysContainer({
         .filter((id) => id !== undefined && id !== null)
 
       const result = await delete_HolidayData(selectedIds)
-      alert(result)
+      toast.success(result)
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
 

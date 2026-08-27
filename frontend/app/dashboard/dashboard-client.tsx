@@ -44,6 +44,7 @@ import { Badge } from "@/components/ui/badge"
 import type { SessionData } from "@/types/session"
 import { AnnouncementContainer } from "@/components/announcement-container"
 import { getAuthToken, logout } from "@/app/actions/auth"
+import { ImportExportDialog } from "@/components/dialogs/import-export-confirm-dialog"
 
 interface DashboardClientProps {
   userData: SessionData
@@ -554,7 +555,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       />
 
       {/* Forced Password Change Dialog for New Users */}
-      <Dialog
+      {/* <Dialog
         open={isChangePasswordOpen}
         onOpenChange={(open) => {
           // Prevent closing if user status is still "default"
@@ -586,7 +587,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             }}
           />
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
 
       {/* Success Dialog */}
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
@@ -624,6 +625,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+       <ImportExportDialog />
     </>
   )
 }
