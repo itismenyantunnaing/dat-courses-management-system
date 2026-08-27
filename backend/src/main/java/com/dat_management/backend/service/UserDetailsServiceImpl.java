@@ -19,7 +19,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
 
-        Employee employee = employeeRepository.findById(userId)
+        Employee employee = employeeRepository.findByIdWithRelationships(userId)
                 .orElseThrow(() ->
                         new UsernameNotFoundException("User not found with ID: " + userId)
                 );

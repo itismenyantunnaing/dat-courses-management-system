@@ -579,6 +579,8 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
     try {
       const token = getAuthToken();
       const idsPath = idsToDelete.join(',');
+      console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
+      console.log(token)
 
       const response = await fetch(`${apiUrl}/api/employees/${idsPath}`, {
         method: 'DELETE',
@@ -819,7 +821,7 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
       const apiEmployees = employees.map(emp => {
         let email = emp.email?.trim() || '';
         if (!email && emp.name) {
-          email = emp.name.toLowerCase().replace(/\s/g, '.') + '@diracetechnology.com';
+          email = emp.name.toLowerCase().replace(/\s/g, '') + '@diracetechnology.com';
         } else if (!email) {
           email = `employee${Date.now()}@company.com`;
         }

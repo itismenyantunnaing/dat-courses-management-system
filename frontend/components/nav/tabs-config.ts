@@ -2001,10 +2001,6 @@ export const allTabs = [
 
 export const importTabs = allTabs
   .filter(tab => !(tab.id === "feedback" || tab.id === "self_study_progress_report" || tab.id === "exam_progress_report"))
-  .map((tab) => ({
-    id: tab.id,
-    label: tab.label,
-  }))
 export const exportTabs = allTabs
 export const deleteOptions = allTabs
   .filter(tab => tab.id === "employees" || tab.id === "holidays")

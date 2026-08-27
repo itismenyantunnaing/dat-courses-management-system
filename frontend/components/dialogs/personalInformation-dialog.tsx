@@ -167,7 +167,9 @@ export function PersonalInformationDialog({
     add_devCapData,
     update_devCapData,
     add_EmployeeJapaneseLevel,
-    edit_EmployeeJapaneseLevel
+    edit_EmployeeJapaneseLevel,
+    fetch_SystemConfig,
+    systemConfig
   } = mainStore()
 
   const employeeId = profile?.id
@@ -182,8 +184,11 @@ export function PersonalInformationDialog({
       if (devCap_headers.length === 0) {
         fetch_devCapHeaders()
       }
+      fetch_SystemConfig()
     }
   }, [open, employeeId, fetch_EmployeeProfile])
+
+  console.log(systemConfig?.fileUploadSizeMb)
 
   // Update form fields when profile data loads
   useEffect(() => {
@@ -288,45 +293,46 @@ export function PersonalInformationDialog({
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  const file = event.target.files?.[0]
-  if (file) {
+    const file = event.target.files?.[0]
+    if (file) {
 
-    const validTypes = ["image/jpeg", "image/png", "image/gif"]
-    if (!validTypes.includes(file.type)) {
-      alert("Please upload a valid image file (JPG, PNG, or GIF).")
-      return
-    }
-
-    setSelectedFile(file)
-    setImageRemoved(false)
-    setIsUploading(true)
-
-    try {
-      // ✅ COMPRESS THE IMAGE HERE
-      const compressedFile = await compressFile(file)
-      
-      // Use the compressed file instead of the original
-      setSelectedFile(compressedFile)
-      
-      // Create preview from compressed file
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string)
-        setIsUploading(false)
+      const validTypes = ["image/jpeg", "image/png", "image/gif"]
+      if (!validTypes.includes(file.type)) {
+        alert("Please upload a valid image file (JPG, PNG, or GIF).")
+        return
       }
-      reader.readAsDataURL(compressedFile)
-    } catch (error) {
-      console.error("❌ Failed to compress image:", error)
-      // Fallback: use original file if compression fails
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string)
-        setIsUploading(false)
+
+      setSelectedFile(file)
+      setImageRemoved(false)
+      setIsUploading(true)
+
+      try {
+        const maxSizeMB = systemConfig?.fileUploadSizeMb || 0.75
+        // COMPRESS THE IMAGE HERE
+        const compressedFile = await compressFile(file, maxSizeMB)
+
+        // Use the compressed file instead of the original
+        setSelectedFile(compressedFile)
+
+        // Create preview from compressed file
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setPreviewImage(reader.result as string)
+          setIsUploading(false)
+        }
+        reader.readAsDataURL(compressedFile)
+      } catch (error) {
+        console.error("❌ Failed to compress image:", error)
+        // Fallback: use original file if compression fails
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setPreviewImage(reader.result as string)
+          setIsUploading(false)
+        }
+        reader.readAsDataURL(file)
       }
-      reader.readAsDataURL(file)
     }
   }
-}
 
   const handleRemoveImage = () => {
     setSelectedFile(null)

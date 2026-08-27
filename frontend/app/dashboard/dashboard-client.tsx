@@ -212,8 +212,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
 
   const user_role = profile?.role ? userRole : "learner"
 
-useEffect(() => {
-  if (!isProfileLoaded || !user_role) return
+  useEffect(() => {
+    if (!isProfileLoaded || !user_role) return
 
     const normalizedRole = user_role.toLowerCase()
     let tab = "learner-dashboard"
@@ -538,6 +538,8 @@ useEffect(() => {
             // Prevent closing by clicking outside if user status is still "default"
             if (userData.status === "default") e.preventDefault()
           }}
+          showCloseButton={false}
+          disableClose={true}
           onEscapeKeyDown={(e) => {
             // Prevent closing by pressing escape if user status is still "default"
             if (userData.status === "default") e.preventDefault()

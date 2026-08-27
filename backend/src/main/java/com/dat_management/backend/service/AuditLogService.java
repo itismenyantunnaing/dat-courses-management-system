@@ -61,6 +61,7 @@ public class AuditLogService {
     private String currentEmployeeId() {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            System.out.println(auth);
             if (auth == null || !auth.isAuthenticated()
                     || auth instanceof AnonymousAuthenticationToken
                     || "anonymousUser".equals(auth.getName())) {
