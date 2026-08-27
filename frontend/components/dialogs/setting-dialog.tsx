@@ -348,12 +348,12 @@ export function SettingDialog({
                         onChange={(e) =>
                           setConfig({
                             ...config,
-                            fileUploadSize: parseInt(e.target.value) || 0,
+                            fileUploadSize: parseFloat(e.target.value) || 0,
                           })
                         }
-                        min={1}
-                        step={1}
                         disabled={isSaving || isLoading}
+                        step="0.01" // Allows decimal increments
+                        min="0"
                       />
                       <span className="text-sm text-muted-foreground">MB</span>
                     </div>

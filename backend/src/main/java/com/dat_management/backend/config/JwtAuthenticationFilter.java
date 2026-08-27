@@ -121,8 +121,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 path.startsWith("/js/") ||
                 path.startsWith("/images/") ||
                 // 🔥 ADD THESE TO CATCH ANY AUTH PATHS
-                path.startsWith("/security/api/auth/") ||
-                path.startsWith("/api/auth/") ||
+                // path.startsWith("/security/api/auth/") ||
+                // path.startsWith("/api/auth/") ||
                 path.endsWith("/login") ||
                 path.endsWith("/forgot-password") ||
                 path.endsWith("/verify-otp") ||

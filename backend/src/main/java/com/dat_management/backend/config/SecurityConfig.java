@@ -106,7 +106,8 @@ public class SecurityConfig {
                                 "/profiles/**",
                                 "/api/**")
                         .permitAll()
-
+                        // .requestMatchers("/security/api/auth/change-password").authenticated()
+                        // .requestMatchers("/security/api/auth/verify-current-password").authenticated()
                         // Dashboard endpoints
                         .requestMatchers("/dashboard/admin").hasAnyRole("Admin", "PMO")
                         .requestMatchers("/dashboard/PM").hasAnyRole("PM", "HOD")
