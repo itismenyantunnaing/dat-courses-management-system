@@ -194,7 +194,7 @@ export function ImportDialog({
           className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragging
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/25"
-            } ${!selectedFile && !isProcessing ? "cursor-pointer hover:border-muted-foreground/50" : ""} ${isProcessing ? "pointer-events-none opacity-60" : ""
+            } ${!selectedFile && !isProcessing ? "cursor-pointer" : ""} ${isProcessing ? "pointer-events-none opacity-60" : ""
             }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -228,11 +228,7 @@ export function ImportDialog({
                   ✓ File selected: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               )}
-              {isProcessing && (
-                <p className="text-xs text-blue-600 animate-pulse">
-                  Processing import...
-                </p>
-              )}
+              
             </div>
             <input
               type="file"

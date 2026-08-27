@@ -770,7 +770,7 @@ export function CertificatesRequestsContainer({
           {/* Tabs and Search - Only show when there are certificates */}
           {hasAnyCertificates && (
             <div className="mb-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-              {/* Tabs */}
+              {/* Status Tabs */}
               <div>
                 <Tabs
                   value={statusTab}
@@ -864,46 +864,28 @@ export function CertificatesRequestsContainer({
                   </InputGroupAddon>
                 </InputGroup>
 
-                {/* View Mode Toggle */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={viewMode === "list" ? "default" : "outline"}
-                      size="icon"
-                      onClick={() => setViewMode("list")}
-                      className="h-9 w-9"
-                    >
+                {/* View Mode Tabs */}
+                <Tabs
+                  value={viewMode}
+                  onValueChange={(value) => setViewMode(value as ViewMode)}
+                >
+                  <TabsList className="h-9">
+                    <TabsTrigger value="list">
                       <HugeiconsIcon
                         icon={ListViewIcon}
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>List View</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={viewMode === "card" ? "default" : "outline"}
-                      size="icon"
-                      onClick={() => setViewMode("card")}
-                      className="h-9 w-9"
-                    >
+                    </TabsTrigger>
+                    <TabsTrigger value="card">
                       <HugeiconsIcon
                         icon={GridViewIcon}
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Card View</p>
-                  </TooltipContent>
-                </Tooltip>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
 
                 {/* Filter Dropdown */}
                 {hasFilterData && (

@@ -37,6 +37,7 @@ import {
   Alert01Icon,
   SaveIcon,
   NotificationIcon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { StatCard } from "../charts/stat-card"
@@ -44,6 +45,28 @@ import { NotificationsDrawer } from "../drawers/notifications-drawer"
 import { mainStore } from "@/store/mainStore"
 import type { Course, CourseSession } from "@/types/course"
 import type { EmployeeCourseDetailDTO } from "@/types/dashboard"
+
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+    />
+  )
+}
+
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
+}
 
 interface LearnerDashboardContainerProps {
   onNavigateToCourse?: (courseId: number) => void
@@ -626,12 +649,9 @@ export default function LearnerDashboardContainer({
   // If loading, show loading state
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex h-96 items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
-            <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-          </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <LoadingSpinner text="Loading dashboard..." />
         </div>
       </div>
     )

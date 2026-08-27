@@ -228,7 +228,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {/* Profile Header */}
         <CardContent className="px-4">
           <div className="flex flex-col gap-2">
@@ -265,7 +265,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
         </CardContent>
 
         {/* Employment Information */}
-        <CardContent className="flex-1 px-0">
+        <CardContent className="col-span-2 px-0">
           {/* <div className="divide-y">
             <InfoRow label="Division" value={employee.div_name} />
             <InfoRow label="Department" value={employee.dept_dat} />

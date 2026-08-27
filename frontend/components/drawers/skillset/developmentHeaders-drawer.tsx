@@ -124,34 +124,8 @@ export function DevelopmentHeadersDrawer({
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="px-6 py-4">
+          <div className="p-4">
             <div className="space-y-6">
-              {/* Add new type */}
-              <div className="space-y-2">
-                <Label htmlFor="newType">Add Development Type</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="newType"
-                    placeholder="e.g., Web Development"
-                    value={newType}
-                    onChange={(e) => {
-                      setNewType(e.target.value)
-                      setError(null)
-                    }}
-                    onKeyPress={handleKeyPress}
-                    className="flex-1"
-                  />
-                  <Button onClick={handleAddType} variant="outline">
-                    <HugeiconsIcon
-                      icon={AddIcon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                    Add
-                  </Button>
-                </div>
-              </div>
-
               {/* Error message */}
               {error && (
                 <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
@@ -160,8 +134,7 @@ export function DevelopmentHeadersDrawer({
               )}
 
               {/* List of types */}
-              <div className="space-y-3">
-                <Label>Current Development Types</Label>
+              <div className="space-y-3 mb-12">
                 {types.length === 0 ? (
                   <div className="rounded-md border-2 border-dashed py-8 text-center text-sm text-muted-foreground">
                     No development types added yet
@@ -196,8 +169,36 @@ export function DevelopmentHeadersDrawer({
                 )}
               </div>
 
+              {/* Add new type */}
+              <div className="space-y-2">
+                <Label className="mb-4" htmlFor="newType">
+                  Add Development Type
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="newType"
+                    placeholder="e.g., Web Development"
+                    value={newType}
+                    onChange={(e) => {
+                      setNewType(e.target.value)
+                      setError(null)
+                    }}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleAddType} variant="outline">
+                    <HugeiconsIcon
+                      icon={AddIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4"
+                    />
+                    Add
+                  </Button>
+                </div>
+              </div>
+
               {/* Summary */}
-              <div className="rounded-md bg-blue-50 p-4">
+              {/* <div className="rounded-md bg-blue-50 p-4">
                 <p className="text-sm text-blue-800">
                   <span className="font-semibold">{types.length}</span>{" "}
                   development type{types.length !== 1 ? "s" : ""} configured
@@ -215,7 +216,7 @@ export function DevelopmentHeadersDrawer({
                     "No new types to add"
                   )}
                 </p>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

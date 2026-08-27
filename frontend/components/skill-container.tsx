@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
+  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu"
 import {
   Select,
@@ -60,6 +60,10 @@ import {
   EyeIcon,
   Book02Icon,
   Upload05Icon,
+  Edit03Icon,
+  Settings02Icon,
+  ArrowDown01Icon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
 import { mainStore } from "@/store/mainStore"
@@ -94,6 +98,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { ImportDialog } from "@/components/dialogs/import-dialog"
+import { ButtonGroup } from "@/components/ui/button-group"
+import { cn } from "@/lib/utils"
 
 const STROKE_WIDTH = 2
 
@@ -107,6 +113,28 @@ type DictionaryEntry = {
   id: number
   japaneseText: string
   englishText: string
+}
+
+// Spinner component
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+    />
+  )
+}
+
+// Spinner with text
+const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Spinner />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  )
 }
 
 const BorderedTableCell = ({
@@ -812,8 +840,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-muted-foreground">Loading skills data...</p>
+          <LoadingSpinner text="Loading skills data..." />
         </div>
       </div>
     )
@@ -842,7 +869,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     />
                   </InputGroupAddon>
                   <InputGroupAddon align="inline-end">
-                    <Kbd>Ctrl +K</Kbd>
+                    <Kbd>Ctrl + K</Kbd>
                   </InputGroupAddon>
                 </InputGroup>
               </div>
@@ -931,6 +958,34 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Edit Table Button Group */}
+                <div className="flex items-center">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="default">
+                        <HugeiconsIcon
+                          icon={Edit03Icon}
+                          strokeWidth={2}
+                          className="h-4 w-4"
+                        />{" "}
+                        Edit Table
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem
+                          onClick={handleDevelopmentHeadersClick}
+                        >
+                          Developer (DIR and YSX tasks only)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleTechnicalHeadersClick}>
+                          Technical Ability
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
           )}
@@ -978,9 +1033,9 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           <div className="flex items-center justify-center gap-2">
                             {translate("Developer (DIR and YSX tasks only)")}
                             <HugeiconsIcon
-                              icon={Settings01Icon}
+                              icon={Edit03Icon}
                               strokeWidth={2}
-                              className="h-3 w-3 opacity-60"
+                              className="h-3 w-3"
                             />
                           </div>
                         </BorderedTableHead>
@@ -1000,9 +1055,9 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           <div className="flex items-center justify-center gap-2">
                             {translate("Technical Ability")}
                             <HugeiconsIcon
-                              icon={Settings01Icon}
+                              icon={Edit03Icon}
                               strokeWidth={2}
-                              className="h-3 w-3 opacity-60"
+                              className="h-3 w-3"
                             />
                           </div>
                         </BorderedTableHead>
