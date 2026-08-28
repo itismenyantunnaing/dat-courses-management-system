@@ -555,7 +555,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       />
 
       {/* Forced Password Change Dialog for New Users */}
-      {/* <Dialog
+      <Dialog
         open={isChangePasswordOpen}
         onOpenChange={(open) => {
           // Prevent closing if user status is still "default"
@@ -587,7 +587,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             }}
           />
         </DialogContent>
-      </Dialog> */}
+      </Dialog>
 
       {/* Success Dialog */}
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>

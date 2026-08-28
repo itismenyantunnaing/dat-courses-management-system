@@ -325,6 +325,8 @@ public Notification send(NotificationType type,
             case SYSTEM ->
                     employee.getEmailNoti() == null ||
                     employee.getEmailNoti();
+            case ANNOUNCEMENT ->
+                true;
         };
     }
 

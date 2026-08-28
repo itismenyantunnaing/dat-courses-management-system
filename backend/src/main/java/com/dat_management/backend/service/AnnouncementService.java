@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.dat_management.backend.dto.AnnouncementDto;
 import com.dat_management.backend.entity.Announcement;
 import com.dat_management.backend.entity.Employee;
+import com.dat_management.backend.entity.Notification.NotificationType;
 import com.dat_management.backend.entity.AnnouncementCategory;
 import com.dat_management.backend.repository.AnnouncementRepository;
 import com.dat_management.backend.repository.EmployeeRepository;
@@ -17,12 +18,14 @@ import com.dat_management.backend.repository.EmployeeRepository;
 public class AnnouncementService {
 
     private final AnnouncementRepository announcementRepository;
+    private final NotificationService notificationService;
 
     private final EmployeeRepository employeeRepository;
 
-    public AnnouncementService(AnnouncementRepository announcementRepository,EmployeeRepository employeeRepository) {
+    public AnnouncementService(AnnouncementRepository announcementRepository,EmployeeRepository employeeRepository,NotificationService notificationService) {
         this.announcementRepository = announcementRepository;
         this.employeeRepository= employeeRepository;
+        this.notificationService=notificationService;
     }
 
     private AnnouncementDto convertToDto(Announcement announcement) {
@@ -74,6 +77,7 @@ if (employee.getTeam() != null &&
         announcement.setCategory(AnnouncementCategory.valueOf(dto.getCategory()));
         announcement.setCreatedBy(dto.getCreatedBy());  //  Just set the string
         Announcement saved = announcementRepository.save(announcement);
+        notificationService.sendToAllActive(NotificationType.ANNOUNCEMENT, dto.getTitle(), dto.getText(), null, null);
         return convertToDto(saved);
     }
 

@@ -59,6 +59,7 @@ public class Notification {
         COURSE,
         JLPT_EXAM,
         CERTIFICATE,
-        SYSTEM
+        SYSTEM,
+        ANNOUNCEMENT
     }
 }
