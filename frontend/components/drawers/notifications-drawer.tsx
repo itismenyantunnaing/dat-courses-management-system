@@ -350,7 +350,7 @@ export function NotificationsDrawer({
                     <div className="min-w-0 flex-1">
                       <p
                         className={cn(
-                          "text-[15px] leading-snug transition-colors duration-200",
+                          "text-[15px] leading-snug line-clamp-3 transition-colors duration-200",
                           notification.unread
                             ? "font-medium text-gray-900"
                             : "text-gray-600"

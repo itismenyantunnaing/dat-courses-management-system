@@ -497,7 +497,7 @@ export function SettingDialog({
                         </div>
                         <div className="relative">
                           <Label className="text-sm font-medium">
-                            Gmail Password
+                            App Password
                           </Label>
                           <Input
                             type={showGmailPassword ? "text" : "password"}

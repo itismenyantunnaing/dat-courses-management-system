@@ -54,21 +54,19 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  ClockIcon,
   SortByDown01Icon,
   SortByUp01Icon,
   FilterMailIcon,
   Delete02Icon,
   ListViewIcon,
   GridViewIcon,
-  MessageEdit01Icon,
-  Speaker01Icon,
-  Add01Icon,
+  Edit03Icon,
   Megaphone01Icon,
 } from "@hugeicons/core-free-icons"
 import { AnnouncementCard } from "@/components/cards/announcement-card"
 import { NewAnnouncementDialog } from "@/components/dialogs/newAnnouncement-dialog"
 import { EditAnnouncementDialog } from "@/components/dialogs/editAnnouncement-dialog"
+import { AnnouncementDetailDialog } from "@/components/dialogs/announcementDetail-dialog"
 import { AnnouncementDto, AnnouncementCategory } from "@/types/announcement"
 import { mainStore } from "@/store/mainStore"
 import {
@@ -90,6 +88,7 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from "./ui/dropdown-menu"
+import { toast } from "sonner"
 
 type ViewMode = "list" | "card"
 
@@ -98,22 +97,19 @@ const formatTime = (dateString: string) => {
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffHr = Math.floor(diffMin / 60)
+  const diffDays = Math.floor(diffHr / 24)
 
-  if (diffMins < 60) {
-    return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`
-  } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`
-  } else if (diffDays < 7) {
+  if (diffDays > 0) {
     return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`
+  } else if (diffHr > 0) {
+    return `${diffHr} hr${diffHr > 1 ? "s" : ""} ago`
+  } else if (diffMin > 0) {
+    return `${diffMin} min${diffMin > 1 ? "s" : ""} ago`
   } else {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
+    return `${diffSec} sec${diffSec > 1 ? "s" : ""} ago`
   }
 }
 
@@ -150,6 +146,17 @@ type AnnouncementFilterState = {
   createdBy: string[]
 }
 
+// Helper function to get initials
+const getInitials = (name: string) => {
+  if (!name) return "U"
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+}
+
 export function AnnouncementContainer() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedAnnouncement, setSelectedAnnouncement] =
@@ -167,10 +174,6 @@ export function AnnouncementContainer() {
     number | null
   >(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [message, setMessage] = useState<{
-    type: "success" | "error"
-    text: string
-  } | null>(null)
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [viewMode, setViewMode] = useState<ViewMode>("card")
   const [currentPage, setCurrentPage] = useState(1)
@@ -400,7 +403,7 @@ export function AnnouncementContainer() {
       const result = await delete_AnnouncementData(announcementToDelete)
 
       if (result.includes("successfully")) {
-        setMessage({ type: "success", text: result })
+        toast.success(result)
         setDeleteDialogOpen(false)
         setAnnouncementToDelete(null)
 
@@ -408,14 +411,12 @@ export function AnnouncementContainer() {
           setDetailDialogOpen(false)
           setSelectedAnnouncement(null)
         }
-
-        setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: "error", text: result })
+        toast.error(result)
       }
     } catch (error) {
       console.error("Failed to delete announcement:", error)
-      setMessage({ type: "error", text: "Failed to delete announcement" })
+      toast.error("Failed to delete announcement")
     } finally {
       setIsDeleting(false)
     }
@@ -443,15 +444,14 @@ export function AnnouncementContainer() {
       const result = await add_AnnouncementData(newAnnouncement)
 
       if (result.includes("successfully")) {
+        toast.success(result)
         setNewAnnouncementDialogOpen(false)
-        setMessage({ type: "success", text: result })
-        setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: "error", text: result })
+        toast.error(result)
       }
     } catch (error) {
       console.error("Failed to create announcement:", error)
-      setMessage({ type: "error", text: "Failed to create announcement" })
+      toast.error("Failed to create announcement")
     } finally {
       setIsSubmitting(false)
     }
@@ -476,16 +476,15 @@ export function AnnouncementContainer() {
       const result = await update_AnnouncementData(id, updatedAnnouncement)
 
       if (result.includes("successfully")) {
+        toast.success(result)
         setEditAnnouncementDialogOpen(false)
         setAnnouncementToEdit(null)
-        setMessage({ type: "success", text: result })
-        setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: "error", text: result })
+        toast.error(result)
       }
     } catch (error) {
       console.error("Failed to update announcement:", error)
-      setMessage({ type: "error", text: "Failed to update announcement" })
+      toast.error("Failed to update announcement")
     } finally {
       setIsSubmitting(false)
     }
@@ -501,11 +500,11 @@ export function AnnouncementContainer() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 pt-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         <CardContent className="px-0">
           {/* Header with Search and New Button */}
           {announcements.length > 0 && (
-            <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <InputGroup className="w-[400px]">
                 <InputGroupInput
                   ref={searchInputRef}
@@ -696,28 +695,16 @@ export function AnnouncementContainer() {
             </div>
           )}
 
-          {/* Message Display */}
-          {message && (
-            <div
-              className={`mx-4 mb-4 rounded p-4 ${message.type === "success"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-                }`}
-            >
-              {message.text}
-            </div>
-          )}
-
           {/* Loading State */}
           {isLoading && (
-            <div className="mx-4 py-12 text-center text-muted-foreground">
+            <div className="py-12 text-center text-muted-foreground">
               Loading announcements...
             </div>
           )}
 
           {/* Announcement Cards/Table Grid */}
           {!isLoading && (
-            <div className="mx-4">
+            <div>
               {paginatedAnnouncements.length > 0 ? (
                 <>
                   {viewMode === "card" ? (
@@ -786,97 +773,114 @@ export function AnnouncementContainer() {
                             <TableHead className="border-r whitespace-nowrap">
                               Created At
                             </TableHead>
-                            <TableHead className="text-right whitespace-nowrap">
-                              Actions
-                            </TableHead>
+                            {/* Only show Actions column if any announcement can be edited or deleted */}
+                            {paginatedAnnouncements.some(
+                              (a) => canEdit(a) || canDelete(a)
+                            ) && (
+                              <TableHead className="text-right whitespace-nowrap">
+                                Actions
+                              </TableHead>
+                            )}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {paginatedAnnouncements.map(
-                            (announcement: AnnouncementDto, index: number) => (
-                              <TableRow
-                                key={announcement.id}
-                                className="cursor-pointer transition-colors hover:bg-muted/50"
-                                onClick={() =>
-                                  handleAnnouncementClick(announcement)
-                                }
-                              >
-                                <TableCell className="border-r whitespace-nowrap">
-                                  {startIndex + index + 1}
-                                </TableCell>
-                                <TableCell className="max-w-[150px] border-r">
-                                  <div className="truncate font-medium">
-                                    {announcement.title}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="border-r whitespace-nowrap">
-                                  {announcement.category && (
-                                    <span
-                                      className={`rounded-full px-2 py-1 text-xs font-medium ${getCategoryStyles(announcement.category)}`}
-                                    >
-                                      {getCategoryLabel(announcement.category)}
-                                    </span>
+                            (announcement: AnnouncementDto, index: number) => {
+                              const showActions =
+                                canEdit(announcement) || canDelete(announcement)
+                              return (
+                                <TableRow
+                                  key={announcement.id}
+                                  className="cursor-pointer transition-colors hover:bg-muted/50"
+                                  onClick={() =>
+                                    handleAnnouncementClick(announcement)
+                                  }
+                                >
+                                  <TableCell className="border-r whitespace-nowrap">
+                                    {startIndex + index + 1}
+                                  </TableCell>
+                                  <TableCell className="max-w-[150px] border-r">
+                                    <div className="truncate font-medium">
+                                      {announcement.title}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="border-r whitespace-nowrap">
+                                    {announcement.category && (
+                                      <span
+                                        className={`rounded-full px-2 py-1 text-xs font-medium ${getCategoryStyles(announcement.category)}`}
+                                      >
+                                        {getCategoryLabel(
+                                          announcement.category
+                                        )}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="border-r whitespace-nowrap">
+                                    {announcement.createdBy || "-"}
+                                  </TableCell>
+                                  <TableCell className="border-r whitespace-nowrap">
+                                    {announcement.departmentName || "-"}
+                                  </TableCell>
+                                  <TableCell className="border-r whitespace-nowrap">
+                                    {announcement.teamName || "-"}
+                                  </TableCell>
+                                  <TableCell className="max-w-[250px] border-r">
+                                    <div className="truncate text-sm text-muted-foreground">
+                                      {announcement.text}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="border-r text-sm whitespace-nowrap text-muted-foreground">
+                                    {announcement.createdAt
+                                      ? formatTime(announcement.createdAt)
+                                      : "-"}
+                                  </TableCell>
+                                  {/* Only show actions cell if user can edit or delete this specific announcement */}
+                                  {showActions && (
+                                    <TableCell className="text-right whitespace-nowrap">
+                                      <div className="flex items-center justify-end gap-1">
+                                        {canEdit(announcement) && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 hover:bg-primary/10"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleEditClick(e, announcement)
+                                            }}
+                                          >
+                                            <HugeiconsIcon
+                                              icon={Edit03Icon}
+                                              strokeWidth={2}
+                                              className="h-4 w-4"
+                                            />
+                                          </Button>
+                                        )}
+                                        {canDelete(announcement) && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleDeleteClick(
+                                                e,
+                                                announcement.id!
+                                              )
+                                            }}
+                                          >
+                                            <HugeiconsIcon
+                                              icon={Delete02Icon}
+                                              strokeWidth={2}
+                                              className="h-4 w-4"
+                                            />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </TableCell>
                                   )}
-                                </TableCell>
-                                <TableCell className="border-r whitespace-nowrap">
-                                  {announcement.createdBy || "-"}
-                                </TableCell>
-                                <TableCell className="border-r whitespace-nowrap">
-                                  {announcement.departmentName || "-"}
-                                </TableCell>
-                                <TableCell className="border-r whitespace-nowrap">
-                                  {announcement.teamName || "-"}
-                                </TableCell>
-                                <TableCell className="max-w-[250px] border-r">
-                                  <div className="truncate text-sm text-muted-foreground">
-                                    {announcement.text}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="border-r text-sm whitespace-nowrap text-muted-foreground">
-                                  {announcement.createdAt
-                                    ? formatTime(announcement.createdAt)
-                                    : "-"}
-                                </TableCell>
-                                <TableCell className="text-right whitespace-nowrap">
-                                  <div className="flex items-center justify-end gap-1">
-                                    {canEdit(announcement) && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-primary/10"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleEditClick(e, announcement)
-                                        }}
-                                      >
-                                        <HugeiconsIcon
-                                          icon={MessageEdit01Icon}
-                                          strokeWidth={2}
-                                          className="h-4 w-4"
-                                        />
-                                      </Button>
-                                    )}
-                                    {canDelete(announcement) && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleDeleteClick(e, announcement.id!)
-                                        }}
-                                      >
-                                        <HugeiconsIcon
-                                          icon={Delete02Icon}
-                                          strokeWidth={2}
-                                          className="h-4 w-4"
-                                        />
-                                      </Button>
-                                    )}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            )
+                                </TableRow>
+                              )
+                            }
                           )}
                         </TableBody>
                       </Table>
@@ -888,7 +892,7 @@ export function AnnouncementContainer() {
                     <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <Field orientation="horizontal" className="w-fit">
                         <FieldLabel htmlFor="select-rows-per-page">
-                          Rows per page
+                          <span className="text-muted-foreground font-normal">Rows per page</span>
                         </FieldLabel>
                         <Select
                           value={itemsPerPage.toString()}
@@ -932,7 +936,7 @@ export function AnnouncementContainer() {
                               }}
                               className={
                                 currentPage === 1 ||
-                                  filteredAndSortedAnnouncements.length === 0
+                                filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -965,7 +969,7 @@ export function AnnouncementContainer() {
                               }}
                               className={
                                 currentPage === totalPages ||
-                                  filteredAndSortedAnnouncements.length === 0
+                                filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -1035,67 +1039,27 @@ export function AnnouncementContainer() {
       </div>
 
       {/* Announcement Detail Dialog */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[600px]">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="pr-8">
-              {selectedAnnouncement?.title}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto px-6 py-2">
-            <div className="space-y-4">
-              <div>
-                <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-                  Announcement
-                </h4>
-                <div
-                  className="text-sm leading-relaxed whitespace-pre-wrap"
-                  style={{ wordBreak: "break-word" }}
-                >
-                  {selectedAnnouncement?.text}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="border-t p-6 pt-4">
-            <div className="flex w-full items-center justify-between">
-              <div>
-                <p className="font-medium">{selectedAnnouncement?.createdBy}</p>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  {selectedAnnouncement?.departmentName && (
-                    <>
-                      <span>{selectedAnnouncement.departmentName}</span>
-                      {selectedAnnouncement?.teamName && <span>•</span>}
-                    </>
-                  )}
-                  {selectedAnnouncement?.teamName && (
-                    <span>{selectedAnnouncement.teamName}</span>
-                  )}
-                </div>
-                {selectedAnnouncement?.category && (
-                  <span
-                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${getCategoryStyles(selectedAnnouncement.category)}`}
-                  >
-                    {getCategoryLabel(selectedAnnouncement.category)}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
-                <HugeiconsIcon
-                  icon={ClockIcon}
-                  strokeWidth={2}
-                  className="h-3 w-3"
-                />
-                {selectedAnnouncement?.createdAt
-                  ? formatTime(selectedAnnouncement.createdAt)
-                  : "-"}
-              </div>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AnnouncementDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        announcement={selectedAnnouncement}
+        formatTime={formatTime}
+        getInitials={getInitials}
+        onEdit={
+          selectedAnnouncement
+            ? (e) => handleEditClick(e, selectedAnnouncement)
+            : undefined
+        }
+        onDelete={
+          selectedAnnouncement
+            ? (e) => handleDeleteClick(e, selectedAnnouncement.id!)
+            : undefined
+        }
+        canEdit={selectedAnnouncement ? canEdit(selectedAnnouncement) : false}
+        canDelete={
+          selectedAnnouncement ? canDelete(selectedAnnouncement) : false
+        }
+      />
 
       {/* New Announcement Dialog */}
       {canCreate && (

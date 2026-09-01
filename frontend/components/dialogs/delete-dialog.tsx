@@ -278,7 +278,7 @@ export function DeleteDialog({
                 Deleting...
               </>
             ) : (
-              `Delete (${selectedItems.length}) Item${selectedItems.length !== 1 ? "s" : ""}`
+              `Delete (${selectedItems.length}) Data${selectedItems.length !== 1 ? "s" : ""}`
             )}
           </Button>
         </DialogFooter>

@@ -59,14 +59,16 @@ const getRequestStatusBadge = (status: string) => {
 }
 
 // Helper function to get group capacity info
-const getGroupCapacityInfo = (groupId: number, enrollments: any[], course: any) => {
+const getGroupCapacityInfo = (
+  groupId: number,
+  enrollments: any[],
+  course: any
+) => {
   const group = course?.groups?.find((g: any) => parseInt(g.id) === groupId)
   if (!group) return null
 
   const groupEmployees = enrollments.filter(
-    (e) =>
-      e.courseGroupId === groupId &&
-      e.enrollmentStatus !== "CANCELLED"
+    (e) => e.courseGroupId === groupId && e.enrollmentStatus !== "CANCELLED"
   )
   const capacity = group.capacity || 0
   const currentCount = groupEmployees.length
@@ -102,36 +104,43 @@ export function GroupRequestsTab({
     const targetGroupId = request.requestedCourseGroupId
 
     if (!targetGroupId) {
-      toast.error("❌ Error: No target group specified for this request.")
+      toast.error(" Error: No target group specified for this request.")
       return
     }
 
-    const capacityInfo = getGroupCapacityInfo(targetGroupId, enrollments, course)
+    const capacityInfo = getGroupCapacityInfo(
+      targetGroupId,
+      enrollments,
+      course
+    )
 
     if (capacityInfo && capacityInfo.isFull) {
-
       await dialog.warning(
         "Group Capacity Reached",
         `⚠️ Cannot approve this request.\n\n` +
-        `The target group "${capacityInfo.groupName}" is currently at full capacity.\n` +
-        `Current: ${capacityInfo.currentCount}/${capacityInfo.capacity} members\n\n` +
-        `To approve this request, you need to:\n` +
-        `1. Move one or more employees from "${capacityInfo.groupName}" to another group first, OR\n` +
-        `2. Increase the capacity of "${capacityInfo.groupName}"\n\n` +
-        `Then try approving this request again.`
+          `The target group "${capacityInfo.groupName}" is currently at full capacity.\n` +
+          `Current: ${capacityInfo.currentCount}/${capacityInfo.capacity} members\n\n` +
+          `To approve this request, you need to:\n` +
+          `1. Move one or more employees from "${capacityInfo.groupName}" to another group first, OR\n` +
+          `2. Increase the capacity of "${capacityInfo.groupName}"\n\n` +
+          `Then try approving this request again.`
       )
 
       return
     }
 
-    if (capacityInfo && capacityInfo.capacity > 0 && capacityInfo.remaining < 1) {
+    if (
+      capacityInfo &&
+      capacityInfo.capacity > 0 &&
+      capacityInfo.remaining < 1
+    ) {
       await dialog.warning(
         "Insufficient Group Capacity",
         `⚠️ Cannot approve this request.\n\n` +
-        `The target group "${capacityInfo.groupName}" has insufficient space.\n` +
-        `Available spots: ${capacityInfo.remaining}\n` +
-        `Requested: 1 employee\n\n` +
-        `Please free up space in the target group first.`
+          `The target group "${capacityInfo.groupName}" has insufficient space.\n` +
+          `Available spots: ${capacityInfo.remaining}\n` +
+          `Requested: 1 employee\n\n` +
+          `Please free up space in the target group first.`
       )
       return
     }
@@ -173,14 +182,16 @@ export function GroupRequestsTab({
 
     // Get capacity info for target group
     const targetGroupId = request.requestedCourseGroupId
-    const capacityInfo = targetGroupId ? getGroupCapacityInfo(targetGroupId, enrollments, course) : null
+    const capacityInfo = targetGroupId
+      ? getGroupCapacityInfo(targetGroupId, enrollments, course)
+      : null
     const isTargetFull = capacityInfo?.isFull || false
 
     return (
       <Card
         key={request.id}
         className={cn(
-          "group cursor-default py-4 transition-colors hover:bg-muted/40",
+          "group w-full cursor-default py-4 transition-colors hover:bg-muted/40",
           isPending && "border-yellow-200"
         )}
       >
@@ -223,7 +234,7 @@ export function GroupRequestsTab({
                   <span className="block text-xs text-muted-foreground uppercase">
                     Group Change
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <span className="text-sm font-medium">
                       {request.courseGroupName || "Unknown"}
                     </span>
@@ -233,34 +244,17 @@ export function GroupRequestsTab({
                       className="h-3 w-3 text-muted-foreground"
                     />
                     <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "text-sm font-medium",
-                          isPending
-                            ? "text-yellow-700"
-                            : status === "APPROVED"
-                              ? "text-green-700"
-                              : "text-red-700"
-                        )}
-                      >
+                      <span className="text-sm font-medium">
                         {request.requestedCourseGroupName || "Unknown"}
                       </span>
                       {isPending && capacityInfo && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-[10px]",
-                            isTargetFull
-                              ? "border-red-200 bg-red-50 text-red-600"
-                              : "border-green-200 bg-green-50 text-green-600"
-                          )}
-                        >
+                        <span className="text-xs text-green-600">
                           {isTargetFull
                             ? `Full (${capacityInfo.currentCount}/${capacityInfo.capacity})`
                             : capacityInfo.capacity === 0
                               ? "Unlimited"
-                              : `${capacityInfo.remaining} spots left`}
-                        </Badge>
+                              : `(${capacityInfo.remaining}) spot${capacityInfo.remaining > 1 ? "s" : ""} available`}
+                        </span>
                       )}
                       {isPending && isTargetFull && (
                         <HugeiconsIcon
@@ -276,7 +270,8 @@ export function GroupRequestsTab({
                   <div className="w-50 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
                     <div className="font-medium">⚠️ Target group is full!</div>
                     <div className="ml-1">
-                      Please move some employees out or increase capacity before approving.
+                      Please move some employees out or increase capacity before
+                      approving.
                     </div>
                   </div>
                 )}
@@ -290,11 +285,13 @@ export function GroupRequestsTab({
                     variant="ghost"
                     className={cn(
                       "h-8 w-8 p-0 text-green-600 hover:bg-green-50 hover:text-green-700",
-                      isTargetFull && "opacity-50 cursor-not-allowed"
+                      isTargetFull && "cursor-not-allowed opacity-50"
                     )}
                     onClick={() => handleApprove(request)}
                     disabled={isProcessing || isTargetFull}
-                    title={isTargetFull ? "Target group is full" : "Approve request"}
+                    title={
+                      isTargetFull ? "Target group is full" : "Approve request"
+                    }
                   >
                     {isProcessing ? (
                       <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
@@ -383,9 +380,6 @@ export function GroupRequestsTab({
               <div>
                 <h4 className="flex items-center gap-2 text-xl font-semibold">
                   Group Change Requests
-                  <Badge variant="secondary" className="ml-2">
-                    {pendingRequests.length} pending
-                  </Badge>
                 </h4>
               </div>
               <Button

@@ -33,23 +33,28 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  RefreshIcon,
   PlusSignIcon,
   CancelIcon,
   UserGroupIcon,
-  UserAdd01Icon,
-  Search01Icon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { Course } from "@/types/course"
 import { mainStore } from "@/store/mainStore"
-import { Input } from "@/components/ui/input"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group"
 import { toast } from "sonner"
+
+// Spinner component using Hugeicons (matching sendMail dialog)
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
 
 interface Employee {
   id: number
@@ -84,7 +89,10 @@ interface AddLearnerDialogsProps {
   groups: any[]
   open: boolean
   onOpenChange: (open: boolean) => void
-  onEnrollEmployee?: (employeeId: string | number, groupId?: number) => Promise<void>
+  onEnrollEmployee?: (
+    employeeId: string | number,
+    groupId?: number
+  ) => Promise<void>
   onRefreshEnrollments?: () => Promise<void>
   onAddComplete?: () => void
 }
@@ -124,8 +132,18 @@ export function AddLearnerDialogs({
   const [searchQuery, setSearchQuery] = useState("")
   const [viewAllOpen, setViewAllOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
-  const [visibleLearnersCount, setVisibleLearnersCount] = useState(AVAILABLE_LEARNERS_PER_PAGE)
+  const [progress, setProgress] = useState<{ current: number; total: number }>({
+    current: 0,
+    total: 0,
+  })
+  const [visibleLearnersCount, setVisibleLearnersCount] = useState(
+    AVAILABLE_LEARNERS_PER_PAGE
+  )
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  // Add dropdown interaction state
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
 
   const commandListRef = useRef<HTMLDivElement>(null)
   const isLoadingMoreRef = useRef(false)
@@ -140,13 +158,14 @@ export function AddLearnerDialogs({
 
   // Get available employees (not already enrolled)
   const availableEmployees = React.useMemo(() => {
-    return allEmployees.filter((employee) => !enrolledIds.has(String(employee.id)))
+    return allEmployees.filter(
+      (employee) => !enrolledIds.has(String(employee.id))
+    )
   }, [allEmployees, enrolledIds])
 
   const getUniqueGroups = () => {
     // Get groups from course
     const courseGroups = course.groups || groups || []
-
 
     // Only show groups that exist in the course
     return courseGroups
@@ -154,12 +173,11 @@ export function AddLearnerDialogs({
       .map((group) => {
         // Make sure we're parsing the ID correctly
         let groupId: number
-        if (typeof group.id === 'string' && group.id.startsWith('g')) {
+        if (typeof group.id === "string" && group.id.startsWith("g")) {
           groupId = parseInt(group.id.substring(1))
         } else {
-          groupId = typeof group.id === 'string' ? parseInt(group.id) : group.id
+          groupId = typeof group.id === "string" ? parseInt(group.id) : group.id
         }
-
 
         const enrolledInGroup = getEnrolledEmployees(enrollments).filter(
           (emp) => emp.courseGroupId === groupId
@@ -181,7 +199,11 @@ export function AddLearnerDialogs({
 
   // Auto-select the first group if only one exists
   useEffect(() => {
-    if (course.courseType === "trainer" && selectedEmployees.length > 0 && !selectedGroup) {
+    if (
+      course.courseType === "trainer" &&
+      selectedEmployees.length > 0 &&
+      !selectedGroup
+    ) {
       const groups = getUniqueGroups()
       if (groups.length === 1) {
         setSelectedGroup(String(groups[0].id))
@@ -193,6 +215,55 @@ export function AddLearnerDialogs({
   useEffect(() => {
     setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
   }, [searchQuery])
+
+  // Add dropdown interaction handlers
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent dialog from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when dialog closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    if (!newOpen) {
+      resetDialog()
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - only prevent if clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
 
   const getFilteredData = () => {
     let filteredData: Employee[] = []
@@ -224,17 +295,22 @@ export function AddLearnerDialogs({
     (e: React.UIEvent<HTMLDivElement>) => {
       const target = e.currentTarget
       const bottom =
-        target.scrollHeight - target.scrollTop <= target.clientHeight + 10
+        target.scrollHeight - target.scrollTop <= target.clientHeight + 50
 
       if (bottom && hasMoreLearners && !isLoadingMoreRef.current) {
         isLoadingMoreRef.current = true
-        setVisibleLearnersCount((prev) => {
-          const newCount = prev + AVAILABLE_LEARNERS_PER_PAGE
-          return Math.min(newCount, filteredData.length)
-        })
+        setIsLoadingMore(true)
+
         setTimeout(() => {
-          isLoadingMoreRef.current = false
-        }, 200)
+          setVisibleLearnersCount((prev) => {
+            const newCount = prev + AVAILABLE_LEARNERS_PER_PAGE
+            return Math.min(newCount, filteredData.length)
+          })
+          setIsLoadingMore(false)
+          setTimeout(() => {
+            isLoadingMoreRef.current = false
+          }, 100)
+        }, 300)
       }
     },
     [hasMoreLearners, filteredData.length]
@@ -245,6 +321,8 @@ export function AddLearnerDialogs({
     if (!searchOpen) {
       setSearchQuery("")
       setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
+      setIsLoadingMore(false)
+      isLoadingMoreRef.current = false
     }
   }, [searchOpen])
 
@@ -253,8 +331,13 @@ export function AddLearnerDialogs({
     setSelectedGroup("")
   }
 
+  const clearSelectionAndClose = () => {
+    setSelectedEmployees([])
+    setSelectedGroup("")
+    setViewAllOpen(false) // Close the view all dialog
+  }
+
   const resetDialog = () => {
-    onOpenChange(false)
     setSelectedEmployees([])
     setSelectedGroup("")
     setSearchQuery("")
@@ -263,114 +346,126 @@ export function AddLearnerDialogs({
     setVisibleLearnersCount(AVAILABLE_LEARNERS_PER_PAGE)
   }
 
-
   const handleEnroll = async () => {
-  if (selectedEmployees.length === 0) {
-    toast.warning('Please select at least one employee')
-    return
-  }
-
-  // For trainer courses, ensure a group is selected and has capacity
-  if (course.courseType === "trainer" && !selectedGroup) {
-    const groups = getUniqueGroups()
-    if (groups.length === 1) {
-      setSelectedGroup(String(groups[0].id))
-      setTimeout(() => {
-        handleEnroll()
-      }, 100)
+    if (selectedEmployees.length === 0) {
+      toast.warning("Please select at least one employee")
       return
     }
-    toast.warning('Please select a group for the employees')
-    return
-  }
 
-  // Check if the selected group has enough capacity
-  if (course.courseType === "trainer" && selectedGroup) {
-    const groupId = parseInt(selectedGroup)
-    const group = getUniqueGroups().find((g) => g.id === groupId)
-
-    if (group && group.capacity !== 0 && group.remaining < selectedEmployees.length) {
-      toast.warning(`The selected group only has ${group.remaining} spot${group.remaining > 1 ? 's' : ''} left, but you selected ${selectedEmployees.length} employees. Please select a group with enough capacity.`)
+    // For trainer courses, ensure a group is selected and has capacity
+    if (course.courseType === "trainer" && !selectedGroup) {
+      const groups = getUniqueGroups()
+      if (groups.length === 1) {
+        setSelectedGroup(String(groups[0].id))
+        setTimeout(() => {
+          handleEnroll()
+        }, 100)
+        return
+      }
+      toast.warning("Please select a group for the employees")
       return
     }
-  }
 
-  setIsSubmitting(true)
-  setProgress({ current: 0, total: selectedEmployees.length })
-
-  const failedEmployees: string[] = []
-  const successEmployees: string[] = []
-
-  try {
-    let groupId: number | undefined = undefined
-
+    // Check if the selected group has enough capacity
     if (course.courseType === "trainer" && selectedGroup) {
-      groupId = parseInt(selectedGroup)
-    } 
-    // Process employees with sequential enrollment to avoid race conditions
-    for (let i = 0; i < selectedEmployees.length; i++) {
-      const employee = selectedEmployees[i]
+      const groupId = parseInt(selectedGroup)
+      const group = getUniqueGroups().find((g) => g.id === groupId)
 
-      try {
-        if (onEnrollEmployee) {
-          await onEnrollEmployee(employee.id, groupId)
-          successEmployees.push(employee.name)
-        } else {
-          throw new Error("Enroll function not available")
-        }
-      } catch (error: any) {
-        console.error(`❌ Failed to enroll ${employee.name}:`, error)
-        failedEmployees.push(employee.name)
-        if (error.message) {
-          console.error('Error message:', error.message)
-        }
-      }
-
-      // Update progress
-      setProgress({ current: i + 1, total: selectedEmployees.length })
-
-      // Add small delay between enrollments to avoid rate limiting
-      if (i < selectedEmployees.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 300))
+      if (
+        group &&
+        group.capacity !== 0 &&
+        group.remaining < selectedEmployees.length
+      ) {
+        toast.warning(
+          `The selected group (${groupId}) only has ${group.remaining} spot${group.remaining > 1 ? "s" : ""} available, but you selected ${selectedEmployees.length} employee${selectedEmployees.length > 1 ? "s" : ""}. Please select a group with enough capacity or remove some employees.`
+        )
+        return
       }
     }
 
-    // Show results - ONLY ONCE at the end
-    if (successEmployees.length > 0 && failedEmployees.length === 0) {
-      toast.success(` All ${successEmployees.length} employee(s) enrolled successfully!`)
-    } else if (successEmployees.length > 0 && failedEmployees.length > 0) {
-      toast.success(` Successfully enrolled ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n\n❌ Failed to enroll ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`)
-    } else if (successEmployees.length === 0 && failedEmployees.length > 0) {
-      toast.error(`❌ Failed to enroll all ${failedEmployees.length} employee(s). Please try again.`)
-    }
+    setIsSubmitting(true)
+    setProgress({ current: 0, total: selectedEmployees.length })
 
-    // Refresh enrollments data
-    if (course.id) {
-      await fetch_courseEnrollments(course.id)
-    }
+    const failedEmployees: string[] = []
+    const successEmployees: string[] = []
 
-    if (onRefreshEnrollments) {
-      await onRefreshEnrollments()
-    }
+    try {
+      let groupId: number | undefined = undefined
 
-    if (onAddComplete) {
-      onAddComplete()
-    }
+      if (course.courseType === "trainer" && selectedGroup) {
+        groupId = parseInt(selectedGroup)
+      }
+      // Process employees with sequential enrollment to avoid race conditions
+      for (let i = 0; i < selectedEmployees.length; i++) {
+        const employee = selectedEmployees[i]
 
-    // Reset and close if all succeeded
-    if (failedEmployees.length === 0) {
-      resetDialog()
-    }
+        try {
+          if (onEnrollEmployee) {
+            await onEnrollEmployee(employee.id, groupId)
+            successEmployees.push(employee.name)
+          } else {
+            throw new Error("Enroll function not available")
+          }
+        } catch (error: any) {
+          console.error(` Failed to enroll ${employee.name}:`, error)
+          failedEmployees.push(employee.name)
+          if (error.message) {
+            console.error("Error message:", error.message)
+          }
+        }
 
-  } catch (error: any) {
-    console.error('❌ Error in enrollment process:', error)
-    toast.error(`❌ Failed to enroll employees: ${error.message || 'Unknown error'}`)
-  } finally {
-    setIsSubmitting(false)
-    setProgress({ current: 0, total: 0 })
+        // Update progress
+        setProgress({ current: i + 1, total: selectedEmployees.length })
+
+        // Add small delay between enrollments to avoid rate limiting
+        if (i < selectedEmployees.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 300))
+        }
+      }
+
+      // Show results - ONLY ONCE at the end
+      if (successEmployees.length > 0 && failedEmployees.length === 0) {
+        toast.success(
+          `${successEmployees.length} employee${successEmployees.length > 1 ? "s" : ""} enrolled successfully!`
+        )
+      } else if (successEmployees.length > 0 && failedEmployees.length > 0) {
+        toast.success(
+          ` Successfully enrolled ${successEmployees.length} employee${successEmployees.length > 1 ? "s" : ""}: ${successEmployees.join(", ")}\n\n Failed to enroll ${failedEmployees.length} employee${failedEmployees.length > 1 ? "s" : ""}: ${failedEmployees.join(", ")}`
+        )
+      } else if (successEmployees.length === 0 && failedEmployees.length > 0) {
+        toast.error(
+          `Failed to enroll all ${failedEmployees.length} employee${failedEmployees.length > 1 ? "s" : ""}. Please try again.`
+        )
+      }
+
+      // Refresh enrollments data
+      if (course.id) {
+        await fetch_courseEnrollments(course.id)
+      }
+
+      if (onRefreshEnrollments) {
+        await onRefreshEnrollments()
+      }
+
+      if (onAddComplete) {
+        onAddComplete()
+      }
+
+      // Reset and close if all succeeded
+      if (failedEmployees.length === 0) {
+        resetDialog()
+        onOpenChange(false)
+      }
+    } catch (error: any) {
+      console.error(" Error in enrollment process:", error)
+      toast.error(
+        `Failed to enroll employees: ${error.message || "Unknown error"}`
+      )
+    } finally {
+      setIsSubmitting(false)
+      setProgress({ current: 0, total: 0 })
+    }
   }
-}
-
 
   // Check if selected employees fit in the selected group
   const getGroupAvailability = () => {
@@ -382,7 +477,8 @@ export function AddLearnerDialogs({
     if (!group) return null
 
     const remaining = group.capacity === 0 ? Infinity : group.remaining
-    const willFit = remaining === Infinity || remaining >= selectedEmployees.length
+    const willFit =
+      remaining === Infinity || remaining >= selectedEmployees.length
 
     return {
       remaining,
@@ -396,39 +492,21 @@ export function AddLearnerDialogs({
   return (
     <>
       {/* Add Learner Dialog */}
-      <Dialog
-        open={open}
-        onOpenChange={(open) => {
-          if (!open) {
-            resetDialog()
-          }
-          onOpenChange(open)
-        }}
-      >
-        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[550px]">
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent
+          className="flex max-h-[90vh] flex-col p-0 sm:max-w-[500px]"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            // Prevent escape key from closing when dropdown is open
+            if (isInteractingWithDropdown) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
-              <HugeiconsIcon
-                icon={UserAdd01Icon}
-                strokeWidth={1.5}
-                className="h-5 w-5"
-              />
               Add Learners to Course
             </DialogTitle>
-            <DialogDescription>
-              Select employees and choose a group for them.
-              {selectedEmployees.length > 0 && (
-                <span className="ml-2 font-medium text-primary">
-                  ({selectedEmployees.length} employee
-                  {selectedEmployees.length > 1 ? "s" : ""} selected)
-                </span>
-              )}
-              {isSubmitting && (
-                <span className="ml-2 text-blue-600">
-                  (Processing: {progress.current}/{progress.total})
-                </span>
-              )}
-            </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-2">
@@ -472,13 +550,14 @@ export function AddLearnerDialogs({
                   </div>
                 </div>
 
-                {availableEmployees.length === 0 && selectedEmployees.length === 0 && (
-                  <div className="rounded-lg border-2 border-dashed p-4 text-center">
-                    <span className="text-sm text-muted-foreground">
-                      All available employees are already enrolled
-                    </span>
-                  </div>
-                )}
+                {availableEmployees.length === 0 &&
+                  selectedEmployees.length === 0 && (
+                    <div className="rounded-lg border-2 border-dashed p-4 text-center">
+                      <span className="text-sm text-muted-foreground">
+                        All available employees are already enrolled
+                      </span>
+                    </div>
+                  )}
 
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selectedEmployees.length > 0 ? (
@@ -544,13 +623,14 @@ export function AddLearnerDialogs({
                     onValueChange={(value) => {
                       setSelectedGroup(value)
                     }}
+                    onOpenChange={handleDropdownOpenChange}
                     disabled={selectedEmployees.length === 0 || isSubmitting}
                   >
                     <SelectTrigger
                       className={cn(
                         "w-full",
                         (selectedEmployees.length === 0 || isSubmitting) &&
-                        "cursor-not-allowed opacity-50"
+                          "cursor-not-allowed opacity-50"
                       )}
                     >
                       <SelectValue
@@ -558,7 +638,7 @@ export function AddLearnerDialogs({
                           selectedEmployees.length > 0
                             ? isSubmitting
                               ? "Processing..."
-                              : "Choose a group..."
+                              : "Choose a group"
                             : "Select employees first"
                         }
                       />
@@ -582,46 +662,37 @@ export function AddLearnerDialogs({
                             }
 
                             return groups.map((group) => {
-                              const willFit = group.capacity === 0 || group.remaining >= selectedEmployees.length
-                              const isFull = group.capacity !== 0 && group.remaining === 0
+                              const willFit =
+                                group.capacity === 0 ||
+                                group.remaining >= selectedEmployees.length
+                              const isFull =
+                                group.capacity !== 0 && group.remaining === 0
 
                               return (
                                 <SelectItem
+                                  className="w-full"
                                   key={group.id}
                                   value={String(group.id)}
                                   disabled={false} // Always show all groups, even if full
                                 >
-                                  <div className="flex w-full items-center justify-between">
-                                    <span className={cn(
-                                      isFull && "text-muted-foreground"
-                                    )}>
-                                      {group.name}
-                                      {isFull && " (Full)"}
+                                  <div className="flex items-center gap-2">
+                                    {group.name}
+                                    <span className="text-xs text-muted-foreground">
+                                      ({group.count}/
+                                      {group.capacity === 0
+                                        ? "∞"
+                                        : group.capacity}
+                                      ) learner{group.capacity > 1 ? "s" : ""}
                                     </span>
                                     <span className="text-xs text-muted-foreground">
-                                      {group.count}/{group.capacity === 0 ? "∞" : group.capacity} members
-                                      {selectedEmployees.length > 0 && (
-                                        <span
-                                          className={cn(
-                                            "ml-2",
-                                            willFit
-                                              ? "text-green-600"
-                                              : "text-red-500"
-                                          )}
-                                        >
-                                          {willFit
-                                            ? `✓ ${selectedEmployees.length} will fit`
-                                            : ``}
-                                        </span>
-                                      )}
                                       {isFull && (
-                                        <span className="ml-1 text-red-500 font-medium">
-                                          (Full - Cannot enroll)
+                                        <span className="text-red-500">
+                                          (Full)
                                         </span>
                                       )}
-                                      {!isFull && group.remaining > 0 && group.remaining <= 3 && group.capacity !== 0 && (
-                                        <span className="ml-1 text-yellow-600">
-                                          ({group.remaining} spot{group.remaining > 1 ? "s" : ""} left)
+                                      {!isFull && (
+                                        <span className="text-green-500">
+                                          (Available)
                                         </span>
                                       )}
                                     </span>
@@ -634,92 +705,6 @@ export function AddLearnerDialogs({
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  {selectedEmployees.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Please select employees first to see available groups
-                    </p>
-                  )}
-                  {selectedEmployees.length > 0 && selectedGroup && availability && (
-                    <div className={cn(
-                      "rounded-lg border p-2 text-xs",
-                      availability.willFit
-                        ? "border-green-200 bg-green-50 text-green-700"
-                        : "border-red-200 bg-red-50 text-red-700"
-                    )}>
-                      <span className="font-medium">
-                        {availability.willFit ? "✓" : "✗"}
-                        {" "}{selectedEmployees.length} employee
-                        {selectedEmployees.length > 1 ? "s" : ""}
-                      </span>
-                      {" will be added to "}
-                      <span className="font-medium">
-                        {course.groups?.find(
-                          (g) => g.id === selectedGroup
-                        )?.name || selectedGroup}
-                      </span>
-  
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Summary */}
-              {selectedEmployees.length > 0 && (
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <HugeiconsIcon
-                        icon={UserGroupIcon}
-                        strokeWidth={1.5}
-                        className="h-4 w-4 text-muted-foreground"
-                      />
-                      <span className="font-medium">
-                        {selectedEmployees.length} employee
-                        {selectedEmployees.length > 1 ? "s" : ""} selected
-                      </span>
-                      {selectedGroup && course.courseType === "trainer" && (
-                        <>
-                          <span className="text-muted-foreground">→</span>
-                          <span className="font-medium text-primary">
-                            {course.groups?.find(
-                              (g) => g.id === selectedGroup
-                            )?.name || selectedGroup}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    {!isSubmitting && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearSelection}
-                        className="h-7 px-2 text-xs"
-                      >
-                        <HugeiconsIcon
-                          icon={CancelIcon}
-                          strokeWidth={2}
-                          className="mr-1 h-3 w-3"
-                        />
-                        Clear Selection
-                      </Button>
-                    )}
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {selectedEmployees.slice(0, 5).map((emp) => (
-                      <Badge
-                        key={emp.id}
-                        variant="secondary"
-                        className="text-[10px]"
-                      >
-                        {emp.name}
-                      </Badge>
-                    ))}
-                    {selectedEmployees.length > 5 && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        +{selectedEmployees.length - 5} more
-                      </Badge>
-                    )}
-                  </div>
                 </div>
               )}
             </div>
@@ -729,7 +714,10 @@ export function AddLearnerDialogs({
             <Button
               variant="outline"
               className="flex-1"
-              onClick={resetDialog}
+              onClick={() => {
+                resetDialog()
+                onOpenChange(false)
+              }}
               disabled={isSubmitting}
             >
               Cancel
@@ -749,14 +737,7 @@ export function AddLearnerDialogs({
                   Enrolling ({progress.current}/{progress.total})...
                 </>
               ) : (
-                <>
-                  <HugeiconsIcon
-                    icon={UserAdd01Icon}
-                    strokeWidth={2}
-                    className="h-4 w-4"
-                  />
-                  Enroll ({selectedEmployees.length})
-                </>
+                <>Enroll</>
               )}
             </Button>
           </DialogFooter>
@@ -774,8 +755,8 @@ export function AddLearnerDialogs({
           }
         }}
       >
-        <Command className="gap-3" shouldFilter={false}>
-          <div className="border-b p-3">
+        <Command shouldFilter={false}>
+          <div className="border-b p-2">
             <CommandInput
               placeholder="Search employees by name, department or team..."
               value={searchQuery}
@@ -823,28 +804,30 @@ export function AddLearnerDialogs({
                         setSelectedEmployees((prev) => [...prev, employee])
                       }
                     }}
-                    className="group flex cursor-pointer items-center gap-3"
+                    className="group flex cursor-pointer items-center gap-2"
                   >
                     <Avatar className="h-8 w-8 rounded-full">
                       <AvatarImage src={employee.avatar || ""} />
-                      <AvatarFallback className="rounded-full">
+                      <AvatarFallback className="text-xs">
                         {getInitials(employee.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
+                    <div className="w-[80%] text-sm leading-tight">
                       <span className="truncate font-medium">
                         {employee.name}
                       </span>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="max-w-[45%] truncate">
-                          {employee.department || "N/A"}
-                        </span>
-                        {employee.department && employee.team && (
-                          <span>•</span>
+                      <div className="flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+                        {employee.department && (
+                          <span className="max-w-[45%] truncate">
+                            {employee.department}
+                          </span>
                         )}
-                        <span className="truncate">
-                          {employee.team || "N/A"}
-                        </span>
+                        {employee.department && employee.team && <span>•</span>}
+                        {employee.team && (
+                          <span className="max-w-[45%] truncate">
+                            {employee.team}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <CommandShortcut>
@@ -876,23 +859,38 @@ export function AddLearnerDialogs({
               })}
             </CommandGroup>
 
+            {/* Loading more indicator - matching sendMail design */}
             {hasMoreLearners && (
-              <div className="border-t p-4">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+              <div className="mt-2 pt-2">
+                <div className="flex flex-col items-center gap-2 py-2">
+                  <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                    <Spinner className="h-4 w-4 text-primary" />
                     <span>Loading more employees...</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    Showing {visibleLearners.length} of {filteredData.length} employees
-                  </span>
                 </div>
               </div>
             )}
 
-            {!hasMoreLearners && filteredData.length > 0 && (
-              <div className="border-t p-3 text-center text-xs text-muted-foreground">
-                Showing all {filteredData.length} employees
+            {/* All loaded indicator */}
+            {!hasMoreLearners &&
+              filteredData.length > 0 &&
+              searchQuery.trim().length === 0 && (
+                <div className="mt-2 border-t pt-2">
+                  <p className="py-2 text-center text-xs text-muted-foreground">
+                    You've reached the end of the list ({filteredData.length}{" "}
+                    employees)
+                  </p>
+                </div>
+              )}
+
+            {/* Search results count */}
+            {searchQuery.trim().length > 0 && filteredData.length > 0 && (
+              <div className="mt-2 border-t pt-2">
+                <p className="py-2 text-center text-xs text-muted-foreground">
+                  Found {filteredData.length} employee
+                  {filteredData.length !== 1 ? "s" : ""} matching "{searchQuery}
+                  "
+                </p>
               </div>
             )}
           </CommandList>
@@ -912,7 +910,13 @@ export function AddLearnerDialogs({
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={clearSelection}
+                    onPointerDown={(e) => {
+                      e.stopPropagation()
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      clearSelectionAndClose()
+                    }}
                     className="h-7 gap-1 text-xs"
                   >
                     <HugeiconsIcon
@@ -941,28 +945,30 @@ export function AddLearnerDialogs({
                       }
                     }
                   }}
-                  className="flex cursor-pointer items-center gap-3"
+                  className="group flex cursor-pointer items-center gap-2"
                 >
                   <Avatar className="h-8 w-8 rounded-full">
                     <AvatarImage src={employee.avatar || ""} />
-                    <AvatarFallback className="rounded-full">
+                    <AvatarFallback className="text-xs">
                       {getInitials(employee.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="w-[80%] text-sm leading-tight">
                     <span className="truncate font-medium">
                       {employee.name}
                     </span>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <span className="truncate">
-                        {employee.department || "N/A"}
-                      </span>
-                      {employee.department && employee.team && (
-                        <span>•</span>
+                    <div className="flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+                      {employee.department && (
+                        <span className="max-w-[45%] truncate">
+                          {employee.department}
+                        </span>
                       )}
-                      <span className="truncate">
-                        {employee.team || "N/A"}
-                      </span>
+                      {employee.department && employee.team && <span>•</span>}
+                      {employee.team && (
+                        <span className="max-w-[45%] truncate">
+                          {employee.team}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {!isSubmitting && (

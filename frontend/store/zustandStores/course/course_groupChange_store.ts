@@ -5,7 +5,7 @@ type StoreSet = (
 ) => void
 type StoreGet = () => Course_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
 // Group Change Store
 export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
@@ -17,14 +17,13 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
   isRejectingGroupChange: false,
   groupChangeSuccess: null,
 
-
   // PUT /api/groupchange/request - Employee requests to change group
   requestGroupChange: async (enrollmentId: number, groupId: number) => {
-    set((state: Course_StoreType) => ({ 
-      ...state, 
-      isRequestingGroupChange: true, 
+    set((state: Course_StoreType) => ({
+      ...state,
+      isRequestingGroupChange: true,
       groupChangeError: null,
-      groupChangeSuccess: null
+      groupChangeSuccess: null,
     }))
 
     try {
@@ -32,13 +31,13 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
 
       const requestBody: GroupChangeRequest = {
         enrollmentId,
-        groupId
+        groupId,
       }
 
       const response = await fetch(`${apiUrl}/api/groupchange/request`, {
-        method: 'PUT',
+        method: "PUT",
         headers: headers,
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       })
 
       let result
@@ -53,9 +52,9 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         set((state: Course_StoreType) => ({
           ...state,
           isRequestingGroupChange: false,
-          groupChangeError: result || 'Failed to request group change'
+          groupChangeError: result || "Failed to request group change",
         }))
-        throw new Error(result || 'Failed to request group change')
+        throw new Error(result || "Failed to request group change")
       }
 
       // Refresh enrollments to get updated data
@@ -70,48 +69,55 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         ...state,
         isRequestingGroupChange: false,
         groupChangeError: null,
-        groupChangeSuccess: result || 'Group change request submitted successfully'
+        groupChangeSuccess:
+          result || "Group change request submitted successfully",
       }))
 
       return {
         success: true,
-        message: result || 'Group change request submitted successfully'
+        message: result || "Group change request submitted successfully",
       }
-
     } catch (error) {
-      console.error('❌ Error requesting group change:', error)
+      console.error(" Error requesting group change:", error)
       set((state: Course_StoreType) => ({
         ...state,
         isRequestingGroupChange: false,
-        groupChangeError: error instanceof Error ? error.message : 'Failed to request group change',
-        groupChangeSuccess: null
+        groupChangeError:
+          error instanceof Error
+            ? error.message
+            : "Failed to request group change",
+        groupChangeSuccess: null,
       }))
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to request group change'
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to request group change",
       }
     }
   },
 
   // PUT /api/groupchange/{enrollmentId}/adminchange/{groupId} - Admin changes group immediately
   adminChangeGroup: async (enrollmentId: number, groupId: number) => {
-    set((state: Course_StoreType) => ({ 
-      ...state, 
-      isAdminChangingGroup: true, 
+    set((state: Course_StoreType) => ({
+      ...state,
+      isAdminChangingGroup: true,
       groupChangeError: null,
-      groupChangeSuccess: null
+      groupChangeSuccess: null,
     }))
 
     try {
       const headers = get().getAuthHeaders()
 
-
-      const response = await fetch(`${apiUrl}/api/groupchange/${enrollmentId}/adminchange/${groupId}`, {
-        method: 'PUT',
-        headers: headers
-      })
-
+      const response = await fetch(
+        `${apiUrl}/api/groupchange/${enrollmentId}/adminchange/${groupId}`,
+        {
+          method: "PUT",
+          headers: headers,
+        }
+      )
 
       let result
       const contentType = response.headers.get("content-type")
@@ -125,9 +131,9 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         set((state: Course_StoreType) => ({
           ...state,
           isAdminChangingGroup: false,
-          groupChangeError: result || 'Failed to change group'
+          groupChangeError: result || "Failed to change group",
         }))
-        throw new Error(result || 'Failed to change group')
+        throw new Error(result || "Failed to change group")
       }
 
       // Refresh enrollments to get updated data
@@ -141,48 +147,50 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         ...state,
         isAdminChangingGroup: false,
         groupChangeError: null,
-        groupChangeSuccess: result || 'Group changed successfully'
+        groupChangeSuccess: result || "Group changed successfully",
       }))
 
       return {
         success: true,
-        message: result || 'Group changed successfully'
+        message: result || "Group changed successfully",
       }
-
     } catch (error) {
-      console.error('❌ Error changing group:', error)
+      console.error(" Error changing group:", error)
       set((state: Course_StoreType) => ({
         ...state,
         isAdminChangingGroup: false,
-        groupChangeError: error instanceof Error ? error.message : 'Failed to change group',
-        groupChangeSuccess: null
+        groupChangeError:
+          error instanceof Error ? error.message : "Failed to change group",
+        groupChangeSuccess: null,
       }))
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to change group'
+        message:
+          error instanceof Error ? error.message : "Failed to change group",
       }
     }
   },
 
   // PUT /api/groupchange/{enrollmentId}/approve - Admin approves group change request
   approveGroupChange: async (enrollmentId: number) => {
-    set((state: Course_StoreType) => ({ 
-      ...state, 
-      isApprovingGroupChange: true, 
+    set((state: Course_StoreType) => ({
+      ...state,
+      isApprovingGroupChange: true,
       groupChangeError: null,
-      groupChangeSuccess: null
+      groupChangeSuccess: null,
     }))
 
     try {
       const headers = get().getAuthHeaders()
 
-
-      const response = await fetch(`${apiUrl}/api/groupchange/${enrollmentId}/approve`, {
-        method: 'PUT',
-        headers: headers
-      })
-
+      const response = await fetch(
+        `${apiUrl}/api/groupchange/${enrollmentId}/approve`,
+        {
+          method: "PUT",
+          headers: headers,
+        }
+      )
 
       let result
       const contentType = response.headers.get("content-type")
@@ -196,9 +204,9 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         set((state: Course_StoreType) => ({
           ...state,
           isApprovingGroupChange: false,
-          groupChangeError: result || 'Failed to approve group change'
+          groupChangeError: result || "Failed to approve group change",
         }))
-        throw new Error(result || 'Failed to approve group change')
+        throw new Error(result || "Failed to approve group change")
       }
 
       // Refresh enrollments to get updated data
@@ -212,48 +220,55 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         ...state,
         isApprovingGroupChange: false,
         groupChangeError: null,
-        groupChangeSuccess: result || 'Group change request approved successfully'
+        groupChangeSuccess:
+          result || "Group change request approved successfully",
       }))
 
       return {
         success: true,
-        message: result || 'Group change request approved successfully'
+        message: result || "Group change request approved successfully",
       }
-
     } catch (error) {
-      console.error('❌ Error approving group change:', error)
+      console.error(" Error approving group change:", error)
       set((state: Course_StoreType) => ({
         ...state,
         isApprovingGroupChange: false,
-        groupChangeError: error instanceof Error ? error.message : 'Failed to approve group change',
-        groupChangeSuccess: null
+        groupChangeError:
+          error instanceof Error
+            ? error.message
+            : "Failed to approve group change",
+        groupChangeSuccess: null,
       }))
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to approve group change'
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to approve group change",
       }
     }
   },
 
   // PUT /api/groupchange/{enrollmentId}/reject - Admin rejects group change request
   rejectGroupChange: async (enrollmentId: number) => {
-    set((state: Course_StoreType) => ({ 
-      ...state, 
-      isRejectingGroupChange: true, 
+    set((state: Course_StoreType) => ({
+      ...state,
+      isRejectingGroupChange: true,
       groupChangeError: null,
-      groupChangeSuccess: null
+      groupChangeSuccess: null,
     }))
 
     try {
       const headers = get().getAuthHeaders()
 
-
-      const response = await fetch(`${apiUrl}/api/groupchange/${enrollmentId}/reject`, {
-        method: 'PUT',
-        headers: headers
-      })
-
+      const response = await fetch(
+        `${apiUrl}/api/groupchange/${enrollmentId}/reject`,
+        {
+          method: "PUT",
+          headers: headers,
+        }
+      )
 
       let result
       const contentType = response.headers.get("content-type")
@@ -267,9 +282,9 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         set((state: Course_StoreType) => ({
           ...state,
           isRejectingGroupChange: false,
-          groupChangeError: result || 'Failed to reject group change'
+          groupChangeError: result || "Failed to reject group change",
         }))
-        throw new Error(result || 'Failed to reject group change')
+        throw new Error(result || "Failed to reject group change")
       }
 
       // Refresh enrollments to get updated data
@@ -283,26 +298,32 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
         ...state,
         isRejectingGroupChange: false,
         groupChangeError: null,
-        groupChangeSuccess: result || 'Group change request rejected successfully'
+        groupChangeSuccess:
+          result || "Group change request rejected successfully",
       }))
 
       return {
         success: true,
-        message: result || 'Group change request rejected successfully'
+        message: result || "Group change request rejected successfully",
       }
-
     } catch (error) {
-      console.error('❌ Error rejecting group change:', error)
+      console.error(" Error rejecting group change:", error)
       set((state: Course_StoreType) => ({
         ...state,
         isRejectingGroupChange: false,
-        groupChangeError: error instanceof Error ? error.message : 'Failed to reject group change',
-        groupChangeSuccess: null
+        groupChangeError:
+          error instanceof Error
+            ? error.message
+            : "Failed to reject group change",
+        groupChangeSuccess: null,
       }))
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to reject group change'
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to reject group change",
       }
     }
   },
@@ -314,17 +335,17 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
     try {
       const state = get()
       const enrollments = state.enrollments || []
-      
+
       // Filter enrollments that have pending group change requests
       // Note: This assumes your enrollment objects have a field indicating group change request status
       // You may need to adjust this based on your actual data structure
       return enrollments.filter(
-        (enrollment: any) => 
+        (enrollment: any) =>
           enrollment.courseId?.toString() === courseId.toString() &&
-          enrollment.groupChangeRequestStatus === 'PENDING'
+          enrollment.groupChangeRequestStatus === "PENDING"
       )
     } catch (error) {
-      console.error('Error getting group change requests:', error)
+      console.error("Error getting group change requests:", error)
       return []
     }
   },
@@ -335,7 +356,7 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
       const requests = get().getGroupChangeRequests(courseId)
       return requests.length
     } catch (error) {
-      console.error('Error getting pending group change count:', error)
+      console.error("Error getting pending group change count:", error)
       return 0
     }
   },
@@ -346,10 +367,10 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
       const state = get()
       const enrollments = state.enrollments || []
       const enrollment = enrollments.find((e: any) => e.id === enrollmentId)
-      
-      return enrollment?.groupChangeRequestStatus === 'PENDING' || false
+
+      return enrollment?.groupChangeRequestStatus === "PENDING" || false
     } catch (error) {
-      console.error('Error checking pending group change:', error)
+      console.error("Error checking pending group change:", error)
       return false
     }
   },
@@ -363,7 +384,7 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
       isRequestingGroupChange: false,
       isAdminChangingGroup: false,
       isApprovingGroupChange: false,
-      isRejectingGroupChange: false
+      isRejectingGroupChange: false,
     }))
   },
 
@@ -374,9 +395,9 @@ export const groupChangeStore = (set: StoreSet, get: StoreGet) => ({
       isRequestingGroupChange: false,
       isAdminChangingGroup: false,
       isApprovingGroupChange: false,
-      isRejectingGroupChange: false
+      isRejectingGroupChange: false,
     }))
-  }
+  },
 })
 
 // Type definitions for the request

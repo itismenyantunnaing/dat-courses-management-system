@@ -61,7 +61,9 @@ export function ExportDialog({
 }: ExportDialogProps) {
   const [activeExportTab, setActiveExportTab] = useState("")
   const [isExporting, setIsExporting] = useState(false)
-  const [exportLanguage, setExportLanguage] = useState<"english" | "japanese">("english")
+  const [exportLanguage, setExportLanguage] = useState<"english" | "japanese">(
+    "english"
+  )
   const [selectedCourse, setSelectedCourse] = useState<string>("")
   const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false)
 
@@ -79,7 +81,7 @@ export function ExportDialog({
     fetchAll_CourseData,
     fetch_FeedbackData,
     fetch_FeedbackByEmployeeId,
-    courses
+    courses,
   } = mainStore()
 
   // Fetch courses when dialog opens
@@ -102,9 +104,10 @@ export function ExportDialog({
       if (label === "exams") return tab.id === "exams"
       if (label === "dashboard") return tab.id === "dashboard"
       if (label === "skills") return tab.id === "skills"
-      if (label === "current_target_data") return tab.id === "current_target_data"
+      if (label === "current_target_data")
+        return tab.id === "current_target_data"
       if (label === "holidays") return tab.id === "holidays"
-      if (label === 'feedback') return tab.id === "feedback"
+      if (label === "feedback") return tab.id === "feedback"
       return tab.id === label
     })
   }, [label])
@@ -205,8 +208,9 @@ export function ExportDialog({
               const profile = store?.profile
               const userRole = profile?.role?.toLowerCase() || ""
               const isLearner = userRole === "learner"
-              const isAdminOrApprover = userRole === "admin" || userRole === "approver"
-              
+              const isAdminOrApprover =
+                userRole === "admin" || userRole === "approver"
+
               if (isLearner && profile?.id) {
                 await fetch_FeedbackByEmployeeId(profile.id)
               } else if (isAdminOrApprover) {
@@ -215,19 +219,25 @@ export function ExportDialog({
                 await fetch_FeedbackData()
               }
             } catch (error) {
-              console.error("❌ Failed to fetch feedback data:", error)
+              console.error(" Failed to fetch feedback data:", error)
             }
             break
           default:
             break
         }
       } catch (error) {
-        console.error(`❌ Failed to fetch data for tab ${tabId}:`, error)
+        console.error(` Failed to fetch data for tab ${tabId}:`, error)
       }
     }
 
     fetchDataForTab()
-  }, [open, currentTabData?.id, fetchAll_CourseData, fetch_FeedbackData, fetch_FeedbackByEmployeeId])
+  }, [
+    open,
+    currentTabData?.id,
+    fetchAll_CourseData,
+    fetch_FeedbackData,
+    fetch_FeedbackByEmployeeId,
+  ])
 
   const handleExportClick = useCallback(
     async (format: string) => {
@@ -290,7 +300,7 @@ export function ExportDialog({
 
         onOpenChange(false)
       } catch (error) {
-        console.error("❌ Export failed:", error)
+        console.error(" Export failed:", error)
         toast.error(
           `Failed to export: ${error instanceof Error ? error.message : "Unknown error"}`
         )
@@ -298,7 +308,13 @@ export function ExportDialog({
         setIsExporting(false)
       }
     },
-    [currentTabData, onOpenChange, exportLanguage, selectedCourse, isSelfStudyTab]
+    [
+      currentTabData,
+      onOpenChange,
+      exportLanguage,
+      selectedCourse,
+      isSelfStudyTab,
+    ]
   )
 
   const handleCancel = useCallback(() => {
@@ -308,43 +324,47 @@ export function ExportDialog({
   // Check if PDF should be hidden for certain tabs
   const shouldHidePDF = useMemo(() => {
     const tabId = currentTabData?.id
-    return tabId === "current_target_data" || 
-           tabId === "skills" ||
-           tabId === "self_study_progress_report" || 
-           tabId === "exam_progress_report"
+    return (
+      tabId === "current_target_data" ||
+      tabId === "skills" ||
+      tabId === "self_study_progress_report" ||
+      tabId === "exam_progress_report"
+    )
     // Note: Feedback supports PDF, so it's not in this list
   }, [currentTabData])
 
   // Check if CSV should be hidden for certain tabs
   const shouldHideCSV = useMemo(() => {
     const tabId = currentTabData?.id
-    return tabId === "self_study_progress_report" || 
-           tabId === "exam_progress_report" || 
-           tabId === "skills"
+    return (
+      tabId === "self_study_progress_report" ||
+      tabId === "exam_progress_report" ||
+      tabId === "skills"
+    )
     // Note: Feedback supports CSV, so it's not in this list
   }, [currentTabData])
 
   // Get course options for dropdown - FILTER OUT "trainer" courses
   const courseOptions = useMemo(() => {
     if (!courses || !Array.isArray(courses)) return []
-    
+
     // Filter courses where courseType is NOT "trainer"
     // Also ensure we only include courses with self-study data
     const filteredCourses = courses.filter((course: any) => {
       const courseType = course.courseType?.toLowerCase() || ""
       // Exclude "trainer" courses
       if (courseType === "trainer") return false
-      
+
       // Optional: Only include courses that have self-study data
       // You can add additional filters here if needed
       // For example: course.self_study_sessions?.length > 0
-      
+
       return true
     })
-    
+
     return filteredCourses.map((course: any) => ({
       id: course.id || course._id,
-      name: course.title || course.name || "Unnamed Course"
+      name: course.title || course.name || "Unnamed Course",
     }))
   }, [courses])
 
@@ -354,11 +374,11 @@ export function ExportDialog({
       {/* Course Selection - Only show for Self-Study Progress tab */}
       {isSelfStudyTab && (
         <div className="mb-3">
-          <label className="text-sm font-medium text-muted-foreground block mb-2">
+          <label className="mb-2 block text-sm font-medium text-muted-foreground">
             Select Course:
           </label>
-          <DropdownMenu 
-            open={isCourseDropdownOpen} 
+          <DropdownMenu
+            open={isCourseDropdownOpen}
             onOpenChange={setIsCourseDropdownOpen}
             modal={false}
           >
@@ -368,15 +388,16 @@ export function ExportDialog({
                 className="w-full justify-between"
                 disabled={courseOptions.length === 0}
               >
-                {selectedCourse 
-                  ? courseOptions.find(c => c.id === selectedCourse)?.name || "Select Course"
+                {selectedCourse
+                  ? courseOptions.find((c) => c.id === selectedCourse)?.name ||
+                    "Select Course"
                   : "Select a course..."}
                 <span className="ml-2">▼</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              align="start" 
-              className="w-full min-w-[200px] max-h-[200px] overflow-y-auto"
+            <DropdownMenuContent
+              align="start"
+              className="max-h-[200px] w-full min-w-[200px] overflow-y-auto"
             >
               {courseOptions.length === 0 ? (
                 <DropdownMenuItem disabled>
@@ -402,8 +423,9 @@ export function ExportDialog({
             </DropdownMenuContent>
           </DropdownMenu>
           {courseOptions.length === 0 && (
-            <p className="text-xs text-muted-foreground mt-1">
-              No self-study courses found. Please create a self-study course first.
+            <p className="mt-1 text-xs text-muted-foreground">
+              No self-study courses found. Please create a self-study course
+              first.
             </p>
           )}
         </div>

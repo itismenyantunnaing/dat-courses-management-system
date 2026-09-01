@@ -1,6 +1,13 @@
 "use client"
 
-import React, { useState, useRef, useEffect, forwardRef, useMemo, useCallback } from "react"
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  forwardRef,
+  useMemo,
+  useCallback,
+} from "react"
 import { resolveUploadUrl } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,7 +37,11 @@ import {
 } from "@hugeicons/core-free-icons"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   CourseGroup,
   CourseSession,
@@ -55,21 +66,24 @@ import { compressFile } from "@/lib/compressImage"
 import { toast } from "sonner"
 
 // Add this helper function near the top of the file, after the imports
-const safelyCompareDates = (date1: Date | string | undefined, date2: Date | string | undefined): boolean => {
+const safelyCompareDates = (
+  date1: Date | string | undefined,
+  date2: Date | string | undefined
+): boolean => {
   // If both are null/undefined, they're equal
-  if (!date1 && !date2) return true;
+  if (!date1 && !date2) return true
   // If one is null/undefined and the other isn't, they're different
-  if (!date1 || !date2) return false;
+  if (!date1 || !date2) return false
 
   // Convert strings to Date objects if needed
-  const d1 = date1 instanceof Date ? date1 : new Date(date1);
-  const d2 = date2 instanceof Date ? date2 : new Date(date2);
+  const d1 = date1 instanceof Date ? date1 : new Date(date1)
+  const d2 = date2 instanceof Date ? date2 : new Date(date2)
 
   // Check if both are valid dates
-  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false
 
-  return d1.getTime() === d2.getTime();
-};
+  return d1.getTime() === d2.getTime()
+}
 
 // Default session days constant
 const DEFAULT_SESSION_DAYS = [4, 5] // Thursday, Friday
@@ -77,30 +91,34 @@ const DEFAULT_SESSION_DAYS = [4, 5] // Thursday, Friday
 // ========== DATE HELPER FUNCTIONS ==========
 // Create a date that preserves the local date without timezone offset
 const createLocalDate = (date: Date): Date => {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-};
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
 
 // Get today's date as local date
 const getTodayLocal = (): Date => {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
 
 // Format a date for display using date-fns
 const formatLocalDateDisplay = (date: Date): string => {
-  if (!date) return '';
-  return format(date, 'PPP');
-};
+  if (!date) return ""
+  return format(date, "PPP")
+}
 
 // Helper function to convert Employee to MentionedLearner
-const convertEmployeeToMentionedLearner = (employee: any): MentionedLearner => ({
+const convertEmployeeToMentionedLearner = (
+  employee: any
+): MentionedLearner => ({
   id: employee.id,
-  name: employee.name || employee.full_name || '',
-  email: employee.email || '',
-  avatar: resolveUploadUrl(employee.profile_photo_path) || employee.avatar || '',
-  department: employee.dept_dat || employee.department || '',
-  team: employee.team || '',
-  status: (employee.status || employee.emp_status || 'active') as 'active' | 'pending' | 'completed' | 'inactive',
+  name: employee.name || employee.full_name || "",
+  email: employee.email || "",
+  avatar:
+    resolveUploadUrl(employee.profile_photo_path) || employee.avatar || "",
+  department: employee.dept_dat || employee.department || "",
+  team: employee.team || "",
+  status: (employee.status || employee.emp_status || "active") as
+    "active" | "pending" | "completed" | "inactive",
   addedAt: new Date(),
 })
 
@@ -138,7 +156,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       fetch_HolidayData,
       holiday_data,
       fetch_SystemConfig,
-      systemConfig
+      systemConfig,
     } = mainStore()
 
     // Fetch employees on mount if not already loaded
@@ -154,11 +172,17 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
 
     // Fetch categories on mount if not already loaded
     useEffect(() => {
-      if (courseCategory_data.trainer.length === 0 &&
-        courseCategory_data.selfStudy.length === 0) {
+      if (
+        courseCategory_data.trainer.length === 0 &&
+        courseCategory_data.selfStudy.length === 0
+      ) {
         fetch_courseCategories()
       }
-    }, [courseCategory_data.trainer.length, courseCategory_data.selfStudy.length, fetch_courseCategories])
+    }, [
+      courseCategory_data.trainer.length,
+      courseCategory_data.selfStudy.length,
+      fetch_courseCategories,
+    ])
 
     // Clean up group change state when component unmounts
     useEffect(() => {
@@ -166,8 +190,6 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         clearGroupChangeState?.()
       }
     }, [clearGroupChangeState])
-
-
 
     const defaultGroup = useMemo(
       () => ({
@@ -193,7 +215,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       categoryId: initialData?.categoryId || undefined,
       registrationDeadline: initialData?.registrationDeadline || undefined,
       groups: initialData?.groups?.length ? initialData.groups : [defaultGroup],
-      sessions: initialData?.sessions?.length ? initialData.sessions : (initialData?.self_study_sessions || []),
+      sessions: initialData?.sessions?.length
+        ? initialData.sessions
+        : initialData?.self_study_sessions || [],
       selfStudyType: initialData?.selfStudyType || "other",
       daysPerSession: initialData?.daysPerSession,
       mentionedLearners: initialData?.mentionedLearners || [],
@@ -233,12 +257,12 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       null
     )
     const [submitted, setSubmitted] = useState(false)
-    const [mainDurationPerSession, setMainDurationPerSession] = useState<number>(
-      initialData?.mainDurationPerSession ||
-      initialData?.sessions?.[0]?.durationPerSession ||
-      7
-    )
-
+    const [mainDurationPerSession, setMainDurationPerSession] =
+      useState<number>(
+        initialData?.mainDurationPerSession ||
+          initialData?.sessions?.[0]?.durationPerSession ||
+          7
+      )
 
     // Check if self-study type is JLPT
     const isJLPT = useMemo(() => {
@@ -264,7 +288,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       if (formData.sessions.length > 0) {
         const firstDuration = formData.sessions[0]?.durationPerSession
         const allSame = formData.sessions.every(
-          s => s.durationPerSession === firstDuration
+          (s) => s.durationPerSession === firstDuration
         )
         if (allSame && firstDuration !== undefined && firstDuration > 0) {
           setMainDurationPerSession(firstDuration)
@@ -289,8 +313,12 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           category: initialData.category || "",
           categoryId: category?.id || undefined,
           registrationDeadline: initialData.registrationDeadline || undefined,
-          groups: initialData.groups?.length ? initialData.groups : [defaultGroup],
-          sessions: initialData.sessions?.length ? initialData.sessions : (initialData.self_study_sessions || []),
+          groups: initialData.groups?.length
+            ? initialData.groups
+            : [defaultGroup],
+          sessions: initialData.sessions?.length
+            ? initialData.sessions
+            : initialData.self_study_sessions || [],
           selfStudyType: initialData.selfStudyType || "other",
           daysPerSession: initialData.daysPerSession,
           mentionedLearners: initialData.mentionedLearners || [],
@@ -311,25 +339,27 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         // Snapshot the SAME normalized values (deep-cloned) that were just
         // put into formData — not the raw initialData — so the very first
         // comparison in the "has changes" effect below evaluates to false.
-        initialFormDataRef.current = JSON.parse(JSON.stringify({
-          title: normalized.title,
-          imageUrl: normalized.imageUrl,
-          courseType: normalized.courseType,
-          category: normalized.category,
-          categoryId: normalized.categoryId,
-          registrationDeadline: normalized.registrationDeadline,
-          groups: normalized.groups,
-          sessions: normalized.sessions,
-          selfStudyType: normalized.selfStudyType,
-          daysPerSession: normalized.daysPerSession,
-          mentionedLearners: normalized.mentionedLearners,
-          totalKanji: normalized.totalKanji,
-          totalVocabulary: normalized.totalVocabulary,
-          totalGrammar: normalized.totalGrammar,
-          totalReadingMinutes: normalized.totalReadingMinutes,
-          totalListeningMinutes: normalized.totalListeningMinutes,
-          status: normalized.status,
-        }))
+        initialFormDataRef.current = JSON.parse(
+          JSON.stringify({
+            title: normalized.title,
+            imageUrl: normalized.imageUrl,
+            courseType: normalized.courseType,
+            category: normalized.category,
+            categoryId: normalized.categoryId,
+            registrationDeadline: normalized.registrationDeadline,
+            groups: normalized.groups,
+            sessions: normalized.sessions,
+            selfStudyType: normalized.selfStudyType,
+            daysPerSession: normalized.daysPerSession,
+            mentionedLearners: normalized.mentionedLearners,
+            totalKanji: normalized.totalKanji,
+            totalVocabulary: normalized.totalVocabulary,
+            totalGrammar: normalized.totalGrammar,
+            totalReadingMinutes: normalized.totalReadingMinutes,
+            totalListeningMinutes: normalized.totalListeningMinutes,
+            status: normalized.status,
+          })
+        )
       }
     }, [initialData, mode, defaultGroup, getCategoryByValue])
 
@@ -353,21 +383,21 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           ) ||
           formData.selfStudyType !== initialFormDataRef.current.selfStudyType ||
           formData.daysPerSession !==
-          initialFormDataRef.current.daysPerSession ||
+            initialFormDataRef.current.daysPerSession ||
           JSON.stringify(formData.groups) !==
-          JSON.stringify(initialFormDataRef.current.groups) ||
+            JSON.stringify(initialFormDataRef.current.groups) ||
           JSON.stringify(formData.sessions) !==
-          JSON.stringify(initialFormDataRef.current.sessions) ||
+            JSON.stringify(initialFormDataRef.current.sessions) ||
           JSON.stringify(formData.mentionedLearners) !==
-          JSON.stringify(initialFormDataRef.current.mentionedLearners) ||
+            JSON.stringify(initialFormDataRef.current.mentionedLearners) ||
           formData.totalKanji !== initialFormDataRef.current.totalKanji ||
           formData.totalVocabulary !==
-          initialFormDataRef.current.totalVocabulary ||
+            initialFormDataRef.current.totalVocabulary ||
           formData.totalGrammar !== initialFormDataRef.current.totalGrammar ||
           formData.totalReadingMinutes !==
-          initialFormDataRef.current.totalReadingMinutes ||
+            initialFormDataRef.current.totalReadingMinutes ||
           formData.totalListeningMinutes !==
-          initialFormDataRef.current.totalListeningMinutes ||
+            initialFormDataRef.current.totalListeningMinutes ||
           formData.status !== initialFormDataRef.current.status
 
         const hasImageChanges = selectedImage !== null
@@ -408,7 +438,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           }
           reader.readAsDataURL(compressedFile)
         } catch (error) {
-          console.error("❌ Failed to compress image:", error)
+          console.error(" Failed to compress image:", error)
           // Fallback: use original file if compression fails
           setSelectedImage(file)
           const reader = new FileReader()
@@ -450,25 +480,20 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         const groupValid = formData.groups.every((group) => {
           const hasSessions = group.sessions.length > 0
           const hasValidTimes =
-            !group.startTime || !group.endTime || group.startTime < group.endTime
+            !group.startTime ||
+            !group.endTime ||
+            group.startTime < group.endTime
 
           const hasValidDates =
             !group.endDate ||
             (group.startDate && group.endDate >= group.startDate)
 
-          const sessionsValid = group.sessions.every(
-            (session) => {
-              if (!session.date) return false;
-              return true;
-            }
-          )
+          const sessionsValid = group.sessions.every((session) => {
+            if (!session.date) return false
+            return true
+          })
 
-          return (
-            hasSessions &&
-            hasValidTimes &&
-            hasValidDates &&
-            sessionsValid
-          )
+          return hasSessions && hasValidTimes && hasValidDates && sessionsValid
         })
         return groupValid
       }
@@ -485,7 +510,8 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       }
 
       if (!formData.category) return
-      if (formData.courseType === "trainer" && formData.groups.length === 0) return
+      if (formData.courseType === "trainer" && formData.groups.length === 0)
+        return
 
       let hasError = false
       const errors: { [key: string]: string } = {}
@@ -493,11 +519,11 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
       if (formData.courseType === "trainer") {
         // Check for empty group names
         const groupsWithEmptyNames = formData.groups.filter(
-          group => !group.name || group.name.trim() === ''
+          (group) => !group.name || group.name.trim() === ""
         )
 
         if (groupsWithEmptyNames.length > 0) {
-          groupsWithEmptyNames.forEach(group => {
+          groupsWithEmptyNames.forEach((group) => {
             errors[group.id] = "Group name is required"
           })
           hasError = true
@@ -506,11 +532,12 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         // ADD CAPACITY VALIDATION FOR MULTIPLE GROUPS
         if (formData.groups.length > 1) {
           const groupsWithoutCapacity = formData.groups.filter(
-            group => group.capacity === undefined || group.capacity === null
+            (group) => group.capacity === undefined || group.capacity === null
           )
           if (groupsWithoutCapacity.length > 0) {
-            groupsWithoutCapacity.forEach(group => {
-              errors[group.id] = "Capacity is required when multiple groups exist"
+            groupsWithoutCapacity.forEach((group) => {
+              errors[group.id] =
+                "Capacity is required when multiple groups exist"
             })
             hasError = true
           }
@@ -561,8 +588,12 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         const firstError = errors[firstErrorKey]
 
         if (firstError === "Group name is required") {
-          toast.info(`Please provide names for all ${formData.groups.length} groups before submitting.`)
-        } else if (firstError === "Capacity is required when multiple groups exist") {
+          toast.info(
+            `Please provide names for all ${formData.groups.length} groups before submitting.`
+          )
+        } else if (
+          firstError === "Capacity is required when multiple groups exist"
+        ) {
           toast.info(`Please set capacities for all  groups before submitting.`)
         } else {
           toast.error(firstError)
@@ -579,7 +610,10 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         courseType: formData.courseType as "trainer" | "self-study",
         category: formData.category,
         course_category_id: formData.categoryId,
-        registrationDeadline: formData.courseType === "trainer" ? formData.registrationDeadline : undefined,
+        registrationDeadline:
+          formData.courseType === "trainer"
+            ? formData.registrationDeadline
+            : undefined,
         groups: formData.groups,
         sessions: formData.sessions,
         selfStudyType: formData.selfStudyType,
@@ -591,51 +625,68 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
         totalReadingMinutes: formData.totalReadingMinutes,
         totalListeningMinutes: formData.totalListeningMinutes,
         status: formData.status || "draft",
-        formattedGroups: formData.courseType === "trainer" ? formatGroupsForAPI(formData.groups) : undefined,
-        formattedSessions: formData.courseType === "self-study" ? formatSelfStudySessionsForAPI(formData.sessions, isJLPT) : undefined,
+        formattedGroups:
+          formData.courseType === "trainer"
+            ? formatGroupsForAPI(formData.groups)
+            : undefined,
+        formattedSessions:
+          formData.courseType === "self-study"
+            ? formatSelfStudySessionsForAPI(formData.sessions, isJLPT)
+            : undefined,
       }
 
       onSubmit(submitData)
     }
 
     // Handler for admin group change
-    const handleAdminChangeGroup = async (enrollmentId: number, newGroupId: number) => {
+    const handleAdminChangeGroup = async (
+      enrollmentId: number,
+      newGroupId: number
+    ) => {
       if (!initialData?.id) {
-        console.error('Course ID is required for group change');
-        toast.warning('Course ID is required for group change');
-        return;
+        console.error("Course ID is required for group change")
+        toast.warning("Course ID is required for group change")
+        return
       }
 
       try {
         // Extract the course ID from initialData
-        const courseId = typeof initialData.id === 'string' ? parseInt(initialData.id) : initialData.id;
+        const courseId =
+          typeof initialData.id === "string"
+            ? parseInt(initialData.id)
+            : initialData.id
 
         // Call the adminChangeGroup function from the store
-        const result = await adminChangeGroup(enrollmentId, newGroupId);
+        const result = await adminChangeGroup(enrollmentId, newGroupId)
 
         if (result.success) {
           // Refresh the enrollments to reflect the change
-          await fetch_courseEnrollments(courseId);
+          await fetch_courseEnrollments(courseId)
 
           // Show success toast
-          toast.success('Group changed successfully!');
+          toast.success("Group changed successfully!")
         } else {
-          toast.error(result.message || 'Failed to change group');
+          toast.error(result.message || "Failed to change group")
         }
       } catch (error) {
-        console.error('Failed to change group:', error);
-        toast.error(error instanceof Error ? error.message : 'Failed to change group');
+        console.error("Failed to change group:", error)
+        toast.error(
+          error instanceof Error ? error.message : "Failed to change group"
+        )
       }
-    };
+    }
 
     // Handler functions for TrainerSection
     const handleUpdateGroups = React.useCallback((groups: CourseGroup[]) => {
       setFormData((prev) => ({ ...prev, groups }))
     }, [])
 
-    const handleUpdateMentionedLearners = React.useCallback((learners: MentionedLearner[]) => {
-      setFormData((prev) => ({ ...prev, mentionedLearners: learners }))
-    }, [])
+    const handleUpdateMentionedLearners = React.useCallback(
+      (learners: MentionedLearner[]) => {
+        setFormData((prev) => ({ ...prev, mentionedLearners: learners }))
+      },
+      []
+    )
 
     const handleAddLearner = React.useCallback((learner: MentionedLearner) => {
       setFormData((prev) => ({
@@ -654,33 +705,42 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
     }, [])
 
     // Handler functions for Self_Study_Section
-    const handleUpdateSessions = React.useCallback((sessions: CourseSession[]) => {
-      setFormData((prev) => ({ ...prev, sessions }))
-    }, [])
+    const handleUpdateSessions = React.useCallback(
+      (sessions: CourseSession[]) => {
+        setFormData((prev) => ({ ...prev, sessions }))
+      },
+      []
+    )
 
     const handleUpdateSelfStudyType = React.useCallback((type: string) => {
       setFormData((prev) => ({ ...prev, selfStudyType: type }))
     }, [])
 
-    const handleUpdateDaysPerSession = React.useCallback((days: number | undefined) => {
-      setFormData((prev) => ({ ...prev, daysPerSession: days }))
-    }, [])
+    const handleUpdateDaysPerSession = React.useCallback(
+      (days: number | undefined) => {
+        setFormData((prev) => ({ ...prev, daysPerSession: days }))
+      },
+      []
+    )
 
-    const handleUpdateTotals = React.useCallback((totals: {
-      totalKanji: number
-      totalVocabulary: number
-      totalGrammar: number
-      totalReadingMinutes: number
-      totalListeningMinutes: number
-    }) => {
-      setFormData((prev) => ({ ...prev, ...totals }))
-    }, [])
+    const handleUpdateTotals = React.useCallback(
+      (totals: {
+        totalKanji: number
+        totalVocabulary: number
+        totalGrammar: number
+        totalReadingMinutes: number
+        totalListeningMinutes: number
+      }) => {
+        setFormData((prev) => ({ ...prev, ...totals }))
+      },
+      []
+    )
 
     // Helper function to get category by ID
     const getCategoryById = (categoryId?: number) => {
       if (!categoryId) return undefined
       const allCategories = getAllCategories()
-      return allCategories.find(cat => cat.id === categoryId)
+      return allCategories.find((cat) => cat.id === categoryId)
     }
 
     // Helper function to get category label by ID
@@ -693,41 +753,44 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
     // Helper function to check if category is trainer type by ID
     const isTrainerCategoryById = (categoryId?: number) => {
       const category = getCategoryById(categoryId)
-      return category?.type === 'trainer'
+      return category?.type === "trainer"
     }
 
     // Helper function to check if category is self-study type by ID
     const isSelfStudyCategoryById = (categoryId?: number) => {
       const category = getCategoryById(categoryId)
-      return category?.type === 'self-study'
+      return category?.type === "self-study"
     }
 
+    const handleGroupAdded = useCallback(
+      async (group: CourseGroup, allGroups: CourseGroup[]) => {
+        // Update the form data
+        setFormData((prev) => ({
+          ...prev,
+          groups: allGroups,
+        }))
 
-    const handleGroupAdded = useCallback(async (group: CourseGroup, allGroups: CourseGroup[]) => {
-      // Update the form data
-      setFormData((prev) => ({
-        ...prev,
-        groups: allGroups
-      }));
+        // The redistribution will be triggered by the EnrollEmployeesSection
+        // when it detects the groups prop has changed
+        setActiveGroupTab(group.id)
+      },
+      [setFormData, setActiveGroupTab]
+    )
 
-      // The redistribution will be triggered by the EnrollEmployeesSection
-      // when it detects the groups prop has changed
-      setActiveGroupTab(group.id);
-    }, [setFormData, setActiveGroupTab]);
+    const handleGroupRemoved = useCallback(
+      async (groupId: string, remainingGroups: CourseGroup[]) => {
+        // Update the form data
+        setFormData((prev) => ({
+          ...prev,
+          groups: remainingGroups,
+        }))
 
-    const handleGroupRemoved = useCallback(async (groupId: string, remainingGroups: CourseGroup[]) => {
-      // Update the form data
-      setFormData((prev) => ({
-        ...prev,
-        groups: remainingGroups
-      }));
-
-      if (remainingGroups.length > 0) {
-        setActiveGroupTab(remainingGroups[0].id);
-      }
-    }, [setFormData, setActiveGroupTab]);
-
-
+        if (remainingGroups.length > 0) {
+          setActiveGroupTab(remainingGroups[0].id)
+        }
+      },
+      [setFormData, setActiveGroupTab]
+    )
 
     return (
       <>
@@ -742,7 +805,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   placeholder="Enter course title"
                   required
                 />
@@ -756,7 +821,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                   <Input
                     id="trainerName"
                     value={formData.trainerName || ""}
-                    onChange={(e) => setFormData({ ...formData, trainerName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, trainerName: e.target.value })
+                    }
                     placeholder="Enter trainer name"
                     required={isTrainer}
                   />
@@ -778,11 +845,16 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                     {formData.categoryId ? (
                       <span>
                         {getCategoryLabelById(formData.categoryId)}
-                        {formData.courseType === "self-study" && formData.selfStudyType && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({formData.selfStudyType === "jlpt" ? "JLPT" : "Other"})
-                          </span>
-                        )}
+                        {formData.courseType === "self-study" &&
+                          formData.selfStudyType && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              (
+                              {formData.selfStudyType === "jlpt"
+                                ? "JLPT"
+                                : "Other"}
+                              )
+                            </span>
+                          )}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">
@@ -796,15 +868,20 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                   <p className="text-xs text-muted-foreground">
                     {
                       COURSE_TYPE_LABELS[
-                      isTrainerCategoryById(formData.categoryId) ? "trainer" : "self-study"
+                        isTrainerCategoryById(formData.categoryId)
+                          ? "trainer"
+                          : "self-study"
                       ]
                     }
-                    {formData.courseType === "self-study" && formData.selfStudyType && (
-                      <span>
-                        {" • "}
-                        {formData.selfStudyType === "jlpt" ? "JLPT Preparation" : "Other Self-Study"}
-                      </span>
-                    )}
+                    {formData.courseType === "self-study" &&
+                      formData.selfStudyType && (
+                        <span>
+                          {" • "}
+                          {formData.selfStudyType === "jlpt"
+                            ? "JLPT Preparation"
+                            : "Other Self-Study"}
+                        </span>
+                      )}
                   </p>
                 )}
               </div>
@@ -816,7 +893,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                 </Label>
                 <Select
                   value={formData.status || "draft"}
-                  onValueChange={(value: "active" | "upcoming" | "completed" | "draft") => {
+                  onValueChange={(
+                    value: "active" | "upcoming" | "completed" | "draft"
+                  ) => {
                     setFormData({ ...formData, status: value })
                   }}
                 >
@@ -851,15 +930,18 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                       <Button
                         type="button"
                         variant="outline"
-                        className={`w-full justify-between text-left font-normal ${submitted && !formData.registrationDeadline
-                          ? "border-destructive"
-                          : ""
-                          }`}
+                        className={`w-full justify-between text-left font-normal ${
+                          submitted && !formData.registrationDeadline
+                            ? "border-destructive"
+                            : ""
+                        }`}
                       >
                         {formData.registrationDeadline ? (
                           formatLocalDateDisplay(formData.registrationDeadline)
                         ) : (
-                          <span className="text-muted-foreground">Pick a date</span>
+                          <span className="text-muted-foreground">
+                            Pick a date
+                          </span>
                         )}
                         <HugeiconsIcon
                           icon={Calendar03Icon}
@@ -886,7 +968,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                             })
                           }
                         }}
-                        defaultMonth={formData.registrationDeadline || new Date()}
+                        defaultMonth={
+                          formData.registrationDeadline || new Date()
+                        }
                         disabled={{ before: new Date() }}
                       />
                     </PopoverContent>
@@ -1082,7 +1166,10 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isFormValid() || isSubmitting || disableSubmit}>
+              <Button
+                type="submit"
+                disabled={!isFormValid() || isSubmitting || disableSubmit}
+              >
                 {isSubmitting
                   ? "Saving..."
                   : mode === "add"
@@ -1099,7 +1186,12 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
           onOpenChange={setCategoryDrawerOpen}
           selectedCategory={formData}
           selectedSelfStudyType={formData.selfStudyType}
-          onSelectCategory={(categoryValue, categoryType, selfStudyType, categoryId) => {
+          onSelectCategory={(
+            categoryValue,
+            categoryType,
+            selfStudyType,
+            categoryId
+          ) => {
             let courseType: "trainer" | "self-study" | "" = ""
             if (categoryType === "trainer") courseType = "trainer"
             else if (categoryType === "self-study") courseType = "self-study"
@@ -1110,7 +1202,9 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
                 newSelfStudyType = selfStudyType
               } else {
                 // Find the exact category by ID
-                const categoryData = getAllCategories().find(cat => cat.id === categoryId)
+                const categoryData = getAllCategories().find(
+                  (cat) => cat.id === categoryId
+                )
                 newSelfStudyType = categoryData?.selfStudyType || "other"
               }
             }
@@ -1118,7 +1212,7 @@ export const Trainer_CourseForm = forwardRef<HTMLFormElement, CourseFormProps>(
             setFormData({
               ...formData,
               category: categoryValue,
-              categoryId: categoryId,  // Store the ID
+              categoryId: categoryId, // Store the ID
               courseType: courseType,
               registrationDeadline:
                 courseType === "trainer"

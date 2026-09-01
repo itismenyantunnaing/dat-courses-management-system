@@ -864,8 +864,8 @@ export default function AdminDashboardContainer() {
   }
 
   return (
-    <div className="flex flex-col pt-4 pb-6">
-      <CardContent className="space-y-4 px-4">
+    <div className="flex flex-col pb-6">
+      <CardContent className="space-y-4 px-0">
         {/* Stats Row */}
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard

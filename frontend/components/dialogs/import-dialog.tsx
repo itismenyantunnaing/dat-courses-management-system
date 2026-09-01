@@ -79,7 +79,7 @@ export function ImportDialog({
       setIsProcessing(false)
       // Reset file input ref
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+        fileInputRef.current.value = ""
       }
     }
   }, [open, showTabs, filteredTabs])
@@ -92,7 +92,7 @@ export function ImportDialog({
     setIsProcessing(false)
     // Reset file input ref
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = ""
     }
   }
 
@@ -143,9 +143,9 @@ export function ImportDialog({
         onOpenChange(false)
       }
     } catch (error) {
-      console.error("❌ Import error:", error)
+      console.error(" Import error:", error)
       toast.error(
-        `❌ Failed to import: ${error instanceof Error ? error.message : "Unknown error"}`
+        ` Failed to import: ${error instanceof Error ? error.message : "Unknown error"}`
       )
     } finally {
       setIsProcessing(false)
@@ -178,7 +178,7 @@ export function ImportDialog({
       }
       // Reset input value to allow selecting same file again
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+        fileInputRef.current.value = ""
       }
     }
 
@@ -192,24 +192,26 @@ export function ImportDialog({
     return (
       <div className="space-y-4">
         <div
-          className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragging
+          className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+            isDragging
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/25"
-            } ${!selectedFile && !isProcessing ? "cursor-pointer" : ""} ${isProcessing ? "pointer-events-none opacity-60" : ""
-            }`}
+          } ${!selectedFile && !isProcessing ? "cursor-pointer" : ""} ${
+            isProcessing ? "pointer-events-none opacity-60" : ""
+          }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
           <div className="flex flex-col items-center gap-4">
-            <div className="rounded-full bg-muted p-3 pointer-events-none">
+            <div className="pointer-events-none rounded-full bg-muted p-3">
               <HugeiconsIcon
                 icon={Upload05Icon}
                 strokeWidth={1.5}
                 className="size-8 text-muted-foreground"
               />
             </div>
-            <div className="space-y-2 text-center pointer-events-none">
+            <div className="pointer-events-none space-y-2 text-center">
               <p className="text-sm">
                 {selectedFile ? (
                   selectedFile.name
@@ -217,7 +219,11 @@ export function ImportDialog({
                   <>
                     Choose a excel file or drag & drop it here.
                     <br />
-                    Your excel file tab name has to be <span className="font-bold text-blue-600">{currentTabData?.label}</span>.
+                    Your excel file tab name has to be{" "}
+                    <span className="font-bold text-blue-600">
+                      {currentTabData?.label}
+                    </span>
+                    .
                   </>
                 )}
               </p>
@@ -226,10 +232,10 @@ export function ImportDialog({
               </p>
               {selectedFile && (
                 <p className="text-xs text-green-600">
-                  ✓ File selected: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                  ✓ File selected:{" "}
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               )}
-              
             </div>
             <input
               type="file"
@@ -239,9 +245,9 @@ export function ImportDialog({
               onChange={handleInputChange}
               accept={currentTabData?.accept}
               disabled={isProcessing}
-              key={`file-input-${currentTabData?.id || 'default'}-${open}`}
+              key={`file-input-${currentTabData?.id || "default"}-${open}`}
             />
-            <div className="flex gap-2 pointer-events-auto">
+            <div className="pointer-events-auto flex gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -262,7 +268,7 @@ export function ImportDialog({
                     e.stopPropagation()
                     setSelectedFile(null)
                     if (fileInputRef.current) {
-                      fileInputRef.current.value = ''
+                      fileInputRef.current.value = ""
                     }
                   }}
                 >
@@ -275,7 +281,6 @@ export function ImportDialog({
       </div>
     )
   }, [isDragging, isProcessing, selectedFile, currentTabData, open])
-
 
   // Single tab view (no tab selector)
   if (!showTabs) {
@@ -291,8 +296,8 @@ export function ImportDialog({
             if (
               target.closest('[role="menu"]') ||
               target.closest('[role="listbox"]') ||
-              target.closest('button') ||
-              target.closest('input')
+              target.closest("button") ||
+              target.closest("input")
             ) {
               e.preventDefault()
             }
@@ -348,8 +353,8 @@ export function ImportDialog({
           if (
             target.closest('[role="menu"]') ||
             target.closest('[role="listbox"]') ||
-            target.closest('button') ||
-            target.closest('input')
+            target.closest("button") ||
+            target.closest("input")
           ) {
             e.preventDefault()
           }
@@ -389,7 +394,7 @@ export function ImportDialog({
                       setIsDragging(false)
                       setIsProcessing(false)
                       if (fileInputRef.current) {
-                        fileInputRef.current.value = ''
+                        fileInputRef.current.value = ""
                       }
                     }}
                   >
@@ -427,7 +432,7 @@ export function ImportDialog({
                         setIsDragging(false)
                         setIsProcessing(false)
                         if (fileInputRef.current) {
-                          fileInputRef.current.value = ''
+                          fileInputRef.current.value = ""
                         }
                       }}
                       className="flex items-center justify-between"

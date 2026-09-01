@@ -399,7 +399,7 @@ export default function LearnerDashboardContainer({
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to update attendance"
-      console.error("❌ Error updating attendance:", error)
+      console.error(" Error updating attendance:", error)
       setAttendanceError(errorMessage)
     } finally {
       setIsUpdatingAttendance(false)
@@ -660,8 +660,8 @@ export default function LearnerDashboardContainer({
 
   return (
     <>
-      <div className="flex flex-col pt-4 pb-6">
-        <CardContent className="space-y-4 px-4">
+      <div className="flex flex-col pb-6">
+        <CardContent className="space-y-4 px-0">
           {/* Stats Row - 4 cards */}
           <div className="grid gap-4 md:grid-cols-4">
             <StatCard
@@ -1104,9 +1104,6 @@ export default function LearnerDashboardContainer({
               <CardHeader className="flex flex-row items-center justify-between border-b py-0">
                 <div>
                   <CardTitle>Notifications</CardTitle>
-                  <CardDescription>
-                    Important updates and reminders
-                  </CardDescription>
                 </div>
                 <Button
                   variant="ghost"
@@ -1114,14 +1111,14 @@ export default function LearnerDashboardContainer({
                   onClick={() => setNotificationsDrawerOpen(true)}
                 >
                   All Notifications
-                  {totalNotificationsCount > 0 && (
+                  {/* {totalNotificationsCount > 0 && (
                     <Badge
                       variant="secondary"
                       className="ml-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs"
                     >
                       {totalNotificationsCount}
                     </Badge>
-                  )}
+                  )} */}
                   <HugeiconsIcon
                     icon={ArrowRight01Icon}
                     strokeWidth={2}

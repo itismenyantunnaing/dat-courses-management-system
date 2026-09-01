@@ -1,4 +1,3 @@
-// components/course/tabs/SessionsTab.tsx
 "use client"
 
 import React, { useState, useEffect } from "react"
@@ -18,8 +17,6 @@ import {
   CheckCircle,
   Alert01Icon,
   SaveIcon,
-  UserGroupIcon,
-  Edit03Icon,
 } from "@hugeicons/core-free-icons"
 import { Course, isJLPTType } from "@/types/course"
 import { format } from "date-fns"

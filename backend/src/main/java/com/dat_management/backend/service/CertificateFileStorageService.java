@@ -40,7 +40,7 @@ public class CertificateFileStorageService {
                 System.out.println(" Directory exists: " + uploadPath);
             }
         } catch (Exception e) {
-            System.err.println("❌ Failed to create directory: " + e.getMessage());
+            System.err.println(" Failed to create directory: " + e.getMessage());
             throw new RuntimeException("Cannot create upload directory: " + e.getMessage(), e);
         }
     }
@@ -104,10 +104,10 @@ public class CertificateFileStorageService {
             if (Files.exists(filePath)) {
                 System.out.println(" Verified: File exists at: " + filePath.toAbsolutePath());
             } else {
-                System.err.println("❌ Warning: File not found after save!");
+                System.err.println(" Warning: File not found after save!");
             }
         } catch (Exception e) {
-            System.err.println("❌ Failed to save file: " + e.getMessage());
+            System.err.println(" Failed to save file: " + e.getMessage());
             throw new IOException("Failed to save file: " + e.getMessage(), e);
         }
 

@@ -106,7 +106,7 @@ public class CourseService {
                 course.setImagePath(imagePath);
                 courseRepo.save(course);
             } catch (IOException e) {
-                log.error("❌ Failed to upload image: {}", e.getMessage());
+                log.error(" Failed to upload image: {}", e.getMessage());
                 throw new RuntimeException("Failed to upload image: " + e.getMessage());
             }
         }
@@ -335,7 +335,7 @@ public class CourseService {
             log.info(" Image uploaded successfully for course ID: {}", id);
             return toCourseDto(course, false);
         } catch (IOException e) {
-            log.error("❌ Failed to upload image: {}", e.getMessage());
+            log.error(" Failed to upload image: {}", e.getMessage());
             throw new RuntimeException("Failed to upload image: " + e.getMessage());
         }
     }
@@ -357,7 +357,7 @@ public class CourseService {
             log.info(" Image deleted for course ID: {}", id);
             return toCourseDto(course, false);
         } catch (IOException e) {
-            log.error("❌ Failed to delete image: {}", e.getMessage());
+            log.error(" Failed to delete image: {}", e.getMessage());
             throw new RuntimeException("Failed to delete image: " + e.getMessage());
         }
     }
@@ -649,7 +649,7 @@ public class CourseService {
             }
         } else if (requestedTotalCapacity < totalMembers && groupRequests.size() > 1) {
             // Multiple groups requested but total capacity insufficient
-            log.error("  ❌ Total capacity ({}) is less than total members ({})", requestedTotalCapacity, totalMembers);
+            log.error("   Total capacity ({}) is less than total members ({})", requestedTotalCapacity, totalMembers);
             throw new RuntimeException(
                 String.format("Total capacity (%d) is less than total enrollments (%d). " +
                     "Please increase capacity or add more groups.",
@@ -740,7 +740,7 @@ public class CourseService {
         // STEP 5: Validate capacity is sufficient
         // =========================================================
         if (totalCapacity < totalMembers) {
-            log.error("  ❌ Total capacity ({}) is less than total members ({})", totalCapacity, totalMembers);
+            log.error("   Total capacity ({}) is less than total members ({})", totalCapacity, totalMembers);
             throw new RuntimeException(
                 String.format("Total capacity (%d) is less than total enrollments (%d). " +
                     "Please increase capacity or add more groups.",
@@ -1004,7 +1004,7 @@ public class CourseService {
         }
         
         if (availableGroups.isEmpty()) {
-            log.error("❌ No available groups to move members to!");
+            log.error(" No available groups to move members to!");
             return false;
         }
         
@@ -1028,7 +1028,7 @@ public class CourseService {
         }
         
         if (memberIndex < members.size()) {
-            log.error("❌ Could not move all members! {} members remain", members.size() - memberIndex);
+            log.error(" Could not move all members! {} members remain", members.size() - memberIndex);
             return false;
         }
         

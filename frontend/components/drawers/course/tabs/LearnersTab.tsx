@@ -26,25 +26,11 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   UserGroupIcon,
-  RefreshIcon,
-  PlusSignIcon,
-  LayoutGridIcon,
-  TableIcon,
   Delete02Icon,
   UserAdd01Icon,
   Search01Icon,
   UserIcon,
 } from "@hugeicons/core-free-icons"
-import {
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandShortcut,
-} from "@/components/ui/command"
 import { format } from "date-fns"
 import { cn, resolveUploadUrl } from "@/lib/utils"
 import { mainStore } from "@/store/mainStore"
@@ -103,6 +89,31 @@ const getInitials = (name: string) => {
 type ViewMode = "table" | "card"
 
 const AVAILABLE_LEARNERS_PER_PAGE = 10
+
+// Bordered Table Cell component (matching employee-container)
+const BorderedTableCell = ({
+  children,
+  className = "",
+  selected = false,
+  ...props
+}: React.ComponentProps<typeof TableCell> & { selected?: boolean }) => (
+  <TableCell
+    className={cn("border-r border-l", selected && "bg-muted/50", className)}
+    {...props}
+  >
+    {children}
+  </TableCell>
+)
+
+const BorderedTableHead = ({
+  children,
+  className = "",
+  ...props
+}: React.ComponentProps<typeof TableHead>) => (
+  <TableHead className={`border-r border-l ${className}`} {...props}>
+    {children}
+  </TableHead>
+)
 
 export function LearnersTab({
   enrollments,
@@ -206,7 +217,9 @@ export function LearnersTab({
   // Filter available employees (not already enrolled)
   // For department_head, only show employees from their department
   const availableEmployees = useMemo(() => {
-    let employees = allEmployees.filter((employee) => !enrolledIds.has(employee.id))
+    let employees = allEmployees.filter(
+      (employee) => !enrolledIds.has(employee.id)
+    )
 
     // Filter by department for department_head
     if (isDepartmentHead && profile?.deptDat) {
@@ -294,22 +307,25 @@ export function LearnersTab({
       return
     }
 
-    const employeeId = typeof employeeOrId === 'object' ? employeeOrId.id : employeeOrId
-    const employeeName = typeof employeeOrId === 'object' ? employeeOrId.name : String(employeeOrId)
+    const employeeId =
+      typeof employeeOrId === "object" ? employeeOrId.id : employeeOrId
+    const employeeName =
+      typeof employeeOrId === "object"
+        ? employeeOrId.name
+        : String(employeeOrId)
 
     const isTrainer = course?.courseType === "trainer"
 
-
     if (isTrainer && !groupId) {
-      console.error('No group ID provided for trainer course')
-      toast.info('Please select a group for this course')
+      console.error("No group ID provided for trainer course")
+      toast.info("Please select a group for this course")
       return
     }
 
     try {
       await onEnrollEmployee(employeeId, groupId)
     } catch (error) {
-      console.error(`❌ Error enrolling ${employeeName}:`, error)
+      console.error(` Error enrolling ${employeeName}:`, error)
       throw error // Re-throw so AddLearnerDialogs can catch it
     }
   }
@@ -325,7 +341,7 @@ export function LearnersTab({
     const confirmed = await dialog.confirm(
       "Confirm Unenrollment",
       `Are you sure you want to unenroll ${employeeName}?`,
-      "Yes, Unenroll",
+      "Confirm",
       "Cancel",
       undefined,
       true // isDestructive
@@ -334,7 +350,7 @@ export function LearnersTab({
     if (!confirmed) {
       return
     }
-    
+
     setIsUnenrollingEmployee(enrollmentId)
     try {
       await onUnenrollEmployee(enrollmentId)
@@ -356,6 +372,35 @@ export function LearnersTab({
 
   // Check if there are no enrolled learners
   const hasNoLearners = activeEnrollments.length === 0
+
+  // Get the columns for the table
+  const getTableColumns = () => {
+    const columns = [
+      { field: "sr", header: "Sr." },
+      { field: "name", header: "Name" },
+      { field: "email", header: "Email" },
+      { field: "division", header: "Division" },
+      { field: "department", header: "Department" },
+      { field: "team", header: "Team" },
+    ]
+
+    if (course?.courseType === "trainer") {
+      columns.push({ field: "group", header: "Group" })
+    }
+
+    columns.push(
+      { field: "mockTest", header: "Mock Test" },
+      { field: "enrolledAt", header: "Enrolled At" }
+    )
+
+    if (canManageLearners) {
+      columns.push({ field: "action", header: "Action" })
+    }
+
+    return columns
+  }
+
+  const tableColumns = getTableColumns()
 
   return (
     <TabsContent value="learners" className="pt-4">
@@ -402,7 +447,6 @@ export function LearnersTab({
               <div>
                 <h4 className="flex items-center gap-2 text-xl font-semibold">
                   Enrolled Learners
-
                   {isApprover && !isDepartmentHead && profile?.team && (
                     <Badge variant="outline" className="ml-2 text-xs">
                       Team: {profile.team}
@@ -410,8 +454,9 @@ export function LearnersTab({
                   )}
                 </h4>
                 {isDepartmentHead && profile?.deptDat && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Showing learners from your department ({activeEnrollments.length} total)
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Showing learners from your department (
+                    {activeEnrollments.length} total)
                   </p>
                 )}
               </div>
@@ -437,21 +482,23 @@ export function LearnersTab({
                 </InputGroup>
 
                 {/* Add Employee Button - Opens the AddLearnerDialogs */}
-                {canManageLearners && course && availableEmployees.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAddLearnerOpen(true)}
-                    disabled={isEnrolling}
-                  >
-                    <HugeiconsIcon
-                      icon={UserAdd01Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                    Add Learner
-                  </Button>
-                )}
+                {canManageLearners &&
+                  course &&
+                  availableEmployees.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAddLearnerOpen(true)}
+                      disabled={isEnrolling}
+                    >
+                      <HugeiconsIcon
+                        icon={UserAdd01Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                      Add Learner
+                    </Button>
+                  )}
               </div>
             </div>
           </CardHeader>
@@ -472,46 +519,19 @@ export function LearnersTab({
                 </p>
               </div>
             ) : viewMode === "table" ? (
-              // Table View with Delete Button
+              // Table View with Bordered Cells - Matching employee-container design
               <div className="overflow-x-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs font-medium">Sr.</TableHead>
-                      <TableHead className="text-xs font-medium">
-                        Employee ID
-                      </TableHead>
-                      <TableHead className="text-xs font-medium">
-                        Name
-                      </TableHead>
-                      <TableHead className="text-xs font-medium">
-                        Email
-                      </TableHead>
-                      <TableHead className="text-xs font-medium">
-                        Division
-                      </TableHead>
-                      <TableHead className="text-xs font-medium">
-                        Department
-                      </TableHead>
-                      <TableHead className="text-xs font-medium">
-                        Team
-                      </TableHead>
-                      {course.courseType === "trainer" && (
-                        <TableHead className="text-xs font-medium">
-                          Group
-                        </TableHead>
-                      )}
-                      <TableHead className="text-xs font-medium">
-                        Mock Test
-                      </TableHead>
-                      <TableHead className="text-xs font-medium">
-                        Enrolled At
-                      </TableHead>
-                      {canManageLearners && (
-                        <TableHead className="text-center text-xs font-medium">
-                          Action
-                        </TableHead>
-                      )}
+                      {tableColumns.map((col) => (
+                        <BorderedTableHead
+                          key={col.field}
+                          className="align-middle font-medium whitespace-nowrap"
+                        >
+                          {col.header}
+                        </BorderedTableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -521,9 +541,9 @@ export function LearnersTab({
                           (e) => e.courseGroupName === employee.courseGroupName
                         ).length > 0
                           ? filteredEnrollments.findIndex(
-                            (e) =>
-                              e.courseGroupName === employee.courseGroupName
-                          ) % groupColors.length
+                              (e) =>
+                                e.courseGroupName === employee.courseGroupName
+                            ) % groupColors.length
                           : index % groupColors.length
 
                       const isUnenrolling =
@@ -534,17 +554,18 @@ export function LearnersTab({
                           key={employee.id}
                           className="transition-colors hover:bg-muted/50"
                         >
-                          <TableCell className="text-center text-xs">
+                          <BorderedTableCell className="text-center text-xs">
                             {index + 1}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {employee.employeeId || "-"}
-                          </TableCell>
-                          <TableCell>
+                          </BorderedTableCell>
+                          <BorderedTableCell>
                             <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
-                                <AvatarFallback className="bg-primary/10 text-[10px] text-primary">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage
+                                  src={resolveUploadUrl(
+                                    employee.profilePhotoPath
+                                  )}
+                                />
+                                <AvatarFallback className="text-xs text-primary">
                                   {getInitials(employee.employeeName)}
                                 </AvatarFallback>
                               </Avatar>
@@ -552,46 +573,37 @@ export function LearnersTab({
                                 {employee.employeeName}
                               </span>
                             </div>
-                          </TableCell>
-                          <TableCell className="text-xs">
+                          </BorderedTableCell>
+                          <BorderedTableCell>
                             {employee.email || "-"}
-                          </TableCell>
-                          <TableCell className="text-xs">
+                          </BorderedTableCell>
+                          <BorderedTableCell>
                             {employee.divisionName || "-"}
-                          </TableCell>
-                          <TableCell className="text-xs">
+                          </BorderedTableCell>
+                          <BorderedTableCell>
                             {employee.departmentName || "-"}
-                          </TableCell>
-                          <TableCell className="text-xs">
+                          </BorderedTableCell>
+                          <BorderedTableCell>
                             {employee.teamName || "-"}
-                          </TableCell>
-                          {course.courseType === "trainer" && (
-                            <TableCell>
-                              <Badge
-                                className={cn(
-                                  "text-xs font-normal",
-                                  groupColors[groupIndex % groupColors.length]
-                                )}
-                              >
-                                {employee.courseGroupName || "-"}
-                              </Badge>
-                            </TableCell>
+                          </BorderedTableCell>
+                          {course?.courseType === "trainer" && (
+                            <BorderedTableCell>
+                              {employee.courseGroupName || "-"}
+                            </BorderedTableCell>
                           )}
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {employee.mockTestAttempt ?? 0}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
+                          <BorderedTableCell>
+                            {employee.mockTestAttempt ?? 0}
+                          </BorderedTableCell>
+                          <BorderedTableCell>
                             {employee.enrolledAt
                               ? format(
-                                new Date(employee.enrolledAt),
-                                "MMM d, yyyy"
-                              )
+                                  new Date(employee.enrolledAt),
+                                  "MMM d, yyyy"
+                                )
                               : "-"}
-                          </TableCell>
+                          </BorderedTableCell>
                           {canManageLearners && (
-                            <TableCell className="text-center">
+                            <BorderedTableCell className="text-center">
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -615,7 +627,7 @@ export function LearnersTab({
                                   />
                                 )}
                               </Button>
-                            </TableCell>
+                            </BorderedTableCell>
                           )}
                         </TableRow>
                       )
@@ -632,8 +644,8 @@ export function LearnersTab({
                       (e) => e.courseGroupName === employee.courseGroupName
                     ).length > 0
                       ? filteredEnrollments.findIndex(
-                        (e) => e.courseGroupName === employee.courseGroupName
-                      ) % groupColors.length
+                          (e) => e.courseGroupName === employee.courseGroupName
+                        ) % groupColors.length
                       : index % groupColors.length
 
                   const isUnenrolling = isUnenrollingEmployee === employee.id
@@ -645,7 +657,9 @@ export function LearnersTab({
                     >
                       <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
+                          <AvatarImage
+                            src={resolveUploadUrl(employee.profilePhotoPath)}
+                          />
                           <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
                             {getInitials(employee.employeeName)}
                           </AvatarFallback>
@@ -677,7 +691,9 @@ export function LearnersTab({
                               </div>
                               {/* Mock Test in Card View - View Only */}
                               <div className="mt-2 flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground">Mock Test:</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Mock Test:
+                                </span>
                                 <Badge variant="outline" className="text-xs">
                                   {employee.mockTestAttempt ?? 0}
                                 </Badge>
@@ -719,9 +735,9 @@ export function LearnersTab({
                         <span>
                           {employee.enrolledAt
                             ? format(
-                              new Date(employee.enrolledAt),
-                              "MMM d, yyyy"
-                            )
+                                new Date(employee.enrolledAt),
+                                "MMM d, yyyy"
+                              )
                             : "-"}
                         </span>
                       </div>

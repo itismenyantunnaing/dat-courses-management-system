@@ -765,11 +765,11 @@ export function CertificatesRequestsContainer({
 
   return (
     <>
-      <div className="flex flex-col gap-4 pt-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         <CardContent className="px-0">
           {/* Tabs and Search - Only show when there are certificates */}
           {hasAnyCertificates && (
-            <div className="mb-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               {/* Status Tabs */}
               <div>
                 <Tabs
@@ -1030,7 +1030,7 @@ export function CertificatesRequestsContainer({
             <>
               {viewMode === "list" ? (
                 // Table View
-                <div className="relative mx-4 overflow-x-auto rounded-md border-y">
+                <div className="relative overflow-x-auto rounded-md border-y">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
@@ -1101,26 +1101,26 @@ export function CertificatesRequestsContainer({
                 </div>
               ) : (
                 // Card View - Using shared CertificateCard component
-                <div className="mx-4">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {paginatedCertificates.map((certificate, index) => (
-                      <CertificateCard
-                        key={index}
-                        certificate={transformToCertificate(certificate)}
-                        onEdit={() => handleCertificateClick(certificate)}
-                        showEmployeeInfo={true}
-                      />
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {paginatedCertificates.map((certificate, index) => (
+                    <CertificateCard
+                      key={index}
+                      certificate={transformToCertificate(certificate)}
+                      onEdit={() => handleCertificateClick(certificate)}
+                      showEmployeeInfo={true}
+                    />
+                  ))}
                 </div>
               )}
 
               {/* Pagination */}
               {filteredCertificates.length > 0 && (
-                <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <Field orientation="horizontal" className="w-fit">
                     <FieldLabel htmlFor="select-rows-per-page">
-                      Rows per page
+                      <span className="font-normal text-muted-foreground">
+                        Rows per page
+                      </span>
                     </FieldLabel>
                     <Select
                       value={itemsPerPage.toString()}

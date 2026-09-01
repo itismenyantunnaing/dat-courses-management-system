@@ -32,7 +32,7 @@ public class FileStorageConfig {
             }
             System.out.println("📁 Upload directory configured: " + uploadPath.toAbsolutePath());
         } catch (IOException e) {
-            System.err.println("❌ Could not create upload directory: " + e.getMessage());
+            System.err.println(" Could not create upload directory: " + e.getMessage());
         }
     }
 }

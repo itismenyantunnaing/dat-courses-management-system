@@ -1,4 +1,3 @@
-// app/components/dialogs/send-mail-dialog.tsx
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
@@ -11,20 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Command,
   CommandDialog,
@@ -44,8 +33,6 @@ import {
   Building04Icon,
   BriefcaseIcon,
   UserGroupIcon,
-  RecoveryMailIcon,
-  Exchange01Icon,
   Loading03Icon,
   ReloadIcon,
 } from "@hugeicons/core-free-icons"
@@ -53,6 +40,7 @@ import { SettingDialog } from "./setting-dialog"
 import { mainStore } from "@/store/mainStore"
 import type { Employee } from "@/types/employee"
 import { cn } from "@/lib/utils"
+import { Button } from "../ui/button"
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
@@ -641,7 +629,7 @@ export function SendMailDialog({
                         (will use {defaultProvider.email})
                       </span>
                     </div>
-                    <Button
+                    {/* <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setSettingsDialogOpen(true)}
@@ -653,7 +641,7 @@ export function SendMailDialog({
                         className="h-4 w-4"
                       />
                       Change to Outlook
-                    </Button>
+                    </Button> */}
                   </div>
                 </Field>
 

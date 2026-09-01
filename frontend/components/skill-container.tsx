@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/table"
 import { CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Tooltip,
   TooltipContent,
@@ -56,13 +55,10 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  Settings01Icon,
   EyeIcon,
   Book02Icon,
   Upload05Icon,
   Edit03Icon,
-  Settings02Icon,
-  ArrowDown01Icon,
   Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import React from "react"
@@ -98,8 +94,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { ImportDialog } from "@/components/dialogs/import-dialog"
-import { ButtonGroup } from "@/components/ui/button-group"
-import { cn } from "@/lib/utils"
+import { cn, resolveUploadUrl } from "@/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const STROKE_WIDTH = 2
 
@@ -280,6 +276,16 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
 
+  // Helper function to get initials
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
   // Helper function to escape special regex characters
   const escapeRegex = (str: string): string => {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -409,7 +415,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
 
         hasLoadedRef.current = true
       } catch (error) {
-        console.error("❌ Error loading skills data:", error)
+        console.error(" Error loading skills data:", error)
       } finally {
         setIsLoading(false)
       }
@@ -589,40 +595,40 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       category: string
       sub_category: string
     }[] = []
-      ; (skill_headers || []).forEach((category: SkillCategory) => {
-        // API returns: categoryName, skillSubCategories
-        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-          // API returns: subCategoryName, skills
-          subCategory.skills?.forEach((skill: Skill) => {
-            // API returns: id, skillName
-            skills.push({
-              id: skill.id,
-              name: skill.skillName,
-              category: category.categoryName,
-              sub_category: subCategory.subCategoryName,
-            })
+    ;(skill_headers || []).forEach((category: SkillCategory) => {
+      // API returns: categoryName, skillSubCategories
+      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+        // API returns: subCategoryName, skills
+        subCategory.skills?.forEach((skill: Skill) => {
+          // API returns: id, skillName
+          skills.push({
+            id: skill.id,
+            name: skill.skillName,
+            category: category.categoryName,
+            sub_category: subCategory.subCategoryName,
           })
         })
       })
+    })
     return skills
   }, [skill_headers])
 
   // Group skills by category
   const dynamicSkillsByCategory = useMemo(() => {
     const grouped: Record<string, GroupedSkill[]> = {}
-      ; (skill_headers || []).forEach((category: SkillCategory) => {
-        const categoryName = category.categoryName
-        grouped[categoryName] = []
-        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-          subCategory.skills?.forEach((skill: Skill) => {
-            grouped[categoryName].push({
-              skill_id: skill.id,
-              skill_name: skill.skillName,
-              sub_category_name: subCategory.subCategoryName,
-            })
+    ;(skill_headers || []).forEach((category: SkillCategory) => {
+      const categoryName = category.categoryName
+      grouped[categoryName] = []
+      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+        subCategory.skills?.forEach((skill: Skill) => {
+          grouped[categoryName].push({
+            skill_id: skill.id,
+            skill_name: skill.skillName,
+            sub_category_name: subCategory.subCategoryName,
           })
         })
       })
+    })
     return grouped
   }, [skill_headers])
 
@@ -883,8 +889,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
 
   return (
     <>
-      <div className="flex flex-col gap-4 py-6">
-        <CardContent className="px-4">
+      <div className="flex flex-col gap-4 pb-6">
+        <CardContent className="px-0">
           {/* Filters Section - Show when there are any employees */}
           {hasAnyEmployees && (
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1058,8 +1064,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           colSpan={
                             devCap_headers?.length !== 0
                               ? devCap_headers?.length &&
-                              languageSkillHeaders.length +
-                              devCap_headers.length * 2
+                                languageSkillHeaders.length +
+                                  devCap_headers.length * 2
                               : languageSkillHeaders.length
                           }
                           className="cursor-pointer align-middle whitespace-nowrap transition-colors hover:bg-muted/70"
@@ -1476,7 +1482,22 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                             {employee.id || "-"}
                           </BorderedTableCell>
                           <BorderedTableCell className="font-medium">
-                            {employee.name}
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage
+                                  src={
+                                    resolveUploadUrl(
+                                      employee.profile_photo_path
+                                    ) || null
+                                  }
+                                  alt={employee.name}
+                                />
+                                <AvatarFallback className="text-xs">
+                                  {getInitials(employee.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {employee.name}
+                            </div>
                           </BorderedTableCell>
                           {/* Department Column - View Only */}
                           <BorderedTableCell>
@@ -1679,7 +1700,9 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
               <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="select-rows-per-page">
-                    {translate("Rows per page")}
+                    <span className="font-normal text-muted-foreground">
+                      Rows per page
+                    </span>
                   </FieldLabel>
                   <Select
                     value={itemsPerPage.toString()}
@@ -1751,7 +1774,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         }}
                         className={
                           currentPage === totalPages ||
-                            filteredEmployees.length === 0
+                          filteredEmployees.length === 0
                             ? "pointer-events-none opacity-50"
                             : ""
                         }

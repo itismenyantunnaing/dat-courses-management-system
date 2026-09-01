@@ -81,7 +81,7 @@ interface PersonalInformationDialogProps {
 export function PersonalInformationDialog({
   open,
   onOpenChange,
-  onDropdownOpenChange
+  onDropdownOpenChange,
 }: PersonalInformationDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -91,7 +91,8 @@ export function PersonalInformationDialog({
 
   // Form fields state
   const [isCorePersonnel, setIsCorePersonnel] = useState<boolean>(false)
-  const [hasJapanBusinessTrip, setHasJapanBusinessTrip] = useState<boolean>(false)
+  const [hasJapanBusinessTrip, setHasJapanBusinessTrip] =
+    useState<boolean>(false)
   const [dob, setDob] = useState<string>("")
 
   // Technical skill editing states
@@ -104,7 +105,8 @@ export function PersonalInformationDialog({
   const [isAddingSkill, setIsAddingSkill] = useState(false)
   const [newSkillName, setNewSkillName] = useState<string>("")
   const [newSkillYears, setNewSkillYears] = useState<string>("")
-  const [newSkillExperienceLevel, setNewSkillExperienceLevel] = useState<string>("")
+  const [newSkillExperienceLevel, setNewSkillExperienceLevel] =
+    useState<string>("")
   const [newSkillCategory, setNewSkillCategory] = useState<string>("")
   const [newSkillSubCategory, setNewSkillSubCategory] = useState<string>("")
   const [isAddingSkillLoading, setIsAddingSkillLoading] = useState(false)
@@ -118,12 +120,15 @@ export function PersonalInformationDialog({
   const [managementEducation, setManagementEducation] = useState<number>(1)
   const [managementExperience, setManagementExperience] = useState<number>(1)
   const [managementQcd, setManagementQcd] = useState<number>(1)
-  const [managementReportConsult, setManagementReportConsult] = useState<number>(1)
+  const [managementReportConsult, setManagementReportConsult] =
+    useState<number>(1)
   const [isManagementUpdating, setIsManagementUpdating] = useState(false)
   const [isManagementEditing, setIsManagementEditing] = useState(false)
 
   // Development skill states
-  const [editingDevSkillId, setEditingDevSkillId] = useState<string | null>(null)
+  const [editingDevSkillId, setEditingDevSkillId] = useState<string | null>(
+    null
+  )
   const [editDevYears, setEditDevYears] = useState<string>("")
   const [editDevProcessName, setEditDevProcessName] = useState<string>("")
   const [isDevUpdating, setIsDevUpdating] = useState(false)
@@ -171,7 +176,7 @@ export function PersonalInformationDialog({
     add_EmployeeJapaneseLevel,
     edit_EmployeeJapaneseLevel,
     fetch_SystemConfig,
-    systemConfig
+    systemConfig,
   } = mainStore()
 
   const employeeId = profile?.id
@@ -189,7 +194,6 @@ export function PersonalInformationDialog({
       fetch_SystemConfig()
     }
   }, [open, employeeId, fetch_EmployeeProfile])
-
 
   // Update form fields when profile data loads
   useEffect(() => {
@@ -212,9 +216,13 @@ export function PersonalInformationDialog({
       // Set management skills if exists
       if (profile.managementSkill) {
         setManagementEducation(profile.managementSkill.educationScore || 1)
-        setManagementExperience(profile.managementSkill.managementExperienceLevel || 1)
+        setManagementExperience(
+          profile.managementSkill.managementExperienceLevel || 1
+        )
         setManagementQcd(profile.managementSkill.qcdScore || 1)
-        setManagementReportConsult(profile.managementSkill.reportConsultScore || 1)
+        setManagementReportConsult(
+          profile.managementSkill.reportConsultScore || 1
+        )
       }
 
       setInitialValues({
@@ -246,9 +254,13 @@ export function PersonalInformationDialog({
       // Set management skills if exists
       if (profile.managementSkill) {
         setManagementEducation(profile.managementSkill.educationScore || 1)
-        setManagementExperience(profile.managementSkill.managementExperienceLevel || 1)
+        setManagementExperience(
+          profile.managementSkill.managementExperienceLevel || 1
+        )
         setManagementQcd(profile.managementSkill.qcdScore || 1)
-        setManagementReportConsult(profile.managementSkill.reportConsultScore || 1)
+        setManagementReportConsult(
+          profile.managementSkill.reportConsultScore || 1
+        )
       }
 
       setInitialValues({
@@ -263,8 +275,6 @@ export function PersonalInformationDialog({
       setPreviewImage("")
     }
   }, [profile, profile])
-
-
 
   // Reset preview and image removed state when dialog closes
   useEffect(() => {
@@ -293,10 +303,11 @@ export function PersonalInformationDialog({
     return hasImageChange || hasFieldChanges
   }
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0]
     if (file) {
-
       const validTypes = ["image/jpeg", "image/png", "image/gif"]
       if (!validTypes.includes(file.type)) {
         toast.warning("Please upload a valid image file (JPG, PNG, or GIF).")
@@ -323,7 +334,7 @@ export function PersonalInformationDialog({
         }
         reader.readAsDataURL(compressedFile)
       } catch (error) {
-        console.error("❌ Failed to compress image:", error)
+        console.error(" Failed to compress image:", error)
         // Fallback: use original file if compression fails
         const reader = new FileReader()
         reader.onloadend = () => {
@@ -345,7 +356,12 @@ export function PersonalInformationDialog({
   }
 
   // Handle skill update
-  const handleSkillUpdate = async (skillId: string, skillName: string, categoryName?: string, subCategoryName?: string) => {
+  const handleSkillUpdate = async (
+    skillId: string,
+    skillName: string,
+    categoryName?: string,
+    subCategoryName?: string
+  ) => {
     if (!employeeId) {
       return
     }
@@ -373,7 +389,7 @@ export function PersonalInformationDialog({
       setEditYears("")
       setEditExperienceLevel("")
     } catch (error) {
-      console.error("❌ Failed to update skill:", error)
+      console.error(" Failed to update skill:", error)
     } finally {
       setIsSkillUpdating(false)
     }
@@ -405,7 +421,6 @@ export function PersonalInformationDialog({
         experienceLevel: newSkillExperienceLevel,
       })
 
-
       // Refresh profile data
       await fetch_EmployeeProfile(employeeId)
 
@@ -417,13 +432,11 @@ export function PersonalInformationDialog({
       setNewSkillSubCategory("")
       setIsAddingSkill(false)
     } catch (error) {
-      console.error("❌ Failed to add skill:", error)
+      console.error(" Failed to add skill:", error)
     } finally {
       setIsAddingSkillLoading(false)
     }
   }
-
-
 
   // Handle skill delete
   const handleSkillDelete = async (skillId: string) => {
@@ -449,7 +462,7 @@ export function PersonalInformationDialog({
       // Refresh profile data
       await fetch_EmployeeProfile(employeeId)
     } catch (error) {
-      console.error("❌ Failed to delete skill:", error)
+      console.error(" Failed to delete skill:", error)
     }
   }
 
@@ -473,7 +486,10 @@ export function PersonalInformationDialog({
       // Check if management skill exists
       if (profile?.managementSkill?.id) {
         // Update existing management skill
-        await update_managementScoreData(profile.managementSkill.id, managementData)
+        await update_managementScoreData(
+          profile.managementSkill.id,
+          managementData
+        )
         toast.success("Management skills updated successfully!")
       } else {
         // Add new management skill
@@ -487,7 +503,7 @@ export function PersonalInformationDialog({
       // Exit edit mode
       setIsManagementEditing(false)
     } catch (error) {
-      console.error("❌ Failed to update management skill:", error)
+      console.error(" Failed to update management skill:", error)
       toast.error("Failed to update management skills")
     } finally {
       setIsManagementUpdating(false)
@@ -524,7 +540,7 @@ export function PersonalInformationDialog({
       // Refresh profile data
       await fetch_EmployeeProfile(employeeId)
     } catch (error) {
-      console.error("❌ Failed to update language skill:", error)
+      console.error(" Failed to update language skill:", error)
       toast.error("Failed to update language skills")
     } finally {
       setIsLanguageUpdating(false)
@@ -533,7 +549,7 @@ export function PersonalInformationDialog({
 
   const handleSave = async () => {
     if (!employeeId) {
-      console.error("❌ No employee ID found")
+      console.error(" No employee ID found")
       return
     }
 
@@ -550,13 +566,13 @@ export function PersonalInformationDialog({
         try {
           await delete_ProfileImage(employeeId)
         } catch (deleteError) {
-          console.error("❌ Error deleting image:", deleteError)
+          console.error(" Error deleting image:", deleteError)
         }
       } else if (selectedFile) {
         try {
           await update_ProfileImage(employeeId, selectedFile)
         } catch (uploadError) {
-          console.error("❌ Error uploading image:", uploadError)
+          console.error(" Error uploading image:", uploadError)
         }
       }
 
@@ -589,12 +605,13 @@ export function PersonalInformationDialog({
         isCorePersonnel: isCorePersonnel,
         hasJapanBusinessTrip: hasJapanBusinessTrip,
         dob: dob,
-        profilePhotoPath: profile?.profilePhotoPath || profile?.profilePhotoPath || "",
+        profilePhotoPath:
+          profile?.profilePhotoPath || profile?.profilePhotoPath || "",
       })
 
       onOpenChange(false)
     } catch (error) {
-      console.error("❌ Failed to save profile:", error)
+      console.error(" Failed to save profile:", error)
     } finally {
       setIsSaving(false)
     }
@@ -608,7 +625,10 @@ export function PersonalInformationDialog({
   }
 
   // Handle development skill update
-  const handleDevSkillUpdate = async (skillId: string, developmentTypeName: string) => {
+  const handleDevSkillUpdate = async (
+    skillId: string,
+    developmentTypeName: string
+  ) => {
     if (!employeeId) {
       toast.warning("No employee ID found")
       return
@@ -638,7 +658,7 @@ export function PersonalInformationDialog({
       setEditDevYears("")
       setEditDevProcessName("")
     } catch (error) {
-      console.error("❌ Failed to update development skill:", error)
+      console.error(" Failed to update development skill:", error)
       toast.error("Failed to update development skill")
     } finally {
       setIsDevUpdating(false)
@@ -677,7 +697,7 @@ export function PersonalInformationDialog({
       setNewDevYears("")
       setIsAddingDevSkill(false)
     } catch (error) {
-      console.error("❌ Failed to add development skill:", error)
+      console.error(" Failed to add development skill:", error)
       toast.error("Failed to add development skill")
     } finally {
       setIsAddingDevLoading(false)
@@ -711,7 +731,8 @@ export function PersonalInformationDialog({
   const getProfileImage = () => {
     if (imageRemoved) return ""
     if (previewImage) return previewImage
-    if (profile?.profilePhotoPath) return resolveUploadUrl(profile?.profilePhotoPath)
+    if (profile?.profilePhotoPath)
+      return resolveUploadUrl(profile?.profilePhotoPath)
     return ""
   }
 
@@ -720,7 +741,12 @@ export function PersonalInformationDialog({
   }
 
   const hasExistingImage = () => {
-    return !imageRemoved && (profile?.profilePhotoPath || profile?.profilePhotoPath || profile?.avatar)
+    return (
+      !imageRemoved &&
+      (profile?.profilePhotoPath ||
+        profile?.profilePhotoPath ||
+        profile?.avatar)
+    )
   }
 
   const displayProfile = profile || profile || {}
@@ -732,9 +758,12 @@ export function PersonalInformationDialog({
           className="flex max-h-[90vh] flex-col p-0 sm:max-w-[700px]"
           onInteractOutside={(e) => {
             // Prevent closing when clicking on the select dropdown
-            const target = e.target as HTMLElement;
-            if (target.closest('[role="combobox"]') || target.closest('[role="listbox"]')) {
-              e.preventDefault();
+            const target = e.target as HTMLElement
+            if (
+              target.closest('[role="combobox"]') ||
+              target.closest('[role="listbox"]')
+            ) {
+              e.preventDefault()
             }
           }}
         >
@@ -746,7 +775,9 @@ export function PersonalInformationDialog({
                 aria-label="Loading"
                 className="size-4 animate-spin"
               />
-              <p className="text-sm text-muted-foreground">Loading profile...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading profile...
+              </p>
             </div>
           </div>
         </DialogContent>
@@ -858,7 +889,10 @@ export function PersonalInformationDialog({
                     Staff ID
                   </Label>
                   <p className="text-base font-medium">
-                    {profile?.staffId || profile?.id || employeeId || "Not assigned"}
+                    {profile?.staffId ||
+                      profile?.id ||
+                      employeeId ||
+                      "Not assigned"}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -1071,13 +1105,15 @@ export function PersonalInformationDialog({
                   <div className="grid grid-cols-12 gap-3">
                     {/* Skill Name Dropdown - Takes 6 columns */}
                     <div className="col-span-6 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Skill Name *</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Skill Name *
+                      </Label>
                       <Select
                         value={newSkillName}
                         onOpenChange={(open) => {
                           // This prevents the dialog from closing when the select opens/closes
                           if (onDropdownOpenChange) {
-                            onDropdownOpenChange(open);
+                            onDropdownOpenChange(open)
                           }
                         }}
 
@@ -1085,7 +1121,8 @@ export function PersonalInformationDialog({
                           setNewSkillName(value)
                           // Find the selected skill to get category and subcategory
                           for (const category of skill_headers) {
-                            for (const sub of category.skillSubCategories || []) {
+                            for (const sub of category.skillSubCategories ||
+                              []) {
                               for (const skill of sub.skills || []) {
                                 if (skill.skillName === value) {
                                   setNewSkillCategory(category.categoryName)
@@ -1106,7 +1143,10 @@ export function PersonalInformationDialog({
                               {category.skillSubCategories?.map((sub: any) => (
                                 <div key={sub.id}>
                                   {sub.skills?.map((skill: any) => (
-                                    <SelectItem key={skill.id} value={skill.skillName}>
+                                    <SelectItem
+                                      key={skill.id}
+                                      value={skill.skillName}
+                                    >
                                       {skill.skillName}
                                     </SelectItem>
                                   ))}
@@ -1120,7 +1160,9 @@ export function PersonalInformationDialog({
 
                     {/* Years of Experience - Takes 2 columns */}
                     <div className="col-span-2 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Years *</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Years *
+                      </Label>
                       <Input
                         type="number"
                         step="0.5"
@@ -1137,7 +1179,9 @@ export function PersonalInformationDialog({
 
                     {/* Experience Level - Takes 4 columns */}
                     <div className="col-span-4 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Experience Level *</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Experience Level *
+                      </Label>
                       <Input
                         type="text"
                         value={newSkillExperienceLevel}
@@ -1170,7 +1214,12 @@ export function PersonalInformationDialog({
                     <Button
                       size="sm"
                       onClick={handleAddSkill}
-                      disabled={isAddingSkillLoading || !newSkillName || !newSkillYears || !newSkillExperienceLevel}
+                      disabled={
+                        isAddingSkillLoading ||
+                        !newSkillName ||
+                        !newSkillYears ||
+                        !newSkillExperienceLevel
+                      }
                     >
                       {isAddingSkillLoading ? (
                         <>
@@ -1190,74 +1239,96 @@ export function PersonalInformationDialog({
               )}
 
               {/* Existing Skills */}
-              {profile?.technicalSkills && profile.technicalSkills.length > 0 && (
-                <CardContent className="space-y-4 p-0">
-                  {profile.technicalSkills.map((category: any, categoryIdx: number) => (
-                    <div key={`category-${categoryIdx}`} className="space-y-3">
-                      <Label className="text-sm font-medium">
-                        {!category.categoryName.includes("empty") &&
-                          category.categoryName}
-                      </Label>
-                      {category.subCategories.map(
-                        (sub: any, subIdx: number) => (
-                          <div key={`sub-${categoryIdx}-${subIdx}`} className="ml-4 space-y-2">
-                            <p className="text-sm text-muted-foreground">
-                              {!sub.subCategoryName.includes("empty") &&
-                                sub.subCategoryName}
-                            </p>
-                            <div className="space-y-2">
-                              {sub.skills.map(
-                                (skill: any, skillIdx: number) => {
-                                  const years = skill.yearsOfExperience
-                                  const experience = skill.experienceLevel
-                                  const progress = getExperienceProgress(years)
-                                  // Create a unique key for each skill
-                                  const skillKey = `${categoryIdx}-${subIdx}-${skillIdx}`
-                                  const skillId = skill.id || skill.skillId || skillKey
+              {profile?.technicalSkills &&
+                profile.technicalSkills.length > 0 && (
+                  <CardContent className="space-y-4 p-0">
+                    {profile.technicalSkills.map(
+                      (category: any, categoryIdx: number) => (
+                        <div
+                          key={`category-${categoryIdx}`}
+                          className="space-y-3"
+                        >
+                          <Label className="text-sm font-medium">
+                            {!category.categoryName.includes("empty") &&
+                              category.categoryName}
+                          </Label>
+                          {category.subCategories.map(
+                            (sub: any, subIdx: number) => (
+                              <div
+                                key={`sub-${categoryIdx}-${subIdx}`}
+                                className="ml-4 space-y-2"
+                              >
+                                <p className="text-sm text-muted-foreground">
+                                  {!sub.subCategoryName.includes("empty") &&
+                                    sub.subCategoryName}
+                                </p>
+                                <div className="space-y-2">
+                                  {sub.skills.map(
+                                    (skill: any, skillIdx: number) => {
+                                      const years = skill.yearsOfExperience
+                                      const experience = skill.experienceLevel
+                                      const progress =
+                                        getExperienceProgress(years)
+                                      // Create a unique key for each skill
+                                      const skillKey = `${categoryIdx}-${subIdx}-${skillIdx}`
+                                      const skillId =
+                                        skill.id || skill.skillId || skillKey
 
-                                  // Check if this specific skill is being edited
-                                  const isEditing = editingSkillId === skillKey
+                                      // Check if this specific skill is being edited
+                                      const isEditing =
+                                        editingSkillId === skillKey
 
-                                  return (
-                                    <div
-                                      key={skillKey}
-                                      className="rounded-lg border bg-muted/5 p-3"
-                                    >
-                                      {!isEditing ? (
-                                        // View mode
-                                        <div>
-                                          <div className="mb-1 flex items-center justify-between">
+                                      return (
+                                        <div
+                                          key={skillKey}
+                                          className="rounded-lg border bg-muted/5 p-3"
+                                        >
+                                          {!isEditing ? (
+                                            // View mode
                                             <div>
-                                              <span className="font-medium">
-                                                {skill.skillName}
-                                              </span>
-                                              <p className="text-sm text-muted-foreground">
-                                                {experience || "Not specified"}
-                                              </p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <div className="text-sm font-semibold text-muted-foreground">
-                                                {years?.toFixed(1) || "0"} years
-                                              </div>
-                                              <div className="flex gap-1">
-                                                <Button
-                                                  size="icon"
-                                                  variant="ghost"
-                                                  className="h-8 w-8"
-                                                  onClick={() => {
-                                                    setEditingSkillId(skillKey)
-                                                    setEditYears(years?.toString() || "")
-                                                    setEditExperienceLevel(experience || "")
-                                                  }}
-                                                  disabled={isUpdating || isSaving}
-                                                >
-                                                  <HugeiconsIcon
-                                                    icon={Edit01Icon}
-                                                    strokeWidth={2}
-                                                    className="h-4 w-4"
-                                                  />
-                                                </Button>
-                                                {/* <Button
+                                              <div className="mb-1 flex items-center justify-between">
+                                                <div>
+                                                  <span className="font-medium">
+                                                    {skill.skillName}
+                                                  </span>
+                                                  <p className="text-sm text-muted-foreground">
+                                                    {experience ||
+                                                      "Not specified"}
+                                                  </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                  <div className="text-sm font-semibold text-muted-foreground">
+                                                    {years?.toFixed(1) || "0"}{" "}
+                                                    years
+                                                  </div>
+                                                  <div className="flex gap-1">
+                                                    <Button
+                                                      size="icon"
+                                                      variant="ghost"
+                                                      className="h-8 w-8"
+                                                      onClick={() => {
+                                                        setEditingSkillId(
+                                                          skillKey
+                                                        )
+                                                        setEditYears(
+                                                          years?.toString() ||
+                                                            ""
+                                                        )
+                                                        setEditExperienceLevel(
+                                                          experience || ""
+                                                        )
+                                                      }}
+                                                      disabled={
+                                                        isUpdating || isSaving
+                                                      }
+                                                    >
+                                                      <HugeiconsIcon
+                                                        icon={Edit01Icon}
+                                                        strokeWidth={2}
+                                                        className="h-4 w-4"
+                                                      />
+                                                    </Button>
+                                                    {/* <Button
                                                   size="icon"
                                                   variant="ghost"
                                                   className="h-8 w-8 text-destructive hover:text-destructive"
@@ -1270,97 +1341,108 @@ export function PersonalInformationDialog({
                                                     className="h-4 w-4"
                                                   />
                                                 </Button> */}
+                                                  </div>
+                                                </div>
                                               </div>
                                             </div>
-                                          </div>
+                                          ) : (
+                                            // Edit mode - only shown for the specific skill being edited
+                                            <div className="space-y-3">
+                                              <div className="flex items-center justify-between">
+                                                <span className="font-medium">
+                                                  {skill.skillName}
+                                                </span>
+                                                <div className="flex gap-1">
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                      setEditingSkillId(null)
+                                                      setEditYears("")
+                                                      setEditExperienceLevel("")
+                                                    }}
+                                                    disabled={isSkillUpdating}
+                                                  >
+                                                    Cancel
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    onClick={() => {
+                                                      handleSkillUpdate(
+                                                        skillId,
+                                                        skill.skillName,
+                                                        category.categoryName,
+                                                        sub.subCategoryName
+                                                      )
+                                                    }}
+                                                    disabled={
+                                                      isSkillUpdating ||
+                                                      !editYears ||
+                                                      !editExperienceLevel
+                                                    }
+                                                  >
+                                                    {isSkillUpdating
+                                                      ? "Saving..."
+                                                      : "Save"}
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                  <Label className="text-xs text-muted-foreground">
+                                                    Years of Experience
+                                                  </Label>
+                                                  <Input
+                                                    type="number"
+                                                    step="0.5"
+                                                    min="0"
+                                                    value={editYears}
+                                                    onChange={(e) => {
+                                                      const value =
+                                                        e.target.value
+                                                      setEditYears(value)
+                                                    }}
+                                                    placeholder="e.g., 3.5"
+                                                    className="h-9"
+                                                    disabled={isSkillUpdating}
+                                                  />
+                                                </div>
+                                                <div className="space-y-1">
+                                                  <Label className="text-xs text-muted-foreground">
+                                                    Experience Level
+                                                  </Label>
+                                                  <Input
+                                                    type="text"
+                                                    value={editExperienceLevel}
+                                                    onChange={(e) => {
+                                                      const value =
+                                                        e.target.value
+                                                      setEditExperienceLevel(
+                                                        value
+                                                      )
+                                                    }}
+                                                    placeholder="e.g., Intermediate"
+                                                    className="h-9"
+                                                    disabled={isSkillUpdating}
+                                                  />
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
-                                      ) : (
-                                        // Edit mode - only shown for the specific skill being edited
-                                        <div className="space-y-3">
-                                          <div className="flex items-center justify-between">
-                                            <span className="font-medium">
-                                              {skill.skillName}
-                                            </span>
-                                            <div className="flex gap-1">
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => {
-                                                  setEditingSkillId(null)
-                                                  setEditYears("")
-                                                  setEditExperienceLevel("")
-                                                }}
-                                                disabled={isSkillUpdating}
-                                              >
-                                                Cancel
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                onClick={() => {
-                                                  handleSkillUpdate(
-                                                    skillId,
-                                                    skill.skillName,
-                                                    category.categoryName,
-                                                    sub.subCategoryName
-                                                  )
-                                                }}
-                                                disabled={isSkillUpdating || !editYears || !editExperienceLevel}
-                                              >
-                                                {isSkillUpdating ? "Saving..." : "Save"}
-                                              </Button>
-                                            </div>
-                                          </div>
-                                          <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1">
-                                              <Label className="text-xs text-muted-foreground">
-                                                Years of Experience
-                                              </Label>
-                                              <Input
-                                                type="number"
-                                                step="0.5"
-                                                min="0"
-                                                value={editYears}
-                                                onChange={(e) => {
-                                                  const value = e.target.value
-                                                  setEditYears(value)
-                                                }}
-                                                placeholder="e.g., 3.5"
-                                                className="h-9"
-                                                disabled={isSkillUpdating}
-                                              />
-                                            </div>
-                                            <div className="space-y-1">
-                                              <Label className="text-xs text-muted-foreground">
-                                                Experience Level
-                                              </Label>
-                                              <Input
-                                                type="text"
-                                                value={editExperienceLevel}
-                                                onChange={(e) => {
-                                                  const value = e.target.value
-                                                  setEditExperienceLevel(value)
-                                                }}
-                                                placeholder="e.g., Intermediate"
-                                                className="h-9"
-                                                disabled={isSkillUpdating}
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )
-                                }
-                              )}
-                            </div>
-                          </div>
-                        )
-                      )}
-                      <Separator className="my-3" />
-                    </div>
-                  ))}
-                </CardContent>
-              )}
+                                      )
+                                    }
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          )}
+                          <Separator className="my-3" />
+                        </div>
+                      )
+                    )}
+                  </CardContent>
+                )}
             </div>
           </>
 
@@ -1398,7 +1480,9 @@ export function PersonalInformationDialog({
                   <div className="grid grid-cols-3 gap-3">
                     {/* Development Type Dropdown */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Development Type *</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Development Type *
+                      </Label>
                       <Select
                         value={newDevTypeName}
                         onValueChange={(value) => {
@@ -1410,7 +1494,10 @@ export function PersonalInformationDialog({
                         </SelectTrigger>
                         <SelectContent>
                           {devCap_headers.map((type: any) => (
-                            <SelectItem key={type.id} value={type.developmentTypeName}>
+                            <SelectItem
+                              key={type.id}
+                              value={type.developmentTypeName}
+                            >
                               {type.developmentTypeName}
                             </SelectItem>
                           ))}
@@ -1420,7 +1507,9 @@ export function PersonalInformationDialog({
 
                     {/* Process Name */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Process Name *</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Process Name *
+                      </Label>
                       <Input
                         type="text"
                         value={newDevProcessName}
@@ -1435,7 +1524,9 @@ export function PersonalInformationDialog({
 
                     {/* Years of Experience */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Years *</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Years *
+                      </Label>
                       <Input
                         type="number"
                         step="0.5"
@@ -1468,7 +1559,12 @@ export function PersonalInformationDialog({
                     <Button
                       size="sm"
                       onClick={handleAddDevSkill}
-                      disabled={isAddingDevLoading || !newDevTypeName || !newDevProcessName || !newDevYears}
+                      disabled={
+                        isAddingDevLoading ||
+                        !newDevTypeName ||
+                        !newDevProcessName ||
+                        !newDevYears
+                      }
                     >
                       {isAddingDevLoading ? (
                         <>
@@ -1488,136 +1584,157 @@ export function PersonalInformationDialog({
               )}
 
               {/* Existing Development Skills */}
-              {profile?.developmentSkills && profile.developmentSkills.length > 0 && (
-                <CardContent className="space-y-3 p-0">
-                  {profile.developmentSkills.map((skill: any, idx: number) => {
-                    const years = skill.yearsOfExperience
-                    const progress = getExperienceProgress(years)
-                    const isEditing = editingDevSkillId === skill.id
+              {profile?.developmentSkills &&
+                profile.developmentSkills.length > 0 && (
+                  <CardContent className="space-y-3 p-0">
+                    {profile.developmentSkills.map(
+                      (skill: any, idx: number) => {
+                        const years = skill.yearsOfExperience
+                        const progress = getExperienceProgress(years)
+                        const isEditing = editingDevSkillId === skill.id
 
-                    return (
-                      <div
-                        key={idx}
-                        className="rounded-lg border bg-muted/5 p-3"
-                      >
-                        {!isEditing ? (
-                          // View mode
-                          <div>
-                            <div className="mb-1 flex items-center justify-between">
+                        return (
+                          <div
+                            key={idx}
+                            className="rounded-lg border bg-muted/5 p-3"
+                          >
+                            {!isEditing ? (
+                              // View mode
                               <div>
-                                <p className="font-medium">
-                                  {skill.developmentTypeName}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {skill.processName}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="text-sm font-semibold text-muted-foreground">
-                                  {years.toFixed(1)} years
+                                <div className="mb-1 flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium">
+                                      {skill.developmentTypeName}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {skill.processName}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-sm font-semibold text-muted-foreground">
+                                      {years.toFixed(1)} years
+                                    </div>
+                                    <div className="flex gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8"
+                                        onClick={() =>
+                                          handleDevSkillEdit(skill)
+                                        }
+                                        disabled={isUpdating || isSaving}
+                                      >
+                                        <HugeiconsIcon
+                                          icon={Edit01Icon}
+                                          strokeWidth={2}
+                                          className="h-4 w-4"
+                                        />
+                                      </Button>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex gap-1">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8"
-                                    onClick={() => handleDevSkillEdit(skill)}
-                                    disabled={isUpdating || isSaving}
-                                  >
-                                    <HugeiconsIcon
-                                      icon={Edit01Icon}
-                                      strokeWidth={2}
-                                      className="h-4 w-4"
+                                <div className="mt-2 flex items-center gap-3">
+                                  <ProgressBar
+                                    value={progress}
+                                    className="flex-1"
+                                  />
+                                  <span className="min-w-[40px] text-xs text-muted-foreground">
+                                    {Math.round(progress)}%
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              // Edit mode
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium">
+                                    {skill.developmentTypeName}
+                                  </span>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={cancelDevSkillEdit}
+                                      disabled={isDevUpdating}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        handleDevSkillUpdate(
+                                          skill.id,
+                                          skill.developmentTypeName
+                                        )
+                                      }
+                                      disabled={
+                                        isDevUpdating ||
+                                        !editDevYears ||
+                                        !editDevProcessName
+                                      }
+                                    >
+                                      {isDevUpdating ? "Saving..." : "Save"}
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">
+                                      Process Name
+                                    </Label>
+                                    <Input
+                                      type="text"
+                                      value={editDevProcessName}
+                                      onChange={(e) => {
+                                        setEditDevProcessName(e.target.value)
+                                      }}
+                                      placeholder="Process name"
+                                      className="h-9"
+                                      disabled={isDevUpdating}
                                     />
-                                  </Button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">
+                                      Years of Experience
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      step="0.5"
+                                      min="0"
+                                      value={editDevYears}
+                                      onChange={(e) => {
+                                        setEditDevYears(e.target.value)
+                                      }}
+                                      placeholder="0.0"
+                                      className="h-9"
+                                      disabled={isDevUpdating}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="mt-2 flex items-center gap-3">
+                                  <ProgressBar
+                                    value={getExperienceProgress(
+                                      parseFloat(editDevYears) || 0
+                                    )}
+                                    className="flex-1"
+                                  />
+                                  <span className="min-w-[40px] text-xs text-muted-foreground">
+                                    {Math.round(
+                                      getExperienceProgress(
+                                        parseFloat(editDevYears) || 0
+                                      )
+                                    )}
+                                    %
+                                  </span>
                                 </div>
                               </div>
-                            </div>
-                            <div className="mt-2 flex items-center gap-3">
-                              <ProgressBar
-                                value={progress}
-                                className="flex-1"
-                              />
-                              <span className="min-w-[40px] text-xs text-muted-foreground">
-                                {Math.round(progress)}%
-                              </span>
-                            </div>
+                            )}
                           </div>
-                        ) : (
-                          // Edit mode
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">
-                                {skill.developmentTypeName}
-                              </span>
-                              <div className="flex gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={cancelDevSkillEdit}
-                                  disabled={isDevUpdating}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleDevSkillUpdate(skill.id, skill.developmentTypeName)}
-                                  disabled={isDevUpdating || !editDevYears || !editDevProcessName}
-                                >
-                                  {isDevUpdating ? "Saving..." : "Save"}
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground">
-                                  Process Name
-                                </Label>
-                                <Input
-                                  type="text"
-                                  value={editDevProcessName}
-                                  onChange={(e) => {
-                                    setEditDevProcessName(e.target.value)
-                                  }}
-                                  placeholder="Process name"
-                                  className="h-9"
-                                  disabled={isDevUpdating}
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground">
-                                  Years of Experience
-                                </Label>
-                                <Input
-                                  type="number"
-                                  step="0.5"
-                                  min="0"
-                                  value={editDevYears}
-                                  onChange={(e) => {
-                                    setEditDevYears(e.target.value)
-                                  }}
-                                  placeholder="0.0"
-                                  className="h-9"
-                                  disabled={isDevUpdating}
-                                />
-                              </div>
-                            </div>
-                            <div className="mt-2 flex items-center gap-3">
-                              <ProgressBar
-                                value={getExperienceProgress(parseFloat(editDevYears) || 0)}
-                                className="flex-1"
-                              />
-                              <span className="min-w-[40px] text-xs text-muted-foreground">
-                                {Math.round(getExperienceProgress(parseFloat(editDevYears) || 0))}%
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </CardContent>
-              )}
+                        )
+                      }
+                    )}
+                  </CardContent>
+                )}
             </div>
           </>
 
@@ -1699,14 +1816,15 @@ export function PersonalInformationDialog({
                             />
                             Saving...
                           </>
+                        ) : profile?.languageSkill?.id ? (
+                          "Update"
                         ) : (
-                          profile?.languageSkill?.id ? "Update" : "Add"
+                          "Add"
                         )}
                       </Button>
                     </div>
                   </div>
                 </div>
-
               </CardContent>
             </div>
           </>
@@ -1747,10 +1865,19 @@ export function PersonalInformationDialog({
                       if (isManagementEditing) {
                         // If canceling edit, reset values to current profile values
                         if (profile?.managementSkill) {
-                          setManagementEducation(profile.managementSkill.educationScore || 1)
-                          setManagementExperience(profile.managementSkill.managementExperienceLevel || 1)
-                          setManagementQcd(profile.managementSkill.qcdScore || 1)
-                          setManagementReportConsult(profile.managementSkill.reportConsultScore || 1)
+                          setManagementEducation(
+                            profile.managementSkill.educationScore || 1
+                          )
+                          setManagementExperience(
+                            profile.managementSkill.managementExperienceLevel ||
+                              1
+                          )
+                          setManagementQcd(
+                            profile.managementSkill.qcdScore || 1
+                          )
+                          setManagementReportConsult(
+                            profile.managementSkill.reportConsultScore || 1
+                          )
                         }
                       }
                       setIsManagementEditing(!isManagementEditing)
@@ -1773,21 +1900,27 @@ export function PersonalInformationDialog({
                     <div className="grid grid-cols-4 gap-3">
                       {/* Education Score */}
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Education</Label>
+                        <Label className="text-xs text-muted-foreground">
+                          Education
+                        </Label>
                         {isManagementEditing ? (
                           <Select
                             value={String(managementEducation)}
                             onValueChange={(value) => {
                               setManagementEducation(parseInt(value))
                             }}
-                            disabled={isManagementUpdating || isUpdating || isSaving}
+                            disabled={
+                              isManagementUpdating || isUpdating || isSaving
+                            }
                           >
                             <SelectTrigger className="h-8">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
                               {[1, 2, 3, 4].map((level) => (
-                                <SelectItem key={level} value={String(level)}>{level}</SelectItem>
+                                <SelectItem key={level} value={String(level)}>
+                                  {level}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -1800,48 +1933,62 @@ export function PersonalInformationDialog({
 
                       {/* Management Experience Level */}
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Management Exp.</Label>
+                        <Label className="text-xs text-muted-foreground">
+                          Management Exp.
+                        </Label>
                         {isManagementEditing ? (
                           <Select
                             value={String(managementExperience)}
                             onValueChange={(value) => {
                               setManagementExperience(parseInt(value))
                             }}
-                            disabled={isManagementUpdating || isUpdating || isSaving}
+                            disabled={
+                              isManagementUpdating || isUpdating || isSaving
+                            }
                           >
                             <SelectTrigger className="h-8">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
                               {[1, 2, 3, 4, 5].map((level) => (
-                                <SelectItem key={level} value={String(level)}>Level {level}</SelectItem>
+                                <SelectItem key={level} value={String(level)}>
+                                  Level {level}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         ) : (
                           <p className="text-base font-medium">
-                            Level {profile?.managementSkill?.managementExperienceLevel || 0}
+                            Level{" "}
+                            {profile?.managementSkill
+                              ?.managementExperienceLevel || 0}
                           </p>
                         )}
                       </div>
 
                       {/* QCD Score */}
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">QCD</Label>
+                        <Label className="text-xs text-muted-foreground">
+                          QCD
+                        </Label>
                         {isManagementEditing ? (
                           <Select
                             value={String(managementQcd)}
                             onValueChange={(value) => {
                               setManagementQcd(parseInt(value))
                             }}
-                            disabled={isManagementUpdating || isUpdating || isSaving}
+                            disabled={
+                              isManagementUpdating || isUpdating || isSaving
+                            }
                           >
                             <SelectTrigger className="h-8">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
                               {[1, 2, 3, 4].map((level) => (
-                                <SelectItem key={level} value={String(level)}>{level}</SelectItem>
+                                <SelectItem key={level} value={String(level)}>
+                                  {level}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -1854,27 +2001,34 @@ export function PersonalInformationDialog({
 
                       {/* Report/Consult Score */}
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Report/Consult</Label>
+                        <Label className="text-xs text-muted-foreground">
+                          Report/Consult
+                        </Label>
                         {isManagementEditing ? (
                           <Select
                             value={String(managementReportConsult)}
                             onValueChange={(value) => {
                               setManagementReportConsult(parseInt(value))
                             }}
-                            disabled={isManagementUpdating || isUpdating || isSaving}
+                            disabled={
+                              isManagementUpdating || isUpdating || isSaving
+                            }
                           >
                             <SelectTrigger className="h-8">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
                               {[1, 2, 3, 4].map((level) => (
-                                <SelectItem key={level} value={String(level)}>{level}</SelectItem>
+                                <SelectItem key={level} value={String(level)}>
+                                  {level}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         ) : (
                           <p className="text-base font-medium">
-                            {profile?.managementSkill?.reportConsultScore || 0}/5
+                            {profile?.managementSkill?.reportConsultScore || 0}
+                            /5
                           </p>
                         )}
                       </div>
@@ -1883,8 +2037,10 @@ export function PersonalInformationDialog({
                     {/* Total Level - Inline with action buttons */}
                     <div className="flex items-center justify-between border-t pt-3">
                       <div className="flex items-center gap-2">
-                        <Label className="text-sm font-medium">Total Level</Label>
-                        <Badge className="text-base font-semibold px-3 py-1">
+                        <Label className="text-sm font-medium">
+                          Total Level
+                        </Label>
+                        <Badge className="px-3 py-1 text-base font-semibold">
                           Level {profile?.managementSkill?.totalLevel || 0}
                         </Badge>
                       </div>
@@ -1893,7 +2049,9 @@ export function PersonalInformationDialog({
                           size="sm"
                           variant="default"
                           onClick={handleManagementUpdate}
-                          disabled={isManagementUpdating || isUpdating || isSaving}
+                          disabled={
+                            isManagementUpdating || isUpdating || isSaving
+                          }
                         >
                           {isManagementUpdating ? (
                             <>
@@ -1912,8 +2070,9 @@ export function PersonalInformationDialog({
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground py-2">
-                    No management skills added yet. Click "Add Management Skills" to get started.
+                  <p className="py-2 text-sm text-muted-foreground">
+                    No management skills added yet. Click "Add Management
+                    Skills" to get started.
                   </p>
                 )}
               </CardContent>

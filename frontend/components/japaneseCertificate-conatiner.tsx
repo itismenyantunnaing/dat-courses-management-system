@@ -246,7 +246,6 @@ export function JapaneseCertificateContainer({
           (c) => c.id === certIdStr
         )
         if (refreshedCertificate) {
-
           handleCardClick(refreshedCertificate)
         } else {
           console.error(
@@ -366,11 +365,11 @@ export function JapaneseCertificateContainer({
         setIsDetailDrawerOpen(false)
         setEditingCertificate(null)
       } else {
-        toast.error("❌ " + result)
+        toast.error(result)
       }
     } catch (error) {
-      console.error("❌ Error deleting certificate:", error)
-      toast.error("❌ Failed to delete certificate")
+      console.error(" Error deleting certificate:", error)
+      toast.error("Failed to delete certificate")
     }
   }
 
@@ -392,7 +391,7 @@ export function JapaneseCertificateContainer({
   const hasCertificates = certificateData.length > 0
 
   return (
-    <div className="p-4">
+    <div className="pb-6">
       {/* Tabs and Search - Only show when there are certificates */}
       {hasCertificates && (
         <div className="mb-6">

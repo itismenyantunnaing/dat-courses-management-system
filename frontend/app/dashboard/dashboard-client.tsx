@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx (or wherever your dashboard component is)
 "use client"
 
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -16,7 +15,14 @@ import { ExamsContainer } from "@/components/exams-container"
 import { SkillContainer } from "@/components/skill-container"
 import { HolidaysContainer } from "@/components/holidays-container"
 import ChangePassword from "@/components/dialogs/changePassword-dialog"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { CurrentTargetContainer } from "@/components/current-target-container"
 import { ExamProgressReportContainer } from "@/components/examProgress-report-container"
 import { mainStore } from "@/store/mainStore"
@@ -45,6 +51,7 @@ import type { SessionData } from "@/types/session"
 import { AnnouncementContainer } from "@/components/announcement-container"
 import { getAuthToken, logout } from "@/app/actions/auth"
 import { ImportExportDialog } from "@/components/dialogs/import-export-confirm-dialog"
+import { ScheduleContainer } from "@/components/schedule-container"
 
 interface DashboardClientProps {
   userData: SessionData
@@ -79,7 +86,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     fetch_UnreadCount,
     fetch_CertificateData,
     fetch_AllCertificates,
-    fetchAll_CourseData
+    fetchAll_CourseData,
   } = mainStore()
   const { connect } = webScoketStore()
 
@@ -93,7 +100,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Initialize session in Zustand store when component mounts
   useEffect(() => {
     if (!initialized.current && userData) {
-      ; (async () => {
+      ;(async () => {
         setSession(userData)
         await fetch_EmployeeProfile(userData.userId)
         initialized.current = true
@@ -132,14 +139,14 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   useEffect(() => {
     setMounted(true)
     if (typeof window !== "undefined") {
-      ; (window as any).mainStore = mainStore
+      ;(window as any).mainStore = mainStore
     }
   }, [])
 
   // Countdown timer for auto-logout
   useEffect(() => {
     let timer: NodeJS.Timeout
-    
+
     if (isSuccessDialogOpen && countdown > 0) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1)
@@ -148,7 +155,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       // Auto logout when countdown reaches 0
       handleSuccessConfirm()
     }
-    
+
     return () => {
       if (timer) clearInterval(timer)
     }
@@ -168,7 +175,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           style: {
             background: "#1a1a2e",
             color: "#ffffff",
-            border: "1px solid #e94560",
             borderRadius: "12px",
             padding: "16px",
             width: "480px",
@@ -281,7 +287,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       setSelectedCourseId(id)
       setActiveTab("courses")
     } else if (action === "view-certificate") {
-
       const targetTab =
         user_role === "learner"
           ? "japanese-certificates"
@@ -348,6 +353,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         return "Employees"
       case "courses":
         return "Courses"
+      case 'schedule':
+        return 'Schedule'
       case "jlpt_target_level":
         return "JLPT Target Level"
       case "exams":
@@ -402,6 +409,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         selectedCourseId: selectedCourseId,
       },
     },
+    { value: "schedule", component: ScheduleContainer },
     { value: "exams", component: ExamsContainer },
     { value: "announcement", component: AnnouncementContainer },
     { value: "feedback", component: FeedbackContainer },
@@ -444,7 +452,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Handle success dialog confirm
   const handleSuccessConfirm = async () => {
     setIsSuccessDialogOpen(false)
-    await logout();
+    await logout()
   }
 
   if (!mounted) {
@@ -471,7 +479,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           onTabChange={handleTabChange}
           activeTab={activeTab}
         />
-        <SidebarInset className="overflow-x-auto">
+        <SidebarInset className="flex flex-col overflow-x-hidden">
           <header className="flex h-16 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex w-full items-center justify-between px-4">
               <div className="flex items-center gap-2">
@@ -508,8 +516,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                     )}
                   </Button>
                   <div
-                    className={`absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-white ${isConnected ? "bg-green-500" : "bg-red-500"
-                      }`}
+                    className={`absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-white ${
+                      isConnected ? "bg-green-500" : "bg-red-500"
+                    }`}
                   />
                 </div>
 
@@ -530,13 +539,15 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
               </div>
             </div>
           </header>
-          <Tabs value={activeTab} onValueChange={handleTabChange}>
-            {tabConfigs.map(({ value, component: Component, props }) => (
-              <TabsContent key={value} value={value} className="m-0">
-                <Component {...props} />
-              </TabsContent>
-            ))}
-          </Tabs>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+              {tabConfigs.map(({ value, component: Component, props }) => (
+                <TabsContent key={value} value={value} className="m-0 mt-4">
+                  <Component {...props} />
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
         </SidebarInset>
       </SidebarProvider>
 
@@ -583,7 +594,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             onClose={() => setIsChangePasswordOpen(false)}
             onPasswordUpdate={(data) => {
               // Handle password update success
-              handlePasswordUpdateSuccess("Password changed successfully!\nPlease login with your new password.")
+              handlePasswordUpdateSuccess(
+                "Password changed successfully!\nPlease login with your new password."
+              )
             }}
           />
         </DialogContent>
@@ -592,11 +605,11 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       {/* Success Dialog */}
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
         <DialogContent
-          className="sm:max-w-[425px] text-center"
+          className="text-center sm:max-w-[425px]"
           showCloseButton={false}
         >
           <DialogHeader>
-            <div className="flex justify-center mb-4">
+            <div className="mb-4 flex justify-center">
               <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/20">
                 <HugeiconsIcon
                   icon={CheckmarkCircle01Icon}
@@ -626,7 +639,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         </DialogContent>
       </Dialog>
 
-       <ImportExportDialog />
+      <ImportExportDialog />
     </>
   )
 }

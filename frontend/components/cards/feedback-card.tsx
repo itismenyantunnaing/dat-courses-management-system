@@ -131,7 +131,7 @@ export function FeedbackCard({
                 src={feedback.employee.avatar || ""}
                 alt={feedback.employee.name}
               />
-              <AvatarFallback className="text-primary">
+              <AvatarFallback className="text-xs">
                 {getInitials(feedback.employee.name)}
               </AvatarFallback>
             </Avatar>

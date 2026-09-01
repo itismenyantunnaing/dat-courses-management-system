@@ -29,7 +29,7 @@ import { mainStore } from "@/store/mainStore"
 import { format } from "date-fns"
 import Image from "next/image"
 import { Cancel01Icon, ImageNotFound01Icon } from "@hugeicons/core-free-icons"
-import {resolveUploadUrl} from "@/lib/utils";
+import { resolveUploadUrl } from "@/lib/utils"
 import { toast } from "sonner"
 
 interface ApproveCertificateDrawerProps {
@@ -110,7 +110,7 @@ export function ApproveCertificateDrawer({
 
   const handleApprove = async () => {
     if (!certificate) {
-      console.error("❌ No certificate to approve")
+      console.error(" No certificate to approve")
       return
     }
 
@@ -127,11 +127,11 @@ export function ApproveCertificateDrawer({
           await onApprove(certificate.id, remark)
         }
       } else {
-        toast.error("❌ " + result)
+        toast.error(result)
       }
     } catch (error) {
-      console.error("❌ Error approving certificate:", error)
-      toast.error("❌ Failed to approve certificate")
+      console.error(" Error approving certificate:", error)
+      toast.error("Failed to approve certificate")
     } finally {
       setIsSubmitting(false)
     }
@@ -139,12 +139,12 @@ export function ApproveCertificateDrawer({
 
   const handleDeny = async () => {
     if (!certificate) {
-      console.error("❌ No certificate to deny")
+      console.error(" No certificate to deny")
       return
     }
 
     if (!remark.trim()) {
-      toast.error("❌ Please provide a reason for denying this certificate")
+      toast.error("Provide a remark for denying this certificate")
       return
     }
 
@@ -161,11 +161,11 @@ export function ApproveCertificateDrawer({
           await onDeny(certificate.id, remark)
         }
       } else {
-        toast.error("❌ " + result)
+        toast.error(result)
       }
     } catch (error) {
-      console.error("❌ Error denying certificate:", error)
-      toast.error("❌ Failed to deny certificate")
+      console.error(" Error denying certificate:", error)
+      toast.error("Failed to deny certificate")
     } finally {
       setIsSubmitting(false)
     }
@@ -227,14 +227,14 @@ export function ApproveCertificateDrawer({
   if (!certificate) return null
 
   const imageUrl = certificate.filePath
-      ? resolveUploadUrl(certificate.filePath)
-      : "/placeholder-certificate.png"
+    ? resolveUploadUrl(certificate.filePath)
+    : "/placeholder-certificate.png"
   const status = certificate.status
   const employeeName = certificate.employee.name || ""
   const employeeEmail = certificate.email || "No email provided"
   const employeeAvatar = certificate.profilePhotoPath
-      ? resolveUploadUrl(certificate.profilePhotoPath)
-      : certificate.employee?.avatar || ""
+    ? resolveUploadUrl(certificate.profilePhotoPath)
+    : certificate.employee?.avatar || ""
   const submittedDate = certificate.createdAt
     ? certificate.createdAt.toISOString()
     : new Date().toISOString()

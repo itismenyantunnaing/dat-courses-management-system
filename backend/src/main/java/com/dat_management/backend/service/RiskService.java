@@ -154,7 +154,7 @@ public class RiskService {
                     log.info(" Enrollment {} is AT RISK ({}: {}%)", 
                         enrollment.getId(), risk.issue(), risk.risk());
                 } else {
-                    log.info("❌ Enrollment {} is NOT at risk (Attendance >= {}%)", 
+                    log.info(" Enrollment {} is NOT at risk (Attendance >= {}%)", 
                         enrollment.getId(), THRESHOLD);
                 }
             }
@@ -336,7 +336,7 @@ public class RiskService {
                     log.info(" Self-Study Enrollment {} is AT RISK ({}: {}%)", 
                         enrollment.getId(), risk.issue(), risk.risk());
                 } else {
-                    log.info("❌ Self-Study Enrollment {} is NOT at risk (Progress >= {}%)", 
+                    log.info(" Self-Study Enrollment {} is NOT at risk (Progress >= {}%)", 
                         enrollment.getId(), THRESHOLD);
                 }
             }
