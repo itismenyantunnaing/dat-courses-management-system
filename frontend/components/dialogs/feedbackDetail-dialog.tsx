@@ -96,7 +96,7 @@ export function FeedbackDetailDialog({
                     feedback.employeeName || `Employee ${feedback.employeeId}`
                   }
                 />
-                <AvatarFallback className="text-sm text-primary">
+                <AvatarFallback className="text-sm">
                   {feedback.employeeName
                     ? getInitials(feedback.employeeName)
                     : feedback.employeeId?.slice(0, 2).toUpperCase() || "U"}

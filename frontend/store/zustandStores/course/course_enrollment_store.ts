@@ -5,7 +5,7 @@ type StoreSet = (
 ) => void
 type StoreGet = () => Course_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
 // Course Enrollment Store
 export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
@@ -21,54 +21,58 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
 
   // GET /api/courses/:courseId/enrollments - Fetch all enrollments for a course
   fetch_courseEnrollments: async (courseId: number | string) => {
-    //  Clear old enrollments and set loading state
     set((state: Course_StoreType) => ({
       ...state,
-      enrollments: [],
       enrollmentError: null,
-      isLoadingEnrollments: true
+      isLoadingEnrollments: true,
     }))
 
     try {
       const headers = get().getAuthHeaders()
 
-      const response = await fetch(`${apiUrl}/api/courses/${courseId}/enrollments`, {
-        headers: headers
-      })
+      const response = await fetch(
+        `${apiUrl}/api/courses/${courseId}/enrollments`,
+        {
+          headers: headers,
+        }
+      )
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const data = await response.json()
+      const parsedCourseId = parseInt(courseId.toString())
 
-      //  Add courseId to each enrollment and update state
       const enrollmentsWithCourseId = (data || []).map((enrollment: any) => ({
         ...enrollment,
-        courseId: parseInt(courseId.toString())
-      }))
-      
-
-      // Store the enrollments in the store state
-      set((state: Course_StoreType) => ({
-        ...state,
-        enrollments: enrollmentsWithCourseId,
-        enrollmentError: null,
-        isLoadingEnrollments: false //  Set loading to false
+        courseId: parsedCourseId
       }))
 
-      // Return the data directly so the component can use it
+      // MERGE: keep every other course's enrollments, replace only this course's
+      set((state: Course_StoreType) => {
+        const others = (state.enrollments || []).filter(
+          (e: any) => e.courseId !== parsedCourseId
+        )
+        return {
+          ...state,
+          enrollments: [...others, ...enrollmentsWithCourseId],
+          enrollmentError: null,
+          isLoadingEnrollments: false
+        }
+      })
+
       return enrollmentsWithCourseId
-
     } catch (error) {
-      console.error('❌ Error fetching course enrollments:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch enrollments'
+      console.error(" Error fetching course enrollments:", error)
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to fetch enrollments"
 
       set((state: Course_StoreType) => ({
         ...state,
-        enrollments: [],
         enrollmentError: errorMessage,
-        isLoadingEnrollments: false //  Set loading to false on error too
+        isLoadingEnrollments: false
+        // don't touch `enrollments` on error
       }))
 
       return []
@@ -76,28 +80,35 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
   },
 
   // POST /api/courses/:courseId/enroll - Enroll an employee in a course
-  enrollEmployee: async (courseId: number | string, courseGroupId: number, employeeId?: string) => {
-    set((state: Course_StoreType) => ({ ...state, isEnrolling: true, enrollmentError: null }))
+  enrollEmployee: async (
+    courseId: number | string,
+    courseGroupId: number,
+    employeeId?: string
+  ) => {
+    set((state: Course_StoreType) => ({
+      ...state,
+      isEnrolling: true,
+      enrollmentError: null,
+    }))
 
     try {
       // If employeeId is not provided, use the logged-in user's ID
       const targetEmployeeId = employeeId || get().getUserId?.() || null
 
       if (!targetEmployeeId) {
-        throw new Error('Employee ID not found. Please log in again.')
+        throw new Error("Employee ID not found. Please log in again.")
       }
 
       const headers = get().getAuthHeaders()
 
       const response = await fetch(`${apiUrl}/api/courses/${courseId}/enroll`, {
-        method: 'POST',
+        method: "POST",
         headers: headers,
         body: JSON.stringify({
           employeeId: targetEmployeeId,
-          courseGroupId: courseGroupId
+          courseGroupId: courseGroupId,
         }),
       })
-
 
       let result
       const contentType = response.headers.get("content-type")
@@ -105,16 +116,18 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         result = await response.json()
       } else {
         const text = await response.text()
-        result = { message: text || `Error: ${response.status} ${response.statusText}` }
+        result = {
+          message: text || `Error: ${response.status} ${response.statusText}`,
+        }
       }
 
       if (!response.ok) {
         set((state: Course_StoreType) => ({
           ...state,
           isEnrolling: false,
-          enrollmentError: result.message || 'Failed to enroll employee'
+          enrollmentError: result.message || "Failed to enroll employee",
         }))
-        throw new Error(result.message || 'Failed to enroll employee')
+        throw new Error(result.message || "Failed to enroll employee")
       }
 
       // Refresh enrollments after successful enrollment
@@ -123,42 +136,49 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       set((state: Course_StoreType) => ({
         ...state,
         isEnrolling: false,
-        enrollmentError: null
+        enrollmentError: null,
       }))
 
       return {
         success: true,
-        message: result.message || 'Employee enrolled successfully',
-        data: result
+        message: result.message || "Employee enrolled successfully",
+        data: result,
       }
-
     } catch (error) {
-      console.error('❌ Error enrolling employee:', error)
+      console.error(" Error enrolling employee:", error)
       set((state: Course_StoreType) => ({
         ...state,
         isEnrolling: false,
-        enrollmentError: error instanceof Error ? error.message : 'Failed to enroll employee'
+        enrollmentError:
+          error instanceof Error ? error.message : "Failed to enroll employee",
       }))
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to enroll employee'
+        message:
+          error instanceof Error ? error.message : "Failed to enroll employee",
       }
     }
   },
 
   // DELETE /api/courses/:courseId/enrollments/:enrollmentId - Cancel enrollment (soft delete)
   cancelEnrollment: async (courseId: number | string, enrollmentId: number) => {
-    set((state: Course_StoreType) => ({ ...state, isUnenrolling: true, enrollmentError: null }))
+    set((state: Course_StoreType) => ({
+      ...state,
+      isUnenrolling: true,
+      enrollmentError: null,
+    }))
 
     try {
-
       const headers = get().getAuthHeaders()
 
-      const response = await fetch(`${apiUrl}/api/courses/${courseId}/enrollments/${enrollmentId}`, {
-        method: 'DELETE',
-        headers: headers
-      })
+      const response = await fetch(
+        `${apiUrl}/api/courses/${courseId}/enrollments/${enrollmentId}`,
+        {
+          method: "DELETE",
+          headers: headers,
+        }
+      )
 
       if (!response.ok) {
         let errorMessage = `HTTP error! status: ${response.status}`
@@ -174,7 +194,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         set((state: Course_StoreType) => ({
           ...state,
           isUnenrolling: false,
-          enrollmentError: errorMessage
+          enrollmentError: errorMessage,
         }))
         throw new Error(errorMessage)
       }
@@ -183,7 +203,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       try {
         result = await response.json()
       } catch (e) {
-        result = { success: true, message: 'Enrollment cancelled successfully' }
+        result = { success: true, message: "Enrollment cancelled successfully" }
       }
 
       // Refresh enrollments after successful cancellation
@@ -192,32 +212,37 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       set((state: Course_StoreType) => ({
         ...state,
         isUnenrolling: false,
-        enrollmentError: null
+        enrollmentError: null,
       }))
 
       return {
         success: true,
-        message: result?.message || 'Enrollment cancelled successfully'
+        message: result?.message || "Enrollment cancelled successfully",
       }
-
     } catch (error) {
-      console.error('❌ Error cancelling enrollment:', error)
+      console.error(" Error cancelling enrollment:", error)
       set((state: Course_StoreType) => ({
         ...state,
         isUnenrolling: false,
-        enrollmentError: error instanceof Error ? error.message : 'Failed to cancel enrollment'
+        enrollmentError:
+          error instanceof Error
+            ? error.message
+            : "Failed to cancel enrollment",
       }))
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to cancel enrollment'
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to cancel enrollment",
       }
     }
   },
 
   // Alias for cancelEnrollment to match the component's expected function name
   unenrollEmployee: async (courseId: number | string, enrollmentId: number) => {
-    return await get().cancelEnrollment(courseId, enrollmentId);
+    return await get().cancelEnrollment(courseId, enrollmentId)
   },
 
   // GET /api/employees/:employeeId/courses - Fetch all courses for the current employee
@@ -225,20 +250,23 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
     set((state: Course_StoreType) => ({ ...state, enrollmentError: null }))
     try {
       // Get current profile from store
-      const currentProfile = get().profile;
+      const currentProfile = get().profile
       const employeeId = currentProfile?.id || null
 
       if (!employeeId) {
-        throw new Error('Employee ID not found in session. Please log in again.')
+        throw new Error(
+          "Employee ID not found in session. Please log in again."
+        )
       }
-
 
       const headers = get().getAuthHeaders()
 
-      const response = await fetch(`${apiUrl}/api/employees/${employeeId}/courses`, {
-        headers: headers
-      })
-
+      const response = await fetch(
+        `${apiUrl}/api/employees/${employeeId}/courses`,
+        {
+          headers: headers,
+        }
+      )
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -248,19 +276,24 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
 
       return {
         success: true,
-        data: data
+        data: data,
       }
-
     } catch (error) {
-      console.error('❌ Error fetching my courses:', error)
+      console.error(" Error fetching my courses:", error)
       set((state: Course_StoreType) => ({
         ...state,
-        enrollmentError: error instanceof Error ? error.message : 'Failed to fetch your courses'
+        enrollmentError:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch your courses",
       }))
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to fetch your courses'
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch your courses",
       }
     }
   },
@@ -268,17 +301,14 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
   // Check if the current employee is enrolled in a course
   checkMyEnrollment: async (courseId: number | string, employeeID?: string) => {
     try {
-
-      const currentProfile = get().profile;
+      const currentProfile = get().profile
       const employee_Id = employeeID || currentProfile.id
-
-
 
       if (!employee_Id) {
         return {
           success: false,
           isEnrolled: false,
-          message: 'Employee ID not found in session'
+          message: "Employee ID not found in session",
         }
       }
 
@@ -286,8 +316,9 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
 
       if (Array.isArray(enrollments)) {
         const isEnrolled = enrollments.some(
-          (enrollment: any) => enrollment.employeeId === employee_Id &&
-            enrollment.enrollmentStatus === 'APPROVED'
+          (enrollment: any) =>
+            enrollment.employeeId === employee_Id &&
+            enrollment.enrollmentStatus === "APPROVED"
         )
 
         const enrollment = enrollments.find(
@@ -297,22 +328,22 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         return {
           success: true,
           isEnrolled,
-          enrollment: enrollment || null
+          enrollment: enrollment || null,
         }
       }
 
       return {
         success: true,
         isEnrolled: false,
-        enrollment: null
+        enrollment: null,
       }
-
     } catch (error) {
-      console.error('❌ Error checking enrollment:', error)
+      console.error(" Error checking enrollment:", error)
       return {
         success: false,
         isEnrolled: false,
-        message: error instanceof Error ? error.message : 'Failed to check enrollment'
+        message:
+          error instanceof Error ? error.message : "Failed to check enrollment",
       }
     }
   },
@@ -322,9 +353,8 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
   // Get the current user's enrollment for a specific course
   getMyEnrollment: async (courseId: number | string) => {
     try {
-
       // Get current profile from store
-      const currentProfile = get().profile;
+      const currentProfile = get().profile
       const employeeId = currentProfile?.id || null
 
       if (!employeeId) return null
@@ -337,7 +367,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
           enrollment.courseId?.toString() === courseId.toString()
       )
     } catch (error) {
-      console.error('Error getting my enrollment:', error)
+      console.error("Error getting my enrollment:", error)
       return null
     }
   },
@@ -355,16 +385,19 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         (enrollment: any) =>
           enrollment.employeeId === employeeId &&
           enrollment.courseId?.toString() === courseId.toString() &&
-          enrollment.enrollmentStatus === 'APPROVED'
+          enrollment.enrollmentStatus === "APPROVED"
       )
     } catch (error) {
-      console.error('Error checking if I am enrolled:', error)
+      console.error("Error checking if I am enrolled:", error)
       return false
     }
   },
 
   // Get enrollment by employee ID
-  getEnrollmentByEmployeeId: (courseId: number | string, employeeId: string) => {
+  getEnrollmentByEmployeeId: (
+    courseId: number | string,
+    employeeId: string
+  ) => {
     try {
       const state = get()
       const enrollments = state.enrollments || []
@@ -374,7 +407,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
           enrollment.courseId?.toString() === courseId.toString()
       )
     } catch (error) {
-      console.error('Error getting enrollment by employee ID:', error)
+      console.error("Error getting enrollment by employee ID:", error)
       return null
     }
   },
@@ -388,10 +421,10 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         (enrollment: any) =>
           enrollment.employeeId === employeeId &&
           enrollment.courseId?.toString() === courseId.toString() &&
-          enrollment.enrollmentStatus === 'APPROVED'
+          enrollment.enrollmentStatus === "APPROVED"
       )
     } catch (error) {
-      console.error('Error checking employee enrollment:', error)
+      console.error("Error checking employee enrollment:", error)
       return false
     }
   },
@@ -402,39 +435,54 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       const state = get()
       const enrollments = state.enrollments || []
       const courseEnrollments = enrollments.filter(
-        (enrollment: any) => enrollment.courseId?.toString() === courseId.toString()
+        (enrollment: any) =>
+          enrollment.courseId?.toString() === courseId.toString()
       )
 
       return {
         total: courseEnrollments.length,
-        approved: courseEnrollments.filter((e: any) => e.enrollmentStatus === 'APPROVED').length,
-        pending: courseEnrollments.filter((e: any) => e.enrollmentStatus === 'PENDING').length,
-        cancelled: courseEnrollments.filter((e: any) => e.enrollmentStatus === 'CANCELLED').length,
-        completed: courseEnrollments.filter((e: any) => e.enrollmentStatus === 'COMPLETED').length,
+        approved: courseEnrollments.filter(
+          (e: any) => e.enrollmentStatus === "APPROVED"
+        ).length,
+        pending: courseEnrollments.filter(
+          (e: any) => e.enrollmentStatus === "PENDING"
+        ).length,
+        cancelled: courseEnrollments.filter(
+          (e: any) => e.enrollmentStatus === "CANCELLED"
+        ).length,
+        completed: courseEnrollments.filter(
+          (e: any) => e.enrollmentStatus === "COMPLETED"
+        ).length,
       }
     } catch (error) {
-      console.error('Error getting enrollment counts:', error)
+      console.error("Error getting enrollment counts:", error)
       return { total: 0, approved: 0, pending: 0, cancelled: 0, completed: 0 }
     }
   },
 
-
   // mock test updated through enrollment update endpoint
-  updateMockTest: async (courseId: number | string, enrollmentId: number, mockTestAttempt: number) => {
+  updateMockTest: async (
+    courseId: number | string,
+    enrollmentId: number,
+    mockTestAttempt: number
+  ) => {
     set((state: Course_StoreType) => ({
       ...state,
       isUpdatingEnrollment: true,
-      enrollmentError: null
+      enrollmentError: null,
     }))
 
     try {
       const headers = get().getAuthHeaders()
 
-      const response = await fetch(`${apiUrl}/api/courses/${courseId}/enrollments/${enrollmentId}`, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify({ mockTestAttempt }),
-      })
+      const response = await fetch(
+        `${apiUrl}/api/courses/${courseId}/enrollments/${enrollmentId}`,
+        {
+          method: "PUT",
+          headers: headers,
+          body: JSON.stringify({ mockTestAttempt }),
+        }
+      )
 
       let result
       const contentType = response.headers.get("content-type")
@@ -442,43 +490,44 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
         result = await response.json()
       } else {
         const text = await response.text()
-        result = { message: text || `Error: ${response.status} ${response.statusText}` }
+        result = {
+          message: text || `Error: ${response.status} ${response.statusText}`,
+        }
       }
 
       if (!response.ok) {
         set((state: Course_StoreType) => ({
           ...state,
           isUpdatingEnrollment: false,
-          enrollmentError: result.message || 'Failed to update mock test'
+          enrollmentError: result.message || "Failed to update mock test",
         }))
-        throw new Error(result.message || 'Failed to update mock test')
+        throw new Error(result.message || "Failed to update mock test")
       }
-
-
 
       set((state: Course_StoreType) => ({
         ...state,
         isUpdatingEnrollment: false,
-        enrollmentError: null
+        enrollmentError: null,
       }))
 
       return {
         success: true,
-        message: result.message || 'Mock test updated successfully',
-        data: result
+        message: result.message || "Mock test updated successfully",
+        data: result,
       }
-
     } catch (error) {
-      console.error('❌ Error updating mock test:', error)
+      console.error(" Error updating mock test:", error)
       set((state: Course_StoreType) => ({
         ...state,
         isUpdatingEnrollment: false,
-        enrollmentError: error instanceof Error ? error.message : 'Failed to update mock test'
+        enrollmentError:
+          error instanceof Error ? error.message : "Failed to update mock test",
       }))
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to update mock test'
+        message:
+          error instanceof Error ? error.message : "Failed to update mock test",
       }
     }
   },
@@ -489,7 +538,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       ...state,
       enrollments: [],
       enrollmentError: null,
-      isLoadingEnrollments: false
+      isLoadingEnrollments: false,
     }))
   },
 
@@ -501,7 +550,7 @@ export const courseEnrollmentStore = (set: StoreSet, get: StoreGet) => ({
       isUnenrolling: false,
       isUpdatingEnrollment: false,
       enrollmentError: null,
-      isLoadingEnrollments: false
+      isLoadingEnrollments: false,
     }))
-  }
+  },
 })

@@ -4,10 +4,10 @@ A comprehensive enterprise-grade management dashboard designed to streamline the
 
 The application is built with a modern technology stack featuring **Next.js** for the frontend and **Spring Boot** for the backend, ensuring scalability, maintainability, and high performance. The system supports 250–1000 concurrent users, enforces BCrypt password encryption, JWT authentication, and follows RESTful API design principles.
 
-
 ## Key Functional Areas
 
 #### Role-Based Access Control
+
 - System Admin (PMO + Language Experts): Full CRUD operations on all master data, employee management, course setup, system configuration, audit log monitoring, and report generation (Excel/CSV/PDF).
 
 - Learner (All Employees): Profile setup, study hour planning, progress tracking, course enrollment, attendance registration, JLPT certificate upload, and feedback submission.
@@ -15,6 +15,7 @@ The application is built with a modern technology stack featuring **Next.js** fo
 - Approver (PMs & HODs): Team-level monitoring, study progress approval/rejection, attendance review, team report exports, and notification reception.
 
 #### Master Data Management
+
 - Employee data import (Active/Inactive) with automated default password generation (BCrypt encrypted)
 
 - Holiday calendar management (yearly + ad-hoc public holidays)
@@ -26,6 +27,7 @@ The application is built with a modern technology stack featuring **Next.js** fo
 - Technical skillset management (based on provided Excel templates)
 
 #### Learning & Progress Tracking
+
 - Office-study and self-study hour planning
 
 - Daily/Weekly/Monthly progress metrics: grammar count, vocabulary count, kanji count, reading time, listening time, total study time
@@ -35,6 +37,7 @@ The application is built with a modern technology stack featuring **Next.js** fo
 - Certificate verification workflow (JLPT, NATTest)
 
 #### Dashboards & Analytics
+
 - Employee Dashboard: Current/Target JLPT level, study progress %, attendance %, upcoming courses, notifications
 
 - Approver Dashboard: Team JLPT distribution, attendance %, study progress, employees at risk, certification progress
@@ -44,6 +47,7 @@ The application is built with a modern technology stack featuring **Next.js** fo
 - Reports: Attendance analysis, learning progress, JLPT analysis, risk analysis, skillset analysis – exportable to Excel, CSV, PDF
 
 #### Security & Compliance
+
 - JWT authentication with role-based dashboard redirect
 
 - Password policy: minimum 8 characters, uppercase/lowercase, numeric, special character
@@ -55,6 +59,7 @@ The application is built with a modern technology stack featuring **Next.js** fo
 - Audit logging: login/logout, CRUD operations, approval/rejection, password changes, role changes, import/export (with User ID, Action, Module, Old/New Values, IP address, Timestamp)
 
 #### Notification
+
 - Email + in-app dashboard notifications for: course enrollment, enrollment approval, missing attendance, target not achieved, password reset, upcoming JLPT exams
 
 - SMTP integration (Microsoft 365 for production, Gmail for development)
@@ -62,17 +67,19 @@ The application is built with a modern technology stack featuring **Next.js** fo
 ## Technology Stack
 
 #### Frontend
+
 - TypeScript
 - Next.js - [Doc](https://nextjs.org/docs)
 - Tailwind CSS - [Doc](https://tailwindcss.com/docs/installation/using-vite)
 - Shadcn/UI - [Doc](https://ui.shadcn.com/docs/installation)
 
 #### Backend
+
 - Spring Boot - [Doc](https://docs.spring.io/spring-boot/index.html)
 
 #### Database
-- MySQL - [Doc](https://dev.mysql.com/doc/)
 
+- MySQL - [Doc](https://dev.mysql.com/doc/)
 
 ## Prerequisites
 
@@ -85,7 +92,6 @@ Before getting started, ensure the following software is installed on your machi
 - MySQL - [Download](https://dev.mysql.com/downloads/)
 
 - Git - [Download](https://git-scm.com/install/)
-
 
 ## Getting Started
 
@@ -103,7 +109,6 @@ cd frontend
 npm install
 ```
 
-
 ## Running the Application
 
 #### Start the Frontend Development Server
@@ -112,8 +117,8 @@ npm install
 cd frontend
 npm run dev
 ```
-The application will be available at: http://localhost:3000
 
+The application will be available at: http://localhost:3000
 
 ## Project Structure
 
@@ -128,22 +133,25 @@ dat-management-dashboard/
 ### 📌 1. Branch Strategy
 
 We use a protected branch model centered around `development`.
-* **`master`**: Production-ready code. **Never push or merge directly to this branch.**
-* **`development`**: Our default and active collaboration branch. All features land here via approved Pull Requests (PRs).
-* **Feature Branches**: Isolated workspaces created from `development` for specific tasks.
+
+- **`master`**: Production-ready code. **Never push or merge directly to this branch.**
+- **`development`**: Our default and active collaboration branch. All features land here via approved Pull Requests (PRs).
+- **Feature Branches**: Isolated workspaces created from `development` for specific tasks.
 
 ### Branch Naming Conventions
-Always use lowercase and descriptive names with prefixes matching the task type:
-* New features: `feature/your-feature-name`
-* Bug fixes: `bugfix/issue-description`
-* Refactoring: `refactor/component-name`
 
+Always use lowercase and descriptive names with prefixes matching the task type:
+
+- New features: `feature/your-feature-name`
+- Bug fixes: `bugfix/issue-description`
+- Refactoring: `refactor/component-name`
 
 ### 🛠️ 2. The Core Feature Workflow
 
 Always branch off from the absolute latest code on `development`. Follow this sequence whenever starting a new task:
 
 ### Step 1: Sync Your Local Base
+
 ```bash
 # Switch to development
 git checkout development
@@ -153,12 +161,14 @@ git pull origin development
 ```
 
 ### Step 2: Create Your Feature Branch
+
 ```bash
 # Create and switch to your new branch
 git checkout -b feature/analytics-charts
 ```
 
 ### Step 3: Code, Test, and Commit Locally
+
 Write your feature and run your test suites locally to ensure everything works before pushing.
 
 ```bash
@@ -170,56 +180,65 @@ git commit -m "<type>(<scope>): <short description>"
 ```
 
 ### Step 4: Push to Remote & Alert Your Tester
+
 ```bash
 # Push your branch up to GitHub
 git push origin feature/analytics-charts
 ```
-Do not open a Pull Request yet. Alert your assigned tester (via Discord/Slack) so they can fetch your branch and add the integration or E2E tests. 
+
+Do not open a Pull Request yet. Alert your assigned tester (via Discord/Slack) so they can fetch your branch and add the integration or E2E tests.
 
 ### Step 5: Open a Pull Request
 
 Go to the GitHub website, select your branch, and click "**Compare & Pull Request**" against the `development` branch.
 
-
-
 ### ✍️ 3. Commit Naming Standards (Conventional Commits)
+
 We use Conventional Commits to keep our repository history clean and readable. Every commit message must follow this structure:
 
 ```bash
 <type>(<scope>): <short description>
 ```
+
 ### Type
+
 #### `feat`
+
 ```bash
 # for adding a brand new feature or UI component
 feat(routing): add dynamic course dashboard layouts
 ```
 
 #### `fix`
+
 ```bash
 # for patching a bug, alignment issue, or crash
 fix(sidebar): resolve flexbox alignment rendering mismatch
 ```
 
 #### `refactor`
+
 ```bash
 # for optimizing code architecture without adding features/bugs
 refactor(auth): simplify redundant token checking logic
 ```
 
 #### `test`
+
 ```bash
 # for writing unit, integration, or E2E tests
 test(analytics): add integration test for chart renderers
 ```
 
 #### `docs`
+
 ```bash
 # for writing or modifying markdown or text guides
 docs: add development workflow and git standards
 ```
 
 #### 🔗 Linking and Closing GitHub Issues via Commits
+
 To keep our project tracking clean, you can link commits directly to GitHub Issues by adding the issue number (prefixed with #) using special keywords like closes, fixes.
 
 ```bash
@@ -249,7 +268,7 @@ git commit -m "fix(auth): correct token expiration calculation (fixes #1)"
 
 - **Automated Testing**: Once a PR is opened, GitHub Actions will automatically spin up a test runner to execute unit and integration tests (npm run test / Spring Boot test profiles).
 
-- **If Tests Fail (❌)**: The merge button will lock automatically.
+- **If Tests Fail ()**: The merge button will lock automatically.
 
 - **Fixed the Bug**: Fix the bug locally in VS Code, run tests on your machine, commit the fix, and push to the same branch. The PR will automatically re-test the updated code.
 
@@ -258,6 +277,7 @@ git commit -m "fix(auth): correct token expiration calculation (fixes #1)"
 - **The Merge**: Once status checks are green and you have 1 approval, the author is authorized to click Squash and Merge to bring the clean feature cleanly into `development` branch.
 
 ### 👥 5. Tracking a Teammate's Branch Locally
+
 If you need to review a teammate's code or help them debug, download and track it locally using these commands:
 
 ```bash
@@ -272,6 +292,7 @@ git pull origin feature/teammate-branch
 ```
 
 ### 🧹 6. Local Workspace Cleanup (Post-Merge)
+
 Once a Pull Request is successfully approved and merged on GitHub, the feature branch becomes dead clutter. Use this sequence to safely wipe it from your machine and sync your system:
 
 ```bash

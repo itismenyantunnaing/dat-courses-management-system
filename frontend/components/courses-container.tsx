@@ -733,8 +733,8 @@ export function CoursesContainer({
   // Learner view
   if (!isAdmin) {
     return (
-      <div className="flex flex-col gap-4 py-4">
-        <CardContent className="px-4">
+      <div className="flex flex-col gap-4 pb-6">
+        <CardContent className="px-0">
           {selectedCourse ? (
             <CourseDetail
               course={selectedCourse}
@@ -859,8 +859,8 @@ export function CoursesContainer({
 
   // Admin view
   return (
-    <div className="flex flex-col gap-4 pt-4">
-      <CardContent className="px-4">
+    <div className="flex flex-col gap-4 pb-6">
+      <CardContent className="px-0">
         {isFormVisible ? (
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={handleCancel}>

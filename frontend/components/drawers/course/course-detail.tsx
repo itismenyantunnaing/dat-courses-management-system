@@ -1,3 +1,4 @@
+// components/drawers/course/course-detail.tsx
 "use client"
 
 import React, { useEffect, useState, useMemo } from "react"
@@ -8,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Edit03Icon,
-  RefreshIcon,
   ArrowLeft01Icon,
   UserSwitchIcon,
 } from "@hugeicons/core-free-icons"
@@ -16,6 +16,7 @@ import {
   Course,
   COURSE_TYPE_LABELS,
   COURSE_STATUS_LABELS,
+  isJLPTType,
 } from "@/types/course"
 import { mainStore } from "@/store/mainStore"
 import { cn } from "@/lib/utils"
@@ -23,9 +24,11 @@ import { InformationTab } from "@/components/drawers/course/tabs/InformationTab"
 import { GroupsTab } from "@/components/drawers/course/tabs/GroupsTab"
 import { LearnersTab } from "@/components/drawers/course/tabs/LearnersTab"
 import { SessionsTab } from "@/components/drawers/course/tabs/SessionsTab"
-import { GroupChangeTab } from "@/components/drawers/course/tabs/GroupChange.tab"
-import { GroupRequestsTab } from "@/components/drawers/course/tabs/GroupRequestTab"
-import { ChangeGroupDialogs } from "@/components/dialogs/changeGroup-dialog"
+import { GroupChangeTab } from "@/components/drawers/course/tabs/GroupChangeTab"
+import { GroupRequestsTab } from "@/components/drawers/course/tabs/GroupRequestsTab"
+import { AttendanceTab } from "@/components/drawers/course/tabs/AttendanceTab"
+import { ProgressTab } from "@/components/drawers/course/tabs/ProgressTab"
+import { ChangeGroupDialogs } from "@/components/dialogs/changeLearners-dialog"
 import { ChangeGroupRequestDialogs } from "@/components/dialogs/changeGroupRequest-dialog"
 import { toast } from "sonner"
 import { dialog } from "@/components/dialogs/import-export-confirm-dialog"
@@ -44,14 +47,12 @@ const convertEmployeeToMentionedLearner = (employee: any) => ({
   id: employee.id,
   name: employee.name || employee.full_name || "",
   email: employee.email || "",
-  avatar: resolveUploadUrl(employee.profile_photo_path) || employee.avatar || "",
+  avatar:
+    resolveUploadUrl(employee.profile_photo_path) || employee.avatar || "",
   department: employee.dept_dat || employee.department || "",
   team: employee.team || "",
   status: (employee.status || employee.emp_status || "active") as
-    | "active"
-    | "pending"
-    | "completed"
-    | "inactive",
+    "active" | "pending" | "completed" | "inactive",
   addedAt: new Date(),
 })
 
@@ -65,7 +66,8 @@ export function CourseDetail({
 }: CourseDetailProps) {
   const isAdmin = userRole === "admin"
   const isLearner = userRole === "learner"
-  const isApprover = userRole === "approver" ||
+  const isApprover =
+    userRole === "approver" ||
     userRole === "division_head" ||
     userRole === "department_head"
 
@@ -82,7 +84,9 @@ export function CourseDetail({
   const [isRequestingGroupChange, setIsRequestingGroupChange] = useState(false)
   const [isProcessingRequest, setIsProcessingRequest] = useState(false)
   const [activeTab, setActiveTab] = useState("information")
-  const [loadingAttendanceGroups, setLoadingAttendanceGroups] = useState<Record<number, boolean>>({})
+  const [loadingAttendanceGroups, setLoadingAttendanceGroups] = useState<
+    Record<number, boolean>
+  >({})
 
   // Attendance state
   const [attendanceStatuses, setAttendanceStatuses] = useState<
@@ -97,7 +101,7 @@ export function CourseDetail({
 
   const {
     fetch_courseEnrollments,
-    enrollments,
+    enrollments: allEnrollments,
     getUserId,
     profile,
     enrollEmployee,
@@ -119,9 +123,19 @@ export function CourseDetail({
     // Employee data
     employee_data,
     fetch_EmployeeData,
+    studyProgress,
+    fetch_studyProgress,
   } = mainStore()
 
   const currentUserId = getUserId?.() || null
+
+  const enrollments = React.useMemo(() => {
+    const parsedCourseId = parseInt(course.id?.toString() ?? "")
+    if (isNaN(parsedCourseId)) return []
+    return allEnrollments.filter(
+      (e: any) => e.courseId === parsedCourseId
+    )
+  }, [allEnrollments, course.id])
 
   // Fetch employees on mount if not already loaded
   useEffect(() => {
@@ -129,6 +143,23 @@ export function CourseDetail({
       fetch_EmployeeData()
     }
   }, [employee_data.length, fetch_EmployeeData])
+
+  // useEffect to fetch studyProgress when course loads
+  useEffect(() => {
+    // Fetch studyProgress for JLPT self-study courses
+    if (course?.id && course?.selfStudyType && isJLPTType(course.selfStudyType)) {
+      fetch_studyProgress(course.id)
+    }
+  }, [course?.id, course?.selfStudyType, fetch_studyProgress])
+
+  // Filter studyProgress by employee_id === current user's ID and log it
+  useEffect(() => {
+    if (studyProgress?.progress && currentUserId) {
+      const filteredProgress = studyProgress.progress.filter(
+        (p: any) => p.employee_id === currentUserId
+      )
+    }
+  }, [studyProgress, currentUserId])
 
   // Clean up group change state when component unmounts
   useEffect(() => {
@@ -148,7 +179,7 @@ export function CourseDetail({
   }, [enrollments])
 
   const TESTING_DATE = new Date()
-  // const TESTING_DATE = new Date("2026-08-04") 
+  // const TESTING_DATE = new Date("2026-08-04")
 
   // Check if first session has started or passed
   const isFirstSessionStartedOrPassed = React.useMemo(() => {
@@ -172,7 +203,6 @@ export function CourseDetail({
 
     const firstSession = sortedSessions[0]
     if (!firstSession || !firstSession.date) return false
-
 
     const sessionDate = new Date(firstSession.date)
     // Use TESTING_DATE if provided, otherwise use current date
@@ -209,7 +239,65 @@ export function CourseDetail({
     isFirstSessionStartedOrPassed,
   ])
 
+  // Check if user has started any progress (any count > 0 for session 1 or 2)
+  const hasStartedProgress = useMemo(() => {
+    if (!studyProgress?.progress || !currentUserId) return false
 
+    // Filter progress for current user
+    const userProgress = studyProgress.progress.filter(
+      (p: any) => p.employee_id === currentUserId
+    )
+
+    // Check if any progress record has any count > 0
+    // Only check sessions 1 and 2 (session_no 1 or 2)
+    const hasProgress = userProgress.some((p: any) => {
+      // Only check session 1 or 2
+      if (p.session_no !== 1 && p.session_no !== 2) return false
+
+      return (
+        (p.grammar_count || 0) > 0 ||
+        (p.kanji_count || 0) > 0 ||
+        (p.vocabulary_count || 0) > 0 ||
+        (p.reading_minutes || 0) > 0 ||
+        (p.listening_minutes || 0) > 0
+      )
+    })
+
+    return hasProgress
+  }, [studyProgress, currentUserId])
+
+  // Check if first session date is in the future
+  const isFirstSessionFuture = useMemo(() => {
+    if (!course.self_study_sessions || course.self_study_sessions.length === 0) {
+      return false
+    }
+
+    // Sort sessions by date to get the first one
+    const sortedSessions = [...course.self_study_sessions].sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime()
+    })
+
+    const firstSession = sortedSessions[0]
+    if (!firstSession || !firstSession.date) return false
+
+    const sessionDate = new Date(firstSession.date)
+    const today = new Date()
+    sessionDate.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+
+    return sessionDate.getTime() > today.getTime()
+  }, [course.self_study_sessions])
+
+  // Check if unenroll should be disabled
+  const isUnenrollDisabled = useMemo(() => {
+    // Disable if user has started progress (any count > 0 for session 1 or 2)
+    if (hasStartedProgress) return true
+
+    // Disable if first session is in the future
+    if (isFirstSessionFuture) return true
+
+    return false
+  }, [hasStartedProgress, isFirstSessionFuture])
 
   // Get tooltip text for disabled buttons (kept for reference but no longer used)
   const getChangeGroupTooltip = () => {
@@ -240,10 +328,12 @@ export function CourseDetail({
 
     try {
       // Set loading state for all groups
-      const groupIds = course.groups.map((group: any) => parseInt(group.id)).filter((id: number) => !isNaN(id))
-      setLoadingAttendanceGroups(prev => {
+      const groupIds = course.groups
+        .map((group: any) => parseInt(group.id))
+        .filter((id: number) => !isNaN(id))
+      setLoadingAttendanceGroups((prev) => {
         const newState = { ...prev }
-        groupIds.forEach(id => {
+        groupIds.forEach((id) => {
           newState[id] = true
         })
         return newState
@@ -261,7 +351,7 @@ export function CourseDetail({
       console.error("Error loading attendance for groups:", error)
     } finally {
       // Clear loading state
-      setLoadingAttendanceGroups(prev => {
+      setLoadingAttendanceGroups((prev) => {
         const newState = { ...prev }
         course.groups.forEach((group: any) => {
           const id = parseInt(group.id)
@@ -285,22 +375,30 @@ export function CourseDetail({
 
     // Check if employee is already enrolled
     const existingEnrollment = enrollments.find(
-      (e: any) => e.employeeId === employeeId && e.enrollmentStatus !== "CANCELLED"
+      (e: any) =>
+        e.employeeId === employeeId && e.enrollmentStatus !== "CANCELLED"
     )
 
     if (existingEnrollment) {
       // If already enrolled, offer to change group instead
       const confirmChange = confirm(
-        `This employee is already enrolled in "${existingEnrollment.courseGroupName || 'Group ' + existingEnrollment.courseGroupId}". Would you like to change their group instead?`
+        `This employee is already enrolled in "${existingEnrollment.courseGroupName || "Group " + existingEnrollment.courseGroupId}". Would you like to change their group instead?`
       )
 
       if (confirmChange && existingEnrollment.id) {
         // Change their group using adminChangeGroup
         try {
-          const targetGroupId = groupId || parseInt(String(course.groups?.[0]?.id || "1").replace("g", ""))
-          const result = await adminChangeGroup(existingEnrollment.id, targetGroupId)
+          const targetGroupId =
+            groupId ||
+            parseInt(String(course.groups?.[0]?.id || "1").replace("g", ""))
+          const result = await adminChangeGroup(
+            existingEnrollment.id,
+            targetGroupId
+          )
           if (result.success) {
-            toast.success(` Employee moved to Group ${targetGroupId} successfully!`)
+            toast.success(
+              ` Employee moved to Group ${targetGroupId} successfully!`
+            )
             if (course.id) {
               await fetch_courseEnrollments(course.id)
               await refreshAllGroupAttendance()
@@ -320,14 +418,18 @@ export function CourseDetail({
     // Use the provided groupId or fallback to first group only if not provided
     let targetGroupId = groupId
 
-    if (!targetGroupId && course.courseType === "trainer" && course.groups && course.groups.length > 0) {
+    if (
+      !targetGroupId &&
+      course.courseType === "trainer" &&
+      course.groups &&
+      course.groups.length > 0
+    ) {
       targetGroupId = parseInt(String(course.groups[0].id).replace("g", ""))
     }
 
     if (!targetGroupId) {
       targetGroupId = 1
     }
-
 
     setIsEnrolling(true)
     try {
@@ -393,7 +495,9 @@ export function CourseDetail({
       )
 
       if (result.success) {
-        toast.success(result.message || "Group change request submitted successfully!")
+        toast.success(
+          result.message || "Group change request submitted successfully!"
+        )
         if (course.id) {
           await fetch_courseEnrollments(course.id)
         }
@@ -411,7 +515,6 @@ export function CourseDetail({
 
   // Handle approve group change request
   const handleApproveRequest = async (enrollmentId: number) => {
-
     const confirmed = await dialog.confirm(
       "Approve Group Change",
       "Are you sure you want to approve this group change request?",
@@ -428,7 +531,9 @@ export function CourseDetail({
       const result = await approveGroupChange(enrollmentId)
 
       if (result.success) {
-        toast.success(result.message || "Group change request approved successfully!")
+        toast.success(
+          result.message || "Group change request approved successfully!"
+        )
         if (course.id) {
           await fetch_courseEnrollments(course.id)
           await refreshAllGroupAttendance()
@@ -464,7 +569,9 @@ export function CourseDetail({
       const result = await rejectGroupChange(enrollmentId)
 
       if (result.success) {
-        toast.success(result.message || "Group change request rejected successfully!")
+        toast.success(
+          result.message || "Group change request rejected successfully!"
+        )
         if (course.id) {
           await fetch_courseEnrollments(course.id)
         }
@@ -497,7 +604,9 @@ export function CourseDetail({
       }
     } catch (error) {
       console.error("Failed to change group:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to change group")
+      toast.error(
+        error instanceof Error ? error.message : "Failed to change group"
+      )
     }
   }
 
@@ -637,7 +746,7 @@ export function CourseDetail({
         })
       }, 500)
     } catch (error) {
-      console.error("❌ Error saving attendance:", error)
+      console.error(" Error saving attendance:", error)
 
       setAttendanceStatuses((prev) => {
         const newState = { ...prev }
@@ -709,7 +818,9 @@ export function CourseDetail({
       const result = await unenrollEmployee(course.id, currentUserEnrollment.id)
 
       if (result.success) {
-        toast.success(result.message || "Successfully unenrolled from the course")
+        toast.success(
+          result.message || "Successfully unenrolled from the course"
+        )
         setCurrentUserEnrollment(null)
         await fetch_courseEnrollments(course.id)
         await refreshAllGroupAttendance()
@@ -776,10 +887,14 @@ export function CourseDetail({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex w-full min-w-0 flex-col gap-4">
       {/* Tabs */}
       <div className="flex items-center justify-between gap-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex w-full min-w-0 flex-1"
+        >
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" onClick={onBack}>
@@ -793,7 +908,7 @@ export function CourseDetail({
                 <TabsTrigger value="information" className="gap-2">
                   Information
                 </TabsTrigger>
-
+                {/* 
                 {course.courseType === "trainer" &&
                   course.groups &&
                   course.groups.length > 0 && (
@@ -811,9 +926,9 @@ export function CourseDetail({
                         {tabCounts.groups}
                       </Badge>
                     </TabsTrigger>
-                  )}
+                  )} */}
 
-                {course.courseType === "self-study" && (
+                {/* {course.courseType === "self-study" && (
                   <TabsTrigger value="sessions" className="gap-2">
                     Sessions
                     <Badge
@@ -828,6 +943,47 @@ export function CourseDetail({
                       {tabCounts.sessions}
                     </Badge>
                   </TabsTrigger>
+                )} */}
+
+                {/* ✅ Attendance Tab - visible for all users */}
+                {course.courseType === "trainer" &&
+                  (isAdmin || isUserEnrolled) &&
+                  course.groups &&
+                  course.groups.length > 0 && (
+                    <TabsTrigger value="attendance" className="gap-2">
+                      Attendance
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "h-5 px-1.5 text-xs",
+                          activeTab === "attendance"
+                            ? "bg-secondary"
+                            : "bg-muted-foreground/20 text-muted-foreground"
+                        )}
+                      >
+                        {tabCounts.learners}
+                      </Badge>
+                    </TabsTrigger>
+                  )}
+
+
+                {/* ✅ Progress Tab - visible for all users */}
+                {course.courseType === "self-study" && course.selfStudyType === "jlpt" && (
+                  <TabsTrigger value="progress" className="gap-2">
+                    Progress
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 px-1.5 text-xs",
+                        activeTab === "progress"
+                          ? "bg-secondary"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}
+                    >
+                      {tabCounts.learners}
+                    </Badge>
+                  </TabsTrigger>
+
                 )}
 
                 {course.courseType === "trainer" && isAdmin && (
@@ -868,7 +1024,7 @@ export function CourseDetail({
               </TabsList>
             </div>
             <div className="flex items-center gap-2">
-              {/* equest Change Group Button - Hidden when disabled */}
+              {/* Request Change Group Button - Hidden when disabled */}
               {canRequestGroupChange &&
                 course.status !== "completed" &&
                 !isChangeGroupRequestDisabled && (
@@ -879,11 +1035,11 @@ export function CourseDetail({
                     className="gap-2"
                   >
                     <HugeiconsIcon
-                      icon={RefreshIcon}
+                      icon={UserSwitchIcon}
                       strokeWidth={2}
                       className="h-4 w-4"
                     />
-                    Request Change Group
+                    Request Group Change
                     {currentUserEnrollment?.groupChangeStatus === "PENDING" && (
                       <Badge className="ml-1 bg-yellow-500 text-[10px] text-white">
                         Pending
@@ -939,22 +1095,27 @@ export function CourseDetail({
                     )}
 
                   {isUserEnrolled ? (
-                    <Button
-                      onClick={handleUnenroll}
-                      variant="destructive"
-                      size="sm"
-                      disabled={isUnenrolling || isRegistrationDeadlinePassed}
-                      className="gap-1"
-                    >
-                      {isUnenrolling ? (
-                        <>
-                          <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current"></span>
-                          Unenrolling...
-                        </>
-                      ) : (
-                        "Unenroll"
-                      )}
-                    </Button>
+                    // Only show Unenroll button if registration deadline not passed
+                    // AND (not a self-study JLPT course OR not unenroll disabled)
+                    !isRegistrationDeadlinePassed &&
+                      (!(course.courseType === "self-study" && course.selfStudyType === "jlpt") || !isUnenrollDisabled) && (
+                      <Button
+                        onClick={handleUnenroll}
+                        variant="destructive"
+                        size="sm"
+                        disabled={isUnenrolling}
+                        className="gap-1"
+                      >
+                        {isUnenrolling ? (
+                          <>
+                            <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current"></span>
+                            Unenrolling...
+                          </>
+                        ) : (
+                          "Unenroll"
+                        )}
+                      </Button>
+                    )
                   ) : (
                     <Button
                       onClick={handleRegister}
@@ -999,7 +1160,7 @@ export function CourseDetail({
                         strokeWidth={2}
                         className="h-4 w-4"
                       />
-                      Change Group
+                      Change Learners
                     </Button>
                   )}
                   <Button
@@ -1020,7 +1181,7 @@ export function CourseDetail({
           </div>
 
           {/* Tab Contents */}
-          {activeTab === "information" &&
+          {activeTab === "information" && (
             <InformationTab
               course={course}
               enrollments={enrollments}
@@ -1047,7 +1208,41 @@ export function CourseDetail({
               currentUserEnrollment={currentUserEnrollment}
               isUserEnrolled={isUserEnrolled}
             />
-          }
+          )}
+
+          {/* ✅ Attendance Tab Content */}
+
+          {activeTab === "attendance" &&
+            course.courseType === "trainer" && (
+              <AttendanceTab
+                course={course}
+                enrollments={enrollments}
+                userRole={userRole || "learner"}
+                currentUserId={currentUserId}
+                currentUserEnrollment={currentUserEnrollment}
+                profile={profile}
+                attendanceRecords={attendances}
+                attendanceStatuses={attendanceStatuses}
+                savingAttendance={savingAttendance}
+                savedAttendance={savedAttendance}
+                loadingAttendanceGroups={loadingAttendanceGroups}
+                onAttendanceChange={handleAttendanceChange}
+              />
+            )}
+
+          {/* ✅ Progress Tab Content */}
+          {activeTab === "progress" && course.courseType === "self-study" && (
+            <ProgressTab
+              userRole={userRole || "learner"}
+              profile={profile}
+              course={course}
+              enrollments={enrollments}
+              currentUserId={currentUserId}
+              currentUserEnrollment={currentUserEnrollment}
+              studyProgress={studyProgress}
+              onRefreshProgress={() => fetch_studyProgress(course.id)}
+            />
+          )}
 
           {activeTab === "groups" &&
             course.courseType === "trainer" &&
@@ -1166,3 +1361,5 @@ export function CourseDetail({
     </div>
   )
 }
+
+

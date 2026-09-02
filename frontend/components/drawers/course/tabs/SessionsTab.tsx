@@ -1,4 +1,3 @@
-// components/course/tabs/SessionsTab.tsx
 "use client"
 
 import React, { useState, useEffect } from "react"
@@ -18,8 +17,6 @@ import {
   CheckCircle,
   Alert01Icon,
   SaveIcon,
-  UserGroupIcon,
-  Edit03Icon,
 } from "@hugeicons/core-free-icons"
 import { Course, isJLPTType } from "@/types/course"
 import { format } from "date-fns"
@@ -78,8 +75,8 @@ export function SessionsTab({
   const [mockTestAttempt, setMockTestAttempt] = useState<number>(0)
   const [isSavingMockTest, setIsSavingMockTest] = useState(false)
 
-  const TESTING_DATE = new Date()
-  // const TESTING_DATE = new Date("2026-08-4")
+  // const TESTING_DATE = new Date()
+  const TESTING_DATE = new Date("2026-09-10")
 
   const getSessionStatus = (sessionDate: Date | string | undefined) => {
     if (!sessionDate) return "unknown"

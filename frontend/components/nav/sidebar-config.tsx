@@ -135,12 +135,6 @@ export const adminData: SidebarConfig = {
           ],
         },
         {
-          title: "Courses",
-          tabId: "courses",
-          type: "primary",
-          icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
-        },
-        {
           title: "Skills",
           tabId: "skills",
           type: "primary-action",
@@ -220,17 +214,25 @@ export const adminData: SidebarConfig = {
         },
       ],
     },
-    // {
-    //   groupLabel: "Announcements",
-    //   items: [
-    //     {
-    //       title: "Exams",
-    //       tabId: "exams",
-    //       type: "primary",
-    //       icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
-    //     },
-    //   ],
-    // },
+    {
+      groupLabel: "Learning",
+      items: [
+        {
+          title: "Courses",
+          tabId: "courses",
+          type: "primary",
+          icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
+        },
+        {
+          title: "Schedule",
+          tabId: "schedule",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon icon={Calendar03Icon} strokeWidth={STROKE_WIDTH} />
+          ),
+        },
+      ],
+    },
     {
       groupLabel: "Reports",
       items: [
@@ -340,7 +342,7 @@ export const learnerData: SidebarConfig = {
       ],
     },
     {
-      groupLabel: "My Learning",
+      groupLabel: "Learning",
       items: [
         {
           title: "Courses",
@@ -348,19 +350,16 @@ export const learnerData: SidebarConfig = {
           type: "primary",
           icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
         },
+        {
+          title: "Schedule",
+          tabId: "schedule",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon icon={Calendar03Icon} strokeWidth={STROKE_WIDTH} />
+          ),
+        },
       ],
     },
-    // {
-    //   groupLabel: "Announcements",
-    //   items: [
-    //     {
-    //       title: "Upcoming Exams",
-    //       tabId: "upcoming-exams",
-    //       type: "primary",
-    //       icon: <HugeiconsIcon icon={Task02Icon} strokeWidth={STROKE_WIDTH} />,
-    //     },
-    //   ],
-    // },
     {
       groupLabel: "Achievements",
       items: [
@@ -440,12 +439,6 @@ export const approverData: SidebarConfig = {
           ),
         },
         {
-          title: "Courses",
-          tabId: "courses",
-          type: "primary",
-          icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
-        },
-        {
           title: "Skills",
           tabId: "skills",
           type: "primary",
@@ -470,30 +463,25 @@ export const approverData: SidebarConfig = {
         },
       ],
     },
-    // {
-    //   groupLabel: "Reports",
-    //   items: [
-    //     {
-    //       title: "Approval Reports",
-    //       tabId: "approval-reports",
-    //       type: "primary",
-    //       icon: (
-    //         <HugeiconsIcon icon={GoogleDocIcon} strokeWidth={STROKE_WIDTH} />
-    //       ),
-    //     },
-    //     {
-    //       title: "Learner Progress Reports",
-    //       tabId: "learner-progress-reports",
-    //       type: "primary",
-    //       icon: (
-    //         <HugeiconsIcon
-    //           icon={CalendarAnalysisIcon}
-    //           strokeWidth={STROKE_WIDTH}
-    //         />
-    //       ),
-    //     },
-    //   ],
-    // },
+    {
+      groupLabel: "Learning",
+      items: [
+        {
+          title: "Courses",
+          tabId: "courses",
+          type: "primary",
+          icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
+        },
+        {
+          title: "Schedule",
+          tabId: "schedule",
+          type: "primary",
+          icon: (
+            <HugeiconsIcon icon={Calendar03Icon} strokeWidth={STROKE_WIDTH} />
+          ),
+        },
+      ],
+    },
     {
       groupLabel: "Support",
       items: [

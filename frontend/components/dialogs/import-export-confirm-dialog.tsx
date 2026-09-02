@@ -43,7 +43,9 @@ let dialogRef: {
 // Component
 export function ImportExportDialog() {
   const [isOpen, setIsOpen] = useState(false)
-  const [options, setOptions] = useState<DialogOptions & { resolve?: (value: boolean) => void }>({
+  const [options, setOptions] = useState<
+    DialogOptions & { resolve?: (value: boolean) => void }
+  >({
     type: "info",
     title: "",
     message: "",
@@ -143,36 +145,33 @@ export function ImportExportDialog() {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        if (options.resolve) {
-          options.resolve(false)
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          if (options.resolve) {
+            options.resolve(false)
+          }
+          setIsOpen(false)
         }
-        setIsOpen(false)
-      }
-    }}>
+      }}
+    >
       <DialogContent
         className={cn(
           "sm:max-w-[500px]",
           options.type === "error" && "border-red-200 dark:border-red-800",
-          options.type === "success" && "border-green-200 dark:border-green-800",
-          options.type === "warning" && "border-yellow-200 dark:border-yellow-800"
+          options.type === "success" &&
+            "border-green-200 dark:border-green-800",
+          options.type === "warning" &&
+            "border-yellow-200 dark:border-yellow-800"
         )}
         showCloseButton={!isLoading}
       >
         <DialogHeader>
           <div className="flex items-start gap-4">
-            <div
-              className={cn(
-                "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
-                bgClassName
-              )}
-            >
-              <HugeiconsIcon icon={Icon} strokeWidth={2} className={cn("h-6 w-6", className)} />
-            </div>
             <div className="flex-1">
-              <DialogTitle className="text-xl">{options.title}</DialogTitle>
-              <DialogDescription className="mt-2 text-base whitespace-pre-wrap">
+              <DialogTitle>{options.title}</DialogTitle>
+              <DialogDescription className="mt-2 whitespace-pre-wrap">
                 {formatMessage(options.message)}
               </DialogDescription>
               {options.details && (
@@ -186,7 +185,7 @@ export function ImportExportDialog() {
                     {detailsVisible ? "Hide details" : "Show details"}
                   </Button>
                   {detailsVisible && (
-                    <div className="mt-2 max-h-[300px] overflow-auto rounded-md bg-muted/50 p-3 text-sm font-mono whitespace-pre-wrap">
+                    <div className="mt-2 max-h-[300px] overflow-auto rounded-md bg-muted/50 p-3 font-mono text-sm whitespace-pre-wrap">
                       {options.details}
                     </div>
                   )}
@@ -195,12 +194,13 @@ export function ImportExportDialog() {
             </div>
           </div>
         </DialogHeader>
-        <DialogFooter className="flex gap-2 sm:justify-end">
+        <DialogFooter className="flex gap-2">
           {options.showCancel && (
             <Button
               variant="outline"
               onClick={handleCancel}
               disabled={isLoading}
+              className="flex-1"
             >
               {options.cancelText || "Cancel"}
             </Button>
@@ -209,6 +209,7 @@ export function ImportExportDialog() {
             variant={options.isDestructive ? "destructive" : "default"}
             onClick={handleConfirm}
             disabled={isLoading}
+            className="flex-1"
           >
             {isLoading ? "Processing..." : options.confirmText || "OK"}
           </Button>
@@ -227,7 +228,11 @@ export const dialog = {
     return Promise.reject(new Error("ImportExportDialog not initialized"))
   },
 
-  success: (title: string, message: string, details?: string): Promise<boolean> => {
+  success: (
+    title: string,
+    message: string,
+    details?: string
+  ): Promise<boolean> => {
     return dialog.show({
       type: "success",
       title,
@@ -237,7 +242,11 @@ export const dialog = {
     })
   },
 
-  error: (title: string, message: string, details?: string): Promise<boolean> => {
+  error: (
+    title: string,
+    message: string,
+    details?: string
+  ): Promise<boolean> => {
     return dialog.show({
       type: "error",
       title,
@@ -247,7 +256,11 @@ export const dialog = {
     })
   },
 
-  warning: (title: string, message: string, details?: string): Promise<boolean> => {
+  warning: (
+    title: string,
+    message: string,
+    details?: string
+  ): Promise<boolean> => {
     return dialog.show({
       type: "warning",
       title,
@@ -257,7 +270,11 @@ export const dialog = {
     })
   },
 
-  info: (title: string, message: string, details?: string): Promise<boolean> => {
+  info: (
+    title: string,
+    message: string,
+    details?: string
+  ): Promise<boolean> => {
     return dialog.show({
       type: "info",
       title,

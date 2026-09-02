@@ -47,7 +47,7 @@ export function NewCertificateDrawer({
     file?: File
   }) => {
     if (!data.file) {
-      toast.info("Please select an image file")
+      toast.info("Please select an image file", { position: "top-center" })
       return
     }
 
@@ -62,15 +62,19 @@ export function NewCertificateDrawer({
       })
 
       if (result.includes("successfully")) {
-        toast.success(" Certificate added successfully!")
+        toast.success(" Certificate added successfully!", {
+          position: "top-center",
+        })
         onOpenChange(false)
         await fetch_CertificateData()
       } else {
-        toast.error("❌ " + result)
+        toast.error(" " + result, { position: "top-center" })
       }
     } catch (error) {
-      console.error("❌ Error adding certificate:", error)
-      toast.error("❌ Failed to add certificate")
+      console.error(" Error adding certificate:", error, {
+        position: "top-center",
+      })
+      toast.error(" Failed to add certificate", { position: "top-center" })
     } finally {
       setIsSubmitting(false)
     }

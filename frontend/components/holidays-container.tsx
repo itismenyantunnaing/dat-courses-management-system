@@ -404,8 +404,8 @@ export function HolidaysContainer({
 
   return (
     <>
-      <div className="flex flex-col gap-4 py-4">
-        <CardContent className="px-4">
+      <div className="flex flex-col gap-4 pb-6">
+        <CardContent className="px-0">
           {/* Search and New Button - Only show when there are holidays */}
           {hasAnyHolidays && (
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -575,7 +575,9 @@ export function HolidaysContainer({
               <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="select-rows-per-page">
-                    Rows per page
+                    <span className="font-normal text-muted-foreground">
+                      Rows per page
+                    </span>
                   </FieldLabel>
                   <Select
                     value={itemsPerPage.toString()}
@@ -664,7 +666,9 @@ export function HolidaysContainer({
                   />
                 </EmptyMedia>
                 <EmptyTitle>
-                  {searchTerm ? `No Matching Holidays for ${searchTerm}` : "No Holiday"}
+                  {searchTerm
+                    ? `No Matching Holidays for ${searchTerm}`
+                    : "No Holiday"}
                 </EmptyTitle>
                 <EmptyDescription className="text-center text-pretty">
                   {searchTerm ? (

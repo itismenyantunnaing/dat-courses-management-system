@@ -135,7 +135,7 @@ export function AnnouncementCard({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Avatar className="h-9 w-9 flex-shrink-0">
               <AvatarImage src="" alt={announcement.createdBy} />
-              <AvatarFallback className="text-primary">
+              <AvatarFallback className="text-xs">
                 {getInitials(announcement.createdBy)}
               </AvatarFallback>
             </Avatar>

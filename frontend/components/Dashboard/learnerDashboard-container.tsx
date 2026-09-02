@@ -211,13 +211,21 @@ export default function LearnerDashboardContainer({
         await fetchAllUpcomingSessions(profile.id)
         await fetchEmployeeTargetLevel(profile.id)
 
-        // Fetch study progress for self-study courses
-        const selfStudyCourses = upcomingAllSessionsData.filter(
+        // Read the FRESH store state directly, not the stale closure variable
+        const freshSessions = mainStore.getState().upcomingAllSessionsData
+
+        const selfStudyCourses = freshSessions.filter(
           (session: CourseSession) => session.courseType === "SELF_STUDY"
         )
-        for (const session of selfStudyCourses) {
-          await fetch_studyProgress(session.courseId)
-        }
+
+        // dedupe by courseId so you don't call fetch_studyProgress N times for N sessions of the same course
+        const uniqueCourseIds = Array.from(
+          new Set(selfStudyCourses.map((s) => s.courseId))
+        )
+
+        await Promise.all(
+          uniqueCourseIds.map((courseId) => fetch_studyProgress(courseId))
+        )
       } catch (error) {
         console.error("Error loading data:", error)
       } finally {
@@ -241,7 +249,7 @@ export default function LearnerDashboardContainer({
         // Get unique course IDs for trainer-provided courses
         const uniqueCourseIds = new Set<string | number>()
         upcomingAllSessionsData.forEach((session: CourseSession) => {
-          if (session.courseType === "TRAINER_PROVIDED" && session.courseId) {
+          if (session.courseId) {
             uniqueCourseIds.add(session.courseId)
           }
         })
@@ -399,7 +407,7 @@ export default function LearnerDashboardContainer({
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to update attendance"
-      console.error("❌ Error updating attendance:", error)
+      console.error(" Error updating attendance:", error)
       setAttendanceError(errorMessage)
     } finally {
       setIsUpdatingAttendance(false)
@@ -660,8 +668,8 @@ export default function LearnerDashboardContainer({
 
   return (
     <>
-      <div className="flex flex-col pt-4 pb-6">
-        <CardContent className="space-y-4 px-4">
+      <div className="flex flex-col pb-6">
+        <CardContent className="space-y-4 px-0">
           {/* Stats Row - 4 cards */}
           <div className="grid gap-4 md:grid-cols-4">
             <StatCard
@@ -799,13 +807,13 @@ export default function LearnerDashboardContainer({
                   // Calculate overall progress
                   const overallProgress = progress
                     ? Math.round(
-                        ((progress.kanji_progress_percent || 0) +
-                          (progress.vocabulary_progress_percent || 0) +
-                          (progress.grammar_progress_percent || 0) +
-                          (progress.reading_progress_percent || 0) +
-                          (progress.listening_progress_percent || 0)) /
-                          5
-                      )
+                      ((progress.kanji_progress_percent || 0) +
+                        (progress.vocabulary_progress_percent || 0) +
+                        (progress.grammar_progress_percent || 0) +
+                        (progress.reading_progress_percent || 0) +
+                        (progress.listening_progress_percent || 0)) /
+                      5
+                    )
                     : 0
 
                   const isCompleted =
@@ -817,9 +825,9 @@ export default function LearnerDashboardContainer({
                       className={cn(
                         "rounded-lg border p-4 transition-colors hover:bg-muted/50",
                         !canEdit &&
-                          sessionDate &&
-                          sessionDate > new Date() &&
-                          "opacity-70"
+                        sessionDate &&
+                        sessionDate > new Date() &&
+                        "opacity-70"
                       )}
                     >
                       <div className="flex items-start justify-between">
@@ -939,13 +947,13 @@ export default function LearnerDashboardContainer({
                                             className={cn(
                                               "h-2 w-2 rounded-full",
                                               option.value === "PRESENT" &&
-                                                "bg-green-500",
+                                              "bg-green-500",
                                               option.value === "ABSENT" &&
-                                                "bg-red-500",
+                                              "bg-red-500",
                                               option.value === "LATE" &&
-                                                "bg-yellow-500",
+                                              "bg-yellow-500",
                                               option.value === "EXCUSED" &&
-                                                "bg-blue-500"
+                                              "bg-blue-500"
                                             )}
                                           />
                                           {option.label}
@@ -1104,9 +1112,6 @@ export default function LearnerDashboardContainer({
               <CardHeader className="flex flex-row items-center justify-between border-b py-0">
                 <div>
                   <CardTitle>Notifications</CardTitle>
-                  <CardDescription>
-                    Important updates and reminders
-                  </CardDescription>
                 </div>
                 <Button
                   variant="ghost"
@@ -1114,14 +1119,14 @@ export default function LearnerDashboardContainer({
                   onClick={() => setNotificationsDrawerOpen(true)}
                 >
                   All Notifications
-                  {totalNotificationsCount > 0 && (
+                  {/* {totalNotificationsCount > 0 && (
                     <Badge
                       variant="secondary"
                       className="ml-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs"
                     >
                       {totalNotificationsCount}
                     </Badge>
-                  )}
+                  )} */}
                   <HugeiconsIcon
                     icon={ArrowRight01Icon}
                     strokeWidth={2}

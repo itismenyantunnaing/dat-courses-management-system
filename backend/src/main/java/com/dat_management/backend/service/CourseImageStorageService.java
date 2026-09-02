@@ -39,7 +39,7 @@ public class CourseImageStorageService {
                 System.out.println(" Directory exists: " + uploadPath);
             }
         } catch (Exception e) {
-            System.err.println("❌ Failed to create directory: " + e.getMessage());
+            System.err.println(" Failed to create directory: " + e.getMessage());
             throw new RuntimeException("Cannot create upload directory: " + e.getMessage(), e);
         }
     }
@@ -78,10 +78,10 @@ public class CourseImageStorageService {
             if (Files.exists(filePath)) {
                 System.out.println(" Verified: File exists at: " + filePath.toAbsolutePath());
             } else {
-                System.err.println("❌ Warning: File not found after save!");
+                System.err.println(" Warning: File not found after save!");
             }
         } catch (Exception e) {
-            System.err.println("❌ Failed to save course image: " + e.getMessage());
+            System.err.println(" Failed to save course image: " + e.getMessage());
             throw new IOException("Failed to save course image: " + e.getMessage(), e);
         }
 

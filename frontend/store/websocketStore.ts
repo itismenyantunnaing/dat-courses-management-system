@@ -12,7 +12,9 @@ interface Notification {
   read: boolean;
   courseId?: number;
   certificateId?: number;
+  announcementId?: number;
   title?: string;
+  isAnnouncement?: boolean;
 }
 
 interface NotificationState {
@@ -125,16 +127,24 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
               // Parse the notification data
               const data = JSON.parse(message.body);
 
+              // Determine if this is an announcement notification
+              const notificationType = data.notificationType?.toUpperCase() || data.type?.toUpperCase() || '';
+              const isAnnouncement = notificationType === 'ANNOUNCEMENT' || 
+                                     data.type === 'ANNOUNCEMENT' || 
+                                     data.notificationType === 'ANNOUNCEMENT';
+
               // Create notification object for websocket store
               const notification: Notification = {
                 id: data.notificationId?.toString() || data.id || Date.now().toString(),
                 message: data.message || 'New notification',
                 title: data.title || 'Notification',
-                type: data.notificationType?.toLowerCase() || data.type?.toLowerCase() || 'info',
+                type: notificationType.toLowerCase() as 'info' | 'success' | 'warning' | 'error',
                 timestamp: new Date(data.createdAt || data.timestamp || Date.now()),
                 read: false,
                 courseId: data.courseId || data.referenceId,
                 certificateId: data.certificateId,
+                announcementId: data.announcementId,
+                isAnnouncement: isAnnouncement,
               };
 
               //  Update webScoketStore
@@ -185,11 +195,13 @@ export const webScoketStore = create<NotificationState>((set, get) => ({
                 const mainStoreNotification = {
                   id: parseInt(notification.id) || Date.now(),
                   message: notification.message,
-                  type: notification.type?.toUpperCase() || 'COURSE',
+                  type: notificationType || 'COURSE',
                   read: false,
                   createdAt: notification.timestamp.toISOString(),
                   courseId: notification.courseId,
                   certificateId: notification.certificateId,
+                  announcementId: notification.announcementId,
+                  isAnnouncement: isAnnouncement,
                 };
 
                 // Check if notification already exists (avoid duplicates),

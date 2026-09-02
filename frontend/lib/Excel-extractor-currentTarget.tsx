@@ -671,7 +671,7 @@ export async function extractCurrentTargetDataFromExcel(
       dynamicHeaders: dynamicHeaders,
     }
   } catch (err) {
-    console.error("❌ Error during extraction:", err)
+    console.error(" Error during extraction:", err)
     return {
       success: false,
       headers: [],
@@ -821,7 +821,7 @@ export const getCurrentTargetSheetNames = async (
     await workbook.xlsx.load(arrayBuffer)
     return workbook.worksheets.map((ws) => ws.name)
   } catch (error) {
-    console.error("❌ Error getting sheet names:", error)
+    console.error(" Error getting sheet names:", error)
     throw error
   }
 }

@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useState, useEffect, useRef, useMemo } from "react"
@@ -757,7 +756,7 @@ export function EmployeeContainer({
       toast.success(` ${dialogItemType} "${name}" added successfully!`)
       await fetch_EmployeeData()
     } else {
-      toast.error(`❌ Failed to add: ${result?.error || "Unknown error"}`)
+      toast.error(`Failed to add: ${result?.error || "Unknown error"}`)
     }
   }
 
@@ -820,11 +819,11 @@ export function EmployeeContainer({
         await fetch_teams()
         await fetch_roles()
       } else {
-        toast.error(`❌ Failed to update: ${result?.error || "Unknown error"}`)
+        toast.error(`Failed to update: ${result?.error || "Unknown error"}`)
       }
     } catch (error) {
       console.error("Error updating item:", error)
-      toast.error(`❌ Failed to update ${dialogItemType}. Please try again.`)
+      toast.error(`Failed to update ${dialogItemType}. Please try again.`)
     }
   }
 
@@ -938,7 +937,9 @@ export function EmployeeContainer({
     )
 
     if (!canManageAllSelected) {
-      toast.warning("You don't have permission to delete all selected employees")
+      toast.warning(
+        "You don't have permission to delete all selected employees"
+      )
       return
     }
 
@@ -1116,23 +1117,6 @@ export function EmployeeContainer({
                     ] || employee.emp_status}
                   </Badge>
                 </div>
-                {/* Delete Button - Only show if user can manage this employee */}
-                {(canManageEmployee(employee) || isAdmin) && (
-                  <div className="absolute right-3 bottom-[-3] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDeleteEmployee}
-                      className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
-                    >
-                      <HugeiconsIcon
-                        icon={Delete02Icon}
-                        strokeWidth={2}
-                        className="h-4 w-4"
-                      />
-                    </Button>
-                  </div>
-                )}
               </div>
 
               {/* Skills Section */}
@@ -1202,6 +1186,23 @@ export function EmployeeContainer({
               )}
             </div>
           </div>
+          {/* Delete Button - Only show if user can manage this employee */}
+          {(canManageEmployee(employee) || isAdmin) && (
+            <div className="absolute right-3 bottom-[-3] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDeleteEmployee}
+                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
+              >
+                <HugeiconsIcon
+                  icon={Delete02Icon}
+                  strokeWidth={2}
+                  className="h-4 w-4"
+                />
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     )
@@ -2011,10 +2012,10 @@ export function EmployeeContainer({
 
   return (
     <>
-      <div className="flex flex-col gap-4 pt-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         <CardContent className="px-0">
           {/* Tabs and Search Bar */}
-          <div className="mb-8 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             {/* Tabs */}
             <div>
               <Tabs
@@ -2308,7 +2309,7 @@ export function EmployeeContainer({
           {/* Content */}
           {isListView && !isDrillDown ? (
             // Category Cards View (Divisions/Departments/Teams) - NO PAGINATION
-            <div className="mx-4 space-y-4">
+            <div className="space-y-4">
               {listItems.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground">
                   No {activeView} found
@@ -2319,7 +2320,7 @@ export function EmployeeContainer({
             </div>
           ) : isDrillDown ? (
             // Drill Down View - Employees in selected category (Card View)
-            <div className="mx-4">
+            <div>
               <div className="mbs-8 mbe-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   {/* Back Button for Drill Down */}
@@ -2500,7 +2501,7 @@ export function EmployeeContainer({
           ) : viewMode === "list" ? (
             // Table View for Employees
             <div
-              className={cn("relative mx-4 overflow-x-auto rounded-md border")}
+              className={cn("relative overflow-x-auto rounded-md border")}
               style={{ zIndex: 1 }}
             >
               <Table>
@@ -2619,7 +2620,7 @@ export function EmployeeContainer({
                                   }
                                   alt={employee.name}
                                 />
-                                <AvatarFallback className="text-xs text-primary">
+                                <AvatarFallback className="text-xs">
                                   {getInitials(employee.name)}
                                 </AvatarFallback>
                               </Avatar>
@@ -2664,7 +2665,7 @@ export function EmployeeContainer({
             </div>
           ) : (
             // Card View for Employees
-            <div className={cn("relative mx-4")} style={{ zIndex: 1 }}>
+            <div className={cn("relative")} style={{ zIndex: 1 }}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {paginatedEmployees.length === 0 ? (
                   <div className="col-span-full py-8 text-center text-muted-foreground">
@@ -2746,12 +2747,14 @@ export function EmployeeContainer({
           {!isListView && !isDrillDown && (
             <div
               className={cn(
-                "mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between"
+                "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
               )}
             >
               <Field orientation="horizontal" className="w-fit">
                 <FieldLabel htmlFor="select-rows-per-page">
-                  Rows per page
+                  <span className="font-normal text-muted-foreground">
+                    Rows per page
+                  </span>
                 </FieldLabel>
                 <Select
                   value={itemsPerPage.toString()}

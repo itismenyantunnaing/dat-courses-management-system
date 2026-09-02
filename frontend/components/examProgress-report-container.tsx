@@ -439,8 +439,8 @@ export function ExamProgressReportContainer() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 py-6">
-        <CardContent className="px-4">
+      <div className="flex flex-col gap-4 pb-6">
+        <CardContent className="px-0">
           {/* Header with Search and Filters - Only show when there's data */}
           {hasAnyData && (
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -151,7 +151,7 @@ export function CertificateCard({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-full">
                   <AvatarImage src={employeeAvatar} alt={employeeName} />
-                  <AvatarFallback className="rounded-full">
+                  <AvatarFallback className="text-xs">
                     {getInitials(employeeName)}
                   </AvatarFallback>
                 </Avatar>

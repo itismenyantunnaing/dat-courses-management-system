@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx (or wherever your dashboard component is)
 "use client"
 
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -16,7 +15,14 @@ import { ExamsContainer } from "@/components/exams-container"
 import { SkillContainer } from "@/components/skill-container"
 import { HolidaysContainer } from "@/components/holidays-container"
 import ChangePassword from "@/components/dialogs/changePassword-dialog"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { CurrentTargetContainer } from "@/components/current-target-container"
 import { ExamProgressReportContainer } from "@/components/examProgress-report-container"
 import { mainStore } from "@/store/mainStore"
@@ -45,6 +51,7 @@ import type { SessionData } from "@/types/session"
 import { AnnouncementContainer } from "@/components/announcement-container"
 import { getAuthToken, logout } from "@/app/actions/auth"
 import { ImportExportDialog } from "@/components/dialogs/import-export-confirm-dialog"
+import { ScheduleContainer } from "@/components/schedule-container"
 
 interface DashboardClientProps {
   userData: SessionData
@@ -69,6 +76,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   const [pendingCertificateId, setPendingCertificateId] = useState<
     number | null
   >(null)
+  const [refreshAnnouncements, setRefreshAnnouncements] = useState(false)
+  const [navigateToAnnouncement, setNavigateToAnnouncement] = useState(false)
 
   // Get session store actions
   const {
@@ -79,7 +88,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     fetch_UnreadCount,
     fetch_CertificateData,
     fetch_AllCertificates,
-    fetchAll_CourseData
+    fetchAll_CourseData,
+    fetch_AnnouncementData,
   } = mainStore()
   const { connect } = webScoketStore()
 
@@ -93,7 +103,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Initialize session in Zustand store when component mounts
   useEffect(() => {
     if (!initialized.current && userData) {
-      ; (async () => {
+      ;(async () => {
         setSession(userData)
         await fetch_EmployeeProfile(userData.userId)
         initialized.current = true
@@ -132,14 +142,14 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   useEffect(() => {
     setMounted(true)
     if (typeof window !== "undefined") {
-      ; (window as any).mainStore = mainStore
+      ;(window as any).mainStore = mainStore
     }
   }, [])
 
   // Countdown timer for auto-logout
   useEffect(() => {
     let timer: NodeJS.Timeout
-    
+
     if (isSuccessDialogOpen && countdown > 0) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1)
@@ -148,7 +158,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       // Auto logout when countdown reaches 0
       handleSuccessConfirm()
     }
-    
+
     return () => {
       if (timer) clearInterval(timer)
     }
@@ -159,7 +169,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     if (notifications.length > 0) {
       const latest = notifications[0]
       if (latest && !latest.read) {
-        const hasNavigationTarget = latest.courseId || latest.certificateId
+        const hasNavigationTarget = latest.courseId || latest.certificateId || latest.isAnnouncement
 
         const toastOptions: any = {
           description: latest.message,
@@ -168,7 +178,6 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           style: {
             background: "#1a1a2e",
             color: "#ffffff",
-            border: "1px solid #e94560",
             borderRadius: "12px",
             padding: "16px",
             width: "480px",
@@ -185,26 +194,75 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         if (hasNavigationTarget) {
           toastOptions.action = {
             label: "View",
-            onClick: () => {
+            onClick: async () => {
               webScoketStore.getState().markAsRead(latest.id)
+
               if (latest.courseId) {
-                // fetchAll_CourseData()
-                setSelectedCourseId(latest.courseId)
-                setActiveTab("courses")
-              } else if (latest.certificateId) {
-                // refetch certificate data
-                if (user_role === "learner") {
-                  fetch_CertificateData(profile.id)
-                } else {
-                  fetch_AllCertificates(profile.id)
+                // Refresh course data before navigating
+                try {
+                  // Clear existing selection first
+                  setSelectedCourseId(null)
+
+                  // Refresh course data
+                  await fetchAll_CourseData()
+
+                  // Set the course ID and navigate
+                  setSelectedCourseId(latest.courseId)
+                  setActiveTab("courses")
+                } catch (error) {
+                  console.error("Failed to refresh course data:", error)
+                  // Still try to navigate
+                  setSelectedCourseId(latest.courseId)
+                  setActiveTab("courses")
                 }
-                const targetTab =
-                  user_role === "learner"
-                    ? "japanese-certificates"
-                    : "certificates-requests"
-                setPendingCertificateId(latest.certificateId)
-                setSelectedCertificateId(null)
+              } else if (latest.certificateId) {
+                // First refresh the certificate data
+                const targetTab = user_role === "learner"
+                  ? "japanese-certificates"
+                  : "certificates-requests"
+
+                // Set the active tab first
                 setActiveTab(targetTab)
+
+                // Wait for the data to refresh before setting the certificate ID
+                try {
+                  // Clear any existing selection first to force a refresh
+                  setSelectedCertificateId(null)
+                  setPendingCertificateId(null)
+
+                  // Refresh certificate data based on user role
+                  if (user_role === "learner") {
+                    await fetch_CertificateData(profile?.id)
+                  } else {
+                    await fetch_AllCertificates(profile?.id)
+                  }
+
+                  // Now set the certificate ID to open the drawer with fresh data
+                  setPendingCertificateId(latest.certificateId)
+                  setSelectedCertificateId(latest.certificateId)
+                } catch (error) {
+                  console.error("Failed to refresh certificate data:", error)
+                  // Still try to open the drawer even if refresh fails
+                  setPendingCertificateId(latest.certificateId)
+                  setSelectedCertificateId(latest.certificateId)
+                }
+              } else if (latest.isAnnouncement) {
+                // Handle announcement navigation - refresh data and navigate to tab
+                try {
+                  // Clear any existing refresh flag
+                  setNavigateToAnnouncement(false)
+                  
+                  // Refresh announcement data
+                  await fetch_AnnouncementData()
+                  
+                  // Navigate to announcement tab
+                  setNavigateToAnnouncement(true)
+                  setActiveTab("announcement")
+                } catch (error) {
+                  console.error("Failed to refresh announcement data:", error)
+                  setNavigateToAnnouncement(true)
+                  setActiveTab("announcement")
+                }
               }
             },
           }
@@ -259,7 +317,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
     setActiveTab(tab)
   }, [user_role, isProfileLoaded])
 
-  //  Use database unread count
+  // Use database unread count
   const totalUnreadCount = dbUnreadCount || 0
 
   useEffect(() => {
@@ -274,14 +332,13 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   }, [activeTab, pendingCertificateId])
 
   const handleNotificationAction = (
-    action: "view-course" | "view-certificate",
+    action: "view-course" | "view-certificate" | "view-announcement",
     id: number
   ) => {
     if (action === "view-course") {
       setSelectedCourseId(id)
       setActiveTab("courses")
     } else if (action === "view-certificate") {
-
       const targetTab =
         user_role === "learner"
           ? "japanese-certificates"
@@ -289,11 +346,24 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       setPendingCertificateId(id)
       setSelectedCertificateId(null)
       setActiveTab(targetTab)
+    } else if (action === "view-announcement") {
+      // For announcements, just refresh data and navigate to the tab
+      fetch_AnnouncementData().then(() => {
+        setActiveTab("announcement")
+      })
     }
   }
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
+    
+    // Trigger refresh when navigating to announcement tab
+    if (tab === "announcement") {
+      setRefreshAnnouncements(true)
+      // Reset after a moment
+      setTimeout(() => setRefreshAnnouncements(false), 100)
+    }
+    
     if (tab !== "japanese-certificates" && tab !== "certificates-requests") {
       setSelectedCertificateId(null)
       setPendingCertificateId(null)
@@ -348,6 +418,8 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         return "Employees"
       case "courses":
         return "Courses"
+      case 'schedule':
+        return 'Schedule'
       case "jlpt_target_level":
         return "JLPT Target Level"
       case "exams":
@@ -402,8 +474,15 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         selectedCourseId: selectedCourseId,
       },
     },
+    { value: "schedule", component: ScheduleContainer },
     { value: "exams", component: ExamsContainer },
-    { value: "announcement", component: AnnouncementContainer },
+    {
+      value: "announcement",
+      component: AnnouncementContainer,
+      props: {
+        shouldRefresh: refreshAnnouncements,
+      },
+    },
     { value: "feedback", component: FeedbackContainer },
     { value: "skills", component: SkillContainer },
     { value: "jlpt_target_level", component: CurrentTargetContainer },
@@ -444,7 +523,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   // Handle success dialog confirm
   const handleSuccessConfirm = async () => {
     setIsSuccessDialogOpen(false)
-    await logout();
+    await logout()
   }
 
   if (!mounted) {
@@ -471,7 +550,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
           onTabChange={handleTabChange}
           activeTab={activeTab}
         />
-        <SidebarInset className="overflow-x-auto">
+        <SidebarInset className="flex flex-col overflow-x-hidden">
           <header className="flex h-16 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex w-full items-center justify-between px-4">
               <div className="flex items-center gap-2">
@@ -508,8 +587,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
                     )}
                   </Button>
                   <div
-                    className={`absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-white ${isConnected ? "bg-green-500" : "bg-red-500"
-                      }`}
+                    className={`absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-white ${
+                      isConnected ? "bg-green-500" : "bg-red-500"
+                    }`}
                   />
                 </div>
 
@@ -530,13 +610,15 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
               </div>
             </div>
           </header>
-          <Tabs value={activeTab} onValueChange={handleTabChange}>
-            {tabConfigs.map(({ value, component: Component, props }) => (
-              <TabsContent key={value} value={value} className="m-0">
-                <Component {...props} />
-              </TabsContent>
-            ))}
-          </Tabs>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+              {tabConfigs.map(({ value, component: Component, props }) => (
+                <TabsContent key={value} value={value} className="m-0 mt-4">
+                  <Component {...props} />
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
         </SidebarInset>
       </SidebarProvider>
 
@@ -583,7 +665,9 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             onClose={() => setIsChangePasswordOpen(false)}
             onPasswordUpdate={(data) => {
               // Handle password update success
-              handlePasswordUpdateSuccess("Password changed successfully!\nPlease login with your new password.")
+              handlePasswordUpdateSuccess(
+                "Password changed successfully!\nPlease login with your new password."
+              )
             }}
           />
         </DialogContent>
@@ -592,11 +676,11 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       {/* Success Dialog */}
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
         <DialogContent
-          className="sm:max-w-[425px] text-center"
+          className="text-center sm:max-w-[425px]"
           showCloseButton={false}
         >
           <DialogHeader>
-            <div className="flex justify-center mb-4">
+            <div className="mb-4 flex justify-center">
               <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/20">
                 <HugeiconsIcon
                   icon={CheckmarkCircle01Icon}
@@ -626,7 +710,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         </DialogContent>
       </Dialog>
 
-       <ImportExportDialog />
+      <ImportExportDialog />
     </>
   )
 }

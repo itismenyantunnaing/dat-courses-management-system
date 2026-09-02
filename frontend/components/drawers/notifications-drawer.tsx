@@ -1,3 +1,4 @@
+// components/drawers/notifications-drawer.tsx
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -26,10 +27,12 @@ interface Notification {
   createdAt: string
   time: string
   unread: boolean
-  type: "COURSE" | "CERTIFICATE" | "JLPT_EXAM"
-  category: "all" | "course" | "certificate" | "jlpt"
+  type: "COURSE" | "CERTIFICATE" | "JLPT_EXAM" | "ANNOUNCEMENT"
+  category: "all" | "course" | "certificate" | "jlpt" | "announcement"
   certificateId?: number | null
   courseId?: number | null
+  announcementId?: number | null
+  isAnnouncement?: boolean
 }
 
 // Tab configuration
@@ -38,6 +41,8 @@ const TABS = [
   { id: "course", label: "Course" },
   { id: "certificate", label: "Certificate" },
   { id: "jlpt", label: "JLPT Exam" },
+  { id: "announcement", label: "Announce" },
+
 ] as const
 
 type TabType = (typeof TABS)[number]["id"]
@@ -45,7 +50,7 @@ type TabType = (typeof TABS)[number]["id"]
 interface NotificationsDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAction?: (action: "view-course" | "view-certificate", id: number) => void
+  onAction?: (action: "view-course" | "view-certificate" | "view-announcement", id: number) => void
 }
 
 export function NotificationsDrawer({
@@ -109,10 +114,10 @@ export function NotificationsDrawer({
     }
   }
 
-  // Handle action click (View Course / View Certificate)
+  // Handle action click (View Course / View Certificate / View Announcement)
   const handleActionClick = async (
     notification: Notification,
-    actionType: "view-course" | "view-certificate",
+    actionType: "view-course" | "view-certificate" | "view-announcement",
     id: number
   ) => {
     // Mark as read first if unread
@@ -151,21 +156,26 @@ export function NotificationsDrawer({
 
     return dbNotifications
       .map((notif: any) => {
+        const type = notif.type?.toUpperCase() || ''
         let category: Notification["category"] = "all"
-        if (notif.type === "COURSE") category = "course"
-        else if (notif.type === "CERTIFICATE") category = "certificate"
-        else if (notif.type === "JLPT_EXAM") category = "jlpt"
+
+        if (type === "COURSE") category = "course"
+        else if (type === "CERTIFICATE") category = "certificate"
+        else if (type === "JLPT_EXAM") category = "jlpt"
+        else if (type === "ANNOUNCEMENT") category = "announcement"
 
         return {
           id: notif.id,
           message: notif.message || "",
           createdAt: notif.createdAt || "",
           time: formatTime(notif.createdAt),
-          unread: !notif.isRead, // Use the read status from the store
-          type: notif.type,
+          unread: !notif.isRead,
+          type: type as Notification["type"],
           category: category,
           certificateId: notif.certificateId,
           courseId: notif.courseId,
+          announcementId: notif.announcementId,
+          isAnnouncement: type === "ANNOUNCEMENT" || notif.isAnnouncement === true,
         }
       })
       .sort((a, b) => {
@@ -280,6 +290,7 @@ export function NotificationsDrawer({
               <TabsContent value="all" className="mt-0" />
               <TabsContent value="course" className="mt-0" />
               <TabsContent value="certificate" className="mt-0" />
+              <TabsContent value="announcement" className="mt-0" />
               <TabsContent value="jlpt" className="mt-0" />
             </Tabs>
           </div>
@@ -304,7 +315,7 @@ export function NotificationsDrawer({
                 const isLast = index === filteredNotifications.length - 1
 
                 // Determine the action type for this notification
-                let actionType: "view-course" | "view-certificate" | null = null
+                let actionType: "view-course" | "view-certificate" | "view-announcement" | null = null
                 let actionId: number | null = null
 
                 if (notification.courseId) {
@@ -313,6 +324,10 @@ export function NotificationsDrawer({
                 } else if (notification.certificateId) {
                   actionType = "view-certificate"
                   actionId = notification.certificateId
+                } else if (notification.isAnnouncement || notification.type === "ANNOUNCEMENT") {
+                  // For announcements, we don't need an ID, just navigate to the tab
+                  actionType = "view-announcement"
+                  actionId = notification.id // Use notification ID as a dummy ID
                 }
 
                 return (
@@ -350,7 +365,7 @@ export function NotificationsDrawer({
                     <div className="min-w-0 flex-1">
                       <p
                         className={cn(
-                          "text-[15px] leading-snug transition-colors duration-200",
+                          "text-[15px] leading-snug line-clamp-3 transition-colors duration-200",
                           notification.unread
                             ? "font-medium text-gray-900"
                             : "text-gray-600"
@@ -381,7 +396,9 @@ export function NotificationsDrawer({
                             View{" "}
                             {actionType === "view-course"
                               ? "Course"
-                              : "Certificate"}
+                              : actionType === "view-certificate"
+                                ? "Certificate"
+                                : "Announcement"}
                           </Button>
                         </div>
                       )}

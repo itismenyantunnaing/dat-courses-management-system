@@ -13,10 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  ClockIcon,
-} from "@hugeicons/core-free-icons"
-import { resolveUploadUrl} from "@/lib/utils"
+import { Cancel01Icon, ClockIcon } from "@hugeicons/core-free-icons"
+import { resolveUploadUrl } from "@/lib/utils"
 
 // Types - Updated to match API response
 interface AuditLog {
@@ -120,8 +118,8 @@ const getActionBadge = (action: string) => {
 
 // Helper to format values for display
 const formatValue = (value: any): string => {
-  if (value === null || value === undefined) return 'null'
-  if (typeof value === 'object') {
+  if (value === null || value === undefined) return "null"
+  if (typeof value === "object") {
     // For nested objects, show a summary or JSON string
     if (Array.isArray(value)) {
       return `Array(${value.length})`
@@ -154,24 +152,17 @@ export function AuditLogDetailsDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="right-0 left-auto h-full w-[90%] sm:w-[80%] md:w-[65%] lg:w-[55%] xl:w-[45%]">
+      <DrawerContent className="right-0 left-auto w-[90%] sm:w-[80%] md:w-[65%] lg:w-[55%] xl:w-[45%]">
         <DrawerHeader className="shrink-0 border-b">
           <div className="flex items-center gap-2">
             <div className="flex w-full items-center justify-between gap-2">
-              <DrawerTitle className="text-lg font-semibold">
-                Audit Log Details
-              </DrawerTitle>
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <HugeiconsIcon
-                  icon={ClockIcon}
-                  strokeWidth={2}
-                  className="h-4 w-4"
-                />
-                <p className="text-sm">
-                  {formatDate(log.createdAt)}
-                </p>
-              </div>
+              <DrawerTitle>Audit Log Details</DrawerTitle>
             </div>
+            <DrawerClose asChild>
+              <Button variant="ghost" size="icon">
+                <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+              </Button>
+            </DrawerClose>
           </div>
         </DrawerHeader>
 
@@ -181,13 +172,13 @@ export function AuditLogDetailsDrawer({
             <div className="flex items-center gap-2 rounded-lg py-2">
               <Avatar className="h-12 w-12 rounded-full">
                 <AvatarImage
-                    src={
-                        resolveUploadUrl(log.employeeProfilePhotoPath) ||
-                        "/avatars/default.jpg"
-                    }
+                  src={
+                    resolveUploadUrl(log.employeeProfilePhotoPath) ||
+                    "/avatars/default.jpg"
+                  }
                   alt={log.employeeName || "User"}
                 />
-                <AvatarFallback className="rounded-full text-sm font-medium">
+                <AvatarFallback className="rounded-full text-base">
                   {getInitials(log.employeeName)}
                 </AvatarFallback>
               </Avatar>
@@ -201,9 +192,7 @@ export function AuditLogDetailsDrawer({
                   {log.employeeRole && (
                     <>
                       <span>•</span>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                        {log.employeeRole}
-                      </Badge>
+                      <span className="text-sm">{log.employeeRole}</span>
                     </>
                   )}
                 </div>
@@ -211,27 +200,44 @@ export function AuditLogDetailsDrawer({
             </div>
             <div>
               <h4 className="font-medium">IP Address</h4>
-              <p className="text-sm text-muted-foreground">{log.ipAddress}</p>
+              <p className="font-mono text-sm text-muted-foreground">
+                {log.ipAddress}
+              </p>
             </div>
           </div>
 
           {/* Description */}
           {log.description && (
-            <div className="mb-4 rounded-lg border p-3">
-              <h4 className="mb-1 text-xs font-medium text-muted-foreground">Description</h4>
+            <div className="mb-4 rounded-lg py-3">
+              <h4 className="mb-1 text-xs font-medium text-muted-foreground">
+                Description
+              </h4>
               <p className="text-sm">{log.description}</p>
             </div>
           )}
 
           {/* Changes Section - Old and New Value in one row */}
           <div>
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <h4 className="text-sm font-semibold">Changes</h4>
-              <Badge className={getActionBadge(log.action)}>{log.action}</Badge>
-              <span className="text-sm text-muted-foreground">in</span>
-              <Badge variant="outline" className="text-xs">
-                {log.module}
-              </Badge>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="text-sm text-muted-foreground">Changes</h4>
+                <Badge className={getActionBadge(log.action)}>
+                  {log.action}
+                </Badge>
+                <span className="text-sm text-muted-foreground">in</span>
+                <span className="text-sm font-semibold">
+                  {log.module[0].toUpperCase() +
+                    log.module.slice(1).toLowerCase()}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <HugeiconsIcon
+                  icon={ClockIcon}
+                  strokeWidth={2}
+                  className="h-4 w-4"
+                />
+                <p className="text-sm">{formatDate(log.createdAt)}</p>
+              </div>
             </div>
 
             {/* If there are changes, show diff view */}
@@ -243,36 +249,37 @@ export function AuditLogDetailsDrawer({
                       <span className="text-sm font-medium">
                         {change.field}
                       </span>
-                      <Badge variant="outline" className="text-[10px]">
-                        changed
-                      </Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="rounded-md bg-red-50 p-2 dark:bg-red-950/20">
-                        <p className="text-[10px] font-medium text-red-600 dark:text-red-400">
+                        <p className="mb-2 text-[10px] font-medium text-red-600 dark:text-red-400">
                           Old Value
                         </p>
-                        <div className="font-mono text-sm text-red-700 dark:text-red-300 break-all">
-                          {typeof change.old === 'object' ? (
-                            <pre className="whitespace-pre-wrap text-xs select-text">
+                        <div className="font-mono text-sm break-all text-red-700 dark:text-red-300">
+                          {typeof change.old === "object" ? (
+                            <pre className="text-xs whitespace-pre-wrap select-text">
                               {JSON.stringify(change.old, null, 2)}
                             </pre>
                           ) : (
-                            <span className="select-text">{String(change.old)}</span>
+                            <span className="select-text">
+                              {String(change.old)}
+                            </span>
                           )}
                         </div>
                       </div>
                       <div className="rounded-md bg-green-50 p-2 dark:bg-green-950/20">
-                        <p className="text-[10px] font-medium text-green-600 dark:text-green-400">
+                        <p className="mb-2 text-[10px] font-medium text-green-600 dark:text-green-400">
                           New Value
                         </p>
-                        <div className="font-mono text-sm font-medium text-green-700 dark:text-green-300 break-all">
-                          {typeof change.new === 'object' ? (
-                            <pre className="whitespace-pre-wrap text-xs select-text">
+                        <div className="font-mono text-sm font-medium break-all text-green-700 dark:text-green-300">
+                          {typeof change.new === "object" ? (
+                            <pre className="text-xs whitespace-pre-wrap select-text">
                               {JSON.stringify(change.new, null, 2)}
                             </pre>
                           ) : (
-                            <span className="select-text">{String(change.new)}</span>
+                            <span className="select-text">
+                              {String(change.new)}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -289,7 +296,7 @@ export function AuditLogDetailsDrawer({
                     Old Value
                   </p>
                   {log.oldValue ? (
-                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap break-all">
+                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs break-all whitespace-pre-wrap">
                       {formatJSON(log.oldValue)}
                     </pre>
                   ) : (
@@ -305,7 +312,7 @@ export function AuditLogDetailsDrawer({
                     New Value
                   </p>
                   {log.newValue ? (
-                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap break-all">
+                    <pre className="max-h-60 overflow-auto rounded bg-muted/50 p-2 font-mono text-xs break-all whitespace-pre-wrap">
                       {formatJSON(log.newValue)}
                     </pre>
                   ) : (
@@ -318,14 +325,6 @@ export function AuditLogDetailsDrawer({
             )}
           </div>
         </div>
-
-        <DrawerFooter className="shrink-0 border-t">
-          <DrawerClose asChild>
-            <Button variant="outline" className="w-full">
-              Close
-            </Button>
-          </DrawerClose>
-        </DrawerFooter>
       </DrawerContent>
     </Drawer>
   )

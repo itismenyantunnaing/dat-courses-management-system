@@ -164,20 +164,10 @@ export function CategoryDrawer({
         // Remove "JLPT" anywhere in the name (case insensitive)
         newName = newName.replace(/\bJLPT\b\s*/gi, '').trim()
 
-        // Remove "N5", "N4", "N3", "N2", "N1" (case insensitive)
-        newName = newName.replace(/\bN[1-5]\b\s*/gi, '').trim()
-
-        // Remove "N5", "N4", "N3", "N2", "N1" without word boundary (e.g., "N5-")
-        newName = newName.replace(/N[1-5][-\s]*/gi, '').trim()
 
         // Clean up any double spaces or trailing separators
         newName = newName.replace(/\s{2,}/g, ' ').trim()
         newName = newName.replace(/[-\s]+$/, '').trim()
-
-        // If the name is empty after removing JLPT, use a default
-        if (!newName) {
-          newName = 'Other'
-        }
       }
 
       return {

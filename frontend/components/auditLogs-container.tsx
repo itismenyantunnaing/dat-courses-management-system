@@ -87,6 +87,7 @@ import {
 } from "./ui/dropdown-menu"
 import { AuditLogDetailsDrawer } from "./drawers/auditLogs/auditLogDetails-drawer"
 import { mainStore } from "@/store/mainStore"
+import { toast } from "sonner"
 
 // Types - Updated to match API response
 interface AuditLog {
@@ -441,6 +442,7 @@ export function AuditLogsContainer() {
       goToPage(0)
     }
     await clearFilters()
+    toast.info("Filters cleared")
   }
 
   // Handle bulk delete
@@ -464,6 +466,7 @@ export function AuditLogsContainer() {
       await delete_AuditLog(logToDelete.id)
       setAuditLogs((prev) => prev.filter((log) => log.id !== logToDelete.id))
       setDeleteDialogOpen(false)
+      toast.success(`Audit log deleted successfully`)
       setLogToDelete(null)
       // Clear selection for deleted item
       setRowSelection((prev) => {
@@ -482,6 +485,7 @@ export function AuditLogsContainer() {
       )
     } catch (error) {
       console.error("Failed to delete log:", error)
+      toast.error("Failed to delete audit log")
     } finally {
       setIsDeleting(false)
     }
@@ -501,6 +505,9 @@ export function AuditLogsContainer() {
       )
       setRowSelection({})
       setBulkDeleteDialogOpen(false)
+      toast.success(
+        `${selectedIds.length} audit log${selectedIds.length > 1 ? "s" : ""} deleted successfully`
+      )
       await fetch_AuditLogsWithFilters(
         undefined,
         undefined,
@@ -512,6 +519,7 @@ export function AuditLogsContainer() {
       )
     } catch (error) {
       console.error("Failed to delete logs:", error)
+      toast.error("Failed to delete audit logs")
     } finally {
       setIsDeleting(false)
     }
@@ -582,15 +590,21 @@ export function AuditLogsContainer() {
 
   // Handle refresh
   const handleRefresh = async () => {
-    await fetch_AuditLogsWithFilters(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      pagination.currentPage,
-      pagination.pageSize
-    )
+    try {
+      await fetch_AuditLogsWithFilters(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        pagination.currentPage,
+        pagination.pageSize
+      )
+      toast.success("Audit logs are updated")
+    } catch (error) {
+      console.error("Failed to refresh logs:", error)
+      toast.error("Failed to refresh audit logs")
+    }
   }
 
   if (isLoading) {
@@ -605,11 +619,11 @@ export function AuditLogsContainer() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 pt-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         <CardContent className="px-0">
           {/* Header and Search Bar - Only show when there are logs */}
           {hasAnyLogs && (
-            <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <InputGroup className="max-w-sm">
                 <InputGroupInput
                   ref={searchInputRef}
@@ -796,7 +810,7 @@ export function AuditLogsContainer() {
           {hasData ? (
             <>
               <div
-                className="relative mx-4 overflow-x-auto rounded-md border"
+                className="relative overflow-x-auto rounded-md border"
                 style={{ zIndex: 1 }}
               >
                 <Table>
@@ -875,11 +889,12 @@ export function AuditLogsContainer() {
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8 rounded-full">
                                 <AvatarImage
-                                    src={
-                                        resolveUploadUrl(log.employeeProfilePhotoPath) ||
-                                        "/avatars/default.jpg"
-                                    }
-                                    alt={log.employeeName || ""}
+                                  src={
+                                    resolveUploadUrl(
+                                      log.employeeProfilePhotoPath
+                                    ) || "/avatars/default.jpg"
+                                  }
+                                  alt={log.employeeName || ""}
                                 />
                                 <AvatarFallback className="rounded-full text-xs">
                                   {getInitials(log.employeeName)}
@@ -893,16 +908,6 @@ export function AuditLogsContainer() {
                                   <span className="text-xs text-muted-foreground">
                                     {log.employeeId}
                                   </span>
-                                  {log.employeeRole && (
-                                    <>
-                                      <span className="text-xs text-muted-foreground">
-                                        ·
-                                      </span>
-                                      <span className="text-xs">
-                                        {log.employeeRole}
-                                      </span>
-                                    </>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -918,18 +923,17 @@ export function AuditLogsContainer() {
                             </div>
                           </BorderedTableCell>
                           <BorderedTableCell selected={isSelected}>
-                            <Badge variant="outline" className="text-xs">
-                              {log.module}
-                            </Badge>
+                            {log.module[0].toUpperCase() +
+                              log.module.slice(1).toLowerCase()}
                           </BorderedTableCell>
                           <BorderedTableCell
-                            className="max-w-[150px] truncate font-mono text-xs"
+                            className="max-w-[150px] truncate text-xs"
                             selected={isSelected}
                           >
                             {log.oldValue || "-"}
                           </BorderedTableCell>
                           <BorderedTableCell
-                            className="max-w-[150px] truncate font-mono text-xs"
+                            className="max-w-[150px] truncate text-xs"
                             selected={isSelected}
                           >
                             {log.newValue || "-"}
@@ -1002,10 +1006,10 @@ export function AuditLogsContainer() {
               )}
 
               {/* Pagination */}
-              <div className="mt-4 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="select-rows-per-page">
-                    Rows per page
+                    <span className="text-muted-foreground font-normal">Rows per page</span>
                   </FieldLabel>
                   <Select
                     value={pagination.pageSize.toString()}
@@ -1026,8 +1030,11 @@ export function AuditLogsContainer() {
                 </Field>
                 <div className="text-sm text-muted-foreground">
                   Showing {filteredData.length === 0 ? 0 : startIndex + 1} to{" "}
-                  {Math.min(startIndex + pagination.pageSize, filteredData.length)} of{" "}
-                  {filteredData.length} logs
+                  {Math.min(
+                    startIndex + pagination.pageSize,
+                    filteredData.length
+                  )}{" "}
+                  of {filteredData.length} logs
                 </div>
                 <Pagination className="mx-0 w-auto">
                   <PaginationContent>
@@ -1040,8 +1047,8 @@ export function AuditLogsContainer() {
                         }}
                         className={
                           pagination.currentPage === 0 ||
-                            filteredData.length === 0 ||
-                            isLoading
+                          filteredData.length === 0 ||
+                          isLoading
                             ? "pointer-events-none opacity-50"
                             : ""
                         }
@@ -1076,8 +1083,8 @@ export function AuditLogsContainer() {
                         }}
                         className={
                           pagination.currentPage === totalPages - 1 ||
-                            filteredData.length === 0 ||
-                            isLoading
+                          filteredData.length === 0 ||
+                          isLoading
                             ? "pointer-events-none opacity-50"
                             : ""
                         }

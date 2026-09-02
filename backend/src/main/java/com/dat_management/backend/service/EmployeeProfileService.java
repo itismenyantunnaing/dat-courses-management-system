@@ -51,7 +51,7 @@ public class EmployeeProfileService {
                 System.out.println(" Directory exists: " + uploadPath);
             }
         } catch (Exception e) {
-            System.err.println("❌ Failed to create profile upload directory: " + e.getMessage());
+            System.err.println(" Failed to create profile upload directory: " + e.getMessage());
             throw new RuntimeException("Cannot create profile upload directory: " + e.getMessage(), e);
         }
     }
@@ -99,10 +99,10 @@ public class EmployeeProfileService {
             if (Files.exists(filePath)) {
                 System.out.println(" Verified: File exists at: " + filePath.toAbsolutePath());
             } else {
-                System.err.println("❌ Warning: File not found after save!");
+                System.err.println(" Warning: File not found after save!");
             }
         } catch (Exception e) {
-            System.err.println("❌ Failed to save profile image: " + e.getMessage());
+            System.err.println(" Failed to save profile image: " + e.getMessage());
             throw new IOException("Failed to save profile image: " + e.getMessage(), e);
         }
 

@@ -1249,8 +1249,8 @@ export default function ApproverDashboardContainer() {
   }
 
   return (
-    <div className="flex flex-col pt-4 pb-6">
-      <CardContent className="space-y-4 px-4">
+    <div className="flex flex-col pb-6">
+      <CardContent className="space-y-4 px-0">
         {/* Stats Row - Updated with real data */}
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard

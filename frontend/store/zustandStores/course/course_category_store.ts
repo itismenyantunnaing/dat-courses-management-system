@@ -45,12 +45,7 @@ export const courseCategoryStore = (set: StoreSet, get: StoreGet) => ({
           let selfStudyType: 'jlpt' | 'other' | undefined = undefined
           const nameLower = category.course_category_name.toLowerCase()
 
-          if (nameLower.includes('jlpt') ||
-            nameLower.includes('n5') ||
-            nameLower.includes('n4') ||
-            nameLower.includes('n3') ||
-            nameLower.includes('n2') ||
-            nameLower.includes('n1')) {
+          if (nameLower.includes('jlpt')) {
             selfStudyType = 'jlpt'
           } else {
             selfStudyType = 'other'

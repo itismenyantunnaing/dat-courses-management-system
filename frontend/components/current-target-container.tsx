@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -57,7 +56,7 @@ import {
 import React from "react"
 import { mainStore } from "@/store/mainStore"
 
-import { cn } from "@/lib/utils"
+import { cn, resolveUploadUrl } from "@/lib/utils"
 import type { Employee } from "@/types/employee"
 import type { TargetDates, EmployeeJapaneseLevel } from "@/types/current_target"
 import { CreateCurrentTargetDrawer } from "@/components/drawers/currentTarget/createCurrentTarget-drawer"
@@ -100,6 +99,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { ImportDialog } from "@/components/dialogs/import-dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const STROKE_WIDTH = 2
 
@@ -452,6 +452,16 @@ export function CurrentTargetContainer({
       return undefined
     }
     return japaneseTargetDates_Data?.[index]
+  }
+
+  // Helper function to get initials
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
   }
 
   // Helper function to format date for group name
@@ -918,7 +928,7 @@ export function CurrentTargetContainer({
         setCurrentPage(1)
       }
     } catch (error) {
-      console.error("❌ Bulk delete failed:", error)
+      console.error(" Bulk delete failed:", error)
       alert("Failed to delete Japanese profile data. Please try again.")
     } finally {
       setIsDeleting(false)
@@ -1002,8 +1012,8 @@ export function CurrentTargetContainer({
 
   return (
     <>
-      <div className="flex flex-col gap-4 pt-4 pb-6">
-        <CardContent className="px-4">
+      <div className="flex flex-col gap-4 pb-6">
+        <CardContent className="px-0">
           {/* Search and controls - Show when there are any employees */}
           {hasAnyEmployees && (
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1640,7 +1650,7 @@ export function CurrentTargetContainer({
                             "bg-muted/30 text-center align-middle whitespace-nowrap",
                             (group.groupName.includes("Target Level") ||
                               group.groupName.includes("JLPT Exam Target")) &&
-                            "cursor-pointer transition-colors hover:bg-muted/50"
+                              "cursor-pointer transition-colors hover:bg-muted/50"
                           )}
                           colSpan={group.children.length}
                           onClick={() => {
@@ -1667,7 +1677,7 @@ export function CurrentTargetContainer({
                               header.field === "target_1_communication_level" ||
                               header.field === "target_2_communication_level" ||
                               header.field === "current_learning_level") &&
-                            "w-48"
+                              "w-48"
                           )}
                         >
                           {header.header_name}
@@ -1701,7 +1711,22 @@ export function CurrentTargetContainer({
                             selected={isSelected}
                             className="font-medium"
                           >
-                            {employee.name}
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage
+                                  src={
+                                    resolveUploadUrl(
+                                      employee.profile_photo_path
+                                    ) || null
+                                  }
+                                  alt={employee.name}
+                                />
+                                <AvatarFallback className="text-xs">
+                                  {getInitials(employee.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {employee.name}
+                            </div>
                           </BorderedTableCell>
                           <BorderedTableCell selected={isSelected}>
                             {employee.email || "-"}
@@ -1788,12 +1813,12 @@ export function CurrentTargetContainer({
                                     (header.field ===
                                       "current_communication_level" ||
                                       header.field ===
-                                      "target_1_communication_level" ||
+                                        "target_1_communication_level" ||
                                       header.field ===
-                                      "target_2_communication_level" ||
+                                        "target_2_communication_level" ||
                                       header.field ===
-                                      "current_learning_level") &&
-                                    "w-48"
+                                        "current_learning_level") &&
+                                      "w-48"
                                   )}
                                 >
                                   {isTruncatable && displayValue !== "-" ? (
@@ -1883,7 +1908,9 @@ export function CurrentTargetContainer({
               >
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="select-rows-per-page">
-                    Rows per page
+                    <span className="font-normal text-muted-foreground">
+                      Rows per page
+                    </span>
                   </FieldLabel>
                   <Select
                     value={itemsPerPage.toString()}
@@ -1954,7 +1981,7 @@ export function CurrentTargetContainer({
                         }}
                         className={
                           currentPage === totalPages ||
-                            filteredEmployees.length === 0
+                          filteredEmployees.length === 0
                             ? "pointer-events-none opacity-50"
                             : ""
                         }

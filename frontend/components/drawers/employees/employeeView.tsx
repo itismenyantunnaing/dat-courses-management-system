@@ -237,7 +237,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
                 src={resolveUploadUrl(employee.profile_photo_path) || ""}
                 alt={employee.name}
               />
-              <AvatarFallback className="text-lg text-primary">
+              <AvatarFallback className="text-lg">
                 {getInitials(employee.name)}
               </AvatarFallback>
             </Avatar>

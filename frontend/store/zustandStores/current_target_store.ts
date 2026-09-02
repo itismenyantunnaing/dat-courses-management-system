@@ -1,11 +1,13 @@
-import type { EmployeeJapaneseLevel, TargetDates } from "@/types/current_target";
+import type { EmployeeJapaneseLevel, TargetDates } from "@/types/current_target"
 import { CurrentTarget_StoreType } from "../types"
-import { getAuthToken } from "../mainStore";
+import { getAuthToken } from "../mainStore"
 
-type StoreSet = (fn: (state: CurrentTarget_StoreType) => Partial<CurrentTarget_StoreType>) => void;
-type StoreGet = () => CurrentTarget_StoreType;
+type StoreSet = (
+  fn: (state: CurrentTarget_StoreType) => Partial<CurrentTarget_StoreType>
+) => void
+type StoreGet = () => CurrentTarget_StoreType
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 
 export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
   japaneseTargetDates_Data: [],
@@ -16,419 +18,447 @@ export const currentTargetStore = (set: StoreSet, get: StoreGet) => ({
   // Fetch Target Dates
   fetch_TargetDates: async () => {
     try {
-      const token = getAuthToken();
+      const token = getAuthToken()
       const response = await fetch(`${apiUrl}/api/target-terms`, {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        }
-      });
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
+        },
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const data = await response.json();
+      const data = await response.json()
 
-      set(() => ({ japaneseTargetDates_Data: data }));
+      set(() => ({ japaneseTargetDates_Data: data }))
 
-      return data;
-
+      return data
     } catch (error) {
-      console.error('Error fetching employee Japanese target dates:', error);
-      set(() => ({ japaneseTargetDates_Data: [] }));
-      return [];
+      console.error("Error fetching employee Japanese target dates:", error)
+      set(() => ({ japaneseTargetDates_Data: [] }))
+      return []
     }
   },
 
   // Add/Create Target Dates
   add_TargetDates: async (data: TargetDates) => {
     try {
-      const token = getAuthToken();
+      const token = getAuthToken()
       const response = await fetch(`${apiUrl}/api/target-terms`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      });
+      })
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        const errorText = await response.text()
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`
+        )
       }
 
-      const newTerm = await response.json();
+      const newTerm = await response.json()
 
-      const currentData = get().japaneseTargetDates_Data || [];
+      const currentData = get().japaneseTargetDates_Data || []
       set(() => ({
         japaneseTargetDates_Data: [...currentData, newTerm],
-        isLoading: false
-      }));
+        isLoading: false,
+      }))
 
-      return `Target dates created successfully`;
-
+      return `Target dates created successfully`
     } catch (error) {
-      console.error('Error creating target dates:', error);
-      return `Failed to create target dates: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error("Error creating target dates:", error)
+      return `Failed to create target dates: ${error instanceof Error ? error.message : "Unknown error"}`
     }
   },
 
   // Update Target Dates
   update_TargetDates: async (id: number, data: TargetDates) => {
     try {
-      const token = getAuthToken();
+      const token = getAuthToken()
       const response = await fetch(`${apiUrl}/api/target-terms/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      });
+      })
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        const errorText = await response.text()
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`
+        )
       }
 
-      const updatedTerm = await response.json();
+      const updatedTerm = await response.json()
 
-      const currentData = get().japaneseTargetDates_Data;
+      const currentData = get().japaneseTargetDates_Data
       const updatedData = currentData.map((item: TargetDates) =>
         item.id === id ? updatedTerm : item
-      );
+      )
 
       set(() => ({
         japaneseTargetDates_Data: updatedData,
-        isLoading: false
-      }));
+        isLoading: false,
+      }))
 
-      return `Target dates updated successfully`;
-
+      return `Target dates updated successfully`
     } catch (error) {
-      console.error('Error updating target dates:', error);
-      return `Failed to update target dates: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error("Error updating target dates:", error)
+      return `Failed to update target dates: ${error instanceof Error ? error.message : "Unknown error"}`
     }
   },
 
   fetch_EmployeeJapaneseLevel: async () => {
     try {
-      const token = getAuthToken();
+      const token = getAuthToken()
       const response = await fetch(`${apiUrl}/api/employee-japanese-profiles`, {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        }
-      });
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
+        },
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const data = await response.json();
+      const data = await response.json()
 
-      set(() => ({ employeeJapaneseLevel_Data: data }));
-      return data;
+      set(() => ({ employeeJapaneseLevel_Data: data }))
+      return data
     } catch (error) {
-      console.error('Error fetching employee Japanese profiles:', error);
+      console.error("Error fetching employee Japanese profiles:", error)
       set(() => ({
         employeeJapaneseLevel_Data: [],
-      }));
-      return [];
+      }))
+      return []
     }
   },
 
   // Add/Create Employee Japanese Profile
   add_EmployeeJapaneseLevel: async (data: EmployeeJapaneseLevel) => {
-    const { employeeId } = data;
+    const { employeeId } = data
 
     try {
-      const token = getAuthToken();
+      const token = getAuthToken()
       const response = await fetch(`${apiUrl}/api/employee-japanese-profiles`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      });
+      })
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        const errorText = await response.text()
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`
+        )
       }
 
-      const newProfile = await response.json();
+      const newProfile = await response.json()
 
-      const currentData = get().employeeJapaneseLevel_Data || [];
+      const currentData = get().employeeJapaneseLevel_Data || []
       set(() => ({
         employeeJapaneseLevel_Data: [...currentData, newProfile],
-        isLoading: false
-      }));
+        isLoading: false,
+      }))
 
-      return `Successfully created Japanese profile for employee "${employeeId}"`;
-
+      return `Successfully created Japanese profile for employee "${employeeId}"`
     } catch (error) {
-      return `Failed to create Japanese profile for employee "${employeeId}": ${error instanceof Error ? error.message : 'Unknown error'}`;
+      return `Failed to create Japanese profile for employee "${employeeId}": ${error instanceof Error ? error.message : "Unknown error"}`
     }
   },
 
   // Edit/Update Employee Japanese Profile
-  edit_EmployeeJapaneseLevel: async (id: number, data: EmployeeJapaneseLevel) => {
-    const { employeeId } = data;
+  edit_EmployeeJapaneseLevel: async (
+    id: number,
+    data: EmployeeJapaneseLevel
+  ) => {
+    const { employeeId } = data
 
     try {
-      const token = getAuthToken();
-      const response = await fetch(`${apiUrl}/api/employee-japanese-profiles/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      const token = getAuthToken()
+      const response = await fetch(
+        `${apiUrl}/api/employee-japanese-profiles/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      )
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        const errorText = await response.text()
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`
+        )
       }
 
-      const updatedProfile = await response.json();
+      const updatedProfile = await response.json()
 
-      const currentData = get().employeeJapaneseLevel_Data || [];
+      const currentData = get().employeeJapaneseLevel_Data || []
       const updatedData = currentData.map((item: EmployeeJapaneseLevel) =>
         item.id === id ? updatedProfile : item
-      );
+      )
       set(() => ({
         employeeJapaneseLevel_Data: updatedData,
-        isLoading: false
-      }));
+        isLoading: false,
+      }))
 
-      return `Successfully updated Japanese profile for employee "${employeeId}"`;
-
+      return `Successfully updated Japanese profile for employee "${employeeId}"`
     } catch (error) {
-      console.error('Error updating Japanese profile:', error);
+      console.error("Error updating Japanese profile:", error)
 
-      return `Failed to update Japanese profile for employee "${employeeId}": ${error instanceof Error ? error.message : 'Unknown error'}`;
+      return `Failed to update Japanese profile for employee "${employeeId}": ${error instanceof Error ? error.message : "Unknown error"}`
     }
   },
 
   // Delete single profile by ID
   delete_singleJapaneseLevel: async (id: number) => {
-    const previousData = get().employeeJapaneseLevel_Data || [];
+    const previousData = get().employeeJapaneseLevel_Data || []
 
-    const optimisticData = previousData.filter((item: EmployeeJapaneseLevel) => item.id !== id);
+    const optimisticData = previousData.filter(
+      (item: EmployeeJapaneseLevel) => item.id !== id
+    )
 
     set(() => ({
       employeeJapaneseLevel_Data: optimisticData,
-      isDeleting: true
-    }));
+      isDeleting: true,
+    }))
 
     try {
-      const token = getAuthToken();
-      const response = await fetch(`${apiUrl}/api/employee-japanese-profiles/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        },
-      });
+      const token = getAuthToken()
+      const response = await fetch(
+        `${apiUrl}/api/employee-japanese-profiles/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+            "Content-Type": "application/json",
+          },
+        }
+      )
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       set(() => ({
         employeeJapaneseLevel_Data: optimisticData,
-        isDeleting: false
-      }));
+        isDeleting: false,
+      }))
 
-      return `1 Japanese profile deleted successfully`;
-
+      return `1 Japanese profile deleted successfully`
     } catch (error) {
-      console.error('Error deleting employee Japanese profile:', error);
+      console.error("Error deleting employee Japanese profile:", error)
 
       set(() => ({
         employeeJapaneseLevel_Data: previousData,
-        isDeleting: false
-      }));
+        isDeleting: false,
+      }))
 
-      return `Failed to delete Japanese profile: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      return `Failed to delete Japanese profile: ${error instanceof Error ? error.message : "Unknown error"}`
     }
   },
 
   // Delete multiple profiles by IDs (Bulk Delete)
   delete_bulkJapaneseLevel: async (ids: number[]) => {
-    const previousData = get().employeeJapaneseLevel_Data || [];
-    const count = ids.length;
+    const previousData = get().employeeJapaneseLevel_Data || []
+    const count = ids.length
 
-    const idSet = new Set(ids);
-    const optimisticData = previousData.filter((item: EmployeeJapaneseLevel) => !idSet.has(item.id));
+    const idSet = new Set(ids)
+    const optimisticData = previousData.filter(
+      (item: EmployeeJapaneseLevel) => !idSet.has(item.id)
+    )
 
     set(() => ({
       employeeJapaneseLevel_Data: optimisticData,
-      isDeleting: true
-    }));
+      isDeleting: true,
+    }))
 
     try {
-      const token = getAuthToken();
+      const token = getAuthToken()
       const response = await fetch(`${apiUrl}/api/employee-japanese-profiles`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(ids),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       set(() => ({
         employeeJapaneseLevel_Data: optimisticData,
-        isDeleting: false
-      }));
+        isDeleting: false,
+      }))
 
-      const customMessage = count === 1
-        ? `1 Japanese profile deleted successfully`
-        : `${count} Japanese profiles deleted successfully`;
+      const customMessage =
+        count === 1
+          ? `1 Japanese profile deleted successfully`
+          : `${count} Japanese profiles deleted successfully`
 
-      return customMessage;
-
+      return customMessage
     } catch (error) {
-      console.error('Error deleting employee Japanese profiles:', error);
+      console.error("Error deleting employee Japanese profiles:", error)
 
       set(() => ({
         employeeJapaneseLevel_Data: previousData,
-        isDeleting: false
-      }));
+        isDeleting: false,
+      }))
 
-      return `Failed to delete ${count === 1 ? 'Japanese profile' : 'Japanese profiles'}`;
+      return `Failed to delete ${count === 1 ? "Japanese profile" : "Japanese profiles"}`
     }
   },
 
   // Delete profile by Employee ID
   deleteEmployeeJapaneseProfileByEmployeeId: async (employeeId: string) => {
-    const previousData = get().employeeJapaneseLevel_Data || [];
+    const previousData = get().employeeJapaneseLevel_Data || []
 
-    const optimisticData = previousData.filter((item: EmployeeJapaneseLevel) => item.employeeId !== employeeId);
+    const optimisticData = previousData.filter(
+      (item: EmployeeJapaneseLevel) => item.employeeId !== employeeId
+    )
 
     set(() => ({
       employeeJapaneseLevel_Data: optimisticData,
-      isDeleting: true
-    }));
+      isDeleting: true,
+    }))
 
     try {
-      const token = getAuthToken();
-      const response = await fetch(`${apiUrl}/api/employee-japanese-profiles/employee/${employeeId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        },
-      });
+      const token = getAuthToken()
+      const response = await fetch(
+        `${apiUrl}/api/employee-japanese-profiles/employee/${employeeId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+            "Content-Type": "application/json",
+          },
+        }
+      )
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       set(() => ({
         employeeJapaneseLevel_Data: optimisticData,
-        isDeleting: false
-      }));
+        isDeleting: false,
+      }))
 
-      return `Japanese profile for employee "${employeeId}" deleted successfully`;
-
+      return `Japanese profile for employee "${employeeId}" deleted successfully`
     } catch (error) {
-      console.error('Error deleting employee Japanese profile by employee ID:', error);
+      console.error(
+        "Error deleting employee Japanese profile by employee ID:",
+        error
+      )
 
       set(() => ({
         employeeJapaneseLevel_Data: previousData,
-        isDeleting: false
-      }));
+        isDeleting: false,
+      }))
 
-      return `Failed to delete Japanese profile for employee "${employeeId}": ${error instanceof Error ? error.message : 'Unknown error'}`;
+      return `Failed to delete Japanese profile for employee "${employeeId}": ${error instanceof Error ? error.message : "Unknown error"}`
     }
   },
 
   // Bulk Import Japanese Profiles
   bulkCreate_CurrentTargetData: async (data: EmployeeJapaneseLevel[]) => {
-
     if (!data || data.length === 0) {
-      console.warn('⚠️ No data to import');
-      return 'No data to import';
+      console.warn("⚠️ No data to import")
+      return "No data to import"
     }
 
     try {
-      const token = getAuthToken();
-      
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
+      const token = getAuthToken()
 
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
       }
 
-      const response = await fetch(`${apiUrl}/api/employee-japanese-profiles/import`, {
-        method: 'POST',
-        headers: headers,
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`
+      }
+
+      const response = await fetch(
+        `${apiUrl}/api/employee-japanese-profiles/import`,
+        {
+          method: "POST",
+          headers: headers,
+          credentials: "include",
+          body: JSON.stringify(data),
+        }
+      )
 
       if (response.status === 403) {
-        console.warn(`⚠️ 403 Forbidden - trying individual records`);
-        let successCount = 0;
+        console.warn(`⚠️ 403 Forbidden - trying individual records`)
+        let successCount = 0
         for (const record of data) {
           try {
-            const indResponse = await fetch(`${apiUrl}/api/employee-japanese-profiles/import`, {
-              method: 'POST',
-              headers: headers,
-              credentials: 'include',
-              body: JSON.stringify([record]),
-            });
+            const indResponse = await fetch(
+              `${apiUrl}/api/employee-japanese-profiles/import`,
+              {
+                method: "POST",
+                headers: headers,
+                credentials: "include",
+                body: JSON.stringify([record]),
+              }
+            )
             if (indResponse.ok) {
-              successCount++;
+              successCount++
             }
           } catch (e) {
-            console.error('❌ Failed to import record');
+            console.error(" Failed to import record")
           }
         }
         try {
-          await get().fetch_EmployeeJapaneseLevel();
+          await get().fetch_EmployeeJapaneseLevel()
         } catch (refreshError) {
-          console.warn('⚠️ Could not refresh profiles:', refreshError);
+          console.warn("⚠️ Could not refresh profiles:", refreshError)
         }
-        return `${successCount} out of ${data.length} Japanese profiles imported successfully`;
+        return `${successCount} out of ${data.length} Japanese profiles imported successfully`
       }
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        const errorText = await response.text()
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`
+        )
       }
 
-      let importedBatch = [];
+      let importedBatch = []
       try {
-        importedBatch = await response.json();
+        importedBatch = await response.json()
       } catch (e) {
-        console.warn('⚠️ Could not parse response');
-        importedBatch = [];
+        console.warn("⚠️ Could not parse response")
+        importedBatch = []
       }
 
       try {
-        await get().fetch_EmployeeJapaneseLevel();
+        await get().fetch_EmployeeJapaneseLevel()
       } catch (refreshError) {
-        console.warn('⚠️ Could not refresh profiles:', refreshError);
+        console.warn("⚠️ Could not refresh profiles:", refreshError)
       }
 
-      return `${importedBatch.length || data.length} Japanese profiles imported successfully`;
-
+      return `${importedBatch.length || data.length} Japanese profiles imported successfully`
     } catch (error: any) {
-      console.error('❌ Error during bulk import:', error);
-      throw error;
+      console.error(" Error during bulk import:", error)
+      throw error
     }
   },
-});
+})

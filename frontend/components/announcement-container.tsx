@@ -1,3 +1,4 @@
+// components/announcement-container.tsx
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -71,6 +72,7 @@ import { NewAnnouncementDialog } from "@/components/dialogs/newAnnouncement-dial
 import { EditAnnouncementDialog } from "@/components/dialogs/editAnnouncement-dialog"
 import { AnnouncementDto, AnnouncementCategory } from "@/types/announcement"
 import { mainStore } from "@/store/mainStore"
+import { webScoketStore } from "@/store/websocketStore"
 import {
   Tooltip,
   TooltipContent,
@@ -92,6 +94,10 @@ import {
 } from "./ui/dropdown-menu"
 
 type ViewMode = "list" | "card"
+
+interface AnnouncementContainerProps {
+  shouldRefresh?: boolean
+}
 
 // Helper function to format time
 const formatTime = (dateString: string) => {
@@ -150,7 +156,7 @@ type AnnouncementFilterState = {
   createdBy: string[]
 }
 
-export function AnnouncementContainer() {
+export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedAnnouncement, setSelectedAnnouncement] =
     useState<AnnouncementDto | null>(null)
@@ -184,6 +190,10 @@ export function AnnouncementContainer() {
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  // WebSocket notifications
+  const notifications = webScoketStore((state) => state.notifications)
+  const processedNotificationCountRef = useRef(0)
+
   const {
     announcements,
     isLoading,
@@ -193,6 +203,40 @@ export function AnnouncementContainer() {
     update_AnnouncementData,
     profile,
   } = mainStore()
+
+  // Auto-refresh when shouldRefresh prop changes (from parent navigation)
+  useEffect(() => {
+    if (shouldRefresh) {
+      fetch_AnnouncementData()
+    }
+  }, [shouldRefresh, fetch_AnnouncementData])
+
+  // Auto-refresh when new announcement notification arrives via WebSocket
+  useEffect(() => {
+    if (notifications.length === 0) {
+      processedNotificationCountRef.current = 0
+      return
+    }
+
+    if (notifications.length <= processedNotificationCountRef.current) {
+      return
+    }
+
+    const newNotifications = notifications.slice(
+      0,
+      notifications.length - processedNotificationCountRef.current
+    )
+
+    processedNotificationCountRef.current = notifications.length
+
+    const hasAnnouncementNotification = newNotifications.some(
+      (n) => n.isAnnouncement || n.type === "announcement"
+    )
+
+    if (hasAnnouncementNotification) {
+      fetch_AnnouncementData()
+    }
+  }, [notifications, fetch_AnnouncementData])
 
   const userRole = profile?.role?.toLowerCase() || ""
   const isAdmin = userRole === "admin"

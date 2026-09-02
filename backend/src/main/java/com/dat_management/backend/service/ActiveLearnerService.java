@@ -68,7 +68,7 @@ public class ActiveLearnerService {
                 log.info(" Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
                     employeeId, employeeName, reason, course.getCourseName(), courseType);
             } else {
-                log.info("❌ Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 
+                log.info(" Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 
                     employeeId, employeeName, reason, course.getCourseName(), courseType);
             }
         }
@@ -194,7 +194,7 @@ public class ActiveLearnerService {
                 log.info(" Employee {} ({}) is ACTIVE - {} - Course: {} (Type: {})", 
                     empId, employeeName, reason, course.getCourseName(), courseType);
             } else {
-                log.info("❌ Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 
+                log.info(" Employee {} ({}) is NOT ACTIVE - {} - Course: {} (Type: {})", 
                     empId, employeeName, reason, course.getCourseName(), courseType);
             }
         }

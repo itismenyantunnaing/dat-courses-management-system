@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -38,16 +38,28 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  RefreshIcon,
   PlusSignIcon,
   CancelIcon,
   UserGroupIcon,
-  Loading01Icon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import { cn, resolveUploadUrl } from "@/lib/utils"
 import { Course } from "@/types/course"
 import { mainStore } from "@/store/mainStore"
 import { toast } from "sonner"
+
+// Spinner component using Hugeicons (matching sendMail dialog)
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
 
 interface EnrolledEmployee {
   id: number
@@ -110,9 +122,15 @@ export function ChangeGroupDialogs({
   const [searchTab, setSearchTab] = useState<string>("")
   const [viewAllOpen, setViewAllOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
+  const [progress, setProgress] = useState<{ current: number; total: number }>({
+    current: 0,
+    total: 0,
+  })
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Get the store functions
   const { adminChangeGroup, fetch_courseEnrollments } = mainStore()
 
   const getUniqueGroups = () => {
@@ -134,7 +152,79 @@ export function ChangeGroupDialogs({
       .sort((a, b) => Number(a.id) - Number(b.id))
   }
 
-  // Set default tab to Group 1 when dialog opens
+  // Get all groups with capacity info (matching AddLearnerDialogs)
+  const getAllGroupsWithCapacity = () => {
+    const courseGroups = course.groups || []
+
+    return courseGroups
+      .filter((g) => !isTemporaryGroupId(g.id))
+      .map((group) => {
+        let groupId: number
+        if (typeof group.id === "string" && group.id.startsWith("g")) {
+          groupId = parseInt(group.id.substring(1))
+        } else {
+          groupId = typeof group.id === "string" ? parseInt(group.id) : group.id
+        }
+
+        const enrolledInGroup = getEnrolledEmployees(enrollments).filter(
+          (emp) => emp.courseGroupId === groupId
+        )
+        const capacity = group.capacity || 0
+        const currentCount = enrolledInGroup.length
+        const remaining = capacity === 0 ? Infinity : capacity - currentCount
+
+        return {
+          id: groupId,
+          name: group.name || `Group ${groupId}`,
+          count: currentCount,
+          capacity: capacity,
+          remaining: remaining,
+        }
+      })
+      .sort((a, b) => a.id - b.id)
+  }
+
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    if (!newOpen) {
+      resetChangeGroupDialog()
+    }
+    onOpenChange(newOpen)
+  }
+
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
+
   useEffect(() => {
     if (searchOpen) {
       const groups = getUniqueGroups()
@@ -174,8 +264,13 @@ export function ChangeGroupDialogs({
     setSelectedGroupForChange("")
   }
 
+  const clearSelectionAndClose = () => {
+    setSelectedEmployeesForChange([])
+    setSelectedGroupForChange("")
+    setViewAllOpen(false)
+  }
+
   const resetChangeGroupDialog = () => {
-    onOpenChange(false)
     setSelectedEmployeesForChange([])
     setSelectedGroupForChange("")
     setSearchQuery("")
@@ -184,9 +279,38 @@ export function ChangeGroupDialogs({
     setProgress({ current: 0, total: 0 })
   }
 
-  // Handle the actual group change - Individual API calls
+  // Check if selected employees fit in the selected group (matching AddLearnerDialogs)
+  const getGroupAvailability = () => {
+    if (!selectedGroupForChange || selectedEmployeesForChange.length === 0) return null
+
+    const groupId = parseInt(selectedGroupForChange)
+    const allGroups = getAllGroupsWithCapacity()
+    const group = allGroups.find((g) => g.id === groupId)
+
+    if (!group) return null
+
+    const remaining = group.capacity === 0 ? Infinity : group.remaining
+    const willFit = remaining === Infinity || remaining >= selectedEmployeesForChange.length
+
+    return {
+      remaining,
+      willFit,
+      capacity: group.capacity,
+    }
+  }
+
+  const availability = getGroupAvailability()
+
   const handleGroupChange = async () => {
     if (selectedEmployeesForChange.length === 0 || !selectedGroupForChange) {
+      return
+    }
+
+    // Check capacity before proceeding
+    if (availability && !availability.willFit) {
+      toast.warning(
+        `The selected group only has ${availability.remaining} spot${availability.remaining > 1 ? "s" : ""} available, but you selected ${selectedEmployeesForChange.length} employee${selectedEmployeesForChange.length > 1 ? "s" : ""}. Please select a group with enough capacity.`
+      )
       return
     }
 
@@ -199,12 +323,10 @@ export function ChangeGroupDialogs({
     try {
       const newGroupId = parseInt(selectedGroupForChange)
 
-      // Loop through each employee and change their group individually
       for (let i = 0; i < selectedEmployeesForChange.length; i++) {
         const employee = selectedEmployeesForChange[i]
 
         try {
-          // Call the individual adminChangeGroup API
           const result = await adminChangeGroup(employee.id, newGroupId)
 
           if (result.success) {
@@ -213,51 +335,55 @@ export function ChangeGroupDialogs({
             failedEmployees.push(employee.employeeName)
           }
         } catch (error) {
-          console.error(`❌ Failed to change group for ${employee.employeeName}:`, error)
+          console.error(
+            ` Failed to change group for ${employee.employeeName}:`,
+            error
+          )
           failedEmployees.push(employee.employeeName)
         }
 
-        // Update progress
-        setProgress({ current: i + 1, total: selectedEmployeesForChange.length })
+        setProgress({
+          current: i + 1,
+          total: selectedEmployeesForChange.length,
+        })
       }
 
-      // Show results
       let message = ""
 
       if (failedEmployees.length === 0) {
-        toast.success(` All ${successEmployees.length} employee(s) moved successfully!`)
+        toast.success(
+          `${successEmployees.length} learner${successEmployees.length > 1 ? "s" : ""} moved successfully!`
+        )
       } else if (successEmployees.length === 0) {
-        toast.error(`❌ Failed to move all employees. Please try again.`)
+        toast.error(`Failed to move all learners. Please try again.`)
       } else {
         if (successEmployees.length > 0) {
-          message += ` Successfully moved ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
+          message += ` Successfully moved ${successEmployees.length} learner${successEmployees.length > 1 ? "s" : ""}: ${successEmployees.join(", ")}\n`
           toast.success(message)
         }
         if (failedEmployees.length > 0) {
-          message += `❌ Failed to move ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
+          message += ` Failed to move ${failedEmployees.length} learner${failedEmployees.length > 1 ? "s" : ""}(s): ${failedEmployees.join(", ")}`
           toast.error(message)
         }
-
       }
 
-      // Refresh enrollments data
       if (course.id) {
         await fetch_courseEnrollments(course.id)
       }
 
-      // Call the callback if provided
       if (onGroupChangeComplete) {
         onGroupChangeComplete()
       }
 
-      // Reset and close if all succeeded
       if (failedEmployees.length === 0) {
         resetChangeGroupDialog()
+        onOpenChange(false)
       }
-
     } catch (error: any) {
-      console.error('❌ Error in group change process:', error)
-      toast.error(`❌ Failed to change groups: ${error.message || 'Unknown error'}`)
+      console.error(" Error in group change process:", error)
+      toast.error(
+        `Failed to change groups: ${error.message || "Unknown error"}`
+      )
     } finally {
       setIsSubmitting(false)
       setProgress({ current: 0, total: 0 })
@@ -266,34 +392,22 @@ export function ChangeGroupDialogs({
 
   return (
     <>
-      {/* Change Group Dialog */}
-      <Dialog
-        open={open}
-        onOpenChange={(open) => {
-          if (!open) {
-            resetChangeGroupDialog()
-          }
-          onOpenChange(open)
-        }}
-      >
-        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[550px]">
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent
+          className="flex max-h-[90vh] flex-col p-0 sm:max-w-[550px]"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            if (isInteractingWithDropdown) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
-              <HugeiconsIcon
-                icon={RefreshIcon}
-                strokeWidth={1.5}
-                className="h-5 w-5"
-              />
-              Change Employee Group
+              Change learners
             </DialogTitle>
             <DialogDescription>
-              Select employees and choose a new group for them.
-              {selectedEmployeesForChange.length > 0 && (
-                <span className="ml-2 font-medium text-primary">
-                  ({selectedEmployeesForChange.length} employee
-                  {selectedEmployeesForChange.length > 1 ? "s" : ""} selected)
-                </span>
-              )}
+              Select learners and choose a new group for them.
               {isSubmitting && (
                 <span className="ml-2 text-blue-600">
                   (Processing: {progress.current}/{progress.total})
@@ -304,7 +418,6 @@ export function ChangeGroupDialogs({
 
           <div className="flex-1 overflow-y-auto px-6 py-2">
             <div className="space-y-4">
-              {/* Select Employees Field */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">
@@ -352,7 +465,9 @@ export function ChangeGroupDialogs({
                             key={employee.id}
                             variant="secondary"
                             className="flex cursor-pointer items-center px-2 py-1.5 text-sm font-normal hover:bg-muted/80"
-                            onClick={() => !isSubmitting && setViewAllOpen(true)}
+                            onClick={() =>
+                              !isSubmitting && setViewAllOpen(true)
+                            }
                           >
                             <span className="text-xs">
                               {employee.employeeName}
@@ -392,14 +507,14 @@ export function ChangeGroupDialogs({
                   ) : (
                     <div className="w-full rounded-lg border-2 border-dashed p-4 text-center">
                       <span className="text-sm text-muted-foreground">
-                        No employees selected
+                        No employee selected
                       </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Select Group - Shows all groups including full ones */}
+              {/* Select Group - Shows ALL groups (matching AddLearnerDialogs) */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
                   Select New Group <span className="text-destructive">*</span>
@@ -407,13 +522,17 @@ export function ChangeGroupDialogs({
                 <Select
                   value={selectedGroupForChange}
                   onValueChange={setSelectedGroupForChange}
-                  disabled={selectedEmployeesForChange.length === 0 || isSubmitting}
+                  onOpenChange={handleDropdownOpenChange}
+                  disabled={
+                    selectedEmployeesForChange.length === 0 || isSubmitting
+                  }
                 >
                   <SelectTrigger
                     className={cn(
                       "w-full",
-                      (selectedEmployeesForChange.length === 0 || isSubmitting) &&
-                      "cursor-not-allowed opacity-50"
+                      (selectedEmployeesForChange.length === 0 ||
+                        isSubmitting) &&
+                        "cursor-not-allowed opacity-50"
                     )}
                   >
                     <SelectValue
@@ -434,79 +553,49 @@ export function ChangeGroupDialogs({
                         </div>
                       ) : (
                         (() => {
-                          // Show ALL groups except the ones employees are currently in
-                          const availableGroups = course.groups?.filter((g) => {
-                            const groupId = parseInt(g.id)
-                            if (isTemporaryGroupId(g.id)) return false
-                            // Don't show groups that employees are already in
-                            if (
-                              selectedEmployeesForChange.some(
-                                (e) => e.courseGroupId === groupId
-                              )
-                            )
-                              return false
-                            return true
-                          })
+                          const allGroups = getAllGroupsWithCapacity()
 
-                          if (
-                            !availableGroups ||
-                            availableGroups.length === 0
-                          ) {
+                          if (!allGroups || allGroups.length === 0) {
                             return (
                               <div className="px-2 py-4 text-center text-sm text-yellow-600">
-                                ⚠️ No other groups available.
+                                ⚠️ No groups available.
                               </div>
                             )
                           }
 
-                          return availableGroups.map((group) => {
-                            const groupId = parseInt(group.id)
-                            const groupEmployees = enrollments.filter(
-                              (e) =>
-                                e.courseGroupId === groupId &&
-                                e.enrollmentStatus !== "CANCELLED"
+                          return allGroups.map((group) => {
+                            const isCurrentGroup = selectedEmployeesForChange.some(
+                              (e) => e.courseGroupId === group.id
                             )
-                            const capacity = group.capacity || 0
-                            const currentCount = groupEmployees.length
-                            const remaining = capacity - currentCount
-                            const totalSelected =
-                              selectedEmployeesForChange.length
-
-                            // Check if group is full
-                            const isFull = capacity > 0 && remaining < totalSelected
+                            const isFull =
+                              group.capacity !== 0 && group.remaining < selectedEmployeesForChange.length
 
                             return (
                               <SelectItem
                                 key={group.id}
-                                value={group.id}
-                                disabled={isFull}
-                                className={cn(
-                                  isFull && "opacity-60 cursor-not-allowed"
-                                )}
+                                value={String(group.id)}
+                                disabled={isCurrentGroup} // Always show all groups, even if full (matching AddLearnerDialogs)
+                                className="w-full"
                               >
-                                <div className="flex w-full items-center justify-between">
-                                  <span className={cn(
-                                    isFull && "text-muted-foreground"
-                                  )}>
-                                    {group.name}
+                                <div className="flex items-center gap-2">
+                                  <span>{group.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({group.count}/
+                                    {group.capacity === 0 ? "∞" : group.capacity}) learner
+                                    {group.capacity > 1 ? "s" : ""}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
-                                    ({currentCount}/
-                                    {capacity === 0 ? "∞" : capacity} members)
-                                    {isFull ? (
-                                      <span className="ml-2 text-red-500 font-medium">
+                                    {isCurrentGroup ? (
+                                      <span className="ml-2 font-medium text-blue-500">
+                                        (Current)
+                                      </span>
+                                    ) : isFull ? (
+                                      <span className="ml-2 font-medium text-red-500">
                                         (Full)
                                       </span>
                                     ) : (
-                                      capacity > 0 && (
-                                        <span className="ml-2 text-green-600">
-                                          {remaining} spot{remaining > 1 ? "s" : ""} available
-                                        </span>
-                                      )
-                                    )}
-                                    {capacity === 0 && (
-                                      <span className="ml-2 text-blue-500">
-                                        (Unlimited)
+                                      <span className="ml-2 text-green-600">
+                                        (Available)
                                       </span>
                                     )}
                                   </span>
@@ -519,90 +608,25 @@ export function ChangeGroupDialogs({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                {selectedEmployeesForChange.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Please select employees first to see available groups
-                  </p>
-                )}
-                {selectedEmployeesForChange.length > 0 &&
-                  selectedGroupForChange && (
-                    <div className="rounded-lg border bg-green-50 p-2 text-xs text-green-700">
-                      <span className="font-medium">
-                        ✓ {selectedEmployeesForChange.length} employee
-                        {selectedEmployeesForChange.length > 1 ? "s" : ""}
-                      </span>
-                      {" will be moved to "}
-                      <span className="font-medium">
-                        {course.groups?.find(
-                          (g) => g.id === selectedGroupForChange
-                        )?.name || selectedGroupForChange}
-                      </span>
-                    </div>
-                  )}
-              </div>
 
-              {/* Summary */}
-              {selectedEmployeesForChange.length > 0 &&
-                selectedGroupForChange && (
-                  <div className="rounded-lg border bg-muted/30 p-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <HugeiconsIcon
-                          icon={UserGroupIcon}
-                          strokeWidth={1.5}
-                          className="h-4 w-4 text-muted-foreground"
-                        />
-                        <span className="font-medium">
-                          {selectedEmployeesForChange.length} employee
-                          {selectedEmployeesForChange.length > 1
-                            ? "s"
-                            : ""}{" "}
-                          will be moved
-                        </span>
-                        <span className="text-muted-foreground">→</span>
-                        <span className="font-medium text-primary">
-                          {course.groups?.find(
-                            (g) => g.id === selectedGroupForChange
-                          )?.name || selectedGroupForChange}
-                        </span>
-                      </div>
-                      {!isSubmitting && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedEmployeesForChange([])
-                            setSelectedGroupForChange("")
-                          }}
-                          className="h-7 px-2 text-xs"
-                        >
-                          <HugeiconsIcon
-                            icon={CancelIcon}
-                            strokeWidth={2}
-                            className="mr-1 h-3 w-3"
-                          />
-                          Change Selection
-                        </Button>
-                      )}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {selectedEmployeesForChange.slice(0, 5).map((emp) => (
-                        <Badge
-                          key={emp.id}
-                          variant="secondary"
-                          className="text-[10px]"
-                        >
-                          {emp.employeeName}
-                        </Badge>
-                      ))}
-                      {selectedEmployeesForChange.length > 5 && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          +{selectedEmployeesForChange.length - 5} more
-                        </Badge>
-                      )}
-                    </div>
+                {/* Show capacity warning if selected group doesn't have enough space (matching AddLearnerDialogs) */}
+                {availability && !availability.willFit && (
+                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/20 dark:text-red-400">
+                    ⚠️ The selected group only has {availability.remaining} spot
+                    {availability.remaining > 1 ? "s" : ""} available, but you selected {selectedEmployeesForChange.length} employee
+                    {selectedEmployeesForChange.length > 1 ? "s" : ""}.
                   </div>
                 )}
+
+                {availability && availability.willFit && availability.capacity !== 0 && (
+                  <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/20 dark:text-green-400">
+                    ✓ {availability.remaining} spot{availability.remaining > 1 ? "s" : ""} available
+                    {availability.remaining >= selectedEmployeesForChange.length && 
+                      ` — enough space for ${selectedEmployeesForChange.length} employee${selectedEmployeesForChange.length > 1 ? "s" : ""}`
+                    }
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -610,7 +634,10 @@ export function ChangeGroupDialogs({
             <Button
               variant="outline"
               className="flex-1"
-              onClick={resetChangeGroupDialog}
+              onClick={() => {
+                resetChangeGroupDialog()
+                onOpenChange(false)
+              }}
               disabled={isSubmitting}
             >
               Cancel
@@ -620,7 +647,8 @@ export function ChangeGroupDialogs({
               disabled={
                 selectedEmployeesForChange.length === 0 ||
                 !selectedGroupForChange ||
-                isSubmitting
+                isSubmitting ||
+                (availability && !availability.willFit)
               }
               onClick={handleGroupChange}
             >
@@ -630,14 +658,7 @@ export function ChangeGroupDialogs({
                   Processing ({progress.current}/{progress.total})...
                 </>
               ) : (
-                <>
-                  <HugeiconsIcon
-                    icon={RefreshIcon}
-                    strokeWidth={2}
-                    className="h-4 w-4"
-                  />
-                  Change Group ({selectedEmployeesForChange.length})
-                </>
+                <>Change</>
               )}
             </Button>
           </DialogFooter>
@@ -684,7 +705,6 @@ export function ChangeGroupDialogs({
           </div>
 
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {filteredData.map((employee) => {
                 const isSelected = selectedEmployeesForChange.some(
@@ -705,28 +725,34 @@ export function ChangeGroupDialogs({
                         ])
                       }
                     }}
-                    className="group flex cursor-pointer items-center gap-3"
+                    className="group flex cursor-pointer items-center gap-2"
                   >
                     <Avatar className="h-8 w-8 rounded-full">
-                      <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
-                      <AvatarFallback className="rounded-full">
+                      <AvatarImage
+                        src={resolveUploadUrl(employee.profilePhotoPath)}
+                      />
+                      <AvatarFallback className="text-xs">
                         {getInitials(employee.employeeName)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
+                    <div className="w-[80%] text-sm leading-tight">
                       <span className="truncate font-medium">
                         {employee.employeeName}
                       </span>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="max-w-[45%] truncate">
-                          {employee.departmentName || "N/A"}
-                        </span>
+                      <div className="flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+                        {employee.departmentName && (
+                          <span className="max-w-[45%] truncate">
+                            {employee.departmentName}
+                          </span>
+                        )}
                         {employee.departmentName && employee.teamName && (
                           <span>•</span>
                         )}
-                        <span className="truncate">
-                          {employee.teamName || "N/A"}
-                        </span>
+                        {employee.teamName && (
+                          <span className="max-w-[45%] truncate">
+                            {employee.teamName}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <CommandShortcut>
@@ -759,12 +785,12 @@ export function ChangeGroupDialogs({
             </CommandGroup>
             {filteredData.length === 0 && searchQuery && (
               <CommandEmpty>
-                No employees found matching "{searchQuery}"
+                No employee found matching "{searchQuery}"
               </CommandEmpty>
             )}
             {filteredData.length === 0 && !searchQuery && (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                No employees in this group
+                No employee in this group
               </div>
             )}
           </CommandList>
@@ -784,9 +810,12 @@ export function ChangeGroupDialogs({
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => {
-                      setSelectedEmployeesForChange([])
-                      setSelectedGroupForChange("")
+                    onPointerDown={(e) => {
+                      e.stopPropagation()
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      clearSelectionAndClose()
                     }}
                     className="h-7 gap-1 text-xs"
                   >
@@ -819,25 +848,31 @@ export function ChangeGroupDialogs({
                   className="flex cursor-pointer items-center gap-3"
                 >
                   <Avatar className="h-8 w-8 rounded-full">
-                    <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
-                    <AvatarFallback className="rounded-full">
+                    <AvatarImage
+                      src={resolveUploadUrl(employee.profilePhotoPath)}
+                    />
+                    <AvatarFallback className="text-xs">
                       {getInitials(employee.employeeName)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="w-[80%] text-sm leading-tight">
                     <span className="truncate font-medium">
                       {employee.employeeName}
                     </span>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <span className="truncate">
-                        {employee.departmentName || "N/A"}
-                      </span>
+                    <div className="flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+                      {employee.departmentName && (
+                        <span className="max-w-[45%] truncate">
+                          {employee.departmentName}
+                        </span>
+                      )}
                       {employee.departmentName && employee.teamName && (
                         <span>•</span>
                       )}
-                      <span className="truncate">
-                        {employee.teamName || "N/A"}
-                      </span>
+                      {employee.teamName && (
+                        <span className="max-w-[45%] truncate">
+                          {employee.teamName}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {!isSubmitting && (

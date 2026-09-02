@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -26,14 +27,19 @@ interface EditFeedbackDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   feedback: FeedbackSuggestionDto
-  onSubmit: (id: number, subject: string, category: FeedbackCategory, description: string) => Promise<void>
+  onSubmit: (
+    id: number,
+    subject: string,
+    category: FeedbackCategory,
+    description: string
+  ) => Promise<void>
   isLoading: boolean
 }
 
 const categoryOptions = [
-  { value: 'COURSE', label: 'Course' },
-  { value: 'MANAGEMENT', label: 'Management' },
-  { value: 'SYSTEM', label: 'System' },
+  { value: "COURSE", label: "Course" },
+  { value: "MANAGEMENT", label: "Management" },
+  { value: "SYSTEM", label: "System" },
 ]
 
 export function EditFeedbackDialog({
@@ -47,8 +53,13 @@ export function EditFeedbackDialog({
   const [category, setCategory] = useState<FeedbackCategory | "">("")
   const [description, setDescription] = useState("")
   const [originalSubject, setOriginalSubject] = useState("")
-  const [originalCategory, setOriginalCategory] = useState<FeedbackCategory | "">("")
+  const [originalCategory, setOriginalCategory] = useState<
+    FeedbackCategory | ""
+  >("")
   const [originalDescription, setOriginalDescription] = useState("")
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (feedback) {
@@ -66,8 +77,8 @@ export function EditFeedbackDialog({
 
   // Check if there are any changes
   const hasChanges =
-    subject !== originalSubject || 
-    category !== originalCategory || 
+    subject !== originalSubject ||
+    category !== originalCategory ||
     description !== originalDescription
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,7 +88,12 @@ export function EditFeedbackDialog({
       // Show error if category is not selected
       return
     }
-    await onSubmit(feedback.id, subject, category as FeedbackCategory, description)
+    await onSubmit(
+      feedback.id,
+      subject,
+      category as FeedbackCategory,
+      description
+    )
   }
 
   // Reset to original values when canceling
@@ -88,9 +104,69 @@ export function EditFeedbackDialog({
     onOpenChange(false)
   }
 
+  // Add dropdown interaction handlers
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent dialog from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when dialog closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    if (!newOpen) {
+      setSubject(originalSubject)
+      setCategory(originalCategory)
+      setDescription(originalDescription)
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - only prevent if clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="sm:max-w-[500px]"
+        onPointerDownOutside={handlePointerDownOutside}
+        onEscapeKeyDown={(e) => {
+          // Prevent escape key from closing when dropdown is open
+          if (isInteractingWithDropdown) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Edit Feedback</DialogTitle>
           <DialogDescription>
@@ -100,36 +176,43 @@ export function EditFeedbackDialog({
 
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-subject">Subject</Label>
-              <Input
-                id="edit-subject"
-                placeholder="Enter feedback subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
+            <div className="flex gap-2">
+              <div className="grid flex-1 gap-2">
+                <Label htmlFor="edit-subject">Subject</Label>
+                <Input
+                  id="edit-subject"
+                  placeholder="Enter feedback subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="edit-category">Category</Label>
-              <Select 
-                value={category} 
-                onValueChange={(value) => setCategory(value as FeedbackCategory)}
-                disabled={isLoading}
-              >
-                <SelectTrigger id="edit-category">
-                  <SelectValue placeholder="Select a category..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoryOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-category">Category</Label>
+                <Select
+                  value={category}
+                  onValueChange={(value) =>
+                    setCategory(value as FeedbackCategory)
+                  }
+                  onOpenChange={handleDropdownOpenChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="edit-category">
+                    <SelectValue placeholder="Select a category..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {categoryOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid gap-2">

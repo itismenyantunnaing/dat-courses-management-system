@@ -149,7 +149,7 @@ public class CourseStatsService {
                 log.info(" Enrollment {} COMPLETED (Group: {}, {}/{} sessions)", 
                     enrollment.getId(), studentGroup.getGroupName(), presentCount, totalGroupSessions);
             } else {
-                log.info("❌ Enrollment {} NOT completed (Group: {}, {}/{} sessions)", 
+                log.info(" Enrollment {} NOT completed (Group: {}, {}/{} sessions)", 
                     enrollment.getId(), studentGroup.getGroupName(), presentCount, totalGroupSessions);
             }
         }
@@ -225,7 +225,7 @@ public class CourseStatsService {
                 log.info(" Self-Study Enrollment {} COMPLETED (Average: {}%)", 
                     enrollment.getId(), averageCompletion * 100);
             } else {
-                log.info("❌ Self-Study Enrollment {} NOT completed (Average: {}%)", 
+                log.info(" Self-Study Enrollment {} NOT completed (Average: {}%)", 
                     enrollment.getId(), averageCompletion * 100);
             }
         }

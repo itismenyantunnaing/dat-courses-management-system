@@ -480,7 +480,7 @@ export const allTabs = [
       }
     },
   },
-  {
+ {
     id: "skills",
     label: "Skills",
     importTitle: "Import Skills Data",
@@ -622,22 +622,34 @@ export const allTabs = [
         })
 
         // ===== BUILD skillIdLookup =====
+        // Key format is always: `${category}|${subcategory}|${skillName}`
+        // (all normalized). This MUST be an exact key, never matched with
+        // .includes()/substring logic — a substring match here is what was
+        // silently routing new-skill data into an unrelated existing skill
+        // once the DB already had other skills whose names shared a
+        // substring with the new one (e.g. "java" matching "javascript").
         const skillIdLookup = new Map<string, number>()
-        for (const cat of currentStore.skill_headers || []) {
-          const catName = normalizeString(cat.categoryName || cat.category_name)
-          for (const sub of cat.skillSubCategories ||
-            cat.skill_sub_categories ||
-            []) {
-            const subName = normalizeString(
-              sub.subCategoryName || sub.sub_category_name
+        const rebuildSkillIdLookup = () => {
+          skillIdLookup.clear()
+          for (const cat of currentStore.skill_headers || []) {
+            const catName = normalizeString(
+              cat.categoryName || cat.category_name
             )
-            for (const sk of sub.skills || []) {
-              const skName = normalizeString(sk.skillName || sk.skill_name)
-              const key = `${catName}|${subName}|${skName}`
-              skillIdLookup.set(key, sk.id)
+            for (const sub of cat.skillSubCategories ||
+              cat.skill_sub_categories ||
+              []) {
+              const subName = normalizeString(
+                sub.subCategoryName || sub.sub_category_name
+              )
+              for (const sk of sub.skills || []) {
+                const skName = normalizeString(sk.skillName || sk.skill_name)
+                const key = `${catName}|${subName}|${skName}`
+                skillIdLookup.set(key, sk.id)
+              }
             }
           }
         }
+        rebuildSkillIdLookup()
 
         // ===== DETECT AND CREATE NEW TECHNICAL SKILLS FROM EXCEL =====
         const existingDbSkillKeys = new Set<string>()
@@ -745,6 +757,13 @@ export const allTabs = [
           }
         }
 
+        // Skills that were detected as new but, after creating their DB
+        // headers and re-fetching, still can't be resolved to a skillId.
+        // Populated below; checked again per-employee as a defensive
+        // fallback. Surfaced to the user at the end instead of being
+        // silently dropped.
+        const skillResolutionFailures = new Set<string>()
+
         if (newSkillsMap.size > 0) {
           const categoryMap = new Map<string, Map<string, string[]>>()
 
@@ -758,6 +777,13 @@ export const allTabs = [
               info.subcategory && info.subcategory.trim() !== ""
                 ? info.subcategory
                 : `empty-${getRandomNumber()}`
+
+            // FIX: persist the *actual* category/subcategory name that will
+            // be sent to the backend back onto the newSkillsMap entry. This
+            // is what lets us build an exact lookup key later instead of
+            // scanning skillIdLookup with a substring match.
+            info.category = categoryKey
+            info.subcategory = subcategoryKey
 
             if (!categoryMap.has(categoryKey)) {
               categoryMap.set(categoryKey, new Map())
@@ -786,34 +812,127 @@ export const allTabs = [
             })
           }
 
+          // Build the exact set of keys we expect to see in skill_headers
+          // once the sync below has landed.
+          const expectedKeys = new Map<string, string>() // exactKey -> skillName
+          for (const [skillName, info] of newSkillsMap) {
+            const exactKey = `${normalizeString(info.category)}|${normalizeString(
+              info.subcategory
+            )}|${normalizeString(skillName)}`
+            expectedKeys.set(exactKey, skillName)
+          }
+
           try {
             await store.add_BulkSkillCategories(newSkillCategories)
-            await store.fetch_SkillHeaders()
-            const refreshedStore3 = (window as any).mainStore?.getState()
-            Object.assign(currentStore, {
-              skill_headers: refreshedStore3.skill_headers || [],
-              skillData: refreshedStore3.skillData || [],
-            })
 
-            for (const cat of currentStore.skill_headers || []) {
-              const catName = normalizeString(
-                cat.categoryName || cat.category_name
-              )
-              for (const sub of cat.skillSubCategories ||
-                cat.skill_sub_categories ||
-                []) {
-                const subName = normalizeString(
-                  sub.subCategoryName || sub.sub_category_name
+            // FIX: don't trust a single immediate re-fetch. Poll with
+            // increasing delay until every expected new-skill key is
+            // actually present in skill_headers, or we give up after
+            // several attempts. This is what was previously missing and is
+            // the main reason new-skill data would silently vanish once the
+            // backend had more data to index/return (i.e. after the first
+            // import, once real rows existed).
+            const waitTimes = [1500, 1500, 2000, 2000, 3000] // ~10s total
+            let stillMissing = new Set(expectedKeys.keys())
+
+            for (const waitMs of waitTimes) {
+              await new Promise((resolve) => setTimeout(resolve, waitMs))
+              await store.fetch_SkillHeaders()
+              const polledStore = (window as any).mainStore?.getState()
+              Object.assign(currentStore, {
+                skill_headers: polledStore.skill_headers || [],
+                skillData: polledStore.skillData || [],
+              })
+              rebuildSkillIdLookup()
+
+              stillMissing = new Set(
+                Array.from(expectedKeys.keys()).filter(
+                  (key) => !skillIdLookup.has(key)
                 )
-                for (const sk of sub.skills || []) {
-                  const skName = normalizeString(sk.skillName || sk.skill_name)
-                  const key = `${catName}|${subName}|${skName}`
-                  skillIdLookup.set(key, sk.id)
+              )
+
+              if (stillMissing.size === 0) break
+            }
+
+            if (stillMissing.size > 0) {
+              for (const key of stillMissing) {
+                const skillName = expectedKeys.get(key)
+                if (skillName) {
+                  skillResolutionFailures.add(skillName)
                 }
               }
+              console.error(
+                "❌ These new skills were created but could not be resolved to an ID after polling:",
+                Array.from(skillResolutionFailures)
+              )
             }
           } catch (error) {
             console.error("❌ Failed to create new skills:", error)
+            // Whole sync failed — none of the new skills can resolve.
+            for (const skillName of newSkillsMap.keys()) {
+              skillResolutionFailures.add(skillName)
+            }
+          }
+        }
+
+        // ===== BUILD UNIFIED SKILL DEFINITION LIST =====
+        // THE CORE FIX: the old code only ever processed per-employee
+        // technical-skill values for skills in TECHNICAL_ABILITY_CONFIG
+        // (a hardcoded, compile-time array) OR skills in newSkillsMap
+        // (skills NOT YET in the DB). The moment a custom skill's header
+        // existed in the DB — i.e. from the second import onward — it was
+        // excluded from newSkillsMap (no longer "new") but was never added
+        // to TECHNICAL_ABILITY_CONFIG either, so NOTHING ever processed its
+        // value again: no create, no update, forever.
+        //
+        // Fix: build one list combining the static config AND everything
+        // currently in skill_headers (which, at this point, already
+        // includes any skill just created above). Every employee's data is
+        // then matched against this full list, every import, so a skill's
+        // value keeps getting created/updated on every subsequent import —
+        // not just the one where its header was first created.
+        const allSkillDefinitions: {
+          category: string
+          subcategory: string
+          skillName: string
+        }[] = []
+        const seenSkillDefKeys = new Set<string>()
+
+        for (const cat of TECHNICAL_ABILITY_CONFIG) {
+          for (const sub of cat.skill_sub_categories) {
+            for (const sk of sub.skills) {
+              const key = `${normalizeString(cat.category_name)}|${normalizeString(sub.sub_category_name)}|${normalizeString(sk.skill_name)}`
+              if (!seenSkillDefKeys.has(key)) {
+                seenSkillDefKeys.add(key)
+                allSkillDefinitions.push({
+                  category: cat.category_name,
+                  subcategory: sub.sub_category_name,
+                  skillName: sk.skill_name,
+                })
+              }
+            }
+          }
+        }
+
+        for (const cat of currentStore.skill_headers || []) {
+          const catName = cat.categoryName || cat.category_name || ""
+          for (const sub of cat.skillSubCategories ||
+            cat.skill_sub_categories ||
+            []) {
+            const subName = sub.subCategoryName || sub.sub_category_name || ""
+            for (const sk of sub.skills || []) {
+              const skillName = sk.skillName || sk.skill_name || ""
+              if (!skillName) continue
+              const key = `${normalizeString(catName)}|${normalizeString(subName)}|${normalizeString(skillName)}`
+              if (!seenSkillDefKeys.has(key)) {
+                seenSkillDefKeys.add(key)
+                allSkillDefinitions.push({
+                  category: catName,
+                  subcategory: subName,
+                  skillName,
+                })
+              }
+            }
           }
         }
 
@@ -859,9 +978,6 @@ export const allTabs = [
           }
 
           // ===== 🆕 COLLECT THE FOUR HEADERS (Department, Rank/Position, Core Personnel, Japan Trip) =====
-          // NOTE: we no longer call updateEmployeeDepartmentPosition here.
-          // It's deferred to run AFTER all other skill data + the final alert,
-          // so it never blocks/delays the main import feedback loop.
           const departmentDirName =
             emp[
               "Name of the commissioning department *Select from the dropdown menu"
@@ -1100,7 +1216,7 @@ export const allTabs = [
             }
           }
 
-          // ===== 4. TECHNICAL SKILLS =====
+          // ===== 4. TECHNICAL SKILLS (unified: config skills + DB skills) =====
           const technicalHeaders = Object.keys(emp).filter(
             (key) =>
               isYearsHeader(key) ||
@@ -1110,291 +1226,205 @@ export const allTabs = [
 
           const processedSkills = new Set<string>()
 
-          for (const cat of TECHNICAL_ABILITY_CONFIG) {
-            for (const sub of cat.skill_sub_categories) {
-              for (const sk of sub.skills) {
-                const skillKey = `${normalizeString(cat.category_name)}|${normalizeString(sub.sub_category_name)}|${normalizeString(sk.skill_name)}`
+          for (const def of allSkillDefinitions) {
+            const skillKey = `${normalizeString(def.category)}|${normalizeString(def.subcategory)}|${normalizeString(def.skillName)}`
 
-                if (processedSkills.has(skillKey)) {
-                  continue
+            if (processedSkills.has(skillKey)) {
+              continue
+            }
+
+            let yearsHeader = ""
+            let expHeader = ""
+            let foundYears = false
+            let foundExp = false
+
+            const skillLower = def.skillName.toLowerCase()
+            const isRPASkill = skillLower === "rpa"
+
+            for (const header of technicalHeaders) {
+              const headerLower = header.toLowerCase()
+              let isMatch = false
+
+              if (isRPASkill) {
+                isMatch =
+                  headerLower.endsWith(` - rpa - years`) ||
+                  headerLower.endsWith(` - rpa - experience`) ||
+                  headerLower.includes(` - rpa - `)
+              } else {
+                isMatch = headerLower.includes(skillLower)
+              }
+
+              if (isMatch) {
+                if (isYearsHeader(header)) {
+                  yearsHeader = header
+                  foundYears = true
+                } else if (isExperienceHeader(header)) {
+                  expHeader = header
+                  foundExp = true
+                }
+              }
+            }
+
+            if (!foundYears || !foundExp) {
+              for (const header of technicalHeaders) {
+                const headerLower = header.toLowerCase()
+
+                if (isRPASkill) {
+                  break
                 }
 
-                let yearsHeader = ""
-                let expHeader = ""
-                let foundYears = false
-                let foundExp = false
-
-                const skillLower = sk.skill_name.toLowerCase()
-                const isRPASkill = skillLower === "rpa"
-
-                for (const header of technicalHeaders) {
-                  const headerLower = header.toLowerCase()
-                  let isMatch = false
-
-                  if (isRPASkill) {
-                    isMatch =
-                      headerLower.endsWith(` - rpa - years`) ||
-                      headerLower.endsWith(` - rpa - experience`) ||
-                      headerLower.includes(` - rpa - `)
-                  } else {
-                    isMatch = headerLower.includes(skillLower)
-                  }
-
-                  if (isMatch) {
-                    if (isYearsHeader(header)) {
-                      yearsHeader = header
-                      foundYears = true
-                    } else if (isExperienceHeader(header)) {
-                      expHeader = header
-                      foundExp = true
-                    }
+                if (
+                  headerLower.includes(skillLower) ||
+                  headerLower.endsWith(skillLower) ||
+                  headerLower.includes(` - ${skillLower}`)
+                ) {
+                  if (
+                    headerLower.includes("years") ||
+                    headerLower.includes("year")
+                  ) {
+                    yearsHeader = header
+                    foundYears = true
+                  } else if (
+                    headerLower.includes("experience") ||
+                    headerLower.includes("exp")
+                  ) {
+                    expHeader = header
+                    foundExp = true
                   }
                 }
+              }
+            }
 
-                if (!foundYears || !foundExp) {
-                  for (const header of technicalHeaders) {
-                    const headerLower = header.toLowerCase()
+            const headerFormats = [
+              `technical ability - ${def.category} - ${def.subcategory} - ${def.skillName} - Years`,
+              `technical ability - ${def.category} - ${def.subcategory} - ${def.skillName} - experience`,
+              `${def.category} - ${def.subcategory} - ${def.skillName} - Years`,
+              `${def.category} - ${def.subcategory} - ${def.skillName} - experience`,
+              `${def.category} - ${def.skillName} - Years`,
+              `${def.category} - ${def.skillName} - experience`,
+              `${def.skillName} - Years`,
+              `${def.skillName} - experience`,
+            ]
 
-                    if (isRPASkill) {
-                      break
-                    }
-
-                    if (
-                      headerLower.includes(skillLower) ||
-                      headerLower.endsWith(skillLower) ||
-                      headerLower.includes(` - ${skillLower}`)
-                    ) {
-                      if (
-                        headerLower.includes("years") ||
-                        headerLower.includes("year")
-                      ) {
-                        yearsHeader = header
-                        foundYears = true
-                      } else if (
-                        headerLower.includes("experience") ||
-                        headerLower.includes("exp")
-                      ) {
-                        expHeader = header
-                        foundExp = true
-                      }
-                    }
-                  }
+            if (!foundYears) {
+              for (const format of headerFormats) {
+                if (format.includes("Years") && emp[format] !== undefined) {
+                  yearsHeader = format
+                  foundYears = true
+                  break
                 }
+              }
+              if (!foundYears) {
+                yearsHeader = `technical ability - ${def.category} - ${def.subcategory} - ${def.skillName} - Years`
+              }
+            }
 
-                const headerFormats = [
-                  `technical ability - ${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - Years`,
-                  `technical ability - ${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - experience`,
-                  `${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - Years`,
-                  `${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - experience`,
-                  `${cat.category_name} - ${sk.skill_name} - Years`,
-                  `${cat.category_name} - ${sk.skill_name} - experience`,
-                  `${sk.skill_name} - Years`,
-                  `${sk.skill_name} - experience`,
-                ]
-
-                if (!foundYears) {
-                  for (const format of headerFormats) {
-                    if (format.includes("Years") && emp[format] !== undefined) {
-                      yearsHeader = format
-                      foundYears = true
-                      break
-                    }
-                  }
-                  if (!foundYears) {
-                    yearsHeader = `technical ability - ${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - Years`
-                  }
+            if (!foundExp) {
+              for (const format of headerFormats) {
+                if (
+                  format.includes("experience") &&
+                  emp[format] !== undefined
+                ) {
+                  expHeader = format
+                  foundExp = true
+                  break
                 }
+              }
+              if (!foundExp) {
+                expHeader = `technical ability - ${def.category} - ${def.subcategory} - ${def.skillName} - experience`
+              }
+            }
 
-                if (!foundExp) {
-                  for (const format of headerFormats) {
-                    if (
-                      format.includes("experience") &&
-                      emp[format] !== undefined
-                    ) {
-                      expHeader = format
-                      foundExp = true
-                      break
-                    }
-                  }
-                  if (!foundExp) {
-                    expHeader = `technical ability - ${cat.category_name} - ${sub.sub_category_name} - ${sk.skill_name} - experience`
-                  }
-                }
+            const yearsRaw = emp[yearsHeader]
+            const experienceRaw = emp[expHeader]
 
-                const yearsRaw = emp[yearsHeader]
-                const experienceRaw = emp[expHeader]
+            const hasYears =
+              yearsRaw !== undefined &&
+              yearsRaw !== null &&
+              yearsRaw !== "" &&
+              !isNaN(parseFloat(yearsRaw)) &&
+              parseFloat(yearsRaw) > 0
+            const hasExperience =
+              experienceRaw !== undefined &&
+              experienceRaw !== null &&
+              experienceRaw.toString().trim().length > 0
 
-                const hasYears =
-                  yearsRaw !== undefined &&
-                  yearsRaw !== null &&
-                  yearsRaw !== "" &&
-                  !isNaN(parseFloat(yearsRaw)) &&
-                  parseFloat(yearsRaw) > 0
-                const hasExperience =
-                  experienceRaw !== undefined &&
-                  experienceRaw !== null &&
-                  experienceRaw.toString().trim().length > 0
+            if (hasYears || hasExperience) {
+              const catNameNorm = normalizeString(def.category)
+              const subNameNorm = normalizeString(def.subcategory)
+              const skNameNorm = normalizeString(def.skillName)
+              const lookupKey = `${catNameNorm}|${subNameNorm}|${skNameNorm}`
+              const skillId = skillIdLookup.get(lookupKey)
 
-                if (hasYears || hasExperience) {
-                  const catNameNorm = normalizeString(cat.category_name)
-                  const subNameNorm = normalizeString(sub.sub_category_name)
-                  const skNameNorm = normalizeString(sk.skill_name)
-                  const lookupKey = `${catNameNorm}|${subNameNorm}|${skNameNorm}`
-                  const skillId = skillIdLookup.get(lookupKey)
-
-                  if (!skillId) {
-                    processedSkills.add(skillKey)
-                    continue
-                  }
-
-                  const techData = {
-                    employeeId: employeeId,
-                    skillId: skillId,
-                    skillName: sk.skill_name,
-                    categoryName: cat.category_name,
-                    subCategoryName: sub.sub_category_name,
-                    yearsOfExperience: hasYears ? parseFloat(yearsRaw) : 0,
-                    experienceLevel: hasExperience
-                      ? experienceRaw.toString().trim()
-                      : "",
-                  }
-
-                  const existing = existingTechnicalSkills.find(
-                    (s: any) =>
-                      normalizeId(s.employeeId || s.employee_id) ===
-                        employeeId &&
-                      (s.skillId === skillId ||
-                        (normalizeString(s.skillName || s.skill_name) ===
-                          skNameNorm &&
-                          normalizeString(s.categoryName || s.category_name) ===
-                            catNameNorm &&
-                          normalizeString(
-                            s.subCategoryName || s.sub_category_name
-                          ) === subNameNorm))
-                  )
-
-                  const key = `${employeeId}|${skillId}`
-                  if (existing) {
-                    const existingYears =
-                      existing.yearsOfExperience ||
-                      existing.years_of_experience ||
-                      0
-                    const existingExp = (
-                      existing.experienceLevel ||
-                      existing.experience_level ||
-                      ""
-                    )
-                      .toString()
-                      .trim()
-
-                    const epsilon = 0.00001
-                    const hasChanged =
-                      Math.abs(existingYears - techData.yearsOfExperience) >
-                        epsilon ||
-                      normalizeString(existingExp) !==
-                        normalizeString(techData.experienceLevel)
-
-                    if (hasChanged) {
-                      technicalToUpdate.set(key, {
-                        id: existing.id,
-                        data: techData,
-                      })
-                    }
-                  } else {
-                    technicalToCreate.set(key, techData)
-                  }
-                }
-
+              if (!skillId) {
+                // This DB skill's ID couldn't be resolved (e.g. it was
+                // just created above and polling still hadn't caught up).
+                // Surface it instead of silently dropping the row.
+                skillResolutionFailures.add(def.skillName)
+  
                 processedSkills.add(skillKey)
+                continue
               }
-            }
-          }
 
-          // ===== PROCESS NEW SKILLS =====
-          if (newSkillsMap.size > 0) {
-            for (const [skillName, info] of newSkillsMap) {
-              const yearsRaw = emp[info.yearsHeader]
-              const experienceRaw = emp[info.expHeader]
+              const techData = {
+                employeeId: employeeId,
+                skillId: skillId,
+                skillName: def.skillName,
+                categoryName: def.category,
+                subCategoryName: def.subcategory,
+                yearsOfExperience: hasYears ? parseFloat(yearsRaw) : 0,
+                experienceLevel: hasExperience
+                  ? experienceRaw.toString().trim()
+                  : "",
+              }
 
-              const hasYears =
-                yearsRaw !== undefined &&
-                yearsRaw !== null &&
-                yearsRaw !== "" &&
-                !isNaN(parseFloat(yearsRaw)) &&
-                parseFloat(yearsRaw) > 0
-              const hasExperience =
-                experienceRaw !== undefined &&
-                experienceRaw !== null &&
-                experienceRaw.toString().trim().length > 0
+              const existing = existingTechnicalSkills.find(
+                (s: any) =>
+                  normalizeId(s.employeeId || s.employee_id) ===
+                    employeeId &&
+                  (s.skillId === skillId ||
+                    (normalizeString(s.skillName || s.skill_name) ===
+                      skNameNorm &&
+                      normalizeString(s.categoryName || s.category_name) ===
+                        catNameNorm &&
+                      normalizeString(
+                        s.subCategoryName || s.sub_category_name
+                      ) === subNameNorm))
+              )
 
-              if (hasYears || hasExperience) {
-                const skNameNorm = normalizeString(skillName)
-                let skillId = null
-
-                for (const [key, id] of skillIdLookup) {
-                  if (key.includes(`|${skNameNorm}`)) {
-                    skillId = id
-                    break
-                  }
-                }
-
-                if (!skillId) {
-                  console.warn(
-                    `⚠️ Could not find ID for new skill: ${skillName}`
-                  )
-                  continue
-                }
-
-                const techData = {
-                  employeeId: employeeId,
-                  skillId: skillId,
-                  skillName: skillName,
-                  categoryName: info.category || "Uncategorized",
-                  subCategoryName: info.subcategory || "Uncategorized",
-                  yearsOfExperience: hasYears ? parseFloat(yearsRaw) : 0,
-                  experienceLevel: hasExperience
-                    ? experienceRaw.toString().trim()
-                    : "",
-                }
-
-                const existing = existingTechnicalSkills.find(
-                  (s: any) =>
-                    normalizeId(s.employeeId || s.employee_id) === employeeId &&
-                    normalizeString(s.skillName || s.skill_name) === skNameNorm
+              const key = `${employeeId}|${skillId}`
+              if (existing) {
+                const existingYears =
+                  existing.yearsOfExperience ||
+                  existing.years_of_experience ||
+                  0
+                const existingExp = (
+                  existing.experienceLevel ||
+                  existing.experience_level ||
+                  ""
                 )
+                  .toString()
+                  .trim()
 
-                const key = `${employeeId}|${skillId}`
-                if (existing) {
-                  const existingYears =
-                    existing.yearsOfExperience ||
-                    existing.years_of_experience ||
-                    0
-                  const existingExp = (
-                    existing.experienceLevel ||
-                    existing.experience_level ||
-                    ""
-                  )
-                    .toString()
-                    .trim()
+                const epsilon = 0.00001
+                const hasChanged =
+                  Math.abs(existingYears - techData.yearsOfExperience) >
+                    epsilon ||
+                  normalizeString(existingExp) !==
+                    normalizeString(techData.experienceLevel)
 
-                  const epsilon = 0.00001
-                  const hasChanged =
-                    Math.abs(existingYears - techData.yearsOfExperience) >
-                      epsilon ||
-                    normalizeString(existingExp) !==
-                      normalizeString(techData.experienceLevel)
-
-                  if (hasChanged) {
-                    technicalToUpdate.set(key, {
-                      id: existing.id,
-                      data: techData,
-                    })
-                  }
-                } else {
-                  technicalToCreate.set(key, techData)
+                if (hasChanged) {
+                  technicalToUpdate.set(key, {
+                    id: existing.id,
+                    data: techData,
+                  })
                 }
+              } else {
+                technicalToCreate.set(key, techData)
               }
             }
+
+            processedSkills.add(skillKey)
           }
         }
 
@@ -1431,6 +1461,11 @@ export const allTabs = [
           if (skippedEmployees.size > 0) {
             msg += ` ${skippedEmployees.size} employees were skipped because they don't exist in the system.`
           }
+          if (skillResolutionFailures.size > 0) {
+            msg += `\n\n⚠️ ${skillResolutionFailures.size} new skill(s) could not be resolved: ${Array.from(
+              skillResolutionFailures
+            ).join(", ")}. Their headers were created — try importing again.`
+          }
           await dialog.warning("No Data to Import", msg)
           return { success: false, message: "No data to import" }
         }
@@ -1453,6 +1488,10 @@ export const allTabs = [
 
         if (skippedEmployees.size > 0) {
           confirmMsg += `\n⚠️ ${skippedEmployees.size} employees will be skipped (ID not found in system).`
+        }
+
+        if (skillResolutionFailures.size > 0) {
+          confirmMsg += `\n\n⚠️ ${skillResolutionFailures.size} new skill(s) could not be resolved and will be skipped this run`
         }
 
         confirmMsg += `\n\nContinue?`
@@ -1587,13 +1626,15 @@ export const allTabs = [
         if (departmentPendingUpdates.length > 0) {
           finalMsg += `⏳ ${departmentPendingUpdates.length} department update(s) pending (employees not in system)\n`
         }
+        if (skillResolutionFailures.size > 0) {
+          finalMsg += `\n⚠️ ${skillResolutionFailures.size} new skill(s) could not be saved this run (their headers were created, but the ID couldn't be resolved in time):\n`
+          if (skillResolutionFailures.size > 5) {
+            finalMsg += `   ... and ${skillResolutionFailures.size - 5} more\n`
+          }
+        }
         await dialog.success("Import Complete", finalMsg)
 
         // ===== 🆕 DEPARTMENT / RANK-POSITION / CORE PERSONNEL / JAPAN TRIP UPDATES (BULK) =====
-        // Runs only AFTER everything above has completed and the main
-        // completion alert has already been shown to the user.
-        // Uses the new /api/employees/department-position/bulk endpoint —
-        // one request for the whole batch instead of one call per employee.
         if (departmentUpdateQueue.length > 0) {
           const bulkRequests = departmentUpdateQueue.map((update) => ({
             employeeId: update.employeeId,
@@ -1611,7 +1652,6 @@ export const allTabs = [
               departmentUpdatesCount =
                 bulkResult.data?.length || bulkRequests.length
             } else {
-              // Whole-batch failure: record every queued employee as failed
               departmentUpdatesCount = 0
               bulkRequests.forEach((req) => {
                 departmentFailedUpdates.push({
@@ -2051,7 +2091,7 @@ export const allTabs = [
               await store.bulkCreate_CurrentTargetData([filteredApiData[j]])
               importedCount++
             } catch (retryError) {
-              console.debug(
+              console.warn(
                 `   ⚠️ Record ${j + 1} (${filteredApiData[j].employeeId || "NO_ID"}) failed`
               )
             }

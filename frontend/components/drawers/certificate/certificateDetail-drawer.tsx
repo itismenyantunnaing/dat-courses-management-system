@@ -32,7 +32,7 @@ import {
 import Image from "next/image"
 import { JapaneseCertificate } from "@/types/certificate"
 import { format } from "date-fns"
-import { resolveUploadUrl} from "@/lib/utils"
+import { resolveUploadUrl } from "@/lib/utils"
 import { CertificateForm } from "@/components/drawers/certificate/certificateForm"
 import { mainStore } from "@/store/mainStore"
 import { CERTIFICATE_TYPES, CERTIFICATE_LEVELS } from "@/types/certificate"
@@ -117,8 +117,8 @@ export function CertificateDetailDrawer({
   if (!certificate) return null
 
   const imageUrl = certificate.filePath
-      ? resolveUploadUrl(certificate.filePath)
-      : "/placeholder-certificate.png"
+    ? resolveUploadUrl(certificate.filePath)
+    : "/placeholder-certificate.png"
 
   const status = certificate.verificationStatus || ""
 
@@ -188,11 +188,11 @@ export function CertificateDetailDrawer({
         // Close the drawer after successful update
         onOpenChange(false)
       } else {
-        toast.error("❌ " + result)
+        toast.error(" " + result)
       }
     } catch (error) {
-      console.error("❌ Error updating certificate:", error)
-      toast.error("❌ Failed to update certificate")
+      console.error(" Error updating certificate:", error)
+      toast.error("Failed to update certificate")
     } finally {
       setIsSubmitting(false)
     }
@@ -211,7 +211,7 @@ export function CertificateDetailDrawer({
   const handleDeleteClick = () => {
     // Check if certificate is approved - don't allow deletion
     if (status?.toLowerCase() === "approved") {
-      toast.error("❌ Cannot delete an approved certificate")
+      toast.error("Cannot delete an approved certificate")
       return
     }
     setDeleteDialogOpen(true)
@@ -225,8 +225,8 @@ export function CertificateDetailDrawer({
       onDelete?.(certificate)
       setDeleteDialogOpen(false)
     } catch (error) {
-      console.error("❌ Error deleting certificate:", error)
-      toast.error("❌ Failed to delete certificate")
+      console.error(" Error deleting certificate:", error)
+      toast.error("Failed to delete certificate")
     } finally {
       setIsDeleting(false)
     }

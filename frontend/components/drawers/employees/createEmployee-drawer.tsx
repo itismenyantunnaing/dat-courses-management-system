@@ -41,7 +41,7 @@ export function CreateEmployeeDrawer({
     add_team,
     divisions,
     dat_departments,
-    updateEmployeeDepartmentPosition
+    updateEmployeeDepartmentPosition,
   } = mainStore()
 
   // State for Add Item Dialog
@@ -96,8 +96,6 @@ export function CreateEmployeeDrawer({
     setIsSubmitting(true)
 
     try {
-
-
       // Map form data to Employee type
       const newEmployee: Employee = {
         id: formData.staff_id,
@@ -122,7 +120,10 @@ export function CreateEmployeeDrawer({
       // First, create the employee
       const result = await add_EmployeeData(newEmployee)
 
-      if (result && (result.includes("already exists") || result.includes("Failed"))) {
+      if (
+        result &&
+        (result.includes("already exists") || result.includes("Failed"))
+      ) {
         toast.warning(result)
         return
       }
@@ -138,7 +139,9 @@ export function CreateEmployeeDrawer({
         })
 
         if (deptPosResult && !deptPosResult.success) {
-          toast.error(`Employee created but failed to update department/position: ${deptPosResult.message}`)
+          toast.error(
+            `Employee created but failed to update department/position: ${deptPosResult.message}`
+          )
           return
         }
       }
@@ -177,91 +180,102 @@ export function CreateEmployeeDrawer({
   }
 
   const handleItemAdded = async (name: string) => {
-    let result = null;
+    let result = null
 
     // Call the appropriate function based on the type
     if (addItemType === "division") {
-      result = await add_division(name);
+      result = await add_division(name)
 
       if (result && result.success) {
-        toast.success(` Division "${name}" added successfully!`);
-        setFormData((prev) => ({ ...prev, div: name }));
+        toast.success(` Division "${name}" added successfully!`)
+        setFormData((prev) => ({ ...prev, div: name }))
       } else {
-        toast.error(`❌ Failed to add division: ${result?.error || 'Unknown error'}`);
+        toast.error(
+          ` Failed to add division: ${result?.error || "Unknown error"}`
+        )
       }
-
     } else if (addItemType === "department") {
-
       // You need to get the division ID from the selected division
       // Find the selected division from the divisions list
-      const selectedDivision = divisions.find((div: any) =>
-        div.divisionName === formData.div || div.id === formData.div
-      );
+      const selectedDivision = divisions.find(
+        (div: any) =>
+          div.divisionName === formData.div || div.id === formData.div
+      )
 
       if (!selectedDivision) {
-        toast.error('❌ Please select a division first before adding a department');
-        return;
+        toast.error(
+          " Please select a division first before adding a department"
+        )
+        return
       }
 
-      const divisionId = selectedDivision.id || selectedDivision.divisionId;
+      const divisionId = selectedDivision.id || selectedDivision.divisionId
 
       // Find if the division has the ID
-      let finalDivisionId = divisionId;
+      let finalDivisionId = divisionId
       if (!finalDivisionId && divisions.length > 0) {
         // If the divisions list has items with id
-        const divWithId = divisions.find((d: any) => d.id);
+        const divWithId = divisions.find((d: any) => d.id)
         if (divWithId) {
           // Try to find the matching division by name
-          const match = divisions.find((d: any) => d.divisionName === formData.div);
+          const match = divisions.find(
+            (d: any) => d.divisionName === formData.div
+          )
           if (match) {
-            finalDivisionId = match.id;
+            finalDivisionId = match.id
           } else {
             // If we can't find it, use the first division's ID
-            finalDivisionId = divisions[0]?.id;
+            finalDivisionId = divisions[0]?.id
           }
         }
       }
 
       if (!finalDivisionId) {
-        toast.error('❌ Could not find division ID. Please select a valid division.');
-        return;
+        toast.error(
+          " Could not find division ID. Please select a valid division."
+        )
+        return
       }
 
-      result = await add_dat_department(finalDivisionId, name);
+      result = await add_dat_department(finalDivisionId, name)
 
       if (result && result.success) {
-        toast.success(` Department "${name}" added successfully!`);
-        setFormData((prev) => ({ ...prev, dept_dat: name }));
+        toast.success(` Department "${name}" added successfully!`)
+        setFormData((prev) => ({ ...prev, dept_dat: name }))
       } else {
-        toast.error(`❌ Failed to add department: ${result?.error || 'Unknown error'}`);
+        toast.error(
+          ` Failed to add department: ${result?.error || "Unknown error"}`
+        )
       }
-
     } else if (addItemType === "team") {
-
       // You need to get the department ID from the selected department
-      const selectedDepartment = dat_departments.find((dept: any) =>
-        dept.deptName === formData.dept_dat || dept.id === formData.dept_dat
-      );
+      const selectedDepartment = dat_departments.find(
+        (dept: any) =>
+          dept.deptName === formData.dept_dat || dept.id === formData.dept_dat
+      )
 
       if (!selectedDepartment) {
-        toast.error('❌ Please select a department first before adding a team');
-        return;
+        toast.error(" Please select a department first before adding a team")
+        return
       }
 
-      const departmentId = selectedDepartment.id || selectedDepartment.departmentDatId;
+      const departmentId =
+        selectedDepartment.id || selectedDepartment.departmentDatId
 
       if (!departmentId) {
-        toast.error('❌ Could not find department ID. Please select a valid department.');
-        return;
+        toast.error(
+          " Could not find department ID. Please select a valid department."
+        )
+        return
       }
 
-      result = await add_team(departmentId, name);
+      result = await add_team(departmentId, name)
 
       if (result && result.success) {
-        toast.success(` Team "${name}" added successfully!`);
-        setFormData((prev) => ({ ...prev, team: name }));
+        toast.success(` Team "${name}" added successfully!`)
+        setFormData((prev) => ({ ...prev, team: name }))
       } else {
-        toast.error(`❌ Failed to add team: ${result?.error || 'Unknown error'}`);
+        toast.error(` Failed to add team: ${result?.error || "Unknown error"}`)
       }
     }
   }

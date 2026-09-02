@@ -66,7 +66,7 @@ const capitalizeFirstLetter = (str: string) => {
 
 // Attendance status options with labels and icons
 const ATTENDANCE_OPTIONS = [
-  { value: "PRESENT", label: "Present", icon: "" },
+  { value: "PRESENT", label: "Present", icon: "✅" },
   { value: "ABSENT", label: "Absent", icon: "❌" },
   { value: "LATE", label: "Late", icon: "⏰" },
   { value: "EXCUSED", label: "Excused", icon: "📝" },
@@ -90,7 +90,8 @@ export function GroupsTab({
   const isAdmin = userRole === "admin"
 
   // Check if user is an approver (includes Approver, Division_Head, Department_Head)
-  const isApprover = userRole === "approver" ||
+  const isApprover =
+    userRole === "approver" ||
     userRole === "division_head" ||
     userRole === "department_head"
 
@@ -105,7 +106,7 @@ export function GroupsTab({
   const canViewAllGroups = isAdmin || isApprover
 
   const TESTING_DATE = new Date()
-  // const TESTING_DATE = new Date("2026-08-13")
+  // const TESTING_DATE = new Date("2026-09-10")
 
   const getEmployeesByGroup = (groupId: number) => {
     let employees = enrollments.filter(
@@ -125,7 +126,6 @@ export function GroupsTab({
     //     (emp) => emp.departmentName === profile.deptDat
     //   )
     // }
-
 
     return employees
   }
@@ -214,7 +214,8 @@ export function GroupsTab({
             const groupId = parseInt(group.id)
             const groupEmployees = getEmployeesByGroup(groupId)
             const uniqueStatuses = getUniqueStatuses(groupEmployees)
-            const isLoadingAttendance = loadingAttendanceGroups[groupId] || false
+            const isLoadingAttendance =
+              loadingAttendanceGroups[groupId] || false
 
             // Check if first session is upcoming
             const firstSessionUpcoming = isFirstSessionUpcoming(group.sessions)
@@ -235,7 +236,6 @@ export function GroupsTab({
                         <span>
                           <span className="font-medium">Enrolled:</span>{" "}
                           {groupEmployees.length}
-
                         </span>
                         <span>
                           <span className="font-medium">Sessions:</span>{" "}
@@ -257,7 +257,10 @@ export function GroupsTab({
                     </div>
                     <div className="flex items-center gap-2">
                       {isLoadingAttendance && (
-                        <Badge variant="outline" className="flex items-center gap-1">
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
                           <HugeiconsIcon
                             icon={LoaderCircle}
                             strokeWidth={2}
@@ -307,11 +310,11 @@ export function GroupsTab({
                             : false
                           const isToday = sessionDate
                             ? sessionDate.toDateString() ===
-                            currentDate.toDateString()
+                              currentDate.toDateString()
                             : false
                           const isPast = sessionDate
                             ? sessionDate.getTime() < currentDate.getTime() &&
-                            !isToday
+                              !isToday
                             : false
                           const isOverdue = isPast && !isToday
 
@@ -329,17 +332,17 @@ export function GroupsTab({
                               className={cn(
                                 "border-muted bg-muted/5",
                                 isFutureSession &&
-                                (isLearner || isApprover) &&
-                                "opacity-70",
+                                  (isLearner || isApprover) &&
+                                  "opacity-70",
                                 isOverdue &&
-                                isLearner &&
-                                "border-red-200 bg-red-50/5",
+                                  isLearner &&
+                                  "border-red-200 bg-red-50/5",
                                 isOverdue &&
-                                isAdmin &&
-                                "border-orange-200 bg-orange-50/5",
+                                  isAdmin &&
+                                  "border-orange-200 bg-orange-50/5",
                                 isFutureSession &&
-                                isAdmin &&
-                                "border-blue-200 bg-blue-50/5"
+                                  isAdmin &&
+                                  "border-blue-200 bg-blue-50/5"
                               )}
                             >
                               <div className="p-3">
@@ -391,7 +394,8 @@ export function GroupsTab({
                                         strokeWidth={2}
                                         className="h-3 w-3"
                                       />
-                                      Coming Soon - Attendance will be available when session starts
+                                      Coming Soon - Attendance will be available
+                                      when session starts
                                     </span>
                                   </div>
                                 )}
@@ -438,9 +442,13 @@ export function GroupsTab({
                                                   )
                                                 }
                                                 // Department_Head: only see employees from their department
-                                                if (isDepartmentHead && profile?.deptDat) {
+                                                if (
+                                                  isDepartmentHead &&
+                                                  profile?.deptDat
+                                                ) {
                                                   return (
-                                                    employee.departmentName === profile.deptDat
+                                                    employee.departmentName ===
+                                                    profile.deptDat
                                                   )
                                                 }
                                                 // Approver (non-department_head) can see all
@@ -469,20 +477,23 @@ export function GroupsTab({
 
                                                 // Check if user can edit this specific employee's attendance
                                                 const canEdit =
-                                                  canEditAttendance && (
-                                                    // Admin can edit all
-                                                    isAdmin ||
+                                                  canEditAttendance &&
+                                                  // Admin can edit all
+                                                  (isAdmin ||
                                                     // Department_Head can edit employees in their department
                                                     (isDepartmentHead &&
-                                                     profile?.deptDat &&
-                                                     employee.departmentName === profile.deptDat) ||
+                                                      profile?.deptDat &&
+                                                      employee.departmentName ===
+                                                        profile.deptDat) ||
                                                     // Approver (non-department_head) can ONLY edit their own attendance
-                                                    (isApprover && !isDepartmentHead &&
-                                                      employee.employeeId === currentUserId) ||
+                                                    (isApprover &&
+                                                      !isDepartmentHead &&
+                                                      employee.employeeId ===
+                                                        currentUserId) ||
                                                     // Learner can only edit their own
                                                     (isLearner &&
-                                                      employee.employeeId === currentUserId)
-                                                  )
+                                                      employee.employeeId ===
+                                                        currentUserId))
 
                                                 return (
                                                   <tr
@@ -493,7 +504,9 @@ export function GroupsTab({
                                                       <div className="flex items-center gap-2">
                                                         <Avatar className="h-6 w-6">
                                                           <AvatarImage
-                                                            src={resolveUploadUrl(employee.profilePhotoPath)}
+                                                            src={resolveUploadUrl(
+                                                              employee.profilePhotoPath
+                                                            )}
                                                           />
                                                           <AvatarFallback className="text-[10px]">
                                                             {getInitials(
@@ -517,7 +530,7 @@ export function GroupsTab({
                                                     </td>
                                                     <td className="px-2 py-2">
                                                       {attendance &&
-                                                        attendance.attendanceStatus ? (
+                                                      attendance.attendanceStatus ? (
                                                         <Badge className="border-green-200 bg-green-100 text-[10px] text-green-700">
                                                           {getAttendanceLabel(
                                                             attendance.attendanceStatus
@@ -539,9 +552,9 @@ export function GroupsTab({
                                                               className={cn(
                                                                 "flex h-7 w-[130px] items-center justify-between rounded-md border bg-background px-2 text-xs",
                                                                 isSaving &&
-                                                                "cursor-not-allowed opacity-50",
+                                                                  "cursor-not-allowed opacity-50",
                                                                 isSessionLocked &&
-                                                                "cursor-not-allowed opacity-50"
+                                                                  "cursor-not-allowed opacity-50"
                                                               )}
                                                               disabled={
                                                                 isSaving ||
@@ -551,8 +564,8 @@ export function GroupsTab({
                                                               <span>
                                                                 {currentStatus
                                                                   ? getAttendanceLabel(
-                                                                    currentStatus
-                                                                  )
+                                                                      currentStatus
+                                                                    )
                                                                   : "Select status"}
                                                               </span>
                                                               <HugeiconsIcon
@@ -585,8 +598,8 @@ export function GroupsTab({
                                                                     className={cn(
                                                                       "text-xs",
                                                                       currentStatus ===
-                                                                      option.value &&
-                                                                      "bg-accent"
+                                                                        option.value &&
+                                                                        "bg-accent"
                                                                     )}
                                                                   >
                                                                     <span className="mr-2">
@@ -599,16 +612,16 @@ export function GroupsTab({
                                                                     }
                                                                     {currentStatus ===
                                                                       option.value && (
-                                                                        <HugeiconsIcon
-                                                                          icon={
-                                                                            Tick02Icon
-                                                                          }
-                                                                          strokeWidth={
-                                                                            2
-                                                                          }
-                                                                          className="ml-auto h-3 w-3"
-                                                                        />
-                                                                      )}
+                                                                      <HugeiconsIcon
+                                                                        icon={
+                                                                          Tick02Icon
+                                                                        }
+                                                                        strokeWidth={
+                                                                          2
+                                                                        }
+                                                                        className="ml-auto h-3 w-3"
+                                                                      />
+                                                                    )}
                                                                   </DropdownMenuItem>
                                                                 )
                                                               )}
@@ -617,8 +630,8 @@ export function GroupsTab({
                                                           {isSaving ? (
                                                             <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-primary"></span>
                                                           ) : savedAttendance[
-                                                            key
-                                                          ] ? (
+                                                              key
+                                                            ] ? (
                                                             <span className="text-green-500">
                                                               ✓
                                                             </span>
@@ -648,7 +661,8 @@ export function GroupsTab({
                                   )
                                 ) : (
                                   <div className="py-6 text-center text-sm text-muted-foreground">
-                                    Attendance tracking will be available after the first session starts.
+                                    Attendance tracking will be available after
+                                    the first session starts.
                                   </div>
                                 )}
                               </div>
@@ -673,7 +687,8 @@ export function GroupsTab({
 
         {isDepartmentHead && course.groups && course.groups.length > 0 && (
           <div className="py-4 text-center text-sm text-muted-foreground">
-            Showing groups with employees from your department ({profile?.deptDat || "Unknown Department"})
+            Showing groups with employees from your department (
+            {profile?.deptDat || "Unknown Department"})
           </div>
         )}
       </div>

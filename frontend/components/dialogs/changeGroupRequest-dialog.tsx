@@ -1,6 +1,7 @@
+// components/course/dialogs/changeGroupRequest-dialog.tsx
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -46,12 +47,14 @@ import {
   ArrowRight01Icon,
   AlertCircleIcon,
   CheckCircle,
+  Time02Icon,
 } from "@hugeicons/core-free-icons"
 import { cn, resolveUploadUrl } from "@/lib/utils"
 import { Course } from "@/types/course"
 import { mainStore } from "@/store/mainStore"
 import { toast } from "sonner"
 import { dialog } from "./import-export-confirm-dialog"
+import { Span } from "next/dist/trace"
 
 interface EnrolledEmployee {
   id: number
@@ -138,7 +141,12 @@ export function ChangeGroupRequestDialogs({
   onRequestGroupChange,
   isRequesting = false,
 }: ChangeGroupDialogsProps) {
-  const [selectedRequestGroupId, setSelectedRequestGroupId] = useState<string>("")
+  const [selectedRequestGroupId, setSelectedRequestGroupId] =
+    useState<string>("")
+  // Add dropdown interaction state
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
 
   const handleRequest = async () => {
     if (!selectedRequestGroupId) {
@@ -151,16 +159,6 @@ export function ChangeGroupRequestDialogs({
     )
     const groupName = selectedGroup?.name || `Group ${selectedRequestGroupId}`
 
-    const confirmed = await dialog.confirm(
-      "Confirm Group Change Request",
-      `Are you sure you want to request to change to "${groupName}"?`,
-      "Yes, Request Change",
-      "Cancel"
-    )
-
-    if (!confirmed) {
-      return
-    }
 
     if (onRequestGroupChange) {
       onRequestGroupChange(selectedRequestGroupId)
@@ -177,9 +175,61 @@ export function ChangeGroupRequestDialogs({
   const [searchTab, setSearchTab] = useState<string>("")
   const [viewAllOpen, setViewAllOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
+  const [progress, setProgress] = useState<{ current: number; total: number }>({
+    current: 0,
+    total: 0,
+  })
 
   const { adminChangeGroup, fetch_courseEnrollments } = mainStore()
+
+  // Add dropdown interaction handlers
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent dialog from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when dialog closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    if (!newOpen) {
+      resetChangeGroupDialog()
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - only prevent if clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
 
   const getUniqueGroups = () => {
     const enrolledEmployees = getEnrolledEmployees(enrollments)
@@ -275,27 +325,34 @@ export function ChangeGroupRequestDialogs({
             failedEmployees.push(employee.employeeName)
           }
         } catch (error) {
-          console.error(`❌ Failed to change group for ${employee.employeeName}:`, error)
+          console.error(
+            ` Failed to change group for ${employee.employeeName}:`,
+            error
+          )
           failedEmployees.push(employee.employeeName)
         }
 
-        setProgress({ current: i + 1, total: selectedEmployeesForChange.length })
+        setProgress({
+          current: i + 1,
+          total: selectedEmployeesForChange.length,
+        })
       }
 
       let message = ""
 
-
       if (failedEmployees.length === 0) {
-        toast.success(` All ${successEmployees.length} employee(s) moved successfully!`)
+        toast.success(
+          ` All ${successEmployees.length} employee(s) moved successfully!`
+        )
       } else if (successEmployees.length === 0) {
-        toast.error(`❌ Failed to move all employees. Please try again.`)
+        toast.error(`Failed to move all employees. Please try again.`)
       } else {
         if (successEmployees.length > 0) {
           message += ` Successfully moved ${successEmployees.length} employee(s): ${successEmployees.join(", ")}\n`
           toast.success(message)
         }
         if (failedEmployees.length > 0) {
-          message += `❌ Failed to move ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
+          message += ` Failed to move ${failedEmployees.length} employee(s): ${failedEmployees.join(", ")}`
           toast.error(message)
         }
       }
@@ -311,10 +368,11 @@ export function ChangeGroupRequestDialogs({
       if (failedEmployees.length === 0) {
         resetChangeGroupDialog()
       }
-
     } catch (error: any) {
-      console.error('❌ Error in group change process:', error)
-      toast.error(`❌ Failed to change groups: ${error.message || 'Unknown error'}`)
+      console.error(" Error in group change process:", error)
+      toast.error(
+        `Failed to change groups: ${error.message || "Unknown error"}`
+      )
     } finally {
       setIsSubmitting(false)
       setProgress({ current: 0, total: 0 })
@@ -329,8 +387,7 @@ export function ChangeGroupRequestDialogs({
     const groupIdNum = parseInt(groupId)
     const groupEmployees = enrollments.filter(
       (e) =>
-        e.courseGroupId === groupIdNum &&
-        e.enrollmentStatus !== "CANCELLED"
+        e.courseGroupId === groupIdNum && e.enrollmentStatus !== "CANCELLED"
     )
     const capacity = group.capacity || 0
     const currentCount = groupEmployees.length
@@ -342,65 +399,31 @@ export function ChangeGroupRequestDialogs({
 
   return (
     <>
-      <Dialog
-        open={open}
-        onOpenChange={(open) => {
-          if (!open) {
-            resetChangeGroupDialog()
-          }
-          onOpenChange(open)
-        }}
-      >
-        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[550px]">
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent
+          className="flex max-h-[90vh] flex-col p-0 sm:max-w-[550px]"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            // Prevent escape key from closing when dropdown is open
+            if (isInteractingWithDropdown) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
-              <HugeiconsIcon
-                icon={RefreshIcon}
-                strokeWidth={1.5}
-                className="h-5 w-5"
-              />
-              Request Change Group
+              Request Group Change
             </DialogTitle>
             <DialogDescription>
-              Request to move to a different group. An admin will review your request.
+              Request to move to a different group. An admin will review your
+              request.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-6 py-2">
+          <div className="flex-1 overflow-y-auto px-6 pb-2">
             <div className="space-y-4">
-              {/* Current Group */}
-              <div className="space-y-2">
-                <Label>Current Group</Label>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-lg font-semibold text-primary">
-                        {currentUserEnrollment?.courseGroupName || "N/A"}
-                      </p>
-                      {currentUserEnrollment && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Employee ID: {currentUserEnrollment.employeeId || "N/A"}
-                        </p>
-                      )}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        getGroupChangeStatusColor(
-                          currentUserEnrollment?.groupChangeStatus || "NONE"
-                        )
-                      )}
-                    >
-                      {getGroupChangeStatusLabel(
-                        currentUserEnrollment?.groupChangeStatus || "NONE"
-                      )}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
               {/* Select New Group with Capacity */}
-              <div className="space-y-2">
+              <div className="mt-4 space-y-2">
                 {currentUserEnrollment?.groupChangeStatus !== "PENDING" ? (
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -409,73 +432,99 @@ export function ChangeGroupRequestDialogs({
                         value={selectedRequestGroupId}
                         onValueChange={setSelectedRequestGroupId}
                         disabled={isRequesting}
+                        onOpenChange={handleDropdownOpenChange}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Choose a group..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {course.groups?.map((group: any) => {
-                            const groupId = group.id
-                            const groupIdNum = parseInt(groupId)
-                            const isCurrentGroup =
-                              groupIdNum === currentUserEnrollment?.courseGroupId
+                          <SelectGroup>
+                            {course.groups?.map((group: any) => {
+                              const groupId = group.id
+                              const groupIdNum = parseInt(groupId)
+                              const isCurrentGroup =
+                                groupIdNum ===
+                                currentUserEnrollment?.courseGroupId
 
-                            const capacityInfo = getGroupCapacityInfo(groupId)
-                            const isFull = capacityInfo?.isFull || false
-                            const currentCount = capacityInfo?.currentCount || 0
-                            const capacity = capacityInfo?.capacity || 0
+                              const capacityInfo = getGroupCapacityInfo(groupId)
+                              const isFull = capacityInfo?.isFull || false
+                              const currentCount =
+                                capacityInfo?.currentCount || 0
+                              const capacity = capacityInfo?.capacity || 0
 
-                            return (
-                              <SelectItem
-                                key={group.id}
-                                value={group.id}
-                                disabled={isCurrentGroup}
-                              >
-                                <div className="flex w-full items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span>
-                                      {group.name}
-                                      {isCurrentGroup && " (Current)"}
-                                    </span>
+                              return (
+                                <SelectItem
+                                  key={group.id}
+                                  value={group.id}
+                                  disabled={isCurrentGroup}
+                                >
+                                  <div className="flex w-full items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm">
+                                        {group.name}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">
+                                        ({currentCount}/
+                                        {capacity === 0 ? "∞" : capacity}){" "}
+                                        learner{capacity > 1 && "s"}
+                                      </span>
+                                      {isFull && !isCurrentGroup && capacity > 0 && (
+                                        <span className="text-xs text-red-500">
+                                          (Full)
+                                        </span>
+                                      )}
+                                      {!isFull && !isCurrentGroup && (
+                                        <span className="text-xs text-green-500">
+                                          (Available)
+                                        </span>
+                                      )}
+                                      {isCurrentGroup && (
+                                        <span className="text-xs text-gray-500">
+                                          (Current)
+                                        </span>
+                                      )}
+                                      {capacity === 0 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="border-blue-200 text-[10px] text-blue-700"
+                                        >
+                                          (Unlimited)
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <span className="text-muted-foreground">
-                                      {currentCount}/{capacity === 0 ? "∞" : capacity}
-                                    </span>
-                                    {isFull && capacity > 0 && (
-                                      <Badge variant="destructive" className="text-[10px]">
-                                        Full
-                                      </Badge>
-                                    )}
-
-                                    {capacity === 0 && (
-                                      <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700">
-                                        Unlimited
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              </SelectItem>
-                            )
-                          })}
+                                </SelectItem>
+                              )
+                            })}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
-                      {selectedRequestGroupId && (
+                      {/* {selectedRequestGroupId && (
                         <div className="rounded-lg border bg-blue-50 p-2 text-xs text-blue-700">
-                          <span className="font-medium">Requesting to move to:</span>{" "}
+                          <span className="font-medium">
+                            Requesting to move to:
+                          </span>{" "}
                           {
                             course.groups?.find(
                               (g: any) => g.id === selectedRequestGroupId
                             )?.name
                           }
                           {(() => {
-                            const info = getGroupCapacityInfo(selectedRequestGroupId)
+                            const info = getGroupCapacityInfo(
+                              selectedRequestGroupId
+                            )
                             if (info) {
                               return (
                                 <span className="ml-2 text-muted-foreground">
-                                  ({info.currentCount}/{info.capacity === 0 ? "∞" : info.capacity} members
-                                  {info.isFull && info.capacity > 0 && " - Full"}
-                                  {!info.isFull && info.capacity > 0 && ` - ${info.remaining} spots available`}
+                                  ({info.currentCount}/
+                                  {info.capacity === 0 ? "∞" : info.capacity}{" "}
+                                  members
+                                  {info.isFull &&
+                                    info.capacity > 0 &&
+                                    " - Full"}
+                                  {!info.isFull &&
+                                    info.capacity > 0 &&
+                                    ` - ${info.remaining} spots available`}
                                   {info.capacity === 0 && " - Unlimited"})
                                 </span>
                               )
@@ -483,26 +532,25 @@ export function ChangeGroupRequestDialogs({
                             return null
                           })()}
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-center">
+                  <div className="rounded-lg p-4 text-center">
                     <HugeiconsIcon
-                      icon={AlertCircleIcon}
+                      icon={Time02Icon}
                       strokeWidth={2}
                       className="mx-auto mb-2 h-8 w-8 text-yellow-600"
                     />
-                    <p className="text-sm font-medium text-yellow-700">
-                      Request Pending
+                    <p className="text-sm text-yellow-600">
+                      Pending request to
                     </p>
-                    <p className="mt-1 text-xs text-yellow-600">
-                      Your group change request is being reviewed by an admin. You
-                      will be notified when it's approved or rejected.
+                    <p className="mt-1 text-xl font-medium text-yellow-600">
+                      {currentUserEnrollment?.requestedCourseGroupName}
                     </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Requested Group:{" "}
-                      {currentUserEnrollment?.requestedCourseGroupName || "N/A"}
+                    <p className="mt-4 px-10 text-xs text-muted-foreground">
+                      Your group change request is being reviewed by an admin.
+                      You will be notified when it's approved or rejected.
                     </p>
                   </div>
                 )}
@@ -534,9 +582,9 @@ export function ChangeGroupRequestDialogs({
                     <p className="text-sm font-medium text-red-700">
                       Request Rejected
                     </p>
-                    <p className="mt-1 text-xs text-red-600">
-                      Your group change request was rejected. You can submit a new
-                      request.
+                    <p className="mt-1 px-12 text-xs text-red-600">
+                      Your previous group change request was rejected. You can submit a
+                      new request.
                     </p>
                   </div>
                 )}
@@ -548,12 +596,15 @@ export function ChangeGroupRequestDialogs({
             <Button
               variant="outline"
               className="flex-1"
-              onClick={resetChangeGroupDialog}
+              onClick={() => {
+                resetChangeGroupDialog()
+                onOpenChange(false)
+              }}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            {currentUserEnrollment?.groupChangeStatus !== "PENDING" &&
+            {currentUserEnrollment?.groupChangeStatus !== "PENDING" && (
               <Button
                 onClick={handleRequest}
                 disabled={!selectedRequestGroupId || isRequesting}
@@ -565,18 +616,10 @@ export function ChangeGroupRequestDialogs({
                     Submitting Request...
                   </>
                 ) : (
-                  <>
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4"
-                    />
-                    Submit Group Change Request
-                  </>
+                  <>Submit Group Request</>
                 )}
               </Button>
-            }
-
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -645,7 +688,9 @@ export function ChangeGroupRequestDialogs({
                     className="group flex cursor-pointer items-center gap-3"
                   >
                     <Avatar className="h-8 w-8 rounded-full">
-                      <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
+                      <AvatarImage
+                        src={resolveUploadUrl(employee.profilePhotoPath)}
+                      />
                       <AvatarFallback className="rounded-full">
                         {getInitials(employee.employeeName)}
                       </AvatarFallback>
@@ -756,7 +801,9 @@ export function ChangeGroupRequestDialogs({
                   className="flex cursor-pointer items-center gap-3"
                 >
                   <Avatar className="h-8 w-8 rounded-full">
-                    <AvatarImage src={resolveUploadUrl(employee.profilePhotoPath)} />
+                    <AvatarImage
+                      src={resolveUploadUrl(employee.profilePhotoPath)}
+                    />
                     <AvatarFallback className="rounded-full">
                       {getInitials(employee.employeeName)}
                     </AvatarFallback>

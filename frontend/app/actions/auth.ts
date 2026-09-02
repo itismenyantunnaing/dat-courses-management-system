@@ -43,7 +43,7 @@ export async function setSessionCookie(
         JSON.stringify(sessionData),
         {
             httpOnly: true,
-            secure: true,
+            secure: false,
             sameSite: 'lax' as const,
             path: '/',
             maxAge: sessionTimeoutMinutes * 60, // Convert to seconds

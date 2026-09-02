@@ -27,9 +27,11 @@ import {
   EditIcon,
   Add01Icon,
   Search01Icon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface DictionaryDrawerProps {
   open: boolean
@@ -49,6 +51,19 @@ interface DictionaryEntry {
 }
 
 const ITEMS_PER_PAGE = 20
+
+// Spinner component using Hugeicons (matching employee search)
+const Spinner = ({ className, ...props }: React.ComponentProps<"svg">) => {
+  return (
+    <HugeiconsIcon
+      icon={Loading03Icon}
+      role="status"
+      aria-label="Loading"
+      className={cn("size-4 animate-spin", className)}
+      {...props}
+    />
+  )
+}
 
 export function DictionaryDrawer({
   open,
@@ -234,9 +249,12 @@ export function DictionaryDrawer({
       }
 
       onSuccess?.()
+      toast.success("Dictionary entry deleted successfully")
     } catch (error) {
       console.error("Failed to delete dictionary entry:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to delete entry")
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete entry"
+      )
     } finally {
       setIsDeleting(false)
     }
@@ -254,12 +272,14 @@ export function DictionaryDrawer({
           englishText: formData.englishText.trim(),
           japaneseText: formData.japaneseText.trim(),
         })
+        toast.success("Dictionary entry updated successfully")
       } else {
         // Create new entry
         await add_dictionary({
           englishText: formData.englishText.trim(),
           japaneseText: formData.japaneseText.trim(),
         })
+        toast.success("Dictionary entry added successfully")
       }
 
       // Refresh the dictionary list
@@ -433,7 +453,12 @@ export function DictionaryDrawer({
 
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
+                    <div className="flex flex-col items-center gap-2">
+                      <Spinner className="h-6 w-6 text-primary" />
+                      <p className="text-sm text-muted-foreground">
+                        Loading dictionary entries...
+                      </p>
+                    </div>
                   </div>
                 ) : filteredDictionary.length === 0 ? (
                   <div className="rounded-lg border border-dashed p-8 text-center">
@@ -512,18 +537,14 @@ export function DictionaryDrawer({
                       ))}
                     </div>
 
-                    {/* Loading more indicator */}
+                    {/* Loading more indicator - matching employee search design */}
                     {hasMoreEntries && (
-                      <div className="mt-4 border-t pt-4">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                      <div className="mt-4 pt-2">
+                        <div className="flex justify-center gap-2 py-2">
+                          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                            <Spinner className="h-4 w-4 text-primary" />
                             <span>Loading more entries...</span>
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            Showing {visibleEntries.length} of{" "}
-                            {filteredDictionary.length} entries
-                          </span>
                         </div>
                       </div>
                     )}
@@ -536,6 +557,18 @@ export function DictionaryDrawer({
                         </p>
                       </div>
                     )}
+
+                    {/* Search results count */}
+                    {searchTerm.trim().length > 0 &&
+                      filteredDictionary.length > 0 && (
+                        <div className="mt-4 border-t pt-4 text-center">
+                          <p className="text-xs text-muted-foreground">
+                            Found {filteredDictionary.length} translation
+                            {filteredDictionary.length !== 1 ? "s" : ""}{" "}
+                            matching "{searchTerm}"
+                          </p>
+                        </div>
+                      )}
                   </>
                 )}
               </div>

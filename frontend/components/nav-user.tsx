@@ -58,8 +58,7 @@ export function NavUser() {
     useState(false)
   const [personalInfoDialogOpen, setPersonalInfoDialogOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
-  const [rolePermissionsDialogOpen, setRolePermissionsDialogOpen] =
-    useState(false)
+  const [rolePermissionsDialogOpen, setRolePermissionsDialogOpen] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
 
@@ -318,15 +317,17 @@ export function NavUser() {
                   <HugeiconsIcon icon={Key02Icon} strokeWidth={2} />
                   Change password
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault()
-                    setSettingsDialogOpen(true)
-                  }}
-                >
-                  <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
-                  Setting
-                </DropdownMenuItem>
+                {profile.role.toLowerCase() === "admin" &&
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      setSettingsDialogOpen(true)
+                    }}
+                  >
+                    <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
+                    Setting
+                  </DropdownMenuItem>
+                }
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem

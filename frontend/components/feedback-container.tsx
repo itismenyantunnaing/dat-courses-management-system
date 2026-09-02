@@ -56,16 +56,14 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  ClockIcon,
   SortByDown01Icon,
   SortByUp01Icon,
   FilterMailIcon,
   Delete02Icon,
   CommentAdd01Icon,
-  ChatFeedback01Icon,
   ListViewIcon,
   GridViewIcon,
-  MessageEdit01Icon,
+  Edit03Icon,
   Message01Icon,
   MessageAdd01Icon,
 } from "@hugeicons/core-free-icons"
@@ -94,10 +92,11 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from "./ui/dropdown-menu"
+import { toast } from "sonner"
 
 type ViewMode = "list" | "card"
 
-// Helper function to format time with sec, min, hr units
+// Helper function to format time
 const formatTime = (dateString: string) => {
   const date = new Date(dateString)
   const now = new Date()
@@ -108,13 +107,13 @@ const formatTime = (dateString: string) => {
   const diffDays = Math.floor(diffHr / 24)
 
   if (diffDays > 0) {
-    return `${diffDays}D ago`
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`
   } else if (diffHr > 0) {
-    return `${diffHr}hr ago`
+    return `${diffHr} hr${diffHr > 1 ? "s" : ""} ago`
   } else if (diffMin > 0) {
-    return `${diffMin}min ago`
+    return `${diffMin} min${diffMin > 1 ? "s" : ""} ago`
   } else {
-    return `${diffSec}sec ago`
+    return `${diffSec} sec${diffSec > 1 ? "s" : ""} ago`
   }
 }
 
@@ -160,10 +159,6 @@ export function FeedbackContainer() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [feedbackToDelete, setFeedbackToDelete] = useState<number | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [message, setMessage] = useState<{
-    type: "success" | "error"
-    text: string
-  } | null>(null)
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [viewMode, setViewMode] = useState<ViewMode>("card")
   const [currentPage, setCurrentPage] = useState(1)
@@ -322,7 +317,7 @@ export function FeedbackContainer() {
         feedbackItem.description?.toLowerCase().includes(searchLower) ||
         feedbackItem.department?.toLowerCase().includes(searchLower) ||
         feedbackItem.team?.toLowerCase().includes(searchLower) ||
-        feedbackItem.category?.toLowerCase().includes(searchLower) //  Add category search
+        feedbackItem.category?.toLowerCase().includes(searchLower)
 
       // Department filter
       const matchesDepartment =
@@ -337,7 +332,7 @@ export function FeedbackContainer() {
         filters.team.length === 0 ||
         (feedbackItem.team && filters.team.includes(feedbackItem.team))
 
-      // Category filter -  Add category filter
+      // Category filter
       const matchesCategory =
         !canFilter ||
         filters.category.length === 0 ||
@@ -434,7 +429,7 @@ export function FeedbackContainer() {
       const result = await delete_FeedbackData(feedbackToDelete)
 
       if (result.includes("successfully")) {
-        setMessage({ type: "success", text: result })
+        toast.success(result)
         setDeleteDialogOpen(false)
         setFeedbackToDelete(null)
 
@@ -442,14 +437,12 @@ export function FeedbackContainer() {
           setDetailDialogOpen(false)
           setSelectedFeedback(null)
         }
-
-        setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: "error", text: result })
+        toast.error(result)
       }
     } catch (error) {
       console.error("Failed to delete feedback:", error)
-      setMessage({ type: "error", text: "Failed to delete feedback" })
+      toast.error("Failed to delete feedback")
     } finally {
       setIsDeleting(false)
     }
@@ -484,15 +477,14 @@ export function FeedbackContainer() {
       const result = await add_FeedbackData(newFeedback)
 
       if (result.includes("successfully")) {
+        toast.success(result)
         setNewFeedbackDialogOpen(false)
-        setMessage({ type: "success", text: result })
-        setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: "error", text: result })
+        toast.error(result)
       }
     } catch (error) {
       console.error("Failed to submit feedback:", error)
-      setMessage({ type: "error", text: "Failed to submit feedback" })
+      toast.error("Failed to submit feedback")
     } finally {
       setIsSubmitting(false)
     }
@@ -518,16 +510,15 @@ export function FeedbackContainer() {
       const result = await update_FeedbackData(id, updatedFeedback)
 
       if (result.includes("successfully")) {
+        toast.success(result)
         setEditFeedbackDialogOpen(false)
         setFeedbackToEdit(null)
-        setMessage({ type: "success", text: result })
-        setTimeout(() => setMessage(null), 1000)
       } else {
-        setMessage({ type: "error", text: result })
+        toast.error(result)
       }
     } catch (error) {
       console.error("Failed to update feedback:", error)
-      setMessage({ type: "error", text: "Failed to update feedback" })
+      toast.error("Failed to update feedback")
     } finally {
       setIsSubmitting(false)
     }
@@ -555,11 +546,11 @@ export function FeedbackContainer() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 pt-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         <CardContent className="px-0">
           {/* Header with Search and New Button - Only show when there's feedback */}
           {feedback.length > 0 && (
-            <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <InputGroup className="w-[400px]">
                 <InputGroupInput
                   ref={searchInputRef}
@@ -781,29 +772,16 @@ export function FeedbackContainer() {
             </div>
           )}
 
-          {/* Message Display */}
-          {message && (
-            <div
-              className={`mx-4 mb-4 rounded p-4 ${
-                message.type === "success"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {message.text}
-            </div>
-          )}
-
           {/* Loading State */}
           {isLoading && (
-            <div className="mx-4 py-12 text-center text-muted-foreground">
+            <div className="py-12 text-center text-muted-foreground">
               Loading feedback...
             </div>
           )}
 
           {/* Feedback Cards/Table Grid */}
           {!isLoading && (
-            <div className="mx-4">
+            <div>
               {paginatedFeedbacks.length > 0 ? (
                 <>
                   {viewMode === "card" ? (
@@ -880,102 +858,117 @@ export function FeedbackContainer() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {paginatedFeedbacks.map((feedbackItem, index) => (
-                            <TableRow
-                              key={feedbackItem.id}
-                              className="cursor-pointer transition-colors hover:bg-muted/50"
-                              onClick={() => handleFeedbackClick(feedbackItem)}
-                            >
-                              <TableCell className="border-r whitespace-nowrap">
-                                {startIndex + index + 1}
-                              </TableCell>
-                              <TableCell className="border-r">
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage
-                                      src={
-                                        resolveUploadUrl(
-                                          selectedFeedback?.profilePhotoPath
-                                        ) || ""
-                                      }
-                                      alt={feedbackItem.employeeName || ""}
-                                    />
-                                    <AvatarFallback className="text-xs text-primary">
-                                      {feedbackItem.employeeName
-                                        ? getInitials(feedbackItem.employeeName)
-                                        : feedbackItem.employeeId
-                                            ?.slice(0, 2)
-                                            .toUpperCase() || "U"}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      {feedbackItem.employeeName ||
-                                        `Employee ${feedbackItem.employeeId}`}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {feedbackItem.employeeId}
+                          {paginatedFeedbacks.map((feedbackItem, index) => {
+                            const showActions =
+                              canEditFeedback || canDeleteFeedback
+                            return (
+                              <TableRow
+                                key={feedbackItem.id}
+                                className="cursor-pointer transition-colors hover:bg-muted/50"
+                                onClick={() =>
+                                  handleFeedbackClick(feedbackItem)
+                                }
+                              >
+                                <TableCell className="border-r whitespace-nowrap">
+                                  {startIndex + index + 1}
+                                </TableCell>
+                                <TableCell className="border-r">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-8 w-8">
+                                      <AvatarImage
+                                        src={
+                                          resolveUploadUrl(
+                                            selectedFeedback?.profilePhotoPath
+                                          ) || ""
+                                        }
+                                        alt={feedbackItem.employeeName || ""}
+                                      />
+                                      <AvatarFallback className="text-xs text-primary">
+                                        {feedbackItem.employeeName
+                                          ? getInitials(
+                                              feedbackItem.employeeName
+                                            )
+                                          : feedbackItem.employeeId
+                                              ?.slice(0, 2)
+                                              .toUpperCase() || "U"}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        {feedbackItem.employeeName ||
+                                          `Employee ${feedbackItem.employeeId}`}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {feedbackItem.employeeId}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="border-r whitespace-nowrap">
-                                {feedbackItem.department || "-"}
-                              </TableCell>
-                              <TableCell className="border-r whitespace-nowrap">
-                                {feedbackItem.team || "-"}
-                              </TableCell>
-                              <TableCell className="max-w-[150px] border-r">
-                                <div className="truncate">
-                                  {feedbackItem.subject}
-                                </div>
-                              </TableCell>
-                              <TableCell className="max-w-[200px] border-r">
-                                <div className="truncate text-sm text-muted-foreground">
-                                  {feedbackItem.description}
-                                </div>
-                              </TableCell>
-                              <TableCell className="border-r text-sm whitespace-nowrap text-muted-foreground">
-                                {getDisplayTime(feedbackItem)}
-                              </TableCell>
-                              <TableCell className="text-right whitespace-nowrap">
-                                <div className="flex items-center justify-end gap-1">
-                                  {canEditFeedback && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleEditClick(e, feedbackItem)
-                                      }}
-                                    >
-                                      <HugeiconsIcon
-                                        icon={MessageEdit01Icon}
-                                        strokeWidth={2}
-                                        className="h-4 w-4"
-                                      />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDeleteClick(e, feedbackItem.id!)
-                                    }}
-                                  >
-                                    <HugeiconsIcon
-                                      icon={Delete02Icon}
-                                      strokeWidth={2}
-                                      className="h-4 w-4"
-                                    />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                </TableCell>
+                                <TableCell className="border-r whitespace-nowrap">
+                                  {feedbackItem.department || "-"}
+                                </TableCell>
+                                <TableCell className="border-r whitespace-nowrap">
+                                  {feedbackItem.team || "-"}
+                                </TableCell>
+                                <TableCell className="max-w-[150px] border-r">
+                                  <div className="truncate">
+                                    {feedbackItem.subject}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="max-w-[200px] border-r">
+                                  <div className="truncate text-sm text-muted-foreground">
+                                    {feedbackItem.description}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="border-r text-sm whitespace-nowrap text-muted-foreground">
+                                  {getDisplayTime(feedbackItem)}
+                                </TableCell>
+                                {showActions && (
+                                  <TableCell className="text-right whitespace-nowrap">
+                                    <div className="flex items-center justify-end gap-1">
+                                      {canEditFeedback && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 hover:bg-primary/10"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleEditClick(e, feedbackItem)
+                                          }}
+                                        >
+                                          <HugeiconsIcon
+                                            icon={Edit03Icon}
+                                            strokeWidth={2}
+                                            className="h-4 w-4"
+                                          />
+                                        </Button>
+                                      )}
+                                      {canDeleteFeedback && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive/90"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleDeleteClick(
+                                              e,
+                                              feedbackItem.id!
+                                            )
+                                          }}
+                                        >
+                                          <HugeiconsIcon
+                                            icon={Delete02Icon}
+                                            strokeWidth={2}
+                                            className="h-4 w-4"
+                                          />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            )
+                          })}
                         </TableBody>
                       </Table>
                     </div>
@@ -986,7 +979,7 @@ export function FeedbackContainer() {
                     <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <Field orientation="horizontal" className="w-fit">
                         <FieldLabel htmlFor="select-rows-per-page">
-                          Rows per page
+                          <span className="text-muted-foreground font-normal">Rows per page</span>
                         </FieldLabel>
                         <Select
                           value={itemsPerPage.toString()}
@@ -1132,7 +1125,7 @@ export function FeedbackContainer() {
         </CardContent>
       </div>
 
-      {/* Feedback Detail Dialog - Now using separate component */}
+      {/* Feedback Detail Dialog */}
       <FeedbackDetailDialog
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
