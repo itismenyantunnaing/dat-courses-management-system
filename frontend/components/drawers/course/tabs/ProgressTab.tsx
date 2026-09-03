@@ -1041,7 +1041,7 @@ export function ProgressTab({ userRole, profile, courseId }: ProgressTabProps) {
                         className={cn(
                           "transition-colors",
                           isUpcoming && "opacity-50",
-                          isToday && "bg-blue-50/50"
+                          isToday && "bg-blue-50"
                         )}
                       >
                         <BorderedTableCell className="text-center">

@@ -27,6 +27,7 @@ import { GroupChangeTab } from "@/components/drawers/course/tabs/GroupChangeTab"
 import { GroupRequestsTab } from "@/components/drawers/course/tabs/GroupRequestsTab"
 import { AttendanceTab } from "@/components/drawers/course/tabs/AttendanceTab"
 import { ProgressTab } from "@/components/drawers/course/tabs/ProgressTab"
+import { ScheduleTab } from "@/components/drawers/course/tabs/ScheduleTab"
 import { ChangeGroupDialogs } from "@/components/dialogs/changeLearners-dialog"
 import { ChangeGroupRequestDialogs } from "@/components/dialogs/changeGroupRequest-dialog"
 import { toast } from "sonner"
@@ -857,6 +858,22 @@ export function CourseDetail({
                   </TabsTrigger>
                 )}
 
+                {/* Schedule Tab - available for all users */}
+                <TabsTrigger value="schedule" className="gap-2">
+                  Schedule
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "h-5 px-1.5 text-xs",
+                      activeTab === "schedule"
+                        ? "bg-secondary"
+                        : "bg-muted-foreground/20 text-muted-foreground"
+                    )}
+                  >
+                    {totalSessions}
+                  </Badge>
+                </TabsTrigger>
+
                 {/* ✅ Attendance Tab - visible for all users */}
                 <TabsTrigger value="attendance" className="gap-2">
                   Attendance
@@ -1106,6 +1123,11 @@ export function CourseDetail({
               currentUserEnrollment={currentUserEnrollment}
               isUserEnrolled={isUserEnrolled}
             />
+          )}
+
+          {/* Schedule Tab Content */}
+          {activeTab === "schedule" && (
+            <ScheduleTab course={course} userRole={userRole} />
           )}
 
           {/* ✅ Attendance Tab Content */}
