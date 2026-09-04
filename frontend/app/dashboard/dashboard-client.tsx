@@ -474,7 +474,13 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
         selectedCourseId: selectedCourseId,
       },
     },
-    { value: "schedule", component: ScheduleContainer },
+    { 
+      value: "schedule", 
+      component: ScheduleContainer,
+      props: {
+        userRole: userRole,
+      },
+    },
     { value: "exams", component: ExamsContainer },
     {
       value: "announcement",
@@ -637,7 +643,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
       />
 
       {/* Forced Password Change Dialog for New Users */}
-      <Dialog
+      {/* <Dialog
         open={isChangePasswordOpen}
         onOpenChange={(open) => {
           // Prevent closing if user status is still "default"
@@ -671,7 +677,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
             }}
           />
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
 
       {/* Success Dialog */}
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>

@@ -362,7 +362,7 @@ export const allTabs = [
           await store.bulkCreate_EmployeeData(employeeDtos)
           importedCount = employeeDtos.length
         } catch (error) {
-          console.error("❌ Bulk import failed:", error)
+          console.error(" Bulk import failed:", error)
           await dialog.warning(
             "Bulk Import Failed",
             `Bulk import of ${employeeDtos.length} employees failed. Trying one by one...`
@@ -398,7 +398,7 @@ export const allTabs = [
         }
 
         if (failedRecords.length > 0) {
-          resultMsg += `\n❌ ${failedRecords.length} failed:`
+          resultMsg += `\n ${failedRecords.length} failed:`
           failedRecords.slice(0, 3).forEach((r) => {
             resultMsg += `\n   • ${r.id} - ${r.name}`
           })
@@ -428,7 +428,7 @@ export const allTabs = [
         console.error("Employee import error:", error)
         await dialog.error(
           "Import Failed",
-          `❌ Import failed: ${error instanceof Error ? error.message : "Unknown error"}`
+          ` Import failed: ${error instanceof Error ? error.message : "Unknown error"}`
         )
         throw error
       }
@@ -458,7 +458,7 @@ export const allTabs = [
           )
         }
       } catch (error) {
-        console.error("❌ Export failed:", error)
+        console.error(" Export failed:", error)
         await dialog.error(
           "Export Failed",
           `Failed to export employees data: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -472,7 +472,7 @@ export const allTabs = [
       try {
         await store.delete_EmployeeData(employeeIds)
       } catch (error) {
-        console.error("❌ Error deleting employees:", error)
+        console.error(" Error deleting employees:", error)
         await dialog.error(
           "Delete Failed",
           `Failed to delete employees: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -537,7 +537,7 @@ export const allTabs = [
         if (!extractionResult.success) {
           await dialog.error(
             "Extraction Failed",
-            `❌ Extraction failed: ${extractionResult.error}`
+            ` Extraction failed: ${extractionResult.error}`
           )
           return { success: false, message: extractionResult.error }
         }
@@ -559,7 +559,7 @@ export const allTabs = [
         try {
           await store.fetch_devCapHeaders()
         } catch (fetchError) {
-          console.error("❌ Failed to fetch development types:", fetchError)
+          console.error(" Failed to fetch development types:", fetchError)
         }
 
         await store.fetch_devCapData()
@@ -593,10 +593,7 @@ export const allTabs = [
             await store.add_BulkSkillCategories(newSkillsOnly)
             await new Promise((resolve) => setTimeout(resolve, 2000))
           } catch (syncError) {
-            console.error(
-              "❌ Failed to sync technical skill headers:",
-              syncError
-            )
+            console.error(" Failed to sync technical skill headers:", syncError)
           }
         }
 
@@ -1516,7 +1513,7 @@ export const allTabs = [
             await store.add_BulkManagementSkills(mgmtCreateArr)
             successCount += mgmtCreateArr.length
           } catch (error) {
-            console.error("❌ Failed to create management skills:", error)
+            console.error(" Failed to create management skills:", error)
           }
         }
 
@@ -1525,7 +1522,7 @@ export const allTabs = [
             await store.add_BulkLanguageSkills(langCreateArr)
             successCount += langCreateArr.length
           } catch (error) {
-            console.error("❌ Failed to create language skills:", error)
+            console.error(" Failed to create language skills:", error)
           }
         }
 
@@ -1534,14 +1531,14 @@ export const allTabs = [
             await store.add_BulkDevelopmentSkills(devCreateArr)
             successCount += devCreateArr.length
           } catch (error) {
-            console.error("❌ Failed to create development skills:", error)
+            console.error(" Failed to create development skills:", error)
             for (const item of devCreateArr) {
               try {
                 await store.add_devCapData(item)
                 successCount++
               } catch (indError) {
                 console.error(
-                  `❌ Failed to create development for employee ${item.employeeId}:`,
+                  ` Failed to create development for employee ${item.employeeId}:`,
                   indError
                 )
               }
@@ -1554,14 +1551,14 @@ export const allTabs = [
             await store.add_BulkTechnicalSkills(techCreateArr)
             successCount += techCreateArr.length
           } catch (error) {
-            console.error("❌ Failed to create technical skills:", error)
+            console.error(" Failed to create technical skills:", error)
             for (const item of techCreateArr) {
               try {
                 await store.add_SkillData(item)
                 successCount++
               } catch (indError) {
                 console.error(
-                  `❌ Failed to create technical for employee ${item.employeeId}:`,
+                  ` Failed to create technical for employee ${item.employeeId}:`,
                   indError
                 )
               }
@@ -1576,7 +1573,7 @@ export const allTabs = [
             successCount++
           } catch (error) {
             console.error(
-              `❌ Failed to update management skill ${item.id}:`,
+              ` Failed to update management skill ${item.id}:`,
               error
             )
           }
@@ -1587,10 +1584,7 @@ export const allTabs = [
             await store.update_japaneseLevel(item.id, item.data)
             successCount++
           } catch (error) {
-            console.error(
-              `❌ Failed to update language skill ${item.id}:`,
-              error
-            )
+            console.error(` Failed to update language skill ${item.id}:`, error)
           }
         }
 
@@ -1600,7 +1594,7 @@ export const allTabs = [
             successCount++
           } catch (error) {
             console.error(
-              `❌ Failed to update development skill ${item.id}:`,
+              ` Failed to update development skill ${item.id}:`,
               error
             )
           }
@@ -1612,7 +1606,7 @@ export const allTabs = [
             successCount++
           } catch (error) {
             console.error(
-              `❌ Failed to update technical skill ${item.id}:`,
+              ` Failed to update technical skill ${item.id}:`,
               error
             )
           }
@@ -1661,7 +1655,7 @@ export const allTabs = [
               })
             }
           } catch (error) {
-            console.error(`❌ Bulk department update failed:`, error)
+            console.error(` Bulk department update failed:`, error)
             departmentUpdatesCount = 0
             bulkRequests.forEach((req) => {
               departmentFailedUpdates.push({
@@ -1677,7 +1671,7 @@ export const allTabs = [
             deptMsg += `⏳ Pending (employee not in system): ${departmentPendingUpdates.length}\n`
           }
           if (departmentFailedUpdates.length > 0) {
-            deptMsg += `❌ Failed: ${departmentFailedUpdates.length}\n`
+            deptMsg += ` Failed: ${departmentFailedUpdates.length}\n`
             departmentFailedUpdates.slice(0, 5).forEach((f) => {
               deptMsg += `   • ${f.employeeId}: ${f.error}\n`
             })
@@ -1693,10 +1687,10 @@ export const allTabs = [
           message: `Processed ${successCount} records, ${departmentUpdatesCount} department updates`,
         }
       } catch (error) {
-        console.error("❌ Skills import error:", error)
+        console.error(" Skills import error:", error)
         await dialog.error(
           "Import Failed",
-          `❌ Failed to import: ${error instanceof Error ? error.message : "Unknown error"}`
+          ` Failed to import: ${error instanceof Error ? error.message : "Unknown error"}`
         )
         return {
           success: false,
@@ -1835,7 +1829,7 @@ export const allTabs = [
 
           let message = `⚠️ ${invalid.length} rows have issues:\n\n`
           message += ` Valid rows: ${valid.length}\n`
-          message += `❌ Invalid rows: ${invalid.length}\n\n`
+          message += ` Invalid rows: ${invalid.length}\n\n`
 
           if (missingEmployeeErrors.length > 0) {
             message += `🚫 ${missingEmployeeErrors.length} rows: Staff ID does not exist in system\n`
@@ -1845,7 +1839,7 @@ export const allTabs = [
             message += `🔄 ${duplicateErrors.length} rows: Duplicate Staff IDs\n\n`
           }
           if (missingIdErrors.length > 0) {
-            message += `❌ ${missingIdErrors.length} rows: Missing Staff ID\n\n`
+            message += ` ${missingIdErrors.length} rows: Missing Staff ID\n\n`
           }
 
           message += `Continue with ${valid.length} valid rows?`
@@ -2051,7 +2045,7 @@ export const allTabs = [
             const errorMessage =
               error instanceof Error ? error.message : "Unknown error"
             console.error(
-              `  ❌ Failed to process global target dates:`,
+              `   Failed to process global target dates:`,
               errorMessage
             )
 
@@ -2079,7 +2073,7 @@ export const allTabs = [
           await store.bulkCreate_CurrentTargetData(filteredApiData)
           importedCount = filteredApiData.length
         } catch (error) {
-          console.error("❌ Bulk import failed:", error)
+          console.error(" Bulk import failed:", error)
           await dialog.warning(
             "Bulk Import Failed",
             `Bulk import of ${filteredApiData.length} records failed. Trying one by one...`
@@ -2120,10 +2114,10 @@ export const allTabs = [
 
         return { success: true, message: finalMessage }
       } catch (error) {
-        console.error("❌ Import failed:", error)
+        console.error(" Import failed:", error)
         await dialog.error(
           "Import Failed",
-          `❌ Import failed: ${error instanceof Error ? error.message : "Unknown error"}`
+          ` Import failed: ${error instanceof Error ? error.message : "Unknown error"}`
         )
         return {
           success: false,
@@ -2181,7 +2175,7 @@ export const allTabs = [
           )
         }
       } catch (error) {
-        console.error("❌ Export failed:", error)
+        console.error(" Export failed:", error)
         await dialog.error(
           "Export Failed",
           `Failed to export current target data: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -2243,7 +2237,7 @@ export const allTabs = [
           message: `Successfully imported ${holidayData.length} holidays!`,
         }
       } catch (error) {
-        console.error("❌ Holiday Import error:", error)
+        console.error(" Holiday Import error:", error)
         throw error
       }
     },
@@ -2271,7 +2265,7 @@ export const allTabs = [
           )
         }
       } catch (error) {
-        console.error("❌ Export failed:", error)
+        console.error(" Export failed:", error)
         await dialog.error(
           "Export Failed",
           `Failed to export holidays data: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -2293,7 +2287,7 @@ export const allTabs = [
       try {
         await store.delete_HolidayData(holidayIds)
       } catch (error) {
-        console.error("❌ Error deleting holidays:", error)
+        console.error(" Error deleting holidays:", error)
         await dialog.error(
           "Delete Failed",
           `Failed to delete holidays: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -2330,7 +2324,10 @@ export const allTabs = [
       }
 
       if (!courseId) {
-        await dialog.warning("No Course Selected", "Please select a course first.")
+        await dialog.warning(
+          "No Course Selected",
+          "Please select a course first."
+        )
         return
       }
 
@@ -2381,7 +2378,7 @@ export const allTabs = [
           const freshStore = (window as any).mainStore?.getState()
           feedbackData = freshStore?.feedback || []
         } catch (error) {
-          console.error("❌ Error fetching feedback data:", error)
+          console.error(" Error fetching feedback data:", error)
           await dialog.error(
             "Fetch Failed",
             `Failed to fetch feedback data: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -2422,7 +2419,7 @@ export const allTabs = [
           return
         }
       } catch (error) {
-        console.error("❌ Export failed:", error)
+        console.error(" Export failed:", error)
         await dialog.error(
           "Export Failed",
           `Failed to export feedback data: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -2432,8 +2429,14 @@ export const allTabs = [
   },
 ]
 
-export const importTabs = allTabs
-  .filter(tab => !(tab.id === "feedback" || tab.id === "self_study_progress_report" || tab.id === "exam_progress_report"))
+export const importTabs = allTabs.filter(
+  (tab) =>
+    !(
+      tab.id === "feedback" ||
+      tab.id === "self_study_progress_report" ||
+      tab.id === "exam_progress_report"
+    )
+)
 export const exportTabs = allTabs
 export const deleteOptions = allTabs
   .filter((tab) => tab.id === "employees" || tab.id === "holidays")

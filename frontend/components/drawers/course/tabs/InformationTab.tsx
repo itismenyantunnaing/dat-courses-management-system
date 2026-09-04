@@ -494,16 +494,7 @@ export function InformationTab({
   )
 
   let filteredEnrollments = activeEnrollments
-  if (isApprover && profile?.team) {
-    filteredEnrollments = filteredEnrollments.filter(
-      (employee) => employee.teamName === profile.team
-    )
-  }
-  if (isDepartmentHead && profile?.deptDat) {
-    filteredEnrollments = filteredEnrollments.filter(
-      (employee) => employee.departmentName === profile.deptDat
-    )
-  }
+
 
   const groupColors = [
     "bg-blue-100 text-blue-700 border-blue-200",
@@ -1688,16 +1679,6 @@ export function InformationTab({
                   className="h-4 w-4"
                 />
                 Enrolled Learners ({filteredEnrollments.length})
-                {isApprover && !isDepartmentHead && profile?.team && (
-                  <Badge variant="outline" className="ml-2 text-xs">
-                    Team: {profile.team}
-                  </Badge>
-                )}
-                {isDepartmentHead && profile?.deptDat && (
-                  <Badge variant="outline" className="ml-2 text-xs">
-                    Dept: {profile.deptDat}
-                  </Badge>
-                )}
               </h4>
               {filteredEnrollments.length > 9 && (
                 <Button

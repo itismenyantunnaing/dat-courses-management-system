@@ -130,11 +130,14 @@ export function LearnersTab({
   isEnrolling = false,
   isUnenrolling = false,
 }: LearnersTabProps) {
-  // Check if user is Department_Head
   const isDepartmentHead = userRole === "department_head"
+  const isDivisionHead = userRole === "division_head"
   const isApprover = userRole === "approver"
   const isAdmin = userRole === "admin"
 
+  // Allow view all learners for Department Head, Division Head, and Approver
+  // Only restrict for regular learners
+  const isRestrictedView = userRole === "learner"
   const canManageLearners = isAdmin
 
   const [viewMode, setViewMode] = useState<ViewMode>("table")
@@ -160,18 +163,23 @@ export function LearnersTab({
     (e) => e.enrollmentStatus !== "CANCELLED"
   )
 
-  // Filter by team for approver
-  if (isApprover && profile?.team) {
-    activeEnrollments = activeEnrollments.filter(
-      (employee) => employee.teamName === profile.team
-    )
-  }
-
-  // Filter by department for department_head
-  if (isDepartmentHead && profile?.deptDat) {
-    activeEnrollments = activeEnrollments.filter(
-      (employee) => employee.departmentName === profile.deptDat
-    )
+  // Only filter for learners (regular users)
+  // Department Head, Division Head, and Approver can see ALL learners
+  if (isRestrictedView) {
+    // For approver (but not department_head or division_head), only show their team
+    if (isApprover && profile?.team) {
+      activeEnrollments = activeEnrollments.filter(
+        (employee) => employee.teamName === profile.team
+      )
+    }
+    // For department_head, only show their department
+    if (isDepartmentHead && profile?.deptDat) {
+      activeEnrollments = activeEnrollments.filter(
+        (employee) => employee.departmentName === profile.deptDat
+      )
+    }
+    // For division_head, only show their division (if applicable)
+    // Add division filtering logic here if needed
   }
 
   let filteredEnrollments = activeEnrollments.filter((employee) => {
@@ -215,21 +223,36 @@ export function LearnersTab({
   }, [activeEnrollments])
 
   // Filter available employees (not already enrolled)
-  // For department_head, only show employees from their department
+  // For Department Head, Division Head, and Approver - show all available employees
+  // For regular learners - show none (they can't add learners)
   const availableEmployees = useMemo(() => {
+    // Only admins and managers can add learners
+    if (!canManageLearners) {
+      return []
+    }
+
     let employees = allEmployees.filter(
       (employee) => !enrolledIds.has(employee.id)
     )
 
-    // Filter by department for department_head
-    if (isDepartmentHead && profile?.deptDat) {
-      employees = employees.filter(
-        (employee) => employee.department === profile.deptDat
-      )
+    // Only filter by department/team for restricted views
+    if (isRestrictedView) {
+      // Filter by department for department_head
+      if (isDepartmentHead && profile?.deptDat) {
+        employees = employees.filter(
+          (employee) => employee.department === profile.deptDat
+        )
+      }
+      // Filter by team for approver
+      if (isApprover && profile?.team) {
+        employees = employees.filter(
+          (employee) => employee.team === profile.team
+        )
+      }
     }
 
     return employees
-  }, [allEmployees, enrolledIds, isDepartmentHead, profile?.deptDat])
+  }, [allEmployees, enrolledIds, isDepartmentHead, isApprover, isRestrictedView, profile?.deptDat, profile?.team, canManageLearners])
 
   const displayedLearners = useMemo(() => {
     if (!deferredSearchQuery.trim()) {
@@ -401,6 +424,20 @@ export function LearnersTab({
 
   const tableColumns = getTableColumns()
 
+  // Determine the title/label for the view
+  const getViewLabel = () => {
+    if (isDepartmentHead && profile?.deptDat) {
+      return `Showing learners from your department (${activeEnrollments.length} total)`
+    }
+    if (isDivisionHead) {
+      return `Showing learners from your division (${activeEnrollments.length} total)`
+    }
+    if (isApprover && profile?.team && isRestrictedView) {
+      return `Showing learners from your team (${activeEnrollments.length} total)`
+    }
+    return `All enrolled learners (${activeEnrollments.length} total)`
+  }
+
   return (
     <TabsContent value="learners" className="pt-4">
       {hasNoLearners ? (
@@ -416,7 +453,7 @@ export function LearnersTab({
             </EmptyMedia>
             <EmptyTitle>No Learners Enrolled</EmptyTitle>
             <EmptyDescription className="max-w-xs text-pretty">
-              {isDepartmentHead && profile?.deptDat
+              {isDepartmentHead && profile?.deptDat && isRestrictedView
                 ? `No learners from your department (${profile.deptDat}) are enrolled in this course.`
                 : "Add learners to attend this course."}
             </EmptyDescription>
@@ -446,18 +483,7 @@ export function LearnersTab({
               <div>
                 <h4 className="flex items-center gap-2 text-xl font-semibold">
                   Enrolled Learners
-                  {isApprover && !isDepartmentHead && profile?.team && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      Team: {profile.team}
-                    </Badge>
-                  )}
                 </h4>
-                {isDepartmentHead && profile?.deptDat && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Showing learners from your department (
-                    {activeEnrollments.length} total)
-                  </p>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 {/* Updated Search Bar with InputGroup */}
@@ -512,7 +538,7 @@ export function LearnersTab({
                 <p className="mt-2 text-sm text-muted-foreground">
                   {enrollmentSearchTerm
                     ? "No matching learners found"
-                    : isDepartmentHead && profile?.deptDat
+                    : isDepartmentHead && profile?.deptDat && isRestrictedView
                       ? `No learners from your department (${profile.deptDat}) are enrolled in this course yet`
                       : "No learners enrolled in this course yet"}
                 </p>

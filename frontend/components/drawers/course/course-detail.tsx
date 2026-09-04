@@ -28,6 +28,7 @@ import { GroupChangeTab } from "@/components/drawers/course/tabs/GroupChangeTab"
 import { GroupRequestsTab } from "@/components/drawers/course/tabs/GroupRequestsTab"
 import { AttendanceTab } from "@/components/drawers/course/tabs/AttendanceTab"
 import { ProgressTab } from "@/components/drawers/course/tabs/ProgressTab"
+import { ScheduleTab } from "@/components/drawers/course/tabs/ScheduleTab"
 import { ChangeGroupDialogs } from "@/components/dialogs/changeLearners-dialog"
 import { ChangeGroupRequestDialogs } from "@/components/dialogs/changeGroupRequest-dialog"
 import { toast } from "sonner"
@@ -136,6 +137,7 @@ export function CourseDetail({
       (e: any) => e.courseId === parsedCourseId
     )
   }, [allEnrollments, course.id])
+  
 
   // Fetch employees on mount if not already loaded
   useEffect(() => {
@@ -846,20 +848,12 @@ export function CourseDetail({
       (e: any) => e.enrollmentStatus !== "CANCELLED"
     ).length
 
-    // Get learners count based on approver's team
-    let approverLearners = totalLearners
-    if (isApprover && profile?.team) {
-      approverLearners = enrollments.filter(
-        (e: any) =>
-          e.enrollmentStatus !== "CANCELLED" && e.teamName === profile.team
-      ).length
-    }
 
     return {
       groups: course.groups?.length || 0,
       sessions:
         course.self_study_sessions?.length || course.sessions?.length || 0,
-      learners: isApprover ? approverLearners : totalLearners,
+      learners: totalLearners,
       groupRequests: enrollments.filter(
         (e: any) => e.groupChangeStatus === "PENDING"
       ).length,
@@ -986,6 +980,22 @@ export function CourseDetail({
 
                 )}
 
+                {/* Schedule Tab - available for all users */}
+                <TabsTrigger value="schedule" className="gap-2">
+                  Schedule
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "h-5 px-1.5 text-xs",
+                      activeTab === "schedule"
+                        ? "bg-secondary"
+                        : "bg-muted-foreground/20 text-muted-foreground"
+                    )}
+                  >
+                    {totalSessions}
+                  </Badge>
+                </TabsTrigger>
+
                 {course.courseType === "trainer" && isAdmin && (
                   <TabsTrigger value="group-requests" className="gap-2">
                     Group Requests
@@ -1098,7 +1108,7 @@ export function CourseDetail({
                     // Only show Unenroll button if registration deadline not passed
                     // AND (not a self-study JLPT course OR not unenroll disabled)
                     !isRegistrationDeadlinePassed &&
-                      (!(course.courseType === "self-study" && course.selfStudyType === "jlpt") || !isUnenrollDisabled) && (
+                    (!(course.courseType === "self-study" && course.selfStudyType === "jlpt") || !isUnenrollDisabled) && (
                       <Button
                         onClick={handleUnenroll}
                         variant="destructive"
@@ -1243,6 +1253,12 @@ export function CourseDetail({
               onRefreshProgress={() => fetch_studyProgress(course.id)}
             />
           )}
+
+          {/* Schedule Tab Content */}
+          {activeTab === "schedule" && (
+            <ScheduleTab course={course} userRole={userRole} />
+          )}
+
 
           {activeTab === "groups" &&
             course.courseType === "trainer" &&
