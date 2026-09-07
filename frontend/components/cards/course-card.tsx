@@ -1,4 +1,3 @@
-// components/cards/course-card.tsx
 "use client"
 
 import React from "react"

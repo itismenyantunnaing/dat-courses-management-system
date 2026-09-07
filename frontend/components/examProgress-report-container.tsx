@@ -667,7 +667,7 @@ export function ExamProgressReportContainer() {
                 </EmptyMedia>
                 <EmptyTitle>
                   {searchTerm || hasActiveFilters
-                    ? "No Matching Records"
+                    ? `No Matching Records for "${searchTerm}"`
                     : "No Exam Progress Data"}
                 </EmptyTitle>
                 <EmptyDescription className="text-center text-pretty">

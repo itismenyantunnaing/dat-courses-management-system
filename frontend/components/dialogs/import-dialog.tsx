@@ -122,7 +122,7 @@ export function ImportDialog({
 
   // Import logic based on tab config
   const handleImport = async () => {
-    if (!currentTabData || !selectedFile) {
+    if (!currentTabData?.onImport || !selectedFile) {
       toast.warning("Please select a file first")
       return
     }
@@ -156,6 +156,24 @@ export function ImportDialog({
     // Prevent cancel during processing
     if (isProcessing) return
     onOpenChange(false)
+  }
+
+  const handleDialogKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Enter" || isProcessing) return
+
+    const target = e.target as HTMLElement
+    if (target.closest('[role="menu"]') || target.closest('[role="listbox"]')) {
+      return
+    }
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (selectedFile) {
+      void handleImport()
+    } else {
+      buttonRef.current?.focus()
+    }
   }
 
   // File upload area component - FIXED with useCallback
@@ -249,6 +267,7 @@ export function ImportDialog({
             />
             <div className="pointer-events-auto flex gap-2">
               <Button
+                ref={buttonRef}
                 type="button"
                 variant="outline"
                 size="sm"
@@ -289,6 +308,7 @@ export function ImportDialog({
         <DialogContent
           className="sm:max-w-[550px]"
           disableClose={isProcessing}
+          onKeyDown={handleDialogKeyDown}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => {
             // Prevent dialog from closing when clicking inside dropdown
@@ -346,6 +366,7 @@ export function ImportDialog({
       <DialogContent
         className="sm:max-w-[550px]"
         disableClose={isProcessing}
+        onKeyDown={handleDialogKeyDown}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(e) => {
           // Prevent dialog from closing when clicking inside dropdown

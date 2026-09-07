@@ -39,6 +39,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { CourseCard } from "@/components/cards/course-card"
 
 interface InformationTabProps {
   course: Course
@@ -549,1239 +556,317 @@ export function InformationTab({
   return (
     <TabsContent value="information" className="pt-4">
       <div className="space-y-6">
-        {/* Course Description */}
-        {course.description && (
-          <div>
-            <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-              Description
-            </h4>
-            <p className="text-sm">{course.description}</p>
-          </div>
-        )}
-
-        {/* Course Info Grid */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* Left Column */}
-          <div className="space-y-3">
-            {course.courseType === "trainer" && (
-              <div className="flex items-center gap-3 text-sm">
-                <HugeiconsIcon
-                  icon={TeacherFreeIcons}
-                  strokeWidth={1.5}
-                  className="h-5 w-5 shrink-0 text-muted-foreground"
-                />
-                <div>
-                  <p className="font-medium">Trainer Name</p>
-                  <p className="text-muted-foreground">
-                    {course.trainerName || "TBD"}
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className="flex items-center gap-3 text-sm">
-              <HugeiconsIcon
-                icon={Calendar03Icon}
-                strokeWidth={1.5}
-                className="h-5 w-5 shrink-0 text-muted-foreground"
-              />
-              <div>
-                <p className="font-medium">Duration</p>
-                <p className="text-muted-foreground">
-                  {startDate
-                    ? format(startDate, "MMM d, yyyy")
-                    : course.courseType === "self-study"
-                      ? "Dynamic Schedule"
-                      : "TBD"}
-                  {endDate && ` - ${format(endDate, "MMM d, yyyy")}`}
-                </p>
-              </div>
+        {/* Course Cards and Session Accordion */}
+        <div className="mt-0">
+          <div className="grid grid-cols-3 gap-6">
+            {/* Left Column - Course Card (takes 1 column) */}
+            <div className="col-span-1">
+              <CourseCard course={course} onView={() => {}} />
             </div>
 
-            <div className="flex items-center gap-3 text-sm">
-              <HugeiconsIcon
-                icon={BookOpenIcon}
-                strokeWidth={1.5}
-                className="h-5 w-5 shrink-0 text-muted-foreground"
-              />
-              <div>
-                <p className="font-medium">Category</p>
-                <p className="text-muted-foreground capitalize">
-                  {course.category}
-                </p>
-              </div>
-            </div>
+            {/* Right Column - Session Accordion (takes 2 columns) */}
+            <div className="col-span-2">
+              {course.courseType === "self-study" && sessionsList.length > 0 ? (
+                <Accordion
+                  type="single"
+                  collapsible
+                  className="rounded-lg border"
+                  defaultValue={
+                    sessionsList.length > 0
+                      ? String(sessionsList[0].id)
+                      : undefined
+                  }
+                >
+                  {sessionsList.map((session, index) => {
+                    const isJLPT = isJLPTType(course.selfStudyType as any)
+                    const sessionId = session.id
+                    const hasProgress = hasSavedProgress(sessionId)
+                    const isCompleted = isSessionCompleted(sessionId)
+                    const progress = savedProgress[sessionId]
+                    const sessionDate = progress?.session_deadline
+                      ? new Date(progress.session_deadline)
+                      : session.date
+                    const sessionStatus = getSessionStatus(sessionDate)
 
-            {course.registrationDeadline && (
-              <div className="flex items-center gap-3 text-sm">
-                <HugeiconsIcon
-                  icon={Calendar03Icon}
-                  strokeWidth={1.5}
-                  className="h-5 w-5 shrink-0 text-muted-foreground"
-                />
-                <div>
-                  <p className="font-medium">Registration Deadline</p>
-                  <p className="text-muted-foreground">
-                    {format(course.registrationDeadline, "MMM d, yyyy")}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-3">
-            {course.courseType === "trainer" && (
-              <>
-                <div className="flex items-center gap-3 text-sm">
-                  <HugeiconsIcon
-                    icon={UserGroupIcon}
-                    strokeWidth={1.5}
-                    className="h-5 w-5 shrink-0 text-muted-foreground"
-                  />
-                  <div>
-                    <p className="font-medium">Total Capacity</p>
-                    <p className="text-muted-foreground">
-                      {totalCapacity || "N/A"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm">
-                  <HugeiconsIcon
-                    icon={Calendar05Icon}
-                    strokeWidth={1.5}
-                    className="h-5 w-5 shrink-0 text-muted-foreground"
-                  />
-                  <div>
-                    <p className="font-medium">Total Sessions</p>
-                    <p className="text-muted-foreground">{totalSessions}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm">
-                  <HugeiconsIcon
-                    icon={UserIcon}
-                    strokeWidth={1.5}
-                    className="h-5 w-5 shrink-0 text-muted-foreground"
-                  />
-                  <div>
-                    <p className="font-medium">Number of Groups</p>
-                    <p className="text-muted-foreground">{groupCount}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm">
-                  <HugeiconsIcon
-                    icon={UserGroupIcon}
-                    strokeWidth={1.5}
-                    className="h-5 w-5 shrink-0 text-muted-foreground"
-                  />
-                  <div>
-                    <p className="font-medium">Total Enrolled</p>
-                    <p className="text-muted-foreground">
-                      {filteredEnrollments.length}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {course.courseType === "self-study" && (
-              <>
-                {course.selfStudyType && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <HugeiconsIcon
-                      icon={BookOpenIcon}
-                      strokeWidth={1.5}
-                      className="h-5 w-5 shrink-0 text-muted-foreground"
-                    />
-                    <div>
-                      <p className="font-medium">Study Type</p>
-                      <p className="text-muted-foreground capitalize">
-                        {course.selfStudyType}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {course.selfStudyType?.toLowerCase().trim() !== "other" && (
-                  <>
-                    {course.totalKanji && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <HugeiconsIcon
-                          icon={ClockIcon}
-                          strokeWidth={1.5}
-                          className="h-5 w-5 shrink-0 text-muted-foreground"
-                        />
-                        <div>
-                          <p className="font-medium">Total Kanji</p>
-                          <p className="text-muted-foreground">
-                            {course.totalKanji}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {course.totalVocabulary && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <HugeiconsIcon
-                          icon={ClockIcon}
-                          strokeWidth={1.5}
-                          className="h-5 w-5 shrink-0 text-muted-foreground"
-                        />
-                        <div>
-                          <p className="font-medium">Total Vocabulary</p>
-                          <p className="text-muted-foreground">
-                            {course.totalVocabulary}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {course.totalGrammar && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <HugeiconsIcon
-                          icon={ClockIcon}
-                          strokeWidth={1.5}
-                          className="h-5 w-5 shrink-0 text-muted-foreground"
-                        />
-                        <div>
-                          <p className="font-medium">Total Grammar</p>
-                          <p className="text-muted-foreground">
-                            {course.totalGrammar}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {course.totalReadingMinutes && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <HugeiconsIcon
-                          icon={ClockIcon}
-                          strokeWidth={1.5}
-                          className="h-5 w-5 shrink-0 text-muted-foreground"
-                        />
-                        <div>
-                          <p className="font-medium">Total Reading Minutes</p>
-                          <p className="text-muted-foreground">
-                            {course.totalReadingMinutes}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {course.totalListeningMinutes && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <HugeiconsIcon
-                          icon={ClockIcon}
-                          strokeWidth={1.5}
-                          className="h-5 w-5 shrink-0 text-muted-foreground"
-                        />
-                        <div>
-                          <p className="font-medium">Total Listening Minutes</p>
-                          <p className="text-muted-foreground">
-                            {course.totalListeningMinutes}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Groups Section - For Trainer Courses */}
-        {course.courseType === "trainer" &&
-          course.groups &&
-          course.groups.length > 0 && (
-            <div>
-              <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <HugeiconsIcon
-                  icon={UserGroupIcon}
-                  strokeWidth={1.5}
-                  className="h-4 w-4"
-                />
-                Groups ({course.groups.length})
-              </h4>
-              <div className="space-y-4">
-                {course.groups
-                  .filter((group: any) => {
-                    if (isAdmin) return true
-                    if (isDepartmentHead) {
-                      const groupId = parseInt(group.id)
-                      return hasDepartmentEmployees(groupId)
-                    }
-                    if (isApprover) return true
-                    if (isLearner && currentUserEnrollment) {
-                      return (
-                        parseInt(group.id) ===
-                        currentUserEnrollment.courseGroupId
+                    let statusBadge = null
+                    if (isCompleted) {
+                      statusBadge = (
+                        <Badge className="bg-green-500 text-[10px] text-white">
+                          <HugeiconsIcon
+                            icon={CheckCircle}
+                            strokeWidth={2}
+                            className="mr-1 h-3 w-3"
+                          />
+                          Completed
+                        </Badge>
+                      )
+                    } else if (hasProgress && progress) {
+                      const overallProgress = Math.round(
+                        ((progress?.kanji_progress_percent || 0) +
+                          (progress?.vocabulary_progress_percent || 0) +
+                          (progress?.grammar_progress_percent || 0) +
+                          (progress?.reading_progress_percent || 0) +
+                          (progress?.listening_progress_percent || 0)) /
+                          5
+                      )
+                      if (overallProgress > 0) {
+                        statusBadge = (
+                          <Badge className="bg-blue-500 text-[10px] text-white">
+                            Progress ({overallProgress}%)
+                          </Badge>
+                        )
+                      }
+                    } else if (sessionStatus === "future") {
+                      statusBadge = (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Upcoming
+                        </Badge>
                       )
                     }
-                    return false
-                  })
-                  .map((group: any, index: number) => {
-                    const groupId = parseInt(group.id)
-                    const groupEmployees = getEmployeesByGroup(groupId)
-                    const isLoadingAttendance =
-                      loadingAttendanceGroups[groupId] || false
-                    const firstSessionUpcoming = isFirstSessionUpcoming(
-                      group.sessions
-                    )
 
                     return (
-                      <Card key={index} className="overflow-hidden">
-                        <CardHeader className="bg-muted/30 pb-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h5 className="text-sm font-semibold">
-                                {group.name}
-                              </h5>
-                              <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                <span>
-                                  Capacity:{" "}
-                                  {group.capacity === undefined
-                                    ? "Unlimited"
-                                    : group.capacity}
-                                </span>
-                                <span>Enrolled: {groupEmployees.length}</span>
-                                <span>Sessions: {group.sessions.length}</span>
-                                {group.startDate && (
-                                  <span>
-                                    Start: {format(group.startDate, "MMM d")}
-                                  </span>
-                                )}
-                                {group.endDate && (
-                                  <span>
-                                    End: {format(group.endDate, "MMM d")}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                      <AccordionItem
+                        key={sessionId}
+                        value={String(sessionId)}
+                        className="border-b px-4 last:border-b-0"
+                      >
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex flex-1 items-center justify-between gap-2">
+                            <span className="text-sm font-medium">
+                              Session {index + 1}
+                            </span>
                             <div className="flex items-center gap-2">
-                              {isLoadingAttendance && (
-                                <Badge
-                                  variant="outline"
-                                  className="flex items-center gap-1"
-                                >
-                                  <HugeiconsIcon
-                                    icon={LoaderCircle}
-                                    strokeWidth={2}
-                                    className="h-3 w-3 animate-spin"
-                                  />
-                                  Loading...
-                                </Badge>
-                              )}
-                              <Badge
-                                variant={
-                                  group.status === "ACTIVE"
-                                    ? "default"
-                                    : "secondary"
-                                }
-                              >
-                                {group.status || "Active"}
-                              </Badge>
+                              {statusBadge}
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent className="pt-4">
-                          {/* Sessions & Attendance */}
-                          <div>
-                            <h6 className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                              <HugeiconsIcon
-                                icon={Calendar05Icon}
-                                strokeWidth={1.5}
-                                className="h-3 w-3"
-                              />
-                              Sessions & Attendance ({group.sessions.length})
-                            </h6>
-
-                            {!firstSessionUpcoming ? (
-                              isLoadingAttendance ? (
-                                <div className="flex items-center justify-center py-8">
-                                  <div className="text-center">
-                                    <div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
-                                    <p className="mt-2 text-xs text-muted-foreground">
-                                      Loading attendance...
-                                    </p>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                  {group.sessions.map(
-                                    (session: any, idx: number) => {
-                                      const sessionDate = session.date
-                                        ? new Date(session.date)
-                                        : null
-                                      const currentDate =
-                                        TESTING_DATE || new Date()
-                                      const isFutureSession = sessionDate
-                                        ? sessionDate.getTime() >
-                                          currentDate.getTime()
-                                        : false
-                                      const isToday = sessionDate
-                                        ? sessionDate.toDateString() ===
-                                          currentDate.toDateString()
-                                        : false
-                                      const isOverdue = sessionDate
-                                        ? sessionDate.getTime() <
-                                            currentDate.getTime() && !isToday
-                                        : false
-
-                                      return (
-                                        <Card
-                                          key={idx}
-                                          className={cn(
-                                            "border-muted bg-muted/5",
-                                            isFutureSession && "opacity-70",
-                                            isOverdue &&
-                                              "border-red-200 bg-red-50/5"
-                                          )}
-                                        >
-                                          <div className="p-2">
-                                            <div className="mb-2 flex items-center justify-between">
-                                              <span className="text-xs font-medium">
-                                                Session{" "}
-                                                {session.sessionNo || idx + 1}
-                                              </span>
-                                              <div className="flex items-center gap-1">
-                                                {isFutureSession && (
-                                                  <Badge className="bg-blue-500 text-[8px] text-white">
-                                                    Upcoming
-                                                  </Badge>
-                                                )}
-                                                {isOverdue && (
-                                                  <Badge className="bg-red-500 text-[8px] text-white">
-                                                    Overdue
-                                                  </Badge>
-                                                )}
-                                                {isToday && (
-                                                  <Badge className="bg-green-500 text-[8px] text-white">
-                                                    Today
-                                                  </Badge>
-                                                )}
-                                              </div>
-                                            </div>
-                                            <div className="text-[10px] text-muted-foreground">
-                                              {sessionDate &&
-                                                format(
-                                                  sessionDate,
-                                                  "MMM d, yyyy"
-                                                )}
-                                              {session.startTime &&
-                                                session.endTime && (
-                                                  <span className="ml-2">
-                                                    {session.startTime} -{" "}
-                                                    {session.endTime}
-                                                  </span>
-                                                )}
-                                            </div>
-
-                                            {/* Attendance for this session - show first 3 employees */}
-                                            {groupEmployees.length > 0 && (
-                                              <div className="mt-2 space-y-1">
-                                                {groupEmployees
-                                                  .filter((employee) => {
-                                                    if (isLearner) {
-                                                      return (
-                                                        employee.employeeId ===
-                                                        currentUserId
-                                                      )
-                                                    }
-                                                    if (
-                                                      isDepartmentHead &&
-                                                      profile?.deptDat
-                                                    ) {
-                                                      return (
-                                                        employee.departmentName ===
-                                                        profile.deptDat
-                                                      )
-                                                    }
-                                                    return true
-                                                  })
-                                                  .slice(0, 3)
-                                                  .map((employee) => {
-                                                    const attendance =
-                                                      getAttendanceForSession(
-                                                        parseInt(session.id),
-                                                        employee.id
-                                                      )
-                                                    const key = `${session.id}-${employee.id}`
-                                                    const currentStatus =
-                                                      attendanceStatuses[key] ||
-                                                      attendance?.attendanceStatus ||
-                                                      ""
-
-                                                    return (
-                                                      <div
-                                                        key={employee.id}
-                                                        className="flex items-center justify-between rounded bg-muted/30 px-2 py-1"
-                                                      >
-                                                        <div className="flex items-center gap-1.5">
-                                                          <Avatar className="h-5 w-5">
-                                                            <AvatarImage
-                                                              src={resolveUploadUrl(
-                                                                employee.profilePhotoPath
-                                                              )}
-                                                            />
-                                                            <AvatarFallback className="text-[8px]">
-                                                              {getInitials(
-                                                                employee.employeeName
-                                                              )}
-                                                            </AvatarFallback>
-                                                          </Avatar>
-                                                          <span className="text-[10px]">
-                                                            {truncateText(
-                                                              employee.employeeName,
-                                                              15
-                                                            )}
-                                                          </span>
-                                                        </div>
-                                                        {currentStatus ? (
-                                                          <Badge className="border-green-200 bg-green-100 text-[8px] text-green-700">
-                                                            {getAttendanceLabel(
-                                                              currentStatus
-                                                            )}
-                                                          </Badge>
-                                                        ) : (
-                                                          <span className="text-[8px] text-muted-foreground">
-                                                            Not recorded
-                                                          </span>
-                                                        )}
-                                                      </div>
-                                                    )
-                                                  })}
-                                                {groupEmployees.length > 3 && (
-                                                  <p className="text-[8px] text-muted-foreground">
-                                                    +{" "}
-                                                    {groupEmployees.length - 3}{" "}
-                                                    more
-                                                  </p>
-                                                )}
-                                              </div>
-                                            )}
-                                          </div>
-                                        </Card>
-                                      )
-                                    }
-                                  )}
-                                </div>
-                              )
-                            ) : (
-                              <div className="py-4 text-center text-xs text-muted-foreground">
-                                Attendance tracking will be available after the
-                                first session starts.
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-              </div>
-            </div>
-          )}
-
-        {/* Sessions Section - For Self-Study Courses */}
-        {course.courseType === "self-study" && sessionsList.length > 0 && (
-          <div>
-            <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <HugeiconsIcon
-                icon={Calendar05Icon}
-                strokeWidth={1.5}
-                className="h-4 w-4"
-              />
-              Sessions ({sessionsList.length})
-              {isUserEnrolled && (
-                <Badge variant="outline" className="ml-2 text-xs">
-                  Enrolled
-                </Badge>
-              )}
-            </h4>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sessionsList.map((session, index) => {
-                const isJLPT = isJLPTType(course.selfStudyType as any)
-                const sessionId = session.id
-                const hasProgress = hasSavedProgress(sessionId)
-                const isCompleted = isSessionCompleted(sessionId)
-                const progress = savedProgress[sessionId]
-                const sessionDate = progress?.session_deadline
-                  ? new Date(progress.session_deadline)
-                  : session.date
-                const sessionStatus = getSessionStatus(sessionDate)
-                const isFutureSession = sessionStatus === "future"
-                const isOverdue = sessionStatus === "overdue"
-                const isToday = sessionStatus === "today"
-                const isPastOrToday =
-                  sessionStatus === "overdue" || sessionStatus === "today"
-
-                const isEditable =
-                  isJLPT &&
-                  isUserEnrolled &&
-                  !isCompleted &&
-                  userRole === "learner" &&
-                  (sessionStatus === "today" ||
-                    (sessionStatus === "future" &&
-                      index === firstFutureSessionIndex))
-
-                const isLocked =
-                  isJLPT &&
-                  isUserEnrolled &&
-                  !isCompleted &&
-                  userRole === "learner" &&
-                  (sessionStatus === "overdue" ||
-                    (sessionStatus === "future" &&
-                      index !== firstFutureSessionIndex))
-
-                const overallProgress = hasProgress
-                  ? Math.round(
-                      ((progress?.kanji_progress_percent || 0) +
-                        (progress?.vocabulary_progress_percent || 0) +
-                        (progress?.grammar_progress_percent || 0) +
-                        (progress?.reading_progress_percent || 0) +
-                        (progress?.listening_progress_percent || 0)) /
-                        5
-                    )
-                  : 0
-
-                let statusBadge = null
-                if (isCompleted) {
-                  statusBadge = (
-                    <Badge className="bg-green-500 text-[10px] text-white">
-                      <HugeiconsIcon
-                        icon={CheckCircle}
-                        strokeWidth={2}
-                        className="mr-1 h-3 w-3"
-                      />
-                      Completed
-                    </Badge>
-                  )
-                } else if (
-                  hasProgress &&
-                  overallProgress > 0 &&
-                  overallProgress < 100
-                ) {
-                  statusBadge = (
-                    <Badge className="bg-blue-500 text-[10px] text-white">
-                      Progress ({overallProgress}%)
-                    </Badge>
-                  )
-                } else if (isOverdue && !isCompleted && sessionDate) {
-                  statusBadge = (
-                    <Badge className="bg-red-500 text-[10px] text-white">
-                      Overdue by{" "}
-                      {Math.ceil(
-                        (TESTING_DATE.getTime() -
-                          new Date(sessionDate).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )}{" "}
-                      days
-                    </Badge>
-                  )
-                } else if (isFutureSession) {
-                  statusBadge = (
-                    <Badge variant="secondary" className="text-[10px]">
-                      Upcoming
-                    </Badge>
-                  )
-                } else if (!hasProgress && isPastOrToday) {
-                  statusBadge = (
-                    <Badge
-                      variant="outline"
-                      className="border-yellow-400 bg-yellow-50 text-[10px] text-yellow-600"
-                    >
-                      Active
-                    </Badge>
-                  )
-                }
-
-                return (
-                  <Card
-                    key={index}
-                    className={cn(
-                      "flex flex-col overflow-hidden border-muted bg-muted/5 transition-colors",
-                      isFutureSession &&
-                        index !== firstFutureSessionIndex &&
-                        "opacity-70",
-                      isOverdue && !isCompleted && "border-red-200 bg-red-50/5"
-                    )}
-                  >
-                    <div className="flex h-full flex-col">
-                      <div className="flex flex-col gap-2 bg-muted/10 p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold">
-                            Session {index + 1}
-                          </span>
-                          {statusBadge}
-                        </div>
-                        {isFutureSession &&
-                          index === firstFutureSessionIndex && (
-                            <Badge className="self-start bg-purple-500 text-[10px] text-white">
-                              Available Now
-                            </Badge>
-                          )}
-                        {isToday && (
-                          <Badge className="self-start bg-green-500 text-[10px] text-white">
-                            Today
-                          </Badge>
-                        )}
-                        <div className="flex items-center gap-2 text-xs">
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-3 pt-2">
                           {isJLPT ? (
                             <>
-                              <HugeiconsIcon
-                                icon={Calendar03Icon}
-                                strokeWidth={1.5}
-                                className="h-4 w-4 text-muted-foreground"
-                              />
-                              <span
-                                className={cn(
-                                  "font-medium",
-                                  isOverdue && !isCompleted
-                                    ? "text-red-500"
-                                    : "text-muted-foreground"
-                                )}
-                              >
-                                {sessionDate
-                                  ? format(
-                                      new Date(sessionDate),
-                                      "MMM d, yyyy (EEE)"
-                                    )
-                                  : "Dynamic based on enrollment"}
-                              </span>
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">
+                                  Session Targets
+                                </p>
+                                <div className="mt-1 grid grid-cols-5 gap-x-2 text-sm">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-muted-foreground">
+                                      Kanji:
+                                    </span>
+                                    <span className="font-medium">
+                                      {session.kanjiCount || 0}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-muted-foreground">
+                                      Vocabulary:
+                                    </span>
+                                    <span className="font-medium">
+                                      {session.vocabularyCount || 0}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-muted-foreground">
+                                      Grammar:
+                                    </span>
+                                    <span className="font-medium">
+                                      {session.grammarCount || 0}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-muted-foreground">
+                                      Reading:
+                                    </span>
+                                    <span className="font-medium">
+                                      {session.readingMinutes || 0} min
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-muted-foreground">
+                                      Listening:
+                                    </span>
+                                    <span className="font-medium">
+                                      {session.listeningMinutes || 0} min
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              {hasProgress && progress && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    Your Progress
+                                  </p>
+                                  <div className="mt-1 space-y-1">
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-muted-foreground">
+                                        Overall:
+                                      </span>
+                                      <span className="font-medium">
+                                        {Math.round(
+                                          ((progress?.kanji_progress_percent ||
+                                            0) +
+                                            (progress?.vocabulary_progress_percent ||
+                                              0) +
+                                            (progress?.grammar_progress_percent ||
+                                              0) +
+                                            (progress?.reading_progress_percent ||
+                                              0) +
+                                            (progress?.listening_progress_percent ||
+                                              0)) /
+                                            5
+                                        )}
+                                        %
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </>
                           ) : (
                             <>
-                              <HugeiconsIcon
-                                icon={ClockIcon}
-                                strokeWidth={1.5}
-                                className="h-4 w-4 text-muted-foreground"
-                              />
-                              <span className="font-medium text-muted-foreground">
-                                Duration: {session.durationPerSession || 7} days
-                              </span>
+                              <div>
+                                <div className="mt-1 space-y-1 text-sm">
+                                  <div className="flex justify-between">
+                                    {session.link && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground">
+                                          Resources:
+                                        </span>
+                                        <a
+                                          href={session.link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="truncate text-sm font-medium text-primary hover:underline"
+                                        >
+                                          {session.link}
+                                        </a>
+                                      </div>
+                                    )}
+                                    <span className="font-medium">
+                                      {session.durationPerSession || 7} days
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </>
                           )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  })}
+                </Accordion>
+              ) : course.courseType === "trainer" &&
+                course.groups &&
+                course.groups.length > 0 ? (
+                <Accordion
+                  type="single"
+                  collapsible
+                  className="rounded-lg border"
+                  defaultValue={
+                    course.groups.length > 0
+                      ? String(course.groups[0].id)
+                      : undefined
+                  }
+                >
+                  {course.groups.map((group: any, index: number) => (
+                    <AccordionItem
+                      key={group.id}
+                      value={String(group.id)}
+                      className="border-b px-4 last:border-b-0"
+                    >
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex flex-1 items-center justify-between gap-2">
+                          <span className="text-sm font-medium">
+                            {group.name || `Group ${index + 1}`}
+                          </span>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {group.sessions?.length || 0} sessions
+                          </Badge>
                         </div>
-                      </div>
-
-                      {isJLPT && (
-                        <div className="bg-muted/5 p-3">
-                          <p className="mb-2 text-xs text-muted-foreground">
-                            🎯 Session Targets:
-                          </p>
-                          <div className="grid grid-cols-3 gap-x-4 gap-y-1.5">
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="text-muted-foreground">
-                                Kanji:
-                              </span>
-                              <span className="font-semibold text-primary">
-                                {session.kanjiCount || 0}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="text-muted-foreground">
-                                Vocab:
-                              </span>
-                              <span className="font-semibold text-primary">
-                                {session.vocabularyCount || 0}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="text-muted-foreground">
-                                Grammar:
-                              </span>
-                              <span className="font-semibold text-primary">
-                                {session.grammarCount || 0}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="text-muted-foreground">
-                                Reading:
-                              </span>
-                              <span className="font-semibold text-primary">
-                                {session.readingMinutes || 0}min
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="text-muted-foreground">
-                                Listening:
-                              </span>
-                              <span className="font-semibold text-primary">
-                                {session.listeningMinutes || 0}min
-                              </span>
-                            </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-2 pt-2">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              Capacity:
+                            </span>
+                            <span className="font-medium">
+                              {group.capacity === undefined
+                                ? "Unlimited"
+                                : group.capacity}
+                            </span>
                           </div>
-                        </div>
-                      )}
-
-                      {isJLPT &&
-                        isUserEnrolled &&
-                        hasProgress &&
-                        userRole === "learner" && (
-                          <div className="flex-1 bg-muted/10 p-3">
-                            <div className="mb-2 flex items-center justify-between">
-                              <p className="text-xs text-muted-foreground">
-                                📊 Your Progress:
-                              </p>
-                              <div className="flex items-center gap-2">
-                                {isCompleted ? (
-                                  <Badge className="bg-green-500 text-[10px] text-white">
-                                    <HugeiconsIcon
-                                      icon={CheckCircle}
-                                      strokeWidth={2}
-                                      className="mr-1 h-3 w-3"
-                                    />
-                                    Completed
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-blue-500 text-[10px] text-white">
-                                    Progress ({overallProgress}%)
-                                  </Badge>
-                                )}
-                              </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              Status:
+                            </span>
+                            <span className="font-medium">
+                              {group.status || "Active"}
+                            </span>
+                          </div>
+                          {group.startDate && (
+                            <div className="col-span-2 flex justify-between">
+                              <span className="text-muted-foreground">
+                                Start Date:
+                              </span>
+                              <span className="font-medium">
+                                {format(group.startDate, "MMM d, yyyy")}
+                              </span>
                             </div>
-
-                            <div className="space-y-2">
-                              <div className="space-y-0.5">
-                                <div className="flex justify-between text-[10px]">
-                                  <span className="text-muted-foreground">
-                                    Kanji
-                                  </span>
-                                  <span className="font-semibold text-primary">
-                                    {progress?.kanji_progress_percent || 0}%
-                                  </span>
-                                </div>
-                                <div className="h-1.5 w-full rounded-full bg-muted">
+                          )}
+                          {group.endDate && (
+                            <div className="col-span-2 flex justify-between">
+                              <span className="text-muted-foreground">
+                                End Date:
+                              </span>
+                              <span className="font-medium">
+                                {format(group.endDate, "MMM d, yyyy")}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {group.sessions && group.sessions.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Sessions ({group.sessions.length})
+                            </p>
+                            <div className="mt-1 max-h-32 space-y-1 overflow-y-auto">
+                              {group.sessions.map(
+                                (session: any, sIdx: number) => (
                                   <div
-                                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
-                                    style={{
-                                      width: `${Math.min(progress?.kanji_progress_percent || 0, 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-0.5">
-                                <div className="flex justify-between text-[10px]">
-                                  <span className="text-muted-foreground">
-                                    Vocab
-                                  </span>
-                                  <span className="font-semibold text-primary">
-                                    {progress?.vocabulary_progress_percent || 0}
-                                    %
-                                  </span>
-                                </div>
-                                <div className="h-1.5 w-full rounded-full bg-muted">
-                                  <div
-                                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
-                                    style={{
-                                      width: `${Math.min(progress?.vocabulary_progress_percent || 0, 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-0.5">
-                                <div className="flex justify-between text-[10px]">
-                                  <span className="text-muted-foreground">
-                                    Grammar
-                                  </span>
-                                  <span className="font-semibold text-primary">
-                                    {progress?.grammar_progress_percent || 0}%
-                                  </span>
-                                </div>
-                                <div className="h-1.5 w-full rounded-full bg-muted">
-                                  <div
-                                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
-                                    style={{
-                                      width: `${Math.min(progress?.grammar_progress_percent || 0, 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-0.5">
-                                <div className="flex justify-between text-[10px]">
-                                  <span className="text-muted-foreground">
-                                    Reading
-                                  </span>
-                                  <span className="font-semibold text-primary">
-                                    {progress?.reading_progress_percent || 0}%
-                                  </span>
-                                </div>
-                                <div className="h-1.5 w-full rounded-full bg-muted">
-                                  <div
-                                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
-                                    style={{
-                                      width: `${Math.min(progress?.reading_progress_percent || 0, 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-0.5">
-                                <div className="flex justify-between text-[10px]">
-                                  <span className="text-muted-foreground">
-                                    Listening
-                                  </span>
-                                  <span className="font-semibold text-primary">
-                                    {progress?.listening_progress_percent || 0}%
-                                  </span>
-                                </div>
-                                <div className="h-1.5 w-full rounded-full bg-muted">
-                                  <div
-                                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
-                                    style={{
-                                      width: `${Math.min(progress?.listening_progress_percent || 0, 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
+                                    key={sIdx}
+                                    className="flex justify-between border-b border-muted/30 py-1 text-xs last:border-0"
+                                  >
+                                    <span className="text-muted-foreground">
+                                      Session {session.sessionNo || sIdx + 1}
+                                    </span>
+                                    <span className="font-medium">
+                                      {session.date
+                                        ? format(
+                                            new Date(session.date),
+                                            "MMM d"
+                                          )
+                                        : "TBD"}
+                                    </span>
+                                  </div>
+                                )
+                              )}
                             </div>
                           </div>
                         )}
-
-                      {isEditable && (
-                        <div className="flex-1 bg-muted/10 p-3">
-                          <p className="mb-2 text-xs text-muted-foreground">
-                            📝 Enter Your Progress:
-                            {isToday && (
-                              <span className="ml-2 font-medium text-green-500">
-                                (Today's session)
-                              </span>
-                            )}
-                            {isFutureSession &&
-                              index === firstFutureSessionIndex && (
-                                <span className="ml-2 font-medium text-purple-500">
-                                  (Available now)
-                                </span>
-                              )}
-                          </p>
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-0.5">
-                                <Label className="text-[10px] text-muted-foreground">
-                                  Kanji Completed
-                                </Label>
-                                <Input
-                                  type="number"
-                                  value={
-                                    sessionInputs[sessionId]?.kanjiCount ??
-                                    progress?.kanji_count ??
-                                    0
-                                  }
-                                  onChange={(e) =>
-                                    handleSessionInputChange(
-                                      sessionId,
-                                      "kanjiCount",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="h-7 text-sm"
-                                  min={0}
-                                  placeholder="0"
-                                  disabled={savingSessions[sessionId]}
-                                />
-                                <p className="text-[9px] text-muted-foreground">
-                                  Target: {session.kanjiCount || 0}
-                                </p>
-                              </div>
-                              <div className="space-y-0.5">
-                                <Label className="text-[10px] text-muted-foreground">
-                                  Vocab Completed
-                                </Label>
-                                <Input
-                                  type="number"
-                                  value={
-                                    sessionInputs[sessionId]?.vocabularyCount ??
-                                    progress?.vocabulary_count ??
-                                    0
-                                  }
-                                  onChange={(e) =>
-                                    handleSessionInputChange(
-                                      sessionId,
-                                      "vocabularyCount",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="h-7 text-sm"
-                                  min={0}
-                                  placeholder="0"
-                                  disabled={savingSessions[sessionId]}
-                                />
-                                <p className="text-[9px] text-muted-foreground">
-                                  Target: {session.vocabularyCount || 0}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-0.5">
-                                <Label className="text-[10px] text-muted-foreground">
-                                  Grammar Completed
-                                </Label>
-                                <Input
-                                  type="number"
-                                  value={
-                                    sessionInputs[sessionId]?.grammarCount ??
-                                    progress?.grammar_count ??
-                                    0
-                                  }
-                                  onChange={(e) =>
-                                    handleSessionInputChange(
-                                      sessionId,
-                                      "grammarCount",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="h-7 text-sm"
-                                  min={0}
-                                  placeholder="0"
-                                  disabled={savingSessions[sessionId]}
-                                />
-                                <p className="text-[9px] text-muted-foreground">
-                                  Target: {session.grammarCount || 0}
-                                </p>
-                              </div>
-                              <div className="space-y-0.5">
-                                <Label className="text-[10px] text-muted-foreground">
-                                  Reading (min)
-                                </Label>
-                                <Input
-                                  type="number"
-                                  value={
-                                    sessionInputs[sessionId]?.readingMinutes ??
-                                    progress?.reading_minutes ??
-                                    0
-                                  }
-                                  onChange={(e) =>
-                                    handleSessionInputChange(
-                                      sessionId,
-                                      "readingMinutes",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="h-7 text-sm"
-                                  min={0}
-                                  placeholder="0"
-                                  disabled={savingSessions[sessionId]}
-                                />
-                                <p className="text-[9px] text-muted-foreground">
-                                  Target: {session.readingMinutes || 0}min
-                                </p>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="col-span-2 space-y-0.5">
-                                <Label className="text-[10px] text-muted-foreground">
-                                  Listening (min)
-                                </Label>
-                                <Input
-                                  type="number"
-                                  value={
-                                    sessionInputs[sessionId]
-                                      ?.listeningMinutes ??
-                                    progress?.listening_minutes ??
-                                    0
-                                  }
-                                  onChange={(e) =>
-                                    handleSessionInputChange(
-                                      sessionId,
-                                      "listeningMinutes",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="h-7 text-sm"
-                                  min={0}
-                                  placeholder="0"
-                                  disabled={savingSessions[sessionId]}
-                                />
-                                <p className="text-[9px] text-muted-foreground">
-                                  Target: {session.listeningMinutes || 0}min
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            className="mt-3 w-full gap-2"
-                            onClick={() => handleSaveSession(sessionId)}
-                            disabled={savingSessions[sessionId]}
-                          >
-                            {savingSessions[sessionId] ? (
-                              <>
-                                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current"></span>
-                                Saving...
-                              </>
-                            ) : (
-                              <>
-                                <HugeiconsIcon
-                                  icon={SaveIcon}
-                                  strokeWidth={2}
-                                  className="h-4 w-4"
-                                />
-                                Save Progress
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      )}
-
-                      {isLocked && (
-                        <div className="border-t border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/20">
-                          <p className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
-                            <HugeiconsIcon
-                              icon={Alert01Icon}
-                              strokeWidth={2}
-                              className="h-4 w-4"
-                            />
-                            {isOverdue ? (
-                              <>
-                                ⚠️ This session is overdue. Progress submission
-                                is disabled.
-                              </>
-                            ) : (
-                              <>
-                                📅 This session is not yet available. Please
-                                complete the previous session first.
-                              </>
-                            )}
-                          </p>
-                        </div>
-                      )}
-
-                      {!isJLPT && session.link && (
-                        <div className="mt-auto bg-muted/5 p-3">
-                          <div className="flex items-center gap-2 text-[11px]">
-                            <HugeiconsIcon
-                              icon={Megaphone02Icon}
-                              strokeWidth={1.5}
-                              className="h-4 w-4 text-muted-foreground"
-                            />
-                            <a
-                              href={session.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="max-w-[150px] truncate font-medium text-primary hover:underline"
-                            >
-                              Resources Link: {session.link}
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Compact Learners Section - Always visible */}
-        {filteredEnrollments.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between">
-              <h4 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <HugeiconsIcon
-                  icon={UserGroupIcon}
-                  strokeWidth={1.5}
-                  className="h-4 w-4"
-                />
-                Enrolled Learners ({filteredEnrollments.length})
-                {isApprover && !isDepartmentHead && profile?.team && (
-                  <Badge variant="outline" className="ml-2 text-xs">
-                    Team: {profile.team}
-                  </Badge>
-                )}
-                {isDepartmentHead && profile?.deptDat && (
-                  <Badge variant="outline" className="ml-2 text-xs">
-                    Dept: {profile.deptDat}
-                  </Badge>
-                )}
-              </h4>
-              {filteredEnrollments.length > 9 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowFullLearners(!showFullLearners)}
-                  className="gap-1 text-xs"
-                >
-                  <HugeiconsIcon
-                    icon={showFullLearners ? ChevronDownIcon : ChevronRightIcon}
-                    strokeWidth={2}
-                    className="h-3 w-3"
-                  />
-                  {showFullLearners
-                    ? "Show Less"
-                    : `View All (${filteredEnrollments.length})`}
-                </Button>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              ) : (
+                <div className="flex h-full min-h-[200px] items-center justify-center rounded-lg border border-dashed">
+                  <p className="text-sm text-muted-foreground">
+                    No sessions available
+                  </p>
+                </div>
               )}
             </div>
-
-            {!showFullLearners ? (
-              // Compact view - avatar cards
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredEnrollments.slice(0, 9).map((employee) => (
-                  <div
-                    key={employee.id}
-                    className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
-                  >
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarImage src={employee.pfImage || ""} />
-                      <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                        {getInitials(employee.employeeName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {employee.employeeName}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {truncateText(employee.departmentName || "-", 25)}
-                        {employee.teamName &&
-                          ` • ${truncateText(employee.teamName, 20)}`}
-                      </p>
-                    </div>
-                    {course.courseType === "trainer" && (
-                      <Badge className="text-[10px]">
-                        {employee.courseGroupName || "-"}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              // Full LearnersTab embedded
-              <div className="mt-3">
-                <LearnersTab
-                  enrollments={enrollments}
-                  userRole={userRole}
-                  profile={profile}
-                  enrollmentSearchTerm={enrollmentSearchTerm}
-                  onSearchChange={onSearchChange}
-                  course={course}
-                  onRefreshEnrollments={handleRefreshEnrollments}
-                  onAdminChangeGroup={onAdminChangeGroup}
-                  isChangingGroup={isChangingGroup}
-                  groupChangeError={groupChangeError}
-                  groupChangeSuccess={groupChangeSuccess}
-                  allEmployees={allEmployees}
-                  groups={groups}
-                  onEnrollEmployee={onEnrollEmployee}
-                  onUnenrollEmployee={onUnenrollEmployee}
-                  isEnrolling={isEnrolling}
-                  isUnenrolling={isUnenrolling}
-                />
-              </div>
-            )}
-
-            {!showFullLearners && filteredEnrollments.length > 9 && (
-              <p className="mt-2 text-sm text-muted-foreground">
-                + {filteredEnrollments.length - 9} more learners
-              </p>
-            )}
           </div>
-        )}
+        </div>
       </div>
     </TabsContent>
   )

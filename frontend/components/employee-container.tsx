@@ -107,6 +107,14 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { toast } from "sonner"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 
 const STROKE_WIDTH = 2
 
@@ -559,7 +567,6 @@ export function EmployeeContainer({
     })
   }
 
-  // Filter employees based on active view
   // Filter employees based on active view
   const getFilteredData = () => {
     const data = viewableEmployees
@@ -1039,6 +1046,14 @@ export function EmployeeContainer({
 
   // Determine if selection bar is active
   const isSelectionActive = !isListView && selectedCount > 0
+
+  // Check if there are any employees at all
+  const hasAnyEmployees = employee_data.length > 0
+
+  // Check if there is any data to display in the current view
+  const hasData = isListView
+    ? listItems.length > 0
+    : filteredEmployees.length > 0
 
   // Render employee card
   const renderEmployeeCard = (employee: Employee, index: number) => {
@@ -2014,306 +2029,377 @@ export function EmployeeContainer({
     <>
       <div className="flex flex-col gap-4 pb-6">
         <CardContent className="px-0">
-          {/* Tabs and Search Bar */}
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {/* Tabs */}
-            <div>
-              <Tabs
-                value={activeView}
-                onValueChange={(value) => {
-                  setActiveView(value as ViewTab)
-                  setCurrentPage(1)
-                  setRowSelection({})
-                  setIsDrillDown(false)
-                  setSelectedItem("")
-                  setSearchTerm("")
-                  setDrilldownSearchTerm("")
-                  setSelectedDepartment("All")
-                  setSelectedTeam("All")
-                }}
-              >
-                <TabsList className="h-auto">
-                  {VIEW_TABS.map((tab) => {
-                    const count = tabCounts[tab.id as keyof typeof tabCounts]
-                    return (
-                      <TabsTrigger
-                        key={tab.id}
-                        value={tab.id}
-                        className="gap-2"
-                      >
-                        {tab.label}
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "h-5 px-1.5 text-xs",
-                            activeView === tab.id
-                              ? "bg-secondary"
-                              : "bg-muted-foreground/20 text-muted-foreground"
-                          )}
+          {/* Tabs and Search Bar - Only show when there are employees */}
+          {hasAnyEmployees && (
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              {/* Tabs */}
+              <div>
+                <Tabs
+                  value={activeView}
+                  onValueChange={(value) => {
+                    setActiveView(value as ViewTab)
+                    setCurrentPage(1)
+                    setRowSelection({})
+                    setIsDrillDown(false)
+                    setSelectedItem("")
+                    setSearchTerm("")
+                    setDrilldownSearchTerm("")
+                    setSelectedDepartment("All")
+                    setSelectedTeam("All")
+                  }}
+                >
+                  <TabsList className="h-auto">
+                    {VIEW_TABS.map((tab) => {
+                      const count = tabCounts[tab.id as keyof typeof tabCounts]
+                      return (
+                        <TabsTrigger
+                          key={tab.id}
+                          value={tab.id}
+                          className="gap-2"
                         >
-                          {count}
-                        </Badge>
-                      </TabsTrigger>
-                    )
-                  })}
-                </TabsList>
-              </Tabs>
-            </div>
-
-            {/* Actions - Search, View (list and card) and New Button */}
-            <div className="flex items-center gap-1.5">
-              {/* Only show main search when NOT in drilldown */}
-              {!isDrillDown && (
-                <InputGroup className="max-w-sm">
-                  <InputGroupInput
-                    ref={searchInputRef}
-                    placeholder={
-                      isListView ? `Search ${activeView}...` : searchPlaceholder
-                    }
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  <InputGroupAddon>
-                    <HugeiconsIcon
-                      icon={Search01Icon}
-                      strokeWidth={2}
-                      className="h-4 w-4 text-muted-foreground"
-                    />
-                  </InputGroupAddon>
-                  <InputGroupAddon align="inline-end">
-                    <Kbd>Ctrl + K</Kbd>
-                  </InputGroupAddon>
-                </InputGroup>
-              )}
-
-              {!isListView && !isDrillDown && (
-                <>
-                  {/* View Mode Tabs */}
-                  <Tabs
-                    value={viewMode}
-                    onValueChange={(value) => setViewMode(value as ViewMode)}
-                  >
-                    <TabsList className="h-9">
-                      <TabsTrigger value="list">
-                        <HugeiconsIcon
-                          icon={ListViewIcon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                      </TabsTrigger>
-                      <TabsTrigger value="card">
-                        <HugeiconsIcon
-                          icon={GridViewIcon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-
-                  {/* Filter Dropdown */}
-                  <DropdownMenu>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="relative h-9 w-9"
-                          >
-                            <HugeiconsIcon
-                              icon={FilterMailIcon}
-                              strokeWidth={2}
-                              className="h-4 w-4"
-                            />
-                            {hasActiveFilters && (
-                              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                          {tab.label}
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "h-5 px-1.5 text-xs",
+                              activeView === tab.id
+                                ? "bg-secondary"
+                                : "bg-muted-foreground/20 text-muted-foreground"
                             )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Filter</p>
-                      </TooltipContent>
-                    </Tooltip>
+                          >
+                            {count}
+                          </Badge>
+                        </TabsTrigger>
+                      )
+                    })}
+                  </TabsList>
+                </Tabs>
+              </div>
 
-                    <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
-                      {/* Division Filter */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          Division
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent>
-                            {getFilterUniqueValues("div_name").map((value) => (
-                              <DropdownMenuCheckboxItem
-                                key={value}
-                                checked={filters.division.includes(value)}
-                                onCheckedChange={() =>
-                                  toggleFilter("division", value)
-                                }
-                                onSelect={(e) => e.preventDefault()}
-                              >
-                                {value}
-                              </DropdownMenuCheckboxItem>
-                            ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
+              {/* Actions - Search, View (list and card) and New Button */}
+              <div className="flex items-center gap-1.5">
+                {/* Only show main search when NOT in drilldown */}
+                {!isDrillDown && (
+                  <InputGroup className="max-w-sm">
+                    <InputGroupInput
+                      ref={searchInputRef}
+                      placeholder={
+                        isListView
+                          ? `Search ${activeView}...`
+                          : searchPlaceholder
+                      }
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <InputGroupAddon>
+                      <HugeiconsIcon
+                        icon={Search01Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4 text-muted-foreground"
+                      />
+                    </InputGroupAddon>
+                    <InputGroupAddon align="inline-end">
+                      <Kbd>Ctrl + K</Kbd>
+                    </InputGroupAddon>
+                  </InputGroup>
+                )}
 
-                      {/* Department Filter */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          Department
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent>
-                            {getFilterUniqueValues("dept_dat").map((value) => (
-                              <DropdownMenuCheckboxItem
-                                key={value}
-                                checked={filters.department.includes(value)}
-                                onCheckedChange={() =>
-                                  toggleFilter("department", value)
-                                }
-                                onSelect={(e) => e.preventDefault()}
-                              >
-                                {value}
-                              </DropdownMenuCheckboxItem>
-                            ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
+                {!isListView && !isDrillDown && (
+                  <>
+                    {/* View Mode Tabs */}
+                    <Tabs
+                      value={viewMode}
+                      onValueChange={(value) => setViewMode(value as ViewMode)}
+                    >
+                      <TabsList className="h-9">
+                        <TabsTrigger value="list">
+                          <HugeiconsIcon
+                            icon={ListViewIcon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                        </TabsTrigger>
+                        <TabsTrigger value="card">
+                          <HugeiconsIcon
+                            icon={GridViewIcon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
 
-                      {/* Team Filter */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>Team</DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent className="max-h-[500px] overflow-y-auto">
-                            {getFilterUniqueValues("team").map((value) => (
-                              <DropdownMenuCheckboxItem
-                                key={value}
-                                checked={filters.team.includes(value)}
-                                onCheckedChange={() =>
-                                  toggleFilter("team", value)
-                                }
-                                onSelect={(e) => e.preventDefault()}
-                              >
-                                {value}
-                              </DropdownMenuCheckboxItem>
-                            ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
+                    {/* Filter Dropdown */}
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="relative h-9 w-9"
+                            >
+                              <HugeiconsIcon
+                                icon={FilterMailIcon}
+                                strokeWidth={2}
+                                className="h-4 w-4"
+                              />
+                              {hasActiveFilters && (
+                                <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Filter</p>
+                        </TooltipContent>
+                      </Tooltip>
 
-                      {/* Status Filter */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>Status</DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent>
-                            {Object.entries(statusLabels).map(
-                              ([value, label]) => (
+                      <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
+                        {/* Division Filter */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            Division
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {getFilterUniqueValues("div_name").map(
+                                (value) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={value}
+                                    checked={filters.division.includes(value)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("division", value)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {value}
+                                  </DropdownMenuCheckboxItem>
+                                )
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+
+                        {/* Department Filter */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            Department
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {getFilterUniqueValues("dept_dat").map(
+                                (value) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={value}
+                                    checked={filters.department.includes(value)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("department", value)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {value}
+                                  </DropdownMenuCheckboxItem>
+                                )
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+
+                        {/* Team Filter */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Team</DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent className="max-h-[500px] overflow-y-auto">
+                              {getFilterUniqueValues("team").map((value) => (
                                 <DropdownMenuCheckboxItem
                                   key={value}
-                                  checked={filters.status.includes(value)}
+                                  checked={filters.team.includes(value)}
                                   onCheckedChange={() =>
-                                    toggleFilter("status", value)
+                                    toggleFilter("team", value)
                                   }
                                   onSelect={(e) => e.preventDefault()}
                                 >
-                                  {label}
+                                  {value}
                                 </DropdownMenuCheckboxItem>
-                              )
-                            )}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
 
-                      {/* Role Filter */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>Role</DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent>
-                            {getFilterUniqueValues("role").map((value) => (
-                              <DropdownMenuCheckboxItem
-                                key={value}
-                                checked={filters.role.includes(value)}
-                                onCheckedChange={() =>
-                                  toggleFilter("role", value)
-                                }
-                                onSelect={(e) => e.preventDefault()}
-                              >
-                                {value}
-                              </DropdownMenuCheckboxItem>
-                            ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
+                        {/* Status Filter */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            Status
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {Object.entries(statusLabels).map(
+                                ([value, label]) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={value}
+                                    checked={filters.status.includes(value)}
+                                    onCheckedChange={() =>
+                                      toggleFilter("status", value)
+                                    }
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    {label}
+                                  </DropdownMenuCheckboxItem>
+                                )
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
 
-                      <DropdownMenuSeparator />
+                        {/* Role Filter */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Role</DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              {getFilterUniqueValues("role").map((value) => (
+                                <DropdownMenuCheckboxItem
+                                  key={value}
+                                  checked={filters.role.includes(value)}
+                                  onCheckedChange={() =>
+                                    toggleFilter("role", value)
+                                  }
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {value}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
 
-                      {/* Clear Filters Button - This should close the dropdown */}
-                      <DropdownMenuItem
-                        onClick={clearAllFilters}
-                        variant="destructive"
-                        className="gap-2"
-                      >
-                        <HugeiconsIcon
-                          icon={Delete02Icon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                        Clear All Filters
-                        <DropdownMenuShortcut>
-                          <Kbd>Esc</Kbd>
-                        </DropdownMenuShortcut>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              )}
+                        <DropdownMenuSeparator />
 
-              {/* Creation is a CRUD action: hidden entirely for learners
-                  (view-only) and only enabled for admin */}
-              {isAdmin && !isListView && !isDrillDown && (
-                <Button
-                  variant="default"
-                  onClick={handleNewEmployee}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <HugeiconsIcon icon={UserAdd01Icon} strokeWidth={2} />
-                  New
-                </Button>
-              )}
-              {isAdmin && isListView && !isDrillDown && (
-                <Button
-                  variant="default"
-                  onClick={() => {
-                    setDialogItemType(
-                      activeView === "divisions"
-                        ? "division"
-                        : activeView === "departments"
-                          ? "department"
-                          : "team"
-                    )
-                    handleNewItem()
-                  }}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
-                  New {activeView.slice(0, -1)}
-                </Button>
-              )}
+                        {/* Clear Filters Button - This should close the dropdown */}
+                        <DropdownMenuItem
+                          onClick={clearAllFilters}
+                          variant="destructive"
+                          className="gap-2"
+                        >
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                          Clear All Filters
+                          <DropdownMenuShortcut>
+                            <Kbd>Esc</Kbd>
+                          </DropdownMenuShortcut>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+
+                {/* Creation is a CRUD action: hidden entirely for learners
+                    (view-only) and only enabled for admin */}
+                {isAdmin && !isListView && !isDrillDown && (
+                  <Button
+                    variant="default"
+                    onClick={handleNewEmployee}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <HugeiconsIcon icon={UserAdd01Icon} strokeWidth={2} />
+                    New
+                  </Button>
+                )}
+                {isAdmin && isListView && !isDrillDown && (
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      setDialogItemType(
+                        activeView === "divisions"
+                          ? "division"
+                          : activeView === "departments"
+                            ? "department"
+                            : "team"
+                      )
+                      handleNewItem()
+                    }}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+                    New {activeView.slice(0, -1)}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Content */}
           {isListView && !isDrillDown ? (
             // Category Cards View (Divisions/Departments/Teams) - NO PAGINATION
             <div className="space-y-4">
               {listItems.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  No {activeView} found
-                </div>
+                <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <HugeiconsIcon
+                        icon={
+                          activeView === "divisions"
+                            ? DashboardBrowsingIcon
+                            : activeView === "departments"
+                              ? DatabaseIcon
+                              : Calendar01Icon
+                        }
+                        strokeWidth={2}
+                        className="h-12 w-12 text-muted-foreground"
+                      />
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {searchTerm
+                        ? `No Matching ${activeView.slice(0, -1)}s for "${searchTerm}"`
+                        : `No ${activeView.slice(0, -1)}s Found`}
+                    </EmptyTitle>
+                    <EmptyDescription className="text-center text-pretty">
+                      {searchTerm ? (
+                        <>Try adjusting your search.</>
+                      ) : (
+                        <>
+                          Add {activeView.slice(0, -1)}s to organize your
+                          employees.
+                        </>
+                      )}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    {searchTerm ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchTerm("")
+                        }}
+                      >
+                        Clear Search
+                      </Button>
+                    ) : (
+                      isAdmin && (
+                        <Button
+                          variant="default"
+                          onClick={() => {
+                            setDialogItemType(
+                              activeView === "divisions"
+                                ? "division"
+                                : activeView === "departments"
+                                  ? "department"
+                                  : "team"
+                            )
+                            handleNewItem()
+                          }}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+                          New {activeView.slice(0, -1)}
+                        </Button>
+                      )
+                    )}
+                  </EmptyContent>
+                </Empty>
               ) : (
                 listItems.map((item) => renderCategoryCard(item as string))
               )}
@@ -2500,337 +2586,585 @@ export function EmployeeContainer({
             </div>
           ) : viewMode === "list" ? (
             // Table View for Employees
-            <div
-              className={cn("relative overflow-x-auto rounded-md border")}
-              style={{ zIndex: 1 }}
-            >
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    {!isReadOnly && (
-                      <BorderedTableHead className="w-auto min-w-[32px] align-middle whitespace-nowrap">
+            hasData ? (
+              <>
+                <div
+                  className={cn("relative overflow-x-auto rounded-md border")}
+                  style={{ zIndex: 1 }}
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        {!isReadOnly && (
+                          <BorderedTableHead className="w-auto min-w-[32px] align-middle whitespace-nowrap">
+                            <Checkbox
+                              checked={areAllFilteredSelected}
+                              onCheckedChange={handleSelectAll}
+                              aria-label="Select all"
+                            />
+                          </BorderedTableHead>
+                        )}
+                        {employeeHeaders.slice(1).map((header) => {
+                          // Skip the "select" header if it's the first one and we're in read-only mode
+                          if (isReadOnly && header.field === "select")
+                            return null
+                          if (
+                            !isAdmin &&
+                            (header.field === "doorlog" ||
+                              header.field === "staff_id")
+                          )
+                            return null
+                          return (
+                            <BorderedTableHead
+                              key={header.field}
+                              className="align-middle whitespace-nowrap"
+                            >
+                              {header.header_name}
+                            </BorderedTableHead>
+                          )
+                        })}
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {paginatedEmployees.length === 0 ? (
+                        <TableRow>
+                          <BorderedTableCell
+                            colSpan={totalColumns}
+                            className="py-8 text-center text-muted-foreground"
+                          >
+                            {searchTerm || hasActiveFilters ? (
+                              <>
+                                No employees found matching{" "}
+                                {searchTerm && `"${searchTerm}"`}
+                                {searchTerm && hasActiveFilters && " and "}
+                                {hasActiveFilters && "selected filters"}
+                              </>
+                            ) : (
+                              "No employees found"
+                            )}
+                          </BorderedTableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedEmployees.map((employee, index) => {
+                          const isEmployee = (emp: Employee): emp is Employee =>
+                            emp && typeof emp === "object" && "id" in emp
+
+                          if (!isEmployee(employee)) return null
+
+                          const isSelected =
+                            !!rowSelection[employee.id.toString()]
+                          const isManageable =
+                            isAdmin || canManageEmployee(employee)
+                          return (
+                            <TableRow
+                              key={employee.id}
+                              className={`cursor-pointer transition-colors hover:bg-muted/50`}
+                              onClick={() => handleRowClick(employee)}
+                            >
+                              {/* Only show checkbox if not read-only. Disabled for
+                                  employees outside the user's filtered scope, since
+                                  those rows are view-only for that user. */}
+                              {!isReadOnly && (
+                                <BorderedTableCell
+                                  className="w-10"
+                                  selected={isSelected}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Checkbox
+                                    checked={isSelected}
+                                    disabled={!isManageable}
+                                    onCheckedChange={() =>
+                                      handleRowSelect(employee.id.toString())
+                                    }
+                                    aria-label={`Select ${employee.name}`}
+                                  />
+                                </BorderedTableCell>
+                              )}
+                              {/* Adjust index for read-only mode */}
+                              <BorderedTableCell selected={isSelected}>
+                                {startIndex + index + 1}
+                              </BorderedTableCell>
+                              <BorderedTableCell selected={isSelected}>
+                                {employee.div_name}
+                              </BorderedTableCell>
+                              {isAdmin && (
+                                <BorderedTableCell
+                                  className="text-sm"
+                                  selected={isSelected}
+                                >
+                                  {employee.id}
+                                </BorderedTableCell>
+                              )}
+                              <BorderedTableCell
+                                className="font-medium"
+                                selected={isSelected}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage
+                                      src={
+                                        resolveUploadUrl(
+                                          employee.profile_photo_path
+                                        ) || null
+                                      }
+                                      alt={employee.name}
+                                    />
+                                    <AvatarFallback className="text-xs">
+                                      {getInitials(employee.name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  {employee.name}
+                                </div>
+                              </BorderedTableCell>
+                              <BorderedTableCell selected={isSelected}>
+                                {employee.email || "-"}
+                              </BorderedTableCell>
+                              {isAdmin && (
+                                <BorderedTableCell selected={isSelected}>
+                                  {employee.doorlog}
+                                </BorderedTableCell>
+                              )}
+                              <BorderedTableCell selected={isSelected}>
+                                {employee.dept_dat}
+                              </BorderedTableCell>
+                              <BorderedTableCell selected={isSelected}>
+                                {employee.team}
+                              </BorderedTableCell>
+                              <BorderedTableCell selected={isSelected}>
+                                {employee.serviceYear || "-"}
+                              </BorderedTableCell>
+                              <BorderedTableCell selected={isSelected}>
+                                <Badge
+                                  className={getStatusBadge(
+                                    employee.emp_status
+                                  )}
+                                >
+                                  {statusLabels[
+                                    employee.emp_status as keyof typeof statusLabels
+                                  ] || employee.emp_status}
+                                </Badge>
+                              </BorderedTableCell>
+                              <BorderedTableCell selected={isSelected}>
+                                {employee.role}
+                              </BorderedTableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Selection Bar */}
+                {isSelectionActive && (
+                  <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] max-w-[400px] -translate-x-1/2">
+                    <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={areAllFilteredSelected}
+                            onCheckedChange={handleSelectAll}
+                            aria-label="Select all"
+                          />
+                          <span className="text-sm font-medium whitespace-nowrap">
+                            {selectedCount} employee
+                            {selectedCount > 1 ? "s are" : " is"} selected
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDeleteClick}
+                            disabled={isStoreDeleting}
+                          >
+                            <HugeiconsIcon
+                              icon={Delete02Icon}
+                              strokeWidth={2}
+                              className="mr-1 h-4 w-4"
+                            />
+                            Delete
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearSelection}
+                            className="px-2"
+                          >
+                            <HugeiconsIcon
+                              icon={Cancel01Icon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pagination - Only show when there's data */}
+                <div
+                  className={cn(
+                    "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                  )}
+                >
+                  <Field orientation="horizontal" className="w-fit">
+                    <FieldLabel htmlFor="select-rows-per-page">
+                      <span className="font-normal text-muted-foreground">
+                        Rows per page
+                      </span>
+                    </FieldLabel>
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onValueChange={handleItemsPerPageChange}
+                    >
+                      <SelectTrigger className="w-15" id="select-rows-per-page">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="start">
+                        <SelectGroup>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <div className="text-sm text-muted-foreground">
+                    Showing{" "}
+                    {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
+                    {Math.min(
+                      startIndex + itemsPerPage,
+                      filteredEmployees.length
+                    )}{" "}
+                    of {filteredEmployees.length} employees
+                  </div>
+                  <Pagination className="mx-0 w-auto">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handlePrevious()
+                          }}
+                          className={
+                            currentPage === 1 || filteredEmployees.length === 0
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+                      {getPageNumbers(totalPages, currentPage).map(
+                        (page, index) => (
+                          <PaginationItem key={index}>
+                            {page === "..." ? (
+                              <span className="px-2">...</span>
+                            ) : (
+                              <PaginationLink
+                                href="#"
+                                isActive={currentPage === page}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  setCurrentPage(page as number)
+                                }}
+                              >
+                                {page}
+                              </PaginationLink>
+                            )}
+                          </PaginationItem>
+                        )
+                      )}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleNext()
+                          }}
+                          className={
+                            currentPage === totalPages ||
+                            filteredEmployees.length === 0
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </>
+            ) : (
+              // Empty state for employees view
+              <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <HugeiconsIcon
+                      icon={UserGroupIcon}
+                      strokeWidth={2}
+                      className="h-12 w-12 text-muted-foreground"
+                    />
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    {searchTerm || hasActiveFilters
+                      ? `No Matching Employees${searchTerm ? ` for "${searchTerm}"` : ""}`
+                      : "No Employees Found"}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-center text-pretty">
+                    {searchTerm || hasActiveFilters ? (
+                      <>Try adjusting your search or filters.</>
+                    ) : (
+                      <>Add employees to your organization to get started.</>
+                    )}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  {searchTerm || hasActiveFilters ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearchTerm("")
+                        clearAllFilters()
+                      }}
+                    >
+                      Clear Search & Filters
+                    </Button>
+                  ) : (
+                    isAdmin && (
+                      <Button
+                        variant="default"
+                        onClick={handleNewEmployee}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        <HugeiconsIcon icon={UserAdd01Icon} strokeWidth={2} />
+                        Add New Employee
+                      </Button>
+                    )
+                  )}
+                </EmptyContent>
+              </Empty>
+            )
+          ) : // Card View for Employees
+          hasData ? (
+            <>
+              <div className={cn("relative")} style={{ zIndex: 1 }}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {paginatedEmployees.length === 0 ? (
+                    <div className="col-span-full py-8 text-center text-muted-foreground">
+                      {searchTerm || hasActiveFilters ? (
+                        <>
+                          No employees found matching{" "}
+                          {searchTerm && `"${searchTerm}"`}
+                          {searchTerm && hasActiveFilters && " and "}
+                          {hasActiveFilters && "selected filters"}
+                        </>
+                      ) : (
+                        "No employees found"
+                      )}
+                    </div>
+                  ) : (
+                    paginatedEmployees.map((employee, index) => {
+                      const isEmployee = (emp: any): emp is Employee =>
+                        emp && typeof emp === "object" && "id" in emp
+
+                      if (!isEmployee(employee)) return null
+                      return renderEmployeeCard(employee, index)
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Selection Bar */}
+              {isSelectionActive && (
+                <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] max-w-[400px] -translate-x-1/2">
+                  <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           checked={areAllFilteredSelected}
                           onCheckedChange={handleSelectAll}
                           aria-label="Select all"
                         />
-                      </BorderedTableHead>
-                    )}
-                    {employeeHeaders.slice(1).map((header) => {
-                      // Skip the "select" header if it's the first one and we're in read-only mode
-                      if (isReadOnly && header.field === "select") return null
-                      if (
-                        !isAdmin &&
-                        (header.field === "doorlog" ||
-                          header.field === "staff_id")
-                      )
-                        return null
-                      return (
-                        <BorderedTableHead
-                          key={header.field}
-                          className="align-middle whitespace-nowrap"
+                        <span className="text-sm font-medium whitespace-nowrap">
+                          {selectedCount} employee
+                          {selectedCount > 1 ? "s are" : " is"} selected
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleBulkDeleteClick}
+                          disabled={isStoreDeleting}
                         >
-                          {header.header_name}
-                        </BorderedTableHead>
-                      )
-                    })}
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {paginatedEmployees.length === 0 ? (
-                    <TableRow>
-                      <BorderedTableCell
-                        colSpan={totalColumns}
-                        className="py-8 text-center text-muted-foreground"
-                      >
-                        {searchTerm || hasActiveFilters ? (
-                          <>
-                            No employees found matching{" "}
-                            {searchTerm && `"${searchTerm}"`}
-                            {searchTerm && hasActiveFilters && " and "}
-                            {hasActiveFilters && "selected filters"}
-                          </>
-                        ) : (
-                          "No employees found"
-                        )}
-                      </BorderedTableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedEmployees.map((employee, index) => {
-                      const isEmployee = (emp: Employee): emp is Employee =>
-                        emp && typeof emp === "object" && "id" in emp
-
-                      if (!isEmployee(employee)) return null
-
-                      const isSelected = !!rowSelection[employee.id.toString()]
-                      const isManageable =
-                        isAdmin || canManageEmployee(employee)
-                      return (
-                        <TableRow
-                          key={employee.id}
-                          className={`cursor-pointer transition-colors hover:bg-muted/50`}
-                          onClick={() => handleRowClick(employee)}
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            strokeWidth={2}
+                            className="mr-1 h-4 w-4"
+                          />
+                          Delete
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearSelection}
+                          className="px-2"
                         >
-                          {/* Only show checkbox if not read-only. Disabled for
-                              employees outside the user's filtered scope, since
-                              those rows are view-only for that user. */}
-                          {!isReadOnly && (
-                            <BorderedTableCell
-                              className="w-10"
-                              selected={isSelected}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Checkbox
-                                checked={isSelected}
-                                disabled={!isManageable}
-                                onCheckedChange={() =>
-                                  handleRowSelect(employee.id.toString())
-                                }
-                                aria-label={`Select ${employee.name}`}
-                              />
-                            </BorderedTableCell>
-                          )}
-                          {/* Adjust index for read-only mode */}
-                          <BorderedTableCell selected={isSelected}>
-                            {startIndex + index + 1}
-                          </BorderedTableCell>
-                          <BorderedTableCell selected={isSelected}>
-                            {employee.div_name}
-                          </BorderedTableCell>
-                          {isAdmin && (
-                            <BorderedTableCell
-                              className="text-sm"
-                              selected={isSelected}
-                            >
-                              {employee.id}
-                            </BorderedTableCell>
-                          )}
-                          <BorderedTableCell
-                            className="font-medium"
-                            selected={isSelected}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage
-                                  src={
-                                    resolveUploadUrl(
-                                      employee.profile_photo_path
-                                    ) || null
-                                  }
-                                  alt={employee.name}
-                                />
-                                <AvatarFallback className="text-xs">
-                                  {getInitials(employee.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              {employee.name}
-                            </div>
-                          </BorderedTableCell>
-                          <BorderedTableCell selected={isSelected}>
-                            {employee.email || "-"}
-                          </BorderedTableCell>
-                          {isAdmin && (
-                            <BorderedTableCell selected={isSelected}>
-                              {employee.doorlog}
-                            </BorderedTableCell>
-                          )}
-                          <BorderedTableCell selected={isSelected}>
-                            {employee.dept_dat}
-                          </BorderedTableCell>
-                          <BorderedTableCell selected={isSelected}>
-                            {employee.team}
-                          </BorderedTableCell>
-                          <BorderedTableCell selected={isSelected}>
-                            {employee.serviceYear || "-"}
-                          </BorderedTableCell>
-                          <BorderedTableCell selected={isSelected}>
-                            <Badge
-                              className={getStatusBadge(employee.emp_status)}
-                            >
-                              {statusLabels[
-                                employee.emp_status as keyof typeof statusLabels
-                              ] || employee.emp_status}
-                            </Badge>
-                          </BorderedTableCell>
-                          <BorderedTableCell selected={isSelected}>
-                            {employee.role}
-                          </BorderedTableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            // Card View for Employees
-            <div className={cn("relative")} style={{ zIndex: 1 }}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {paginatedEmployees.length === 0 ? (
-                  <div className="col-span-full py-8 text-center text-muted-foreground">
-                    {searchTerm || hasActiveFilters ? (
-                      <>
-                        No employees found matching{" "}
-                        {searchTerm && `"${searchTerm}"`}
-                        {searchTerm && hasActiveFilters && " and "}
-                        {hasActiveFilters && "selected filters"}
-                      </>
-                    ) : (
-                      "No employees found"
-                    )}
-                  </div>
-                ) : (
-                  paginatedEmployees.map((employee, index) => {
-                    const isEmployee = (emp: any): emp is Employee =>
-                      emp && typeof emp === "object" && "id" in emp
-
-                    if (!isEmployee(employee)) return null
-                    return renderEmployeeCard(employee, index)
-                  })
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Selection Bar */}
-          {isSelectionActive && (
-            <>
-              <div className="fixed top-5 left-1/2 z-50 w-auto max-w-[90%] max-w-[400px] -translate-x-1/2">
-                <div className="animate-scale-up rounded-md border bg-white px-4 py-2 shadow-md">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={areAllFilteredSelected}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
-                      />
-                      <span className="text-sm font-medium whitespace-nowrap">
-                        {selectedCount} employee
-                        {selectedCount > 1 ? "s are" : " is"} selected
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleBulkDeleteClick}
-                        disabled={isStoreDeleting}
-                      >
-                        <HugeiconsIcon
-                          icon={Delete02Icon}
-                          strokeWidth={2}
-                          className="mr-1 h-4 w-4"
-                        />
-                        Delete
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleClearSelection}
-                        className="px-2"
-                      >
-                        <HugeiconsIcon
-                          icon={Cancel01Icon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                      </Button>
+                          <HugeiconsIcon
+                            icon={Cancel01Icon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Pagination - Only show when there's data */}
+              <div
+                className={cn(
+                  "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                )}
+              >
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="select-rows-per-page">
+                    <span className="font-normal text-muted-foreground">
+                      Rows per page
+                    </span>
+                  </FieldLabel>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={handleItemsPerPageChange}
+                  >
+                    <SelectTrigger className="w-15" id="select-rows-per-page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectGroup>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1}{" "}
+                  to{" "}
+                  {Math.min(
+                    startIndex + itemsPerPage,
+                    filteredEmployees.length
+                  )}{" "}
+                  of {filteredEmployees.length} employees
+                </div>
+                <Pagination className="mx-0 w-auto">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handlePrevious()
+                        }}
+                        className={
+                          currentPage === 1 || filteredEmployees.length === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                    {getPageNumbers(totalPages, currentPage).map(
+                      (page, index) => (
+                        <PaginationItem key={index}>
+                          {page === "..." ? (
+                            <span className="px-2">...</span>
+                          ) : (
+                            <PaginationLink
+                              href="#"
+                              isActive={currentPage === page}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setCurrentPage(page as number)
+                              }}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      )
+                    )}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleNext()
+                        }}
+                        className={
+                          currentPage === totalPages ||
+                          filteredEmployees.length === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
             </>
-          )}
-
-          {/* Pagination - Only show for main views and drill-down, not category cards */}
-          {!isListView && !isDrillDown && (
-            <div
-              className={cn(
-                "mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-              )}
-            >
-              <Field orientation="horizontal" className="w-fit">
-                <FieldLabel htmlFor="select-rows-per-page">
-                  <span className="font-normal text-muted-foreground">
-                    Rows per page
-                  </span>
-                </FieldLabel>
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={handleItemsPerPageChange}
-                >
-                  <SelectTrigger className="w-15" id="select-rows-per-page">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="start">
-                    <SelectGroup>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <div className="text-sm text-muted-foreground">
-                Showing {filteredEmployees.length === 0 ? 0 : startIndex + 1} to{" "}
-                {Math.min(startIndex + itemsPerPage, filteredEmployees.length)}{" "}
-                of {filteredEmployees.length} employees
-              </div>
-              <Pagination className="mx-0 w-auto">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handlePrevious()
-                      }}
-                      className={
-                        currentPage === 1 || filteredEmployees.length === 0
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-                  {getPageNumbers(totalPages, currentPage).map(
-                    (page, index) => (
-                      <PaginationItem key={index}>
-                        {page === "..." ? (
-                          <span className="px-2">...</span>
-                        ) : (
-                          <PaginationLink
-                            href="#"
-                            isActive={currentPage === page}
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setCurrentPage(page as number)
-                            }}
-                          >
-                            {page}
-                          </PaginationLink>
-                        )}
-                      </PaginationItem>
-                    )
+          ) : (
+            // Empty state for employees view (card mode)
+            <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon
+                    icon={UserGroupIcon}
+                    strokeWidth={2}
+                    className="h-12 w-12 text-muted-foreground"
+                  />
+                </EmptyMedia>
+                <EmptyTitle>
+                  {searchTerm || hasActiveFilters
+                    ? `No Matching Employees${searchTerm ? ` for "${searchTerm}"` : ""}`
+                    : "No Employees Found"}
+                </EmptyTitle>
+                <EmptyDescription className="text-center text-pretty">
+                  {searchTerm || hasActiveFilters ? (
+                    <>Try adjusting your search or filters.</>
+                  ) : (
+                    <>Add employees to your organization to get started.</>
                   )}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handleNext()
-                      }}
-                      className={
-                        currentPage === totalPages ||
-                        filteredEmployees.length === 0
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {searchTerm || hasActiveFilters ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("")
+                      clearAllFilters()
+                    }}
+                  >
+                    Clear Search & Filters
+                  </Button>
+                ) : (
+                  isAdmin && (
+                    <Button
+                      variant="default"
+                      onClick={handleNewEmployee}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <HugeiconsIcon icon={UserAdd01Icon} strokeWidth={2} />
+                      Add New Employee
+                    </Button>
+                  )
+                )}
+              </EmptyContent>
+            </Empty>
           )}
         </CardContent>
       </div>

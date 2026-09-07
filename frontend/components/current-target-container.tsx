@@ -2004,7 +2004,7 @@ export function CurrentTargetContainer({
                 </EmptyMedia>
                 <EmptyTitle>
                   {searchTerm || hasActiveFilters
-                    ? `No Matching Employees Found for ${searchTerm}`
+                    ? `No Matching Employees Found for "${searchTerm}"`
                     : "No Japanese Profile Data"}
                 </EmptyTitle>
                 <EmptyDescription className="text-center text-pretty">

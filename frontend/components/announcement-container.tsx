@@ -156,7 +156,9 @@ type AnnouncementFilterState = {
   createdBy: string[]
 }
 
-export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerProps) {
+export function AnnouncementContainer({
+  shouldRefresh,
+}: AnnouncementContainerProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedAnnouncement, setSelectedAnnouncement] =
     useState<AnnouncementDto | null>(null)
@@ -545,11 +547,11 @@ export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerPr
 
   return (
     <>
-      <div className="flex flex-col gap-4 pt-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         <CardContent className="px-0">
           {/* Header with Search and New Button */}
           {announcements.length > 0 && (
-            <div className="mb-6 flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <InputGroup className="w-[400px]">
                 <InputGroupInput
                   ref={searchInputRef}
@@ -743,10 +745,11 @@ export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerPr
           {/* Message Display */}
           {message && (
             <div
-              className={`mx-4 mb-4 rounded p-4 ${message.type === "success"
+              className={`mb-4 rounded p-4 ${
+                message.type === "success"
                   ? "bg-green-100 text-green-700"
                   : "bg-red-100 text-red-700"
-                }`}
+              }`}
             >
               {message.text}
             </div>
@@ -754,14 +757,14 @@ export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerPr
 
           {/* Loading State */}
           {isLoading && (
-            <div className="mx-4 py-12 text-center text-muted-foreground">
+            <div className="py-12 text-center text-muted-foreground">
               Loading announcements...
             </div>
           )}
 
           {/* Announcement Cards/Table Grid */}
           {!isLoading && (
-            <div className="mx-4">
+            <div>
               {paginatedAnnouncements.length > 0 ? (
                 <>
                   {viewMode === "card" ? (
@@ -932,7 +935,9 @@ export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerPr
                     <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <Field orientation="horizontal" className="w-fit">
                         <FieldLabel htmlFor="select-rows-per-page">
-                          Rows per page
+                          <span className="font-normal text-muted-foreground">
+                            Rows per page
+                          </span>
                         </FieldLabel>
                         <Select
                           value={itemsPerPage.toString()}
@@ -976,7 +981,7 @@ export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerPr
                               }}
                               className={
                                 currentPage === 1 ||
-                                  filteredAndSortedAnnouncements.length === 0
+                                filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -1009,7 +1014,7 @@ export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerPr
                               }}
                               className={
                                 currentPage === totalPages ||
-                                  filteredAndSortedAnnouncements.length === 0
+                                filteredAndSortedAnnouncements.length === 0
                                   ? "pointer-events-none opacity-50"
                                   : ""
                               }
@@ -1033,7 +1038,7 @@ export function AnnouncementContainer({ shouldRefresh }: AnnouncementContainerPr
                     </EmptyMedia>
                     <EmptyTitle>
                       {searchTerm || hasActiveFilters
-                        ? `No Matching Announcements for ${searchTerm}`
+                        ? `No Matching Announcements for "${searchTerm}"`
                         : "No Announcements"}
                     </EmptyTitle>
                     <EmptyDescription className="text-center text-pretty">

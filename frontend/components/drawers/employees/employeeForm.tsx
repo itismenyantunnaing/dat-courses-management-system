@@ -366,7 +366,7 @@ export function EmployeeForm({
           {/* Department (Dat Department) Select - Filtered by selected division */}
           <div className="min-w-0 space-y-2">
             <Label htmlFor="dept_dat">
-              Dat Department <span className="text-red-500">*</span>
+              DAT Department <span className="text-red-500">*</span>
             </Label>
             <Select
               value={data.dept_dat}
@@ -384,7 +384,7 @@ export function EmployeeForm({
               </SelectTrigger>
               <SelectContent className="max-h-64">
                 <SelectGroup>
-                  <SelectLabel>Departments</SelectLabel>
+                  <SelectLabel>DAT Departments</SelectLabel>
                   {filteredDepartments.length === 0 ? (
                     <TruncatedSelectItem
                       value="no-departments"
@@ -570,7 +570,7 @@ export function EmployeeForm({
               {/* Dir Department */}
               <div className="min-w-0 space-y-2">
                 <Label htmlFor="dept_dir" className="text-muted-foreground">
-                  Dir Department <span className="text-muted-foreground text-xs">(Optional)</span>
+                  DIR Department <span className="text-muted-foreground text-xs">(Optional)</span>
                 </Label>
                 <Select
                   value={data.dept_dir || ""}
@@ -578,11 +578,11 @@ export function EmployeeForm({
                   onOpenChange={onDropdownOpenChange}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select dir department" />
+                    <SelectValue placeholder="Select DIR department" />
                   </SelectTrigger>
                   <SelectContent className="max-h-64">
                     <SelectGroup>
-                      <SelectLabel>Dir Departments</SelectLabel>
+                      <SelectLabel>DIR Departments</SelectLabel>
                       {departmentDirOptions && departmentDirOptions.length > 0 ? (
                         departmentDirOptions.map((dept: string) => (
                           <SelectItem key={dept} value={dept}>
@@ -592,7 +592,7 @@ export function EmployeeForm({
                       ) : (
                         <TruncatedSelectItem
                           value="no-departments"
-                          label="No dir departments available"
+                          label="No DIR departments available"
                           disabled
                         />
                       )}

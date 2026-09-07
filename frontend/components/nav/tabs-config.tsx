@@ -2340,7 +2340,7 @@ export const allTabs = [
   },
   {
     id: "feedback",
-    label: "feedback",
+    label: "Feedback",
     exportTitle: "Export Feedback",
     exportDescription: "Export Feedback from the system.",
     icon: ChartIcon,
