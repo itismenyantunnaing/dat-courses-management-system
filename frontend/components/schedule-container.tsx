@@ -57,6 +57,7 @@ import {
   formatFullDate,
 } from "@/components/schedule/utils/schedule.utils"
 import { SessionDetailDialog } from "@/components/dialogs/sessionDetail-dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
 const THEME_COUNT = SESSION_THEMES.length
 
@@ -150,8 +151,8 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
   const currentUserId = getUserId?.() || "unknown-user"
 
   // Check if user is admin
-  const isAdmin = userRole === "admin" || 
-    userRole === "approver" || 
+  const isAdmin = userRole === "admin" ||
+    userRole === "approver" ||
     userRole === "department_head"
 
   const [scheduleType, setScheduleType] =
@@ -202,7 +203,7 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
     userEnrollments.forEach((e) => {
       const eCourseId = String((e as Record<string, unknown>).courseId || "")
       const eGroupId = String((e as Record<string, unknown>).courseGroupId || "")
-      
+
       if (eCourseId && eGroupId) {
         if (!groupIds.has(eCourseId)) {
           groupIds.set(eCourseId, new Set())
@@ -885,8 +886,16 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
   }, [derivedSessions, scheduleType, searchTerm])
 
   const goToToday = () => {
-    setWeekStart(getWeekStart(new Date()))
-    setTimeout(() => scrollToToday(), 100)
+    if (scheduleType === "self-study") {
+      // For self-study: go to current 4-week period
+      const today = new Date()
+      const weekStart = getWeekStart(today)
+      setStudyPeriodStart(weekStart)
+    } else {
+      // For trainer-provided: go to current week and scroll
+      setWeekStart(getWeekStart(new Date()))
+      setTimeout(() => scrollToToday(), 100)
+    }
   }
 
   const goToPreviousWeek = () =>
@@ -1185,7 +1194,22 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
               <Kbd>Ctrl + K</Kbd>
             </InputGroupAddon>
           </InputGroup>
-
+          {/* TODAY BUTTON - ADD THIS */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToToday}
+                className="h-8 gap-1.5 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+              >
+                Today
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Scroll to today's column</p>
+            </TooltipContent>
+          </Tooltip>
           <div className="flex items-center rounded-md border">
             <Button
               variant="ghost"

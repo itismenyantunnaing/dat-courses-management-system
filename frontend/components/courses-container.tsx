@@ -1,4 +1,3 @@
-// components/courses/course-container.tsx
 "use client"
 
 import React, { useState, useMemo, useEffect, useRef } from "react"
@@ -108,7 +107,7 @@ export function CoursesContainer({
   } = mainStore()
 
   // Form key to force remount
-  const [formKey, setFormKey] = useState(0);
+  const [formKey, setFormKey] = useState(0)
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -122,7 +121,7 @@ export function CoursesContainer({
   const searchInputRef = useRef<HTMLInputElement>(null)
   // Flag to track if we're coming from a successful save
   const [isSuccessfullySaved, setIsSuccessfullySaved] = useState(false)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   //  NEW: live notifications from the websocket store
   const notifications = webScoketStore((state) => state.notifications)
@@ -130,7 +129,6 @@ export function CoursesContainer({
   // effect only fires for NEW notifications - not on mount, not on every
   // unrelated re-render.
   const processedNotificationCountRef = useRef(0)
-
 
   // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -187,7 +185,7 @@ export function CoursesContainer({
     )
 
     if (hasCourseNotification) {
-      fetchAll_CourseData();
+      fetchAll_CourseData()
 
       //  Also fetch categories if needed
       // fetch_courseCategories();
@@ -220,17 +218,17 @@ export function CoursesContainer({
       setHasProcessedSelectedId(true)
 
       // Auto-select the correct tab based on course status
-      if (foundCourse.status === 'draft' && activeTab !== 'draft') {
-        setActiveTab('draft')
-      } else if (foundCourse.status !== 'draft' && activeTab === 'draft') {
-        setActiveTab('all')
+      if (foundCourse.status === "draft" && activeTab !== "draft") {
+        setActiveTab("draft")
+      } else if (foundCourse.status !== "draft" && activeTab === "draft") {
+        setActiveTab("all")
       }
       return
     }
 
     // If course not found and we're not on 'all' tab, switch to 'all' and try again
-    if (activeTab !== 'all') {
-      setActiveTab('all')
+    if (activeTab !== "all") {
+      setActiveTab("all")
       // The effect will re-run after state update
       return
     }
@@ -245,7 +243,14 @@ export function CoursesContainer({
       }
       setHasProcessedSelectedId(true)
     })
-  }, [selectedCourseId, courses, isLoadingCourses, hasProcessedSelectedId, activeTab, fetchAll_CourseData])
+  }, [
+    selectedCourseId,
+    courses,
+    isLoadingCourses,
+    hasProcessedSelectedId,
+    activeTab,
+    fetchAll_CourseData,
+  ])
 
   const isAdmin = userRole === "admin"
 
@@ -271,7 +276,6 @@ export function CoursesContainer({
     ).length
     return { all, draft, active }
   }, [courses])
-
 
   // Get counts for each tab (learner)
   const getLearnerTabCounts = useMemo(() => {
@@ -312,7 +316,8 @@ export function CoursesContainer({
       filtered = filtered.filter((course: Course) => course.status === "draft")
     } else if (activeTab === "active") {
       filtered = filtered.filter(
-        (course: Course) => course.status === "active" || course.status === "upcoming"
+        (course: Course) =>
+          course.status === "active" || course.status === "upcoming"
       )
     } else if (activeTab === "your-courses") {
       filtered = filtered.filter((course: Course) =>
@@ -335,64 +340,62 @@ export function CoursesContainer({
     // Fetch fresh data from API
     try {
       // Option 1: Fetch fresh data
-      await fetchAll_CourseData();
+      await fetchAll_CourseData()
 
       // Find the updated course in the fresh data
-      const freshCourse = courses.find((c: Course) => c.id === course.id);
+      const freshCourse = courses.find((c: Course) => c.id === course.id)
 
       // Use the fresh course if found, otherwise use the provided one
-      const courseToEdit = freshCourse || course;
+      const courseToEdit = freshCourse || course
 
-      setEditingCourseRef(courseToEdit);
-      setSelectedCourse(null);
-      setEditingCourse(courseToEdit);
-      setIsFormVisible(true);
-      setIsSuccessfullySaved(false);
-      setHasUnsavedChanges(false);
+      setEditingCourseRef(courseToEdit)
+      setSelectedCourse(null)
+      setEditingCourse(courseToEdit)
+      setIsFormVisible(true)
+      setIsSuccessfullySaved(false)
+      setHasUnsavedChanges(false)
 
       // FORCE REMOUNT: Update key to trigger re-render
-      setFormKey(prev => prev + 1);
-
+      setFormKey((prev) => prev + 1)
     } catch (error) {
-      console.error('Failed to refresh course data:', error);
+      console.error("Failed to refresh course data:", error)
       // Fallback: use the provided course
-      setEditingCourseRef(course);
-      setSelectedCourse(null);
-      setEditingCourse(course);
-      setIsFormVisible(true);
-      setIsSuccessfullySaved(false);
-      setHasUnsavedChanges(false);
-      setFormKey(prev => prev + 1);
+      setEditingCourseRef(course)
+      setSelectedCourse(null)
+      setEditingCourse(course)
+      setIsFormVisible(true)
+      setIsSuccessfullySaved(false)
+      setHasUnsavedChanges(false)
+      setFormKey((prev) => prev + 1)
     }
-  };
+  }
 
   const handleNewCourse = () => {
-    setSelectedCourse(null);
-    setEditingCourse(null);
-    setIsFormVisible(true);
-    setIsSuccessfullySaved(false);
-    setHasUnsavedChanges(false);
+    setSelectedCourse(null)
+    setEditingCourse(null)
+    setIsFormVisible(true)
+    setIsSuccessfullySaved(false)
+    setHasUnsavedChanges(false)
     // Force remount for new form
-    setFormKey(prev => prev + 1);
-  };
-
+    setFormKey((prev) => prev + 1)
+  }
 
   // Function to close form without confirmation (used after successful save)
   const closeForm = (updatedCourse?: Course) => {
-    resetForm();
-    setIsSubmitting(false);
-    setIsSuccessfullySaved(false);
-    setHasUnsavedChanges(false);
-    setFormKey(prev => prev + 1);
+    resetForm()
+    setIsSubmitting(false)
+    setIsSuccessfullySaved(false)
+    setHasUnsavedChanges(false)
+    setFormKey((prev) => prev + 1)
 
     if (updatedCourse) {
-      setSelectedCourse(updatedCourse);
-      setEditingCourseRef(null);
+      setSelectedCourse(updatedCourse)
+      setEditingCourseRef(null)
     } else if (editingCourseRef) {
-      setSelectedCourse(editingCourseRef);
-      setEditingCourseRef(null);
+      setSelectedCourse(editingCourseRef)
+      setEditingCourseRef(null)
     }
-  };
+  }
 
   // Handle cancel with confirmation
   const handleCancel = () => {
@@ -400,28 +403,28 @@ export function CoursesContainer({
 
     // Skip confirmation if we just saved successfully
     if (isSuccessfullySaved) {
-      closeForm();
-      return;
+      closeForm()
+      return
     }
 
     // Check if there are actual unsaved changes
     if (hasUnsavedChanges) {
       const confirmCancel = window.confirm(
-        `You have unsaved changes. Are you sure you want to cancel editing "${editingCourse?.title || 'this course'}"? Your changes will be lost.`
-      );
+        `You have unsaved changes. Are you sure you want to cancel editing "${editingCourse?.title || "this course"}"? Your changes will be lost.`
+      )
 
       if (!confirmCancel) {
-        return; // User cancelled the cancellation
+        return // User cancelled the cancellation
       }
     }
 
-    closeForm(); // Also clears hasUnsavedChanges
+    closeForm() // Also clears hasUnsavedChanges
 
     // If we were creating a new course, show a brief notification
     if (wasCreating) {
-      toast.success("Course creation cancelled");
+      toast.success("Course creation cancelled")
     }
-  };
+  }
 
   const handleDeleteCourse = async () => {
     if (editingCourse) {
@@ -503,8 +506,8 @@ export function CoursesContainer({
                 return {
                   ...(editingCourse &&
                     existingSession?.id && {
-                    id: parseInt(existingSession.id),
-                  }),
+                      id: parseInt(existingSession.id),
+                    }),
                   session_no: sIndex + 1,
                   session_date:
                     session.date instanceof Date
@@ -564,9 +567,9 @@ export function CoursesContainer({
         total_sessions:
           data.courseType === "trainer"
             ? data.groups?.reduce(
-              (total: number, g: any) => total + (g.sessions?.length || 0),
-              0
-            )
+                (total: number, g: any) => total + (g.sessions?.length || 0),
+                0
+              )
             : data.sessions?.length || 0,
         session_per_days:
           data.courseType === "self-study" ? data.daysPerSession : null,
@@ -641,11 +644,11 @@ export function CoursesContainer({
             self_study_sessions: [],
             groups: courseData.groups
               ? [
-                {
-                  ...courseData.groups[0],
-                  sessions: [],
-                },
-              ]
+                  {
+                    ...courseData.groups[0],
+                    sessions: [],
+                  },
+                ]
               : undefined,
           }
 
@@ -705,22 +708,22 @@ export function CoursesContainer({
       }
 
       if (result.success) {
-        setIsSuccessfullySaved(true);
+        setIsSuccessfullySaved(true)
 
-        await fetchAll_CourseData();
+        await fetchAll_CourseData()
 
         // pull fresh data directly from the store, not the stale closure
-        const freshCourses = mainStore.getState().courses;
-        const idToFind = editingCourse ? editingCourse.id : result.data?.id;
-        const freshCourse = freshCourses.find((c: Course) => c.id === idToFind);
+        const freshCourses = mainStore.getState().courses
+        const idToFind = editingCourse ? editingCourse.id : result.data?.id
+        const freshCourse = freshCourses.find((c: Course) => c.id === idToFind)
 
-        closeForm(freshCourse); // pass the up-to-date course in
+        closeForm(freshCourse) // pass the up-to-date course in
 
         if (editingCourse) {
-          await fetch_courseEnrollments(editingCourse.id);
+          await fetch_courseEnrollments(editingCourse.id)
         }
       } else {
-        toast.error(result.message || "Failed to save course");
+        toast.error(result.message || "Failed to save course")
       }
     } catch (error) {
       console.error("Failed to save course:", error)
@@ -824,7 +827,7 @@ export function CoursesContainer({
                   })}
                 </div>
               ) : (
-                <Empty className="mt-6 h-full">
+                <Empty className="m-auto mt-6 min-h-[300px] max-w-[500px] rounded-lg">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <HugeiconsIcon
@@ -835,19 +838,31 @@ export function CoursesContainer({
                     </EmptyMedia>
                     <EmptyTitle>
                       {searchTerm
-                        ? "No courses found"
+                        ? `No Matching Courses for "${searchTerm}"`
                         : activeTab === "your-courses"
-                          ? "No enrolled courses"
-                          : "No courses available"}
+                          ? "No Enrolled Courses"
+                          : "No Courses Available"}
                     </EmptyTitle>
-                    <EmptyDescription className="max-w-xs text-pretty">
+                    <EmptyDescription className="text-center text-pretty">
                       {searchTerm
-                        ? `No courses match "${searchTerm}". Try adjusting your search.`
+                        ? `Try adjusting your search.`
                         : activeTab === "your-courses"
                           ? "You haven't enrolled in any courses yet. Browse available courses to get started."
                           : "There are no courses available at the moment. Check back later."}
                     </EmptyDescription>
                   </EmptyHeader>
+                  <EmptyContent>
+                    {searchTerm && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchTerm("")
+                        }}
+                      >
+                        Clear Search
+                      </Button>
+                    )}
+                  </EmptyContent>
                 </Empty>
               )}
             </>
@@ -975,15 +990,11 @@ export function CoursesContainer({
             {filteredCourses.length > 0 ? (
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredCourses.map((course: Course, index: number) => (
-                  <CourseCard
-                    key={index}
-                    course={course}
-                    onView={handleView}
-                  />
+                  <CourseCard key={index} course={course} onView={handleView} />
                 ))}
               </div>
             ) : (
-              <Empty className="mt-6 h-full">
+              <Empty className="m-auto mt-6 min-h-[300px] max-w-[500px] rounded-lg">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <HugeiconsIcon
@@ -994,16 +1005,16 @@ export function CoursesContainer({
                   </EmptyMedia>
                   <EmptyTitle>
                     {searchTerm
-                      ? "No courses found"
+                      ? `No Matching Courses for "${searchTerm}"`
                       : activeTab === "draft"
-                        ? "No draft courses"
+                        ? "No Draft Courses"
                         : activeTab === "active"
-                          ? "No active courses"
-                          : "No courses available"}
+                          ? "No Active Courses"
+                          : "No Courses Available"}
                   </EmptyTitle>
-                  <EmptyDescription className="max-w-xs text-pretty">
+                  <EmptyDescription className="text-center text-pretty">
                     {searchTerm
-                      ? `No courses match "${searchTerm}". Try adjusting your search.`
+                      ? `Try adjusting your search.`
                       : activeTab === "draft"
                         ? "You don't have any draft courses. Create a new course to see it here."
                         : activeTab === "active"
@@ -1011,6 +1022,32 @@ export function CoursesContainer({
                           : "Get started by creating your first course."}
                   </EmptyDescription>
                 </EmptyHeader>
+                <EmptyContent>
+                  {searchTerm && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearchTerm("")
+                      }}
+                    >
+                      Clear Search
+                    </Button>
+                  )}
+                  {!searchTerm && activeTab === "all" && (
+                    <Button
+                      variant="default"
+                      onClick={handleNewCourse}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <HugeiconsIcon
+                        icon={CourseIcon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                      New Course
+                    </Button>
+                  )}
+                </EmptyContent>
               </Empty>
             )}
           </>

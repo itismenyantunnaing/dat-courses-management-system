@@ -29,11 +29,6 @@ interface EditEmployeeDrawerProps {
   employee: Employee | null
   courses: Course[] | null
   onSuccess?: () => void
-  // Whether the current user is allowed to edit THIS employee. The drawer
-  // itself always opens in view mode for everyone (view is available to
-  // all roles); this prop only controls whether the "Edit" button (and
-  // therefore edit mode) is offered. Defaults to true so existing callers
-  // that don't pass it keep their current behavior.
   canEdit?: boolean
 }
 
@@ -53,6 +48,10 @@ export function EditEmployeeDrawer({
   const {
     update_EmployeeData,
     add_division,
+    add_dat_department,
+    add_team,
+    divisions,
+    dat_departments,
     updateEmployeeDepartmentPosition,
   } = mainStore()
 
@@ -69,7 +68,7 @@ export function EditEmployeeDrawer({
     doorlog: "",
     dept_dat: "",
     dept_dir: "",
-    position: "", // Added position
+    position: "",
     team: "",
     emp_status: "active",
     role: "",
@@ -84,7 +83,7 @@ export function EditEmployeeDrawer({
     doorlog: "",
     dept_dat: "",
     dept_dir: "",
-    position: "", // Added position
+    position: "",
     team: "",
     emp_status: "active",
     role: "",
@@ -122,7 +121,7 @@ export function EditEmployeeDrawer({
         doorlog: employee.doorlog || "",
         dept_dat: employee.dept_dat || "",
         dept_dir: employee.dept_dir || "",
-        position: employee.position || "", // Added position
+        position: employee.position || "",
         team: employee.team || "",
         emp_status: employee.emp_status || "active",
         role: employee.role || "",
@@ -140,21 +139,99 @@ export function EditEmployeeDrawer({
   }
 
   const handleItemAdded = async (name: string) => {
-    await add_division(name)
-    toast.success(
-      ` ${addItemType.charAt(0).toUpperCase() + addItemType.slice(1)} "${name}" added successfully!`
-    )
+    let result = null
 
     if (addItemType === "division") {
-      setFormData((prev) => ({ ...prev, div: name }))
-      setOriginalFormData((prev) => ({ ...prev, div: name }))
+      result = await add_division(name)
+
+      if (result && result.success) {
+        toast.success(` Division "${name}" added successfully!`)
+        setFormData((prev) => ({ ...prev, div: name }))
+        setOriginalFormData((prev) => ({ ...prev, div: name }))
+      } else {
+        toast.error(
+          ` Failed to add division: ${result?.error || "Unknown error"}`
+        )
+      }
     } else if (addItemType === "department") {
-      setFormData((prev) => ({ ...prev, dept_dat: name }))
-      setOriginalFormData((prev) => ({ ...prev, dept_dat: name }))
+      const selectedDivision = divisions.find(
+        (div: any) =>
+          div.divisionName === formData.div || div.id === formData.div
+      )
+
+      if (!selectedDivision) {
+        toast.error(" Please select a division first before adding a department")
+        return
+      }
+
+      const divisionId = selectedDivision.id || selectedDivision.divisionId
+
+      let finalDivisionId = divisionId
+      if (!finalDivisionId && divisions.length > 0) {
+        const divWithId = divisions.find((d: any) => d.id)
+        if (divWithId) {
+          const match = divisions.find(
+            (d: any) => d.divisionName === formData.div
+          )
+          if (match) {
+            finalDivisionId = match.id
+          } else {
+            finalDivisionId = divisions[0]?.id
+          }
+        }
+      }
+
+      if (!finalDivisionId) {
+        toast.error(
+          " Could not find division ID. Please select a valid division."
+        )
+        return
+      }
+
+      result = await add_dat_department(finalDivisionId, name)
+
+      if (result && result.success) {
+        toast.success(` Department "${name}" added successfully!`)
+        setFormData((prev) => ({ ...prev, dept_dat: name }))
+        setOriginalFormData((prev) => ({ ...prev, dept_dat: name }))
+      } else {
+        toast.error(
+          ` Failed to add department: ${result?.error || "Unknown error"}`
+        )
+      }
     } else if (addItemType === "team") {
-      setFormData((prev) => ({ ...prev, team: name }))
-      setOriginalFormData((prev) => ({ ...prev, team: name }))
+      const selectedDepartment = dat_departments.find(
+        (dept: any) =>
+          dept.deptName === formData.dept_dat || dept.id === formData.dept_dat
+      )
+
+      if (!selectedDepartment) {
+        toast.error(" Please select a department first before adding a team")
+        return
+      }
+
+      const departmentId =
+        selectedDepartment.id || selectedDepartment.departmentDatId
+
+      if (!departmentId) {
+        toast.error(
+          " Could not find department ID. Please select a valid department."
+        )
+        return
+      }
+
+      result = await add_team(departmentId, name)
+
+      if (result && result.success) {
+        toast.success(` Team "${name}" added successfully!`)
+        setFormData((prev) => ({ ...prev, team: name }))
+        setOriginalFormData((prev) => ({ ...prev, team: name }))
+      } else {
+        toast.error(` Failed to add team: ${result?.error || "Unknown error"}`)
+      }
     }
+
+    setAddDialogOpen(false)
   }
 
   const handleSubmit = async () => {
@@ -341,9 +418,6 @@ export function EditEmployeeDrawer({
                 </DrawerTitle>
               </div>
 
-              {/* Edit is only offered when the current user has permission
-                  to manage this specific employee; everyone else still
-                  gets the view above, just without this button. */}
               {!isEditMode && employee && canEdit && (
                 <Button variant="outline" size="sm" onClick={handleEditClick}>
                   <HugeiconsIcon

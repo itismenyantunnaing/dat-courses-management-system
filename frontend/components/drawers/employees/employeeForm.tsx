@@ -41,7 +41,7 @@ export interface EmployeeFormData {
   doorlog: string
   dept_dat: string
   dept_dir: string
-  position: string // Added position field
+  position: string
   team: string
   emp_status: string
   role: string
@@ -103,6 +103,7 @@ export function EmployeeForm({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     data.joinedDate ? new Date(data.joinedDate) : undefined
   )
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const {
     employee_data,
@@ -118,7 +119,7 @@ export function EmployeeForm({
     profile,
   } = mainStore()
 
-  const userRole = profile.role.toLowerCase();
+  const userRole = profile?.role?.toLowerCase();
   const isAdmin = userRole === "admin"
 
   useEffect(() => {
@@ -128,6 +129,11 @@ export function EmployeeForm({
     }
     loadData()
   }, [fetchAll_CourseData, fetchDepartmentDirOptions])
+
+  // Force re-render when data changes
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [data.div, data.dept_dat, data.team])
 
   // Filter departments based on selected division
   const filteredDepartments = useMemo(() => {
@@ -142,7 +148,7 @@ export function EmployeeForm({
     return dat_departments.filter(
       (dept: any) => dept.divisionId === selectedDivision.id
     )
-  }, [data.div])
+  }, [data.div, dat_departments, divisions])
 
   // Filter teams based on selected department
   const filteredTeams = useMemo(() => {
@@ -157,9 +163,14 @@ export function EmployeeForm({
     return teams.filter(
       (team: any) => team.departmentDatId === selectedDepartment.id
     )
-  }, [data.dept_dat])
+  }, [data.dept_dat, teams, dat_departments])
 
   const handleDivisionChange = (value: string) => {
+    // Skip if it's the add new placeholder
+    if (value === "__add_new_division__") {
+      onAddDivision?.()
+      return
+    }
     onChange({
       ...data,
       div: value,
@@ -169,6 +180,10 @@ export function EmployeeForm({
   }
 
   const handleDepartmentChange = (value: string) => {
+    if (value === "__add_new_department__") {
+      onAddDepartment?.()
+      return
+    }
     onChange({
       ...data,
       dept_dat: value,
@@ -321,6 +336,7 @@ export function EmployeeForm({
               Division <span className="text-red-500">*</span>
             </Label>
             <Select
+              key={`division-select-${refreshKey}`}
               value={data.div}
               onValueChange={handleDivisionChange}
               onOpenChange={onDropdownOpenChange}
@@ -330,34 +346,37 @@ export function EmployeeForm({
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select division" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent forceOpen={divisions.length === 0}>
                 <SelectGroup>
-                  {divisions.map((option: any) => (
-                    <TruncatedSelectItem
-                      key={option.id}
-                      value={option.divisionName}
-                      label={option.divisionName}
-                    />
-                  ))}
+                  {divisions.length === 0 ? (
+                    <SelectItem value="no-data" disabled className="text-muted-foreground">
+                      No divisions available
+                    </SelectItem>
+                  ) : (
+                    divisions.map((option: any) => (
+                      <TruncatedSelectItem
+                        key={option.id}
+                        value={option.divisionName}
+                        label={option.divisionName}
+                      />
+                    ))
+                  )}
                 </SelectGroup>
                 <SelectSeparator />
                 <SelectGroup>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-sm font-normal"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onAddDivision?.()
-                    }}
+                  <SelectItem
+                    value="__add_new_division__"
+                    className="text-primary hover:bg-primary/10"
                   >
-                    <HugeiconsIcon
-                      icon={PlusSignIcon}
-                      strokeWidth={2}
-                      className="mr-2 h-4 w-4"
-                    />
-                    Add New Division
-                  </Button>
+                    <div className="flex items-center">
+                      <HugeiconsIcon
+                        icon={PlusSignIcon}
+                        strokeWidth={2}
+                        className="mr-2 h-4 w-4"
+                      />
+                      Add New Division
+                    </div>
+                  </SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -366,9 +385,10 @@ export function EmployeeForm({
           {/* Department (Dat Department) Select - Filtered by selected division */}
           <div className="min-w-0 space-y-2">
             <Label htmlFor="dept_dat">
-              Dat Department <span className="text-red-500">*</span>
+              DAT Department <span className="text-red-500">*</span>
             </Label>
             <Select
+              key={`department-select-${refreshKey}`}
               value={data.dept_dat}
               onValueChange={handleDepartmentChange}
               onOpenChange={onDropdownOpenChange}
@@ -382,19 +402,16 @@ export function EmployeeForm({
                   }
                 />
               </SelectTrigger>
-              <SelectContent className="max-h-64">
+              <SelectContent
+                className="max-h-64"
+                forceOpen={data.div && filteredDepartments.length === 0}
+              >
                 <SelectGroup>
-                  <SelectLabel>Departments</SelectLabel>
+                  <SelectLabel>DAT Departments</SelectLabel>
                   {filteredDepartments.length === 0 ? (
-                    <TruncatedSelectItem
-                      value="no-departments"
-                      label={
-                        data.div
-                          ? "No departments available for this division"
-                          : "Please select a division first"
-                      }
-                      disabled
-                    />
+                    <SelectItem value="no-departments" disabled className="text-muted-foreground">
+                      {data.div ? "No departments available" : "Please select a division first"}
+                    </SelectItem>
                   ) : (
                     filteredDepartments.map((option: any) => (
                       <TruncatedSelectItem
@@ -409,22 +426,19 @@ export function EmployeeForm({
                   <>
                     <SelectSeparator />
                     <SelectGroup>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start text-sm font-normal"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onAddDepartment?.()
-                        }}
+                      <SelectItem
+                        value="__add_new_department__"
+                        className="text-primary hover:bg-primary/10"
                       >
-                        <HugeiconsIcon
-                          icon={PlusSignIcon}
-                          strokeWidth={2}
-                          className="mr-2 h-4 w-4"
-                        />
-                        Add New Department
-                      </Button>
+                        <div className="flex items-center">
+                          <HugeiconsIcon
+                            icon={PlusSignIcon}
+                            strokeWidth={2}
+                            className="mr-2 h-4 w-4"
+                          />
+                          Add New Department
+                        </div>
+                      </SelectItem>
                     </SelectGroup>
                   </>
                 )}
@@ -436,8 +450,15 @@ export function EmployeeForm({
           <div className="min-w-0 space-y-2">
             <Label htmlFor="team">Team</Label>
             <Select
+              key={`team-select-${refreshKey}`}
               value={data.team}
-              onValueChange={(value) => handleInputChange("team", value)}
+              onValueChange={(value) => {
+                if (value === "__add_new_team__") {
+                  onAddTeam?.()
+                  return
+                }
+                handleInputChange("team", value)
+              }}
               onOpenChange={onDropdownOpenChange}
               disabled={!isAdmin}
             >
@@ -448,19 +469,16 @@ export function EmployeeForm({
                   }
                 />
               </SelectTrigger>
-              <SelectContent className="max-h-64">
+              <SelectContent
+                className="max-h-64"
+                forceOpen={data.dept_dat && filteredTeams.length === 0}
+              >
                 <SelectGroup>
                   <SelectLabel>Teams</SelectLabel>
                   {filteredTeams.length === 0 ? (
-                    <TruncatedSelectItem
-                      value="no-teams"
-                      label={
-                        data.dept_dat
-                          ? "No teams available for this department"
-                          : "Please select a department first"
-                      }
-                      disabled
-                    />
+                    <SelectItem value="no-teams" disabled className="text-muted-foreground">
+                      {data.dept_dat ? "No teams available" : "Please select a department first"}
+                    </SelectItem>
                   ) : (
                     filteredTeams.map((option: any) => (
                       <TruncatedSelectItem
@@ -475,22 +493,19 @@ export function EmployeeForm({
                   <>
                     <SelectSeparator />
                     <SelectGroup>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start text-sm font-normal"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onAddTeam?.()
-                        }}
+                      <SelectItem
+                        value="__add_new_team__"
+                        className="text-primary hover:bg-primary/10"
                       >
-                        <HugeiconsIcon
-                          icon={PlusSignIcon}
-                          strokeWidth={2}
-                          className="mr-2 h-4 w-4"
-                        />
-                        Add New Team
-                      </Button>
+                        <div className="flex items-center">
+                          <HugeiconsIcon
+                            icon={PlusSignIcon}
+                            strokeWidth={2}
+                            className="mr-2 h-4 w-4"
+                          />
+                          Add New Team
+                        </div>
+                      </SelectItem>
                     </SelectGroup>
                   </>
                 )}
@@ -570,7 +585,7 @@ export function EmployeeForm({
               {/* Dir Department */}
               <div className="min-w-0 space-y-2">
                 <Label htmlFor="dept_dir" className="text-muted-foreground">
-                  Dir Department <span className="text-muted-foreground text-xs">(Optional)</span>
+                  DIR Department <span className="text-muted-foreground text-xs">(Optional)</span>
                 </Label>
                 <Select
                   value={data.dept_dir || ""}
@@ -578,11 +593,11 @@ export function EmployeeForm({
                   onOpenChange={onDropdownOpenChange}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select dir department" />
+                    <SelectValue placeholder="Select DIR department" />
                   </SelectTrigger>
                   <SelectContent className="max-h-64">
                     <SelectGroup>
-                      <SelectLabel>Dir Departments</SelectLabel>
+                      <SelectLabel>DIR Departments</SelectLabel>
                       {departmentDirOptions && departmentDirOptions.length > 0 ? (
                         departmentDirOptions.map((dept: string) => (
                           <SelectItem key={dept} value={dept}>
@@ -592,7 +607,7 @@ export function EmployeeForm({
                       ) : (
                         <TruncatedSelectItem
                           value="no-departments"
-                          label="No dir departments available"
+                          label="No DIR departments available"
                           disabled
                         />
                       )}

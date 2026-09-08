@@ -28,12 +28,14 @@ interface ImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   label?: string // Used ONLY for filtering which tabs to show
+  onSuccess?: () => void
 }
 
 export function ImportDialog({
   open,
   onOpenChange,
   label = "all",
+  onSuccess
 }: ImportDialogProps) {
   const [activeImportTab, setActiveImportTab] = useState("")
   const [isDragging, setIsDragging] = useState(false)
@@ -122,7 +124,7 @@ export function ImportDialog({
 
   // Import logic based on tab config
   const handleImport = async () => {
-    if (!currentTabData || !selectedFile) {
+    if (!currentTabData?.onImport || !selectedFile) {
       toast.warning("Please select a file first")
       return
     }
@@ -136,11 +138,18 @@ export function ImportDialog({
       // Handle optional result object or simple success
       if (result && typeof result === "object") {
         if (result.success) {
+          toast.success(` Successfully imported ${currentTabData.label} data!`)
           onOpenChange(false)
+          if (onSuccess) {
+            onSuccess()
+          }
         }
       } else {
         toast.success(` Successfully imported ${currentTabData.label} data!`)
         onOpenChange(false)
+        if (onSuccess) {
+          onSuccess()
+        }
       }
     } catch (error) {
       console.error(" Import error:", error)
@@ -156,6 +165,24 @@ export function ImportDialog({
     // Prevent cancel during processing
     if (isProcessing) return
     onOpenChange(false)
+  }
+
+  const handleDialogKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Enter" || isProcessing) return
+
+    const target = e.target as HTMLElement
+    if (target.closest('[role="menu"]') || target.closest('[role="listbox"]')) {
+      return
+    }
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (selectedFile) {
+      void handleImport()
+    } else {
+      buttonRef.current?.focus()
+    }
   }
 
   // File upload area component - FIXED with useCallback
@@ -192,13 +219,11 @@ export function ImportDialog({
     return (
       <div className="space-y-4">
         <div
-          className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-            isDragging
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/25"
-          } ${!selectedFile && !isProcessing ? "cursor-pointer" : ""} ${
-            isProcessing ? "pointer-events-none opacity-60" : ""
-          }`}
+          className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragging
+            ? "border-primary bg-primary/5"
+            : "border-muted-foreground/25"
+            } ${!selectedFile && !isProcessing ? "cursor-pointer" : ""} ${isProcessing ? "pointer-events-none opacity-60" : ""
+            }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -249,6 +274,7 @@ export function ImportDialog({
             />
             <div className="pointer-events-auto flex gap-2">
               <Button
+                ref={buttonRef}
                 type="button"
                 variant="outline"
                 size="sm"
@@ -289,6 +315,7 @@ export function ImportDialog({
         <DialogContent
           className="sm:max-w-[550px]"
           disableClose={isProcessing}
+          onKeyDown={handleDialogKeyDown}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => {
             // Prevent dialog from closing when clicking inside dropdown
@@ -346,6 +373,7 @@ export function ImportDialog({
       <DialogContent
         className="sm:max-w-[550px]"
         disableClose={isProcessing}
+        onKeyDown={handleDialogKeyDown}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(e) => {
           // Prevent dialog from closing when clicking inside dropdown

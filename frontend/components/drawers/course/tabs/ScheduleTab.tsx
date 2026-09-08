@@ -54,6 +54,7 @@ import {
   formatFullDate,
 } from "@/components/schedule/utils/schedule.utils"
 import { SessionDetailDialog } from "@/components/dialogs/sessionDetail-dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 const THEME_COUNT = SESSION_THEMES.length
 
@@ -151,7 +152,7 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
 
   // Determine the schedule type based on course type
   const scheduleType = course.courseType === "self-study" ? "self-study" : "trainer-provided"
-  
+
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()))
   const [studyPeriodStart, setStudyPeriodStart] = useState(() =>
     getWeekStart(new Date())
@@ -176,8 +177,8 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
   const [fetchedCourseIds, setFetchedCourseIds] = useState<Set<string>>(new Set())
 
   // Check if user is admin
-  const isAdmin = userRole === "admin" || 
-    userRole === "approver" || 
+  const isAdmin = userRole === "admin" ||
+    userRole === "approver" ||
     userRole === "department_head"
 
   // Helper function to get progress array
@@ -295,7 +296,7 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
     } else if (course.courseType === "self-study") {
       // ============ SELF-STUDY COURSE LOGIC ============
       const courseIdNum = parseInt(course.id, 10)
-      
+
       const courseEnrollments = allEnrollments.filter((eRaw) => {
         const e = eRaw as Record<string, unknown>
         const eCourseId =
@@ -826,8 +827,16 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
   }, [derivedSessions, scheduleType, searchTerm])
 
   const goToToday = () => {
-    setWeekStart(getWeekStart(new Date()))
-    setTimeout(() => scrollToToday(), 100)
+    if (scheduleType === "self-study") {
+      // For self-study: go to current 4-week period
+      const today = new Date()
+      const weekStart = getWeekStart(today)
+      setStudyPeriodStart(weekStart)
+    } else {
+      // For trainer-provided: go to current week and scroll
+      setWeekStart(getWeekStart(new Date()))
+      setTimeout(() => scrollToToday(), 100)
+    }
   }
 
   const goToPreviousWeek = () =>
@@ -931,11 +940,11 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
           [sid]: rows.map((r) =>
             r.id === learnerId
               ? {
-                  ...r,
-                  status: next,
-                  lateMinutes:
-                    next === "LATE" ? (r.lateMinutes ?? 15) : undefined,
-                }
+                ...r,
+                status: next,
+                lateMinutes:
+                  next === "LATE" ? (r.lateMinutes ?? 15) : undefined,
+              }
               : r
           ),
         }
@@ -1085,56 +1094,76 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
                 <Kbd>Ctrl + K</Kbd>
               </InputGroupAddon>
             </InputGroup>
+            {/* TODAY BUTTON - ADD THIS */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToToday}
+                  className="h-8 gap-1.5 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                >
+                  Today
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Scroll to today's column</p>
+              </TooltipContent>
+            </Tooltip>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-md border">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-r-none"
+                  onClick={
+                    scheduleType === "self-study"
+                      ? goToPreviousMonth
+                      : goToPreviousWeek
+                  }
+                  aria-label={
+                    scheduleType === "self-study"
+                      ? "Previous month"
+                      : "Previous week"
+                  }
+                >
+                  <HugeiconsIcon
+                    icon={ArrowLeft01Icon}
+                    strokeWidth={STROKE_WIDTH}
+                    className="h-4 w-4"
+                  />
+                </Button>
 
-            <div className="flex items-center rounded-md border">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-r-none"
-                onClick={
-                  scheduleType === "self-study"
-                    ? goToPreviousMonth
-                    : goToPreviousWeek
-                }
-                aria-label={
-                  scheduleType === "self-study"
-                    ? "Previous month"
-                    : "Previous week"
-                }
-              >
-                <HugeiconsIcon
-                  icon={ArrowLeft01Icon}
-                  strokeWidth={STROKE_WIDTH}
-                  className="h-4 w-4"
-                />
-              </Button>
-              <div className="flex items-center gap-1.5 border-x px-3 text-sm font-medium whitespace-nowrap">
-                <HugeiconsIcon
-                  icon={Calendar01Icon}
-                  strokeWidth={STROKE_WIDTH}
-                  className="h-3.5 w-3.5 text-muted-foreground"
-                />
-                {scheduleType === "self-study"
-                  ? formatMonthLabel(studyPeriodStart)
-                  : formatWeekRangeLabel(weekDates)}
+                <div className="flex items-center gap-1.5 border-x px-3 text-sm font-medium whitespace-nowrap">
+                  <HugeiconsIcon
+                    icon={Calendar01Icon}
+                    strokeWidth={STROKE_WIDTH}
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                  />
+                  {scheduleType === "self-study"
+                    ? formatMonthLabel(studyPeriodStart)
+                    : formatWeekRangeLabel(weekDates)}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-l-none"
+                  onClick={
+                    scheduleType === "self-study" ? goToNextMonth : goToNextWeek
+                  }
+                  aria-label={
+                    scheduleType === "self-study" ? "Next month" : "Next week"
+                  }
+                >
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    strokeWidth={STROKE_WIDTH}
+                    className="h-4 w-4"
+                  />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-l-none"
-                onClick={
-                  scheduleType === "self-study" ? goToNextMonth : goToNextWeek
-                }
-                aria-label={
-                  scheduleType === "self-study" ? "Next month" : "Next week"
-                }
-              >
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  strokeWidth={STROKE_WIDTH}
-                  className="h-4 w-4"
-                />
-              </Button>
+
+
             </div>
           </div>
         </div>

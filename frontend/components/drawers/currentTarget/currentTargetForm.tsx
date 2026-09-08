@@ -154,20 +154,23 @@ export function CurrentTargetForm({
   }, [fetch_EmployeeData, employee_data])
 
   // Get employee options - Always use employee_data for full employee objects
-  const employeeSelectOptions = employee_data?.map((emp: Employee) => ({
-    value: emp.id,
-    label: `${emp.id} - ${emp.name}`,
-    employee: emp, // This contains all employee fields including dept_dat and team
-  })) || []
+  const employeeSelectOptions =
+    employee_data?.map((emp: Employee) => ({
+      value: emp.id,
+      label: `${emp.id} - ${emp.name}`,
+      employee: emp, // This contains all employee fields including dept_dat and team
+    })) || []
 
   // If employeeOptions is provided from parent, use it but also try to find full employee data
   const getFullEmployeeOption = (option: { value: string; label: string }) => {
     // Try to find the full employee data from employee_data
-    const fullEmployee = employee_data?.find((emp: Employee) => emp.id === option.value)
+    const fullEmployee = employee_data?.find(
+      (emp: Employee) => emp.id === option.value
+    )
     if (fullEmployee) {
       return {
         ...option,
-        employee: fullEmployee
+        employee: fullEmployee,
       }
     }
     // If not found, create a minimal employee object with just the ID and name
@@ -175,19 +178,20 @@ export function CurrentTargetForm({
       ...option,
       employee: {
         id: option.value,
-        name: option.label.split('-')[1]?.trim() || option.label,
-        dept_dat: '',
-        team: '',
-        div_name: '',
-        profile_photo_path: ''
-      } as Employee
+        name: option.label.split("-")[1]?.trim() || option.label,
+        dept_dat: "",
+        team: "",
+        div_name: "",
+        profile_photo_path: "",
+      } as Employee,
     }
   }
 
   // Use provided employeeOptions if available, otherwise use employee_data
-  const options = employeeOptions.length > 0 
-    ? employeeOptions.map(getFullEmployeeOption)
-    : employeeSelectOptions
+  const options =
+    employeeOptions.length > 0
+      ? employeeOptions.map(getFullEmployeeOption)
+      : employeeSelectOptions
 
   // Get selected employee details
   const selectedEmployee = employee_data?.find(
@@ -254,33 +258,41 @@ export function CurrentTargetForm({
     <div className="space-y-6">
       {/* Employee Info Header - Show when editing */}
       {isEdit && selectedEmployee && (
-        <div className="rounded-lg border bg-muted/50 p-4">
+        <div className="border-b pb-6">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10 rounded-full">
-              <AvatarImage 
-                src={getEmployeeAvatar(selectedEmployee) || undefined} 
+              <AvatarImage
+                src={getEmployeeAvatar(selectedEmployee) || undefined}
                 alt={selectedEmployee.name}
               />
-              <AvatarFallback className="rounded-full bg-primary/10 text-primary">
+              <AvatarFallback className="rounded-full text-primary">
                 {getEmployeeInitials(selectedEmployee)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <h3 className="font-semibold truncate">{selectedEmployee.name}</h3>
-              <p className="text-sm text-muted-foreground truncate">
-                ID: {selectedEmployee.id}
-              </p>
+              <div className="flex items-center gap-1">
+                <h3 className="truncate font-semibold">
+                  {selectedEmployee.name}
+                </h3>
+                <span className="mx-0.5 text-muted-foreground">•</span>
+                <p className="truncate text-sm text-muted-foreground">
+                  {selectedEmployee.id}
+                </p>
+              </div>
+
               {/* Department and Team info */}
-              <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground mt-0.5">
+              <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                 {selectedEmployee.dept_dat && (
                   <>
-                    <span className="truncate">Dept: {selectedEmployee.dept_dat}</span>
+                    <span className="truncate">
+                      {selectedEmployee.dept_dat}
+                    </span>
                   </>
                 )}
                 {selectedEmployee.team && (
                   <>
                     <span className="mx-0.5">•</span>
-                    <span className="truncate">Team: {selectedEmployee.team}</span>
+                    <span className="truncate">{selectedEmployee.team}</span>
                   </>
                 )}
               </div>
@@ -298,7 +310,7 @@ export function CurrentTargetForm({
                 <Label>
                   Select Employee <span className="text-red-500">*</span>
                 </Label>
-                
+
                 {data.employeeId && selectedEmployee ? (
                   // Show selected employee as badge with details
                   <div className="flex flex-wrap items-center gap-2">
@@ -307,8 +319,8 @@ export function CurrentTargetForm({
                       className="flex max-w-[600px] items-center gap-2 px-3 py-5 text-sm font-normal"
                     >
                       <Avatar className="h-7 w-7 rounded-full">
-                        <AvatarImage 
-                          src={getEmployeeAvatar(selectedEmployee) || undefined} 
+                        <AvatarImage
+                          src={getEmployeeAvatar(selectedEmployee) || undefined}
                           alt={selectedEmployee.name}
                         />
                         <AvatarFallback className="rounded-full bg-primary/10 text-xs text-primary">
@@ -321,7 +333,6 @@ export function CurrentTargetForm({
                             {selectedEmployee.name}
                           </span>
                         </div>
-                        
                       </div>
                       <button
                         onClick={handleRemoveEmployee}
@@ -338,7 +349,7 @@ export function CurrentTargetForm({
                       variant="ghost"
                       size="sm"
                       onClick={() => setSearchOpen(true)}
-                      className="text-xs flex-shrink-0"
+                      className="flex-shrink-0 text-xs"
                     >
                       <HugeiconsIcon
                         icon={PlusSignIcon}
@@ -368,7 +379,7 @@ export function CurrentTargetForm({
                       variant="ghost"
                       size="sm"
                       onClick={() => setSearchOpen(true)}
-                      className="text-xs flex-shrink-0"
+                      className="flex-shrink-0 text-xs"
                     >
                       <HugeiconsIcon
                         icon={PlusSignIcon}
@@ -388,9 +399,11 @@ export function CurrentTargetForm({
                     <HugeiconsIcon
                       icon={Search01Icon}
                       strokeWidth={2}
-                      className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0"
+                      className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground"
                     />
-                    <span className="truncate">Search and select an employee...</span>
+                    <span className="truncate">
+                      Search and select an employee...
+                    </span>
                   </Button>
                 )}
               </div>
@@ -428,7 +441,7 @@ export function CurrentTargetForm({
                 const employee = option.employee
                 const avatarUrl = getEmployeeAvatar(employee)
                 const initials = getEmployeeInitials(employee)
-                
+
                 return (
                   <CommandItem
                     key={option.value}
@@ -436,8 +449,8 @@ export function CurrentTargetForm({
                     className="group flex cursor-pointer items-center gap-3 px-3 py-2"
                   >
                     <Avatar className="h-8 w-8 rounded-full">
-                      <AvatarImage 
-                        src={avatarUrl || undefined} 
+                      <AvatarImage
+                        src={avatarUrl || undefined}
                         alt={employee?.name || option.label}
                       />
                       <AvatarFallback className="rounded-full bg-primary/10 text-xs text-primary">
@@ -450,7 +463,10 @@ export function CurrentTargetForm({
                           {employee.name}
                         </span>
                         {isSelected && (
-                          <Badge variant="outline" className="text-[10px] flex-shrink-0">
+                          <Badge
+                            variant="outline"
+                            className="flex-shrink-0 text-[10px]"
+                          >
                             Selected
                           </Badge>
                         )}
@@ -459,13 +475,17 @@ export function CurrentTargetForm({
                         <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                           {employee.dept_dat && (
                             <>
-                              <span className="truncate max-w-[120px]">Dept: {employee.dept_dat}</span>
+                              <span className="max-w-[120px] truncate">
+                                Dept: {employee.dept_dat}
+                              </span>
                             </>
                           )}
                           {employee.team && (
                             <>
                               <span className="mx-0.5">•</span>
-                              <span className="truncate max-w-[120px]">Team: {employee.team}</span>
+                              <span className="max-w-[120px] truncate">
+                                Team: {employee.team}
+                              </span>
                             </>
                           )}
                         </div>

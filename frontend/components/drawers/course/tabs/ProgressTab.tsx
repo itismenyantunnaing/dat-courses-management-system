@@ -1048,8 +1048,8 @@ export function ProgressTab({
   // If not JLPT or not authorized, show empty state
   if (!canViewProgress) {
     return (
-      <TabsContent value="progress" className="w-full min-w-0 pt-4">
-        <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+      <TabsContent value="progress" className="w-full min-w-0">
+        <Empty className="h-full">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <HugeiconsIcon

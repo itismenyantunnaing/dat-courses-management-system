@@ -67,8 +67,7 @@ export function CertificateCard({
   const employeeName = certificate.employee?.name || "Unknown User"
   const employeeEmail = certificate.employee?.email || "No email provided"
   const employeeAvatar = resolveUploadUrl(certificate.profilePhotoPath) || certificate.employee?.avatar || ""
-  const submittedDate =
-    certificate.verifiedAt || certificate.createdAt || new Date().toISOString()
+  const submittedDate = certificate.createdAt || new Date().toISOString()
 
   return (
     <>

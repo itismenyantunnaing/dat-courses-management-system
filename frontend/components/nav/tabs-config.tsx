@@ -300,16 +300,16 @@ export const allTabs = [
           confirmMsg += `\n⚠️ ${employeesToDelete.length} employees will be DELETED`
         }
 
-        const confirmed = await dialog.confirm(
-          "Confirm Import",
-          confirmMsg,
-          "Import",
-          "Cancel"
-        )
+        // const confirmed = await dialog.confirm(
+        //   "Confirm Import",
+        //   confirmMsg,
+        //   "Import",
+        //   "Cancel"
+        // )
 
-        if (!confirmed) {
-          return { success: false, message: "Import cancelled" }
-        }
+        // if (!confirmed) {
+        //   return { success: false, message: "Import cancelled" }
+        // }
 
         // ===== DELETE EMPLOYEES MISSING FROM EXCEL (EXCLUDING SYSTEM) =====
         let deletedCount = 0
@@ -407,7 +407,7 @@ export const allTabs = [
           }
         }
 
-        await dialog.success("Import Complete", resultMsg)
+        // await dialog.success("Import Complete", resultMsg)
 
         return {
           success: importedCount > 0,
@@ -1493,16 +1493,16 @@ export const allTabs = [
 
         confirmMsg += `\n\nContinue?`
 
-        const shouldProceed = await dialog.confirm(
-          "Confirm Import",
-          confirmMsg,
-          "Import",
-          "Cancel"
-        )
+        // const shouldProceed = await dialog.confirm(
+        //   "Confirm Import",
+        //   confirmMsg,
+        //   "Import",
+        //   "Cancel"
+        // )
 
-        if (!shouldProceed) {
-          return { success: false, message: "Import cancelled" }
-        }
+        // if (!shouldProceed) {
+        //   return { success: false, message: "Import cancelled" }
+        // }
 
         // ===== PERFORM OPERATIONS =====
         let successCount = 0
@@ -1626,7 +1626,7 @@ export const allTabs = [
             finalMsg += `   ... and ${skillResolutionFailures.size - 5} more\n`
           }
         }
-        await dialog.success("Import Complete", finalMsg)
+        // await dialog.success("Import Complete", finalMsg)
 
         // ===== 🆕 DEPARTMENT / RANK-POSITION / CORE PERSONNEL / JAPAN TRIP UPDATES (BULK) =====
         if (departmentUpdateQueue.length > 0) {
@@ -1679,7 +1679,7 @@ export const allTabs = [
               deptMsg += `   ... and ${departmentFailedUpdates.length - 5} more\n`
             }
           }
-          await dialog.info("Department Updates", deptMsg)
+          // await dialog.info("Department Updates", deptMsg)
         }
 
         return {
@@ -1844,16 +1844,16 @@ export const allTabs = [
 
           message += `Continue with ${valid.length} valid rows?`
 
-          const shouldContinue = await dialog.confirm(
-            "Validation Issues",
-            message,
-            "Continue",
-            "Cancel"
-          )
+          // const shouldContinue = await dialog.confirm(
+          //   "Validation Issues",
+          //   message,
+          //   "Continue",
+          //   "Cancel"
+          // )
 
-          if (!shouldContinue) {
-            return { success: false, message: "Import cancelled by user" }
-          }
+          // if (!shouldContinue) {
+          //   return { success: false, message: "Import cancelled by user" }
+          // }
         }
 
         if (valid.length === 0) {
@@ -1894,12 +1894,12 @@ export const allTabs = [
           })
 
           const skippedCount = apiData.length - filteredApiData.length
-          if (skippedCount > 0) {
-            await dialog.info(
-              "Skipped Records",
-              `ℹ️ ${skippedCount} records were skipped because the employee IDs don't exist in the system.\n\nContinuing with ${filteredApiData.length} records.`
-            )
-          }
+          // if (skippedCount > 0) {
+          //   await dialog.info(
+          //     "Skipped Records",
+          //     `ℹ️ ${skippedCount} records were skipped because the employee IDs don't exist in the system.\n\nContinuing with ${filteredApiData.length} records.`
+          //   )
+          // }
         }
 
         if (filteredApiData.length === 0) {
@@ -2019,16 +2019,16 @@ export const allTabs = [
           confirmMessage += `📊 Records to import: ${filteredApiData.length}\n\n`
           confirmMessage += `Continue?`
 
-          const shouldProceed = await dialog.confirm(
-            "Confirm Target Dates",
-            confirmMessage,
-            "Proceed",
-            "Cancel"
-          )
+          // const shouldProceed = await dialog.confirm(
+          //   "Confirm Target Dates",
+          //   confirmMessage,
+          //   "Proceed",
+          //   "Cancel"
+          // )
 
-          if (!shouldProceed) {
-            return { success: false, message: "Import cancelled by user" }
-          }
+          // if (!shouldProceed) {
+          //   return { success: false, message: "Import cancelled by user" }
+          // }
 
           try {
             if (existingTargetDate) {
@@ -2110,7 +2110,7 @@ export const allTabs = [
           `  • Target 1: ${target1Date || "Not set"}\n` +
           `  • Target 2: ${target2Date || "Not set"}`
 
-        await dialog.success("Import Complete", finalMessage)
+        // await dialog.success("Import Complete", finalMessage)
 
         return { success: true, message: finalMessage }
       } catch (error) {
@@ -2205,16 +2205,16 @@ export const allTabs = [
           return { success: false, message: "No data found" }
         }
 
-        const confirmed = await dialog.confirm(
-          "Confirm Import",
-          `You are about to import ${holidayData.length} holidays into the database. Continue?`,
-          "Import",
-          "Cancel"
-        )
+        // const confirmed = await dialog.confirm(
+        //   "Confirm Import",
+        //   `You are about to import ${holidayData.length} holidays into the database. Continue?`,
+        //   "Import",
+        //   "Cancel"
+        // )
 
-        if (!confirmed) {
-          return { success: false, message: "Import cancelled by user" }
-        }
+        // if (!confirmed) {
+        //   return { success: false, message: "Import cancelled by user" }
+        // }
 
         const holidayDtos = holidayData.map((item) => ({
           holidayName: item.holidayName.trim(),
@@ -2337,7 +2337,7 @@ export const allTabs = [
   },
   {
     id: "feedback",
-    label: "feedback",
+    label: "Feedback",
     exportTitle: "Export Feedback",
     exportDescription: "Export Feedback from the system.",
     icon: ChartIcon,

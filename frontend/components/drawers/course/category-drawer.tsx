@@ -34,6 +34,7 @@ import {
   PlusSignIcon,
   Delete02Icon,
   Edit03Icon,
+  ArrowLeft01Icon,
 } from "@hugeicons/core-free-icons"
 import {
   CategoryItem,
@@ -64,7 +65,9 @@ export function CategoryDrawer({
 }: CategoryDrawerProps) {
   const [isAddingCategory, setIsAddingCategory] = useState(false)
   const [editingCategory, setEditingCategory] = useState<string | null>(null)
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(
+    null
+  )
   const [formData, setFormData] = useState<CategoryFormData & { id?: number }>({
     name: "",
     type: "trainer",
@@ -75,11 +78,22 @@ export function CategoryDrawer({
   )
   const formRef = useRef<HTMLFormElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [originalFormData, setOriginalFormData] = useState<CategoryFormData & { id?: number } | null>(null)
+  const [originalFormData, setOriginalFormData] = useState<
+    (CategoryFormData & { id?: number }) | null
+  >(null)
   const [isLoading, setIsLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [categoryToDelete, setCategoryToDelete] = useState<CategoryItem | null>(null)
+  const [categoryToDelete, setCategoryToDelete] = useState<CategoryItem | null>(
+    null
+  )
   const [duplicateError, setDuplicateError] = useState<string | null>(null)
+
+  // State for dropdown interaction tracking
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isDialogInteractingRef = useRef(false)
+  const dialogCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Use store directly
   const {
@@ -92,7 +106,7 @@ export function CategoryDrawer({
     isCreating,
     isUpdating,
     isDeleting,
-    getUserRole
+    getUserRole,
   } = mainStore()
 
   // Fetch categories when drawer opens
@@ -103,7 +117,7 @@ export function CategoryDrawer({
         try {
           await fetch_courseCategories()
         } catch (err) {
-          console.error('Failed to fetch categories:', err)
+          console.error("Failed to fetch categories:", err)
         } finally {
           setIsLoading(false)
         }
@@ -111,6 +125,24 @@ export function CategoryDrawer({
       loadCategories()
     }
   }, [open, fetch_courseCategories])
+
+  // Keep the drawer guarded until the dialog's trailing focus restoration
+  // events have completed. This mirrors the working dictionary drawer.
+  useEffect(() => {
+    if (dialogCloseTimerRef.current) {
+      clearTimeout(dialogCloseTimerRef.current)
+      dialogCloseTimerRef.current = null
+    }
+
+    if (deleteDialogOpen) {
+      isDialogInteractingRef.current = true
+    } else {
+      dialogCloseTimerRef.current = setTimeout(() => {
+        isDialogInteractingRef.current = false
+        dialogCloseTimerRef.current = null
+      }, 150)
+    }
+  }, [deleteDialogOpen])
 
   // Get all categories from store directly
   const getAllCategories = (): CategoryItem[] => {
@@ -134,14 +166,76 @@ export function CategoryDrawer({
   }
 
   // Check for duplicate category using store data
-  const checkDuplicateCategory = (name: string, type: 'trainer' | 'self-study', excludeId?: number): boolean => {
+  const checkDuplicateCategory = (
+    name: string,
+    type: "trainer" | "self-study",
+    excludeId?: number
+  ): boolean => {
     const allCategories = getAllCategories()
 
     return allCategories.some((cat) => {
       if (excludeId && cat.id === excludeId) return false
-      return cat.label.toLowerCase() === name.toLowerCase() &&
-        cat.type === type
+      return cat.label.toLowerCase() === name.toLowerCase() && cat.type === type
     })
+  }
+
+  // Handle dropdown open/close for interaction tracking
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+    } else {
+      // Delay setting to false to prevent dialog from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+      }, 150)
+    }
+  }
+
+  // Handle drawer open change with dropdown interaction guard
+  const handleDrawerOpenChange = (newOpen: boolean) => {
+    // The delete dialog is rendered in a portal outside the drawer. Keep the
+    // drawer open while that nested dialog handles its own close interaction.
+    if (!newOpen && isDialogInteractingRef.current) {
+      return
+    }
+
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when drawer closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - prevent closing when clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    if (isDialogInteractingRef.current) {
+      e.preventDefault()
+      return
+    }
+
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="dialog"]') ||
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
   }
 
   // Handle self-study type change with JLPT suffix
@@ -152,22 +246,21 @@ export function CategoryDrawer({
       if (value === "jlpt") {
         const lowerName = newName.toLowerCase()
         // Check if name already contains "jlpt" (case insensitive)
-        if (!lowerName.includes('jlpt')) {
+        if (!lowerName.includes("jlpt")) {
           // No JLPT found, add suffix
-          newName = newName ? `JLPT-${newName}` : 'JLPT'
+          newName = newName ? `JLPT-${newName}` : "JLPT"
         }
       } else {
         // If Other is selected, remove JLPT prefix and any JLPT-related words
         // Remove "JLPT-" prefix (case insensitive)
-        newName = newName.replace(/^JLPT-\s*/i, '').trim()
+        newName = newName.replace(/^JLPT-\s*/i, "").trim()
 
         // Remove "JLPT" anywhere in the name (case insensitive)
-        newName = newName.replace(/\bJLPT\b\s*/gi, '').trim()
-
+        newName = newName.replace(/\bJLPT\b\s*/gi, "").trim()
 
         // Clean up any double spaces or trailing separators
-        newName = newName.replace(/\s{2,}/g, ' ').trim()
-        newName = newName.replace(/[-\s]+$/, '').trim()
+        newName = newName.replace(/\s{2,}/g, " ").trim()
+        newName = newName.replace(/[-\s]+$/, "").trim()
       }
 
       return {
@@ -184,7 +277,11 @@ export function CategoryDrawer({
     setEditingCategory(null)
     setEditingCategoryId(null)
     setDuplicateError(null)
-    const newFormData = { name: "", type: "trainer", selfStudyType: "other" }
+    const newFormData: CategoryFormData = {
+      name: "",
+      type: "trainer",
+      selfStudyType: "other",
+    }
     setFormData(newFormData)
     setOriginalFormData(null)
   }
@@ -230,13 +327,13 @@ export function CategoryDrawer({
           onSelectCategory("")
         }
       } else {
-        toast.error(result.message || 'Failed to delete category')
+        toast.error(result.message || "Failed to delete category")
         setDeleteDialogOpen(false)
         setCategoryToDelete(null)
       }
     } catch (error) {
       console.error("Failed to delete category:", error)
-      toast.error('An error occurred while deleting the category')
+      toast.error("An error occurred while deleting the category")
       setDeleteDialogOpen(false)
       setCategoryToDelete(null)
     }
@@ -252,23 +349,20 @@ export function CategoryDrawer({
     if (formData.selfStudyType === "jlpt" && categoryName) {
       const lowerName = categoryName.toLowerCase()
       // Check if name already has "jlpt" (with or without "JLPT-")
-      if (!lowerName.includes('jlpt')) {
+      if (!lowerName.includes("jlpt")) {
         categoryName = `JLPT-${categoryName}`
       }
     } else if (formData.selfStudyType === "other" && categoryName) {
       // Remove any JLPT-related words if it's "other"
-      categoryName = categoryName.replace(/^JLPT-\s*/i, '').trim()
-      categoryName = categoryName.replace(/\bJLPT\b\s*/gi, '').trim()
-      categoryName = categoryName.replace(/\s{2,}/g, ' ').trim()
-
-
+      categoryName = categoryName.replace(/^JLPT-\s*/i, "").trim()
+      categoryName = categoryName.replace(/\bJLPT\b\s*/gi, "").trim()
+      categoryName = categoryName.replace(/\s{2,}/g, " ").trim()
     }
 
     if (!categoryName) {
-      setDuplicateError('Category name is required')
+      setDuplicateError("Category name is required")
       return
     }
-
 
     const isDuplicate = checkDuplicateCategory(
       categoryName,
@@ -277,7 +371,9 @@ export function CategoryDrawer({
     )
 
     if (isDuplicate) {
-      setDuplicateError(`A category with the name "${categoryName}" and type "${COURSE_TYPE_LABELS[formData.type]}" already exists. Please use a different name.`)
+      setDuplicateError(
+        `A category with the name "${categoryName}" and type "${COURSE_TYPE_LABELS[formData.type]}" already exists. Please use a different name.`
+      )
       return
     }
 
@@ -293,10 +389,7 @@ export function CategoryDrawer({
           formData.type
         )
       } else {
-        result = await add_courseCategories(
-          categoryName,
-          formData.type
-        )
+        result = await add_courseCategories(categoryName, formData.type)
       }
 
       if (result.success) {
@@ -308,11 +401,12 @@ export function CategoryDrawer({
         setDuplicateError(null)
         await fetch_courseCategories()
       } else {
-        if (result.message && (
-          result.message.includes('Duplicate entry') ||
-          result.message.includes('already exists') ||
-          result.message.includes('unique')
-        )) {
+        if (
+          result.message &&
+          (result.message.includes("Duplicate entry") ||
+            result.message.includes("already exists") ||
+            result.message.includes("unique"))
+        ) {
           await fetch_courseCategories()
           const stillDuplicate = checkDuplicateCategory(
             categoryName,
@@ -320,34 +414,39 @@ export function CategoryDrawer({
             editingCategoryId || undefined
           )
           if (stillDuplicate) {
-            setDuplicateError(`A category with the name "${categoryName}" and type "${COURSE_TYPE_LABELS[formData.type]}" already exists. Please use a different name.`)
+            setDuplicateError(
+              `A category with the name "${categoryName}" and type "${COURSE_TYPE_LABELS[formData.type]}" already exists. Please use a different name.`
+            )
           } else {
-            toast.error(result.message || 'Failed to save category')
+            toast.error(result.message || "Failed to save category")
           }
         } else {
-          toast.error(result.message || 'Failed to save category')
+          toast.error(result.message || "Failed to save category")
         }
       }
     } catch (error: any) {
       console.error("Failed to save category:", error)
       await fetch_courseCategories()
-      if (error.message && (
-        error.message.includes('Duplicate entry') ||
-        error.message.includes('already exists') ||
-        error.message.includes('unique')
-      )) {
+      if (
+        error.message &&
+        (error.message.includes("Duplicate entry") ||
+          error.message.includes("already exists") ||
+          error.message.includes("unique"))
+      ) {
         const stillDuplicate = checkDuplicateCategory(
           categoryName,
           formData.type,
           editingCategoryId || undefined
         )
         if (stillDuplicate) {
-          setDuplicateError(`A category with the name "${categoryName}" and type "${COURSE_TYPE_LABELS[formData.type]}" already exists. Please use a different name.`)
+          setDuplicateError(
+            `A category with the name "${categoryName}" and type "${COURSE_TYPE_LABELS[formData.type]}" already exists. Please use a different name.`
+          )
         } else {
-          toast.error('An error occurred while saving the category')
+          toast.error("An error occurred while saving the category")
         }
       } else {
-        toast.error('An error occurred while saving the category')
+        toast.error("An error occurred while saving the category")
       }
     } finally {
       setIsSubmitting(false)
@@ -390,14 +489,31 @@ export function CategoryDrawer({
       setCategoryToDelete(null)
       setDuplicateError(null)
       setIsLoading(false)
+      setIsInteractingWithDropdown(false)
+      if (dropdownCloseTimer.current) {
+        clearTimeout(dropdownCloseTimer.current)
+        dropdownCloseTimer.current = null
+      }
     }
   }, [open])
 
   // Show loading state
   if (isLoading && getAllCategories().length === 0) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-        <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
+      <Drawer
+        open={open}
+        onOpenChange={handleDrawerOpenChange}
+        direction="right"
+      >
+        <DrawerContent
+          className="right-0 left-auto h-full w-full max-w-2xl"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            if (isInteractingWithDropdown || isDialogInteractingRef.current) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DrawerHeader className="shrink-0 border-b">
             <DrawerTitle>Course Categories</DrawerTitle>
           </DrawerHeader>
@@ -412,8 +528,20 @@ export function CategoryDrawer({
   // Show error state
   if (error && getAllCategories().length === 0) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-        <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
+      <Drawer
+        open={open}
+        onOpenChange={handleDrawerOpenChange}
+        direction="right"
+      >
+        <DrawerContent
+          className="right-0 left-auto h-full w-full max-w-2xl"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            if (isInteractingWithDropdown || isDialogInteractingRef.current) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DrawerHeader className="shrink-0 border-b">
             <DrawerTitle>Course Categories</DrawerTitle>
           </DrawerHeader>
@@ -440,16 +568,52 @@ export function CategoryDrawer({
 
   return (
     <>
-      <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-        <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
+      <Drawer
+        open={open}
+        onOpenChange={handleDrawerOpenChange}
+        direction="right"
+      >
+        <DrawerContent
+          className="right-0 left-auto h-full w-full max-w-2xl"
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            if (isInteractingWithDropdown || isDialogInteractingRef.current) {
+              e.preventDefault()
+            }
+          }}
+        >
           <DrawerHeader className="shrink-0 border-b">
-            <DrawerTitle>Course Categories</DrawerTitle>
+            <DrawerTitle className="flex items-center gap-2">
+              {isAddingCategory && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsAddingCategory(false)
+                    setEditingCategory(null)
+                    setEditingCategoryId(null)
+                    setFormData({
+                      name: "",
+                      type: "trainer",
+                      selfStudyType: "other",
+                    })
+                    setOriginalFormData(null)
+                    setDuplicateError(null)
+                  }}
+                >
+                  <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+                </Button>
+              )}
+              Course Categories
+            </DrawerTitle>
           </DrawerHeader>
 
           <div className="flex-1 overflow-y-auto">
             <div className="px-4 py-4">
               {isAddingCategory ? (
                 <form
+                  id="category-form"
                   ref={formRef}
                   onSubmit={handleSaveCategory}
                   className="space-y-4"
@@ -467,11 +631,6 @@ export function CategoryDrawer({
                       required
                       className={duplicateError ? "border-destructive" : ""}
                     />
-                    {formData.selfStudyType === "jlpt" && (
-                      <p className="text-xs text-muted-foreground">
-                        ℹ️ &quot;JLPT-&quot; will be automatically added if not already present in the name
-                      </p>
-                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -479,7 +638,8 @@ export function CategoryDrawer({
                     <Select
                       value={formData.type}
                       onValueChange={(value: "trainer" | "self-study") => {
-                        const newSelfStudyType = value === "self-study" ? "other" : undefined
+                        const newSelfStudyType =
+                          value === "self-study" ? "jlpt" : undefined
                         setFormData({
                           ...formData,
                           type: value,
@@ -487,6 +647,7 @@ export function CategoryDrawer({
                         })
                         setDuplicateError(null)
                       }}
+                      onOpenChange={handleDropdownOpenChange}
                     >
                       <SelectTrigger className="w-full" id="category-type">
                         <SelectValue placeholder="Select type" />
@@ -507,8 +668,9 @@ export function CategoryDrawer({
                     <div className="space-y-2">
                       <Label htmlFor="self-study-type">Self-Study Type</Label>
                       <Select
-                        value={formData.selfStudyType || "other"}
+                        value={formData.selfStudyType || "jlpt"}
                         onValueChange={handleSelfStudyTypeChange}
+                        onOpenChange={handleDropdownOpenChange}
                       >
                         <SelectTrigger className="w-full" id="self-study-type">
                           <SelectValue placeholder="Select self-study type" />
@@ -524,11 +686,6 @@ export function CategoryDrawer({
                           </SelectGroup>
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-muted-foreground">
-                        {formData.selfStudyType === "jlpt"
-                          ? "JLPT courses include Kanji, Vocabulary, Grammar, Reading, and Listening metrics"
-                          : "Other self-study courses include a link field for each session"}
-                      </p>
                     </div>
                   )}
 
@@ -539,7 +696,7 @@ export function CategoryDrawer({
                   )}
 
                   <div className="flex gap-2 pt-2">
-                    <Button
+                    {/* <Button
                       type="submit"
                       disabled={
                         isSubmitting ||
@@ -554,25 +711,7 @@ export function CategoryDrawer({
                         : editingCategoryId
                           ? "Update Category"
                           : "Add Category"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsAddingCategory(false)
-                        setEditingCategory(null)
-                        setEditingCategoryId(null)
-                        setFormData({
-                          name: "",
-                          type: "trainer",
-                          selfStudyType: "other",
-                        })
-                        setOriginalFormData(null)
-                        setDuplicateError(null)
-                      }}
-                    >
-                      Back
-                    </Button>
+                    </Button> */}
                   </div>
                 </form>
               ) : (
@@ -592,7 +731,8 @@ export function CategoryDrawer({
                     <TabsContent value={activeTab} className="mt-4">
                       <div className="flex flex-wrap gap-3">
                         {getFilteredCategories().map((category) => {
-                          const isSelected = selectedCategory?.categoryId === category.id
+                          const isSelected =
+                            selectedCategory?.categoryId === category.id
                           const isSelfStudyCategory =
                             category.type === "self-study"
 
@@ -649,7 +789,7 @@ export function CategoryDrawer({
                                 </ItemDescription>
                               </ItemContent>
                               <ItemActions>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center">
                                   <Button
                                     type="button"
                                     variant="ghost"
@@ -663,7 +803,7 @@ export function CategoryDrawer({
                                   >
                                     <HugeiconsIcon
                                       icon={Edit03Icon}
-                                      strokeWidth={1.5}
+                                      strokeWidth={2}
                                       className="h-4 w-4"
                                     />
                                   </Button>
@@ -671,12 +811,14 @@ export function CategoryDrawer({
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                    onClick={(e) => handleDeleteClick(category, e)}
+                                    className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={(e) =>
+                                      handleDeleteClick(category, e)
+                                    }
                                   >
                                     <HugeiconsIcon
                                       icon={Delete02Icon}
-                                      strokeWidth={1.5}
+                                      strokeWidth={2}
                                       className="h-4 w-4"
                                     />
                                   </Button>
@@ -715,6 +857,26 @@ export function CategoryDrawer({
                   New Category
                 </Button>
               )}
+              {isAddingCategory && (
+                <Button
+                  type="submit"
+                  form="category-form"
+                  className="flex-1"
+                  disabled={
+                    isSubmitting ||
+                    isCreating ||
+                    isUpdating ||
+                    !formData.name.trim() ||
+                    (editingCategoryId ? !hasChanges : false)
+                  }
+                >
+                  {isSubmitting || isCreating || isUpdating
+                    ? "Saving..."
+                    : editingCategoryId
+                      ? "Update Category"
+                      : "Add Category"}
+                </Button>
+              )}
               <DrawerClose asChild>
                 <Button type="button" variant="outline" className="flex-1">
                   Close
@@ -726,18 +888,40 @@ export function CategoryDrawer({
       </Drawer>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(isOpen) => {
+          setDeleteDialogOpen(isOpen)
+          if (!isOpen) {
+            setCategoryToDelete(null)
+          }
+        }}
+        modal={true}
+      >
+        <DialogContent
+          onPointerDownOutside={(e) => {
+            e.preventDefault()
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault()
+          }}
+          onEscapeKeyDown={(e) => {
+            setDeleteDialogOpen(false)
+            setCategoryToDelete(null)
+            e.preventDefault()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Delete Category</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{categoryToDelete?.label}"?
-              This action cannot be undone.
+              Are you sure you want to delete "{categoryToDelete?.label}"? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
+              className="flex-1"
               onClick={() => {
                 setDeleteDialogOpen(false)
                 setCategoryToDelete(null)
@@ -748,6 +932,7 @@ export function CategoryDrawer({
             </Button>
             <Button
               variant="destructive"
+              className="flex-1"
               onClick={handleConfirmDelete}
               disabled={isDeleting}
             >

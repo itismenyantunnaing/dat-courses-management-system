@@ -1471,7 +1471,7 @@ export default function SelfStudyProgressReportContainer() {
               </EmptyMedia>
               <EmptyTitle>
                 {searchTerm || hasActiveFilters
-                  ? `No Matching Records for ${searchTerm}`
+                  ? `No Matching Records for "${searchTerm}"`
                   : "No Self-Study Progress Data"}
               </EmptyTitle>
               <EmptyDescription className="text-center text-pretty">

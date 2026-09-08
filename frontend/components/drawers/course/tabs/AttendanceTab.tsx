@@ -50,6 +50,7 @@ import {
   Calendar01Icon,
   ArrowDown01Icon,
   EyeIcon,
+  UserIcon,
 } from "@hugeicons/core-free-icons"
 import { cn, resolveUploadUrl } from "@/lib/utils"
 import {
@@ -60,6 +61,7 @@ import {
 import { Kbd } from "@/components/ui/kbd"
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -154,15 +156,31 @@ const getEffectiveToday = () => TESTING_DATE ?? new Date()
 
 const isFutureDate = (date: Date) => {
   const today = getEffectiveToday()
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const todayStart = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  )
+  const dateStart = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  )
   return dateStart.getTime() > todayStart.getTime()
 }
 
 const isTodayDate = (date: Date) => {
   const today = getEffectiveToday()
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const todayStart = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  )
+  const dateStart = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  )
   return dateStart.getTime() === todayStart.getTime()
 }
 
@@ -178,7 +196,11 @@ const BorderedTableCell = React.forwardRef<
   HTMLTableCellElement,
   React.ComponentProps<typeof TableCell>
 >(({ children, className = "", ...props }, ref) => (
-  <TableCell ref={ref} className={cn("border-r border-l", className)} {...props}>
+  <TableCell
+    ref={ref}
+    className={cn("border-r border-l", className)}
+    {...props}
+  >
     {children}
   </TableCell>
 ))
@@ -273,9 +295,10 @@ const AttendanceCellButton = React.memo(function AttendanceCellButton({
         if (btnRef.current) onOpen(btnRef.current.getBoundingClientRect())
       }}
       className={cn(
-        "flex mx-auto h-7 w-[58px] items-center justify-center gap-0.5 rounded-md border border-gray-200 bg-transparent px-1.5 text-xs font-medium transition-colors",
-        "hover:bg-muted/50 hover:border-gray-300",
-        isDisabled && "cursor-not-allowed opacity-50 hover:bg-transparent hover:border-gray-200",
+        "mx-auto flex h-7 w-[58px] items-center justify-center gap-0.5 rounded-md border border-gray-200 bg-transparent px-1.5 text-xs font-medium transition-colors",
+        "hover:border-gray-300 hover:bg-muted/50",
+        isDisabled &&
+        "cursor-not-allowed opacity-50 hover:border-gray-200 hover:bg-transparent",
         option?.iconColor
       )}
     >
@@ -283,7 +306,9 @@ const AttendanceCellButton = React.memo(function AttendanceCellButton({
         <span className="h-3 w-3 animate-spin rounded-full border-b-2 border-current" />
       ) : (
         <>
-          <span>{status ? STATUS_TO_CODE[status] || status.charAt(0) : "-"}</span>
+          <span>
+            {status ? STATUS_TO_CODE[status] || status.charAt(0) : "-"}
+          </span>
           {!isDisabled && (
             <HugeiconsIcon
               icon={ArrowDown01Icon}
@@ -418,7 +443,7 @@ const AttendanceRow = React.memo(function AttendanceRow({
   canEditRow,
   isViewOnly,
   onCellClick,
-  isLearner
+  isLearner,
 }: AttendanceRowProps) {
   const groupSessions = groupSessionsByDate[employee.groupId] || {}
   const isGroupLoading = loadingAttendanceGroups[employee.groupId] || false
@@ -438,17 +463,24 @@ const AttendanceRow = React.memo(function AttendanceRow({
       total++
       const key = `${session.id}-${employee.enrollmentId}`
       const record = attendanceByKey.get(key)
-      const status = attendanceStatuses[key] || record?.attendanceStatus || "ABSENT"
+      const status =
+        attendanceStatuses[key] || record?.attendanceStatus || "ABSENT"
       if (status === "PRESENT") present++
       else if (status === "ABSENT") absent++
       else if (status === "LATE") late++
       else if (status === "EXCUSED") excused++
     })
 
-    const attendanceRate = total > 0 ? Math.round(((present + excused) / total) * 100) : 0
+    const attendanceRate =
+      total > 0 ? Math.round(((present + excused) / total) * 100) : 0
     return { total, present, absent, late, excused, attendanceRate }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupSessions, attendanceByKey, attendanceStatuses, employee.enrollmentId])
+  }, [
+    groupSessions,
+    attendanceByKey,
+    attendanceStatuses,
+    employee.enrollmentId,
+  ])
 
   // Determine if this specific row should be editable
   // Only the learner's own row can be edited, others are view-only
@@ -479,9 +511,7 @@ const AttendanceRow = React.memo(function AttendanceRow({
         </div>
       </BorderedTableCell>
 
-      {!isLearner && (
-        <BorderedTableCell>{employee.groupName}</BorderedTableCell>
-      )}
+      <BorderedTableCell>{employee.groupName}</BorderedTableCell>
 
       {sessionColumns.map((col) => {
         const session = groupSessions[col.key]
@@ -613,7 +643,14 @@ export function AttendanceTab({
       isEditable: boolean
     ) => {
       if (!isEditable) return
-      setActiveCell({ employeeEnrollmentId, employeeId, sessionId, groupId, rect, isEditable })
+      setActiveCell({
+        employeeEnrollmentId,
+        employeeId,
+        sessionId,
+        groupId,
+        rect,
+        isEditable,
+      })
     },
     []
   )
@@ -728,7 +765,13 @@ export function AttendanceTab({
       groupId: e.courseGroupId,
       groupName: e.courseGroupName || `Group ${e.courseGroupId}`,
     }))
-  }, [enrollments, isLearner, isDepartmentHead, profile?.deptDat, currentUserEnrollment])
+  }, [
+    enrollments,
+    isLearner,
+    isDepartmentHead,
+    profile?.deptDat,
+    currentUserEnrollment,
+  ])
 
   // Determine if the entire table should be view-only for a learner
   // (True for learners, but we'll still allow editing their own row)
@@ -740,15 +783,30 @@ export function AttendanceTab({
   const canEditEmployee = useCallback(
     (employee: DisplayEmployee) => {
       if (isAdmin) return true
-      if (isDepartmentHead && profile?.deptDat && employee.departmentName === profile.deptDat)
+      if (
+        isDepartmentHead &&
+        profile?.deptDat &&
+        employee.departmentName === profile.deptDat
+      )
         return true
-      if (isApprover && !isDepartmentHead && employee.employeeId === currentUserId)
+      if (
+        isApprover &&
+        !isDepartmentHead &&
+        employee.employeeId === currentUserId
+      )
         return true
       // LEARNER: Can only edit their own attendance
       if (isLearner && employee.employeeId === currentUserId) return true
       return false
     },
-    [isAdmin, isDepartmentHead, isApprover, isLearner, profile?.deptDat, currentUserId]
+    [
+      isAdmin,
+      isDepartmentHead,
+      isApprover,
+      isLearner,
+      profile?.deptDat,
+      currentUserId,
+    ]
   )
 
   // Check if a row should be view-only (learner viewing others in their group)
@@ -757,14 +815,25 @@ export function AttendanceTab({
       // Admin can edit everything
       if (isAdmin) return false
       // Department head can edit their department
-      if (isDepartmentHead && profile?.deptDat && employee.departmentName === profile.deptDat)
+      if (
+        isDepartmentHead &&
+        profile?.deptDat &&
+        employee.departmentName === profile.deptDat
+      )
         return false
       // Learner: Only their own row is editable, all others are view-only
       if (isLearner && employee.employeeId !== currentUserId) return true
       // If not admin and not the learner's own row, it's view-only
       return !canEditEmployee(employee)
     },
-    [isAdmin, isDepartmentHead, isLearner, currentUserId, profile?.deptDat, canEditEmployee]
+    [
+      isAdmin,
+      isDepartmentHead,
+      isLearner,
+      currentUserId,
+      profile?.deptDat,
+      canEditEmployee,
+    ]
   )
 
   /* ---------------- Filter option lists --------------- */
@@ -774,7 +843,8 @@ export function AttendanceTab({
     [roleFilteredEmployees]
   )
   const departmentValues = useMemo(
-    () => getFilterUniqueValues(roleFilteredEmployees.map((e) => e.departmentName)),
+    () =>
+      getFilterUniqueValues(roleFilteredEmployees.map((e) => e.departmentName)),
     [roleFilteredEmployees]
   )
   const teamValues = useMemo(
@@ -846,7 +916,9 @@ export function AttendanceTab({
   /* ---------------- Scroll-to-today --------------- */
 
   const getScrollElement = (outer: HTMLDivElement): HTMLElement => {
-    const inner = outer.querySelector<HTMLElement>('[data-slot="table-container"]')
+    const inner = outer.querySelector<HTMLElement>(
+      '[data-slot="table-container"]'
+    )
     if (inner && inner.scrollWidth > inner.clientWidth) return inner
     let el: HTMLElement = outer
     while (el.scrollWidth <= el.clientWidth && el.children.length === 1) {
@@ -856,7 +928,9 @@ export function AttendanceTab({
   }
 
   const pulseTodayColumn = (container: HTMLElement, dateKey: string) => {
-    const cells = container.querySelectorAll<HTMLElement>(`[data-date-key="${dateKey}"]`)
+    const cells = container.querySelectorAll<HTMLElement>(
+      `[data-date-key="${dateKey}"]`
+    )
     const pulseClasses = [
       "animate-pulse",
       "bg-blue-200/80",
@@ -906,15 +980,19 @@ export function AttendanceTab({
     const stickyEmployeeCell = container.querySelector<HTMLTableCellElement>(
       "thead th.sticky.left-0"
     )
-    const employeeWidth = stickyEmployeeCell?.getBoundingClientRect().width ?? 250
+    const employeeWidth =
+      stickyEmployeeCell?.getBoundingClientRect().width ?? 250
 
     const groupHeaderCell = (() => {
       const allHeaderThs = Array.from(
-        container.querySelectorAll<HTMLTableCellElement>("thead > tr:first-child > th")
+        container.querySelectorAll<HTMLTableCellElement>(
+          "thead > tr:first-child > th"
+        )
       )
       return (
-        allHeaderThs.find((th, idx) => idx === 1 && !th.classList.contains("sticky")) ??
-        null
+        allHeaderThs.find(
+          (th, idx) => idx === 1 && !th.classList.contains("sticky")
+        ) ?? null
       )
     })()
     const groupWidth = groupHeaderCell?.getBoundingClientRect().width ?? 128
@@ -925,8 +1003,12 @@ export function AttendanceTab({
     const cellLeftInContainer = targetRect.left - containerRect.left
     const currentScrollLeft = container.scrollLeft
     const cellAbsoluteLeft = cellLeftInContainer + currentScrollLeft
-    const centeringOffset = Math.max(0, (viewportAvailableWidth - cellWidth) / 2)
-    const desiredScrollLeft = cellAbsoluteLeft - nonDateTotalWidth - centeringOffset
+    const centeringOffset = Math.max(
+      0,
+      (viewportAvailableWidth - cellWidth) / 2
+    )
+    const desiredScrollLeft =
+      cellAbsoluteLeft - nonDateTotalWidth - centeringOffset
     const maxScrollLeft = container.scrollWidth - container.clientWidth
     const clampedScrollLeft = Math.min(
       Math.max(0, desiredScrollLeft),
@@ -963,175 +1045,218 @@ export function AttendanceTab({
   // Show a message for learners who aren't enrolled
   const showNoEnrollmentMessage = isLearner && !currentUserEnrollment
 
+  // Determine if there's any data to show
+  const hasNoLearners = roleFilteredEmployees.length === 0
+  const hasNoData =
+    sessionColumns.length === 0 || showNoEnrollmentMessage || hasNoLearners
+
   return (
     <TabsContent value="attendance" className="w-full min-w-0 pt-4">
-      <CardHeader className="px-0">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <h4 className="flex items-center gap-2 text-xl font-semibold">
-              Attendance Overview
-              {isLearner && currentUserEnrollment && (
-                <Badge variant="outline" className="ml-2 text-xs">
-                  Your Group: {currentUserEnrollment.courseGroupName || `Group ${currentUserEnrollment.courseGroupId}`}
-                </Badge>
+      {/* Only show header when there is data */}
+      {!hasNoData && (
+        <CardHeader className="px-0">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h4 className="flex items-center gap-2 text-xl font-semibold">
+                Attendance Overview
+              </h4>
+              {isDepartmentHead && profile?.deptDat && (
+                <p className="text-sm text-muted-foreground">
+                  Showing attendance for your department (
+                  {filteredEmployees.length} learners)
+                </p>
               )}
-            </h4>
-            {isDepartmentHead && profile?.deptDat && (
-              <p className="text-sm text-muted-foreground">
-                Showing attendance for your department ({filteredEmployees.length} learners)
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <InputGroup className="w-[350px]">
-              <InputGroupInput
-                ref={searchInputRef}
-                placeholder="Search by name, dept, team, group..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <InputGroupAddon>
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  strokeWidth={2}
-                  className="h-4 w-4 text-muted-foreground"
+            </div>
+            <div className="flex items-center gap-2">
+              <InputGroup className="w-[350px]">
+                <InputGroupInput
+                  ref={searchInputRef}
+                  placeholder="Search by name, dept, team, group..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
-              </InputGroupAddon>
-              <InputGroupAddon align="inline-end">
-                <Kbd>Ctrl + K</Kbd>
-              </InputGroupAddon>
-            </InputGroup>
+                <InputGroupAddon>
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    strokeWidth={2}
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                </InputGroupAddon>
+                <InputGroupAddon align="inline-end">
+                  <Kbd>Ctrl + K</Kbd>
+                </InputGroupAddon>
+              </InputGroup>
 
-            {todayIndex !== -1 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={scrollToToday}
-                    className="h-8 gap-1.5 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                  >
-                    Today
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Scroll to today's column</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {hasFilterData && (
-              <DropdownMenu>
+              {todayIndex !== -1 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="relative h-9 w-9">
-                        <HugeiconsIcon
-                          icon={FilterMailIcon}
-                          strokeWidth={2}
-                          className="h-4 w-4"
-                        />
-                        {hasActiveFilters && (
-                          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={scrollToToday}
+                      className="h-8 gap-1.5 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                    >
+                      Today
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Filter</p>
+                    <p>Scroll to today's column</p>
                   </TooltipContent>
                 </Tooltip>
+              )}
 
-                <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
-                  {hasGroupData && !isLearner && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Group</DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent>
-                          {groupValues.map((value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.group.includes(value)}
-                              onCheckedChange={() => toggleFilter("group", value)}
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
-                  )}
+              {hasFilterData && (
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="relative h-9 w-9"
+                        >
+                          <HugeiconsIcon
+                            icon={FilterMailIcon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
+                          {hasActiveFilters && (
+                            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-600" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Filter</p>
+                    </TooltipContent>
+                  </Tooltip>
 
-                  {hasDepartmentData && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Department</DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent>
-                          {departmentValues.map((value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.department.includes(value)}
-                              onCheckedChange={() => toggleFilter("department", value)}
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
-                  )}
+                  <DropdownMenuContent className="max-h-[80vh] w-60 overflow-y-auto">
+                    {hasGroupData && !isLearner && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Group</DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {groupValues.map((value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.group.includes(value)}
+                                onCheckedChange={() =>
+                                  toggleFilter("group", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
 
-                  {hasTeamData && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Team</DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent>
-                          {teamValues.map((value) => (
-                            <DropdownMenuCheckboxItem
-                              key={value}
-                              checked={filters.team.includes(value)}
-                              onCheckedChange={() => toggleFilter("team", value)}
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {value}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
-                  )}
+                    {hasDepartmentData && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          Department
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {departmentValues.map((value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.department.includes(value)}
+                                onCheckedChange={() =>
+                                  toggleFilter("department", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
 
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={clearAllFilters}
-                    variant="destructive"
-                    className="gap-2"
-                  >
-                    <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
-                    Clear All Filters
-                    <DropdownMenuShortcut>
-                      <Kbd>Esc</Kbd>
-                    </DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                    {hasTeamData && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Team</DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {teamValues.map((value) => (
+                              <DropdownMenuCheckboxItem
+                                key={value}
+                                checked={filters.team.includes(value)}
+                                onCheckedChange={() =>
+                                  toggleFilter("team", value)
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {value}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={clearAllFilters}
+                      variant="destructive"
+                      className="gap-2"
+                    >
+                      <HugeiconsIcon
+                        icon={Delete02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4"
+                      />
+                      Clear All Filters
+                      <DropdownMenuShortcut>
+                        <Kbd>Esc</Kbd>
+                      </DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
+      )}
 
       <CardContent className="px-0 pt-4">
         {showNoEnrollmentMessage ? (
           <Empty className="h-full">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <HugeiconsIcon icon={UserGroupIcon} strokeWidth={1.5} className="h-12 w-12" />
+                <HugeiconsIcon
+                  icon={UserGroupIcon}
+                  strokeWidth={1.5}
+                  className="h-12 w-12"
+                />
               </EmptyMedia>
               <EmptyTitle>Not Enrolled</EmptyTitle>
               <EmptyDescription className="max-w-xs text-pretty">
-                You are not enrolled in this course. Please enroll to view attendance.
+                You are not enrolled in this course. Please enroll to view
+                attendance.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : hasNoLearners ? (
+          <Empty className="h-full">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <HugeiconsIcon
+                  icon={UserIcon}
+                  strokeWidth={1.5}
+                  className="h-12 w-12"
+                />
+              </EmptyMedia>
+              <EmptyTitle>No Attendance Records Yet</EmptyTitle>
+              <EmptyDescription className="max-w-xs text-pretty">
+                {isDepartmentHead && profile?.deptDat
+                  ? `No learners from your department (${profile.deptDat}) are enrolled in this course.`
+                  : "Enroll learners in this course to start tracking their attendance."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -1139,7 +1264,11 @@ export function AttendanceTab({
           <Empty className="h-full">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <HugeiconsIcon icon={Calendar01Icon} strokeWidth={1.5} className="h-12 w-12" />
+                <HugeiconsIcon
+                  icon={Calendar01Icon}
+                  strokeWidth={1.5}
+                  className="h-12 w-12"
+                />
               </EmptyMedia>
               <EmptyTitle>No Sessions Scheduled</EmptyTitle>
               <EmptyDescription className="max-w-xs text-pretty">
@@ -1151,15 +1280,36 @@ export function AttendanceTab({
           <Empty className="h-full">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <HugeiconsIcon icon={UserGroupIcon} strokeWidth={1.5} className="h-12 w-12" />
+                <HugeiconsIcon
+                  icon={UserGroupIcon}
+                  strokeWidth={1.5}
+                  className="h-12 w-12"
+                />
               </EmptyMedia>
-              <EmptyTitle>No Attendance Records for "{searchTerm}"</EmptyTitle>
-              <EmptyDescription className="max-w-xs text-pretty">
+              <EmptyTitle>
                 {searchTerm || hasActiveFilters
-                  ? "No matching records found for your search or filters."
+                  ? `No Matching Records for "${searchTerm}"`
+                  : "No Attendance Records"}
+              </EmptyTitle>
+              <EmptyDescription className="max-w-sm text-pretty">
+                {searchTerm || hasActiveFilters
+                  ? "Try adjusting your search or filters."
                   : "No attendance records available for this course."}
               </EmptyDescription>
             </EmptyHeader>
+            {(searchTerm || hasActiveFilters) && (
+              <EmptyContent>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("")
+                    clearAllFilters()
+                  }}
+                >
+                  Clear Search & Filters
+                </Button>
+              </EmptyContent>
+            )}
           </Empty>
         ) : (
           <div
@@ -1175,14 +1325,12 @@ export function AttendanceTab({
                   >
                     Employee
                   </BorderedTableHead>
-                  {!isLearner && (
-                    <BorderedTableHead
-                      className="bg-muted align-middle font-medium whitespace-nowrap shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)]"
-                      rowSpan={2}
-                    >
-                      Group
-                    </BorderedTableHead>
-                  )}
+                  <BorderedTableHead
+                    className="bg-muted align-middle font-medium whitespace-nowrap shadow-[2px_0_8px_-3px_rgba(0,0,0,0.1)]"
+                    rowSpan={2}
+                  >
+                    Group
+                  </BorderedTableHead>
                   {sessionColumns.map((col) => {
                     const isFuture = isFutureDate(col.fullDate)
                     const isToday = isTodayDate(col.fullDate)

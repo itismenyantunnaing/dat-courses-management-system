@@ -46,7 +46,7 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
     set(() => ({ isLoading: true, error: null }));
     let response;
     try {
-      if ((profile.role.toLowerCase() === "approver" || profile.role.toLowerCase() === "department_head" || profile.role.toLowerCase() === "division_head") && profile.id) {
+      if ((profile?.role?.toLowerCase() === "approver" || profile?.role?.toLowerCase() === "department_head" || profile?.role?.toLowerCase() === "division_head") && profile.id) {
         response = await fetch(`${apiUrl}/api/course-stats/active-learners?employeeId=${profile.id}`);
       } else {
         response = await fetch(`${apiUrl}/api/course-stats/active-learners`)
@@ -84,7 +84,7 @@ export const dashboardDataStore = (set: StoreSet, get: StoreGet) => ({
     let response
 
     try {
-      if ((profile.role.toLowerCase() === "approver" || profile.role.toLowerCase() === "department_head" || profile.role.toLowerCase() === "division_head") && profile.id) {
+      if ((profile?.role?.toLowerCase() === "approver" || profile?.role?.toLowerCase() === "department_head" || profile?.role?.toLowerCase() === "division_head") && profile.id) {
         response = await fetch(`${apiUrl}/api/course-stats/organizational`);
       } else {
         response = await fetch(`${apiUrl}/api/course-stats`);

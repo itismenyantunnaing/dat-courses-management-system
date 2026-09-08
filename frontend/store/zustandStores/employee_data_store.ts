@@ -470,8 +470,8 @@ export const employeeDataStore = (set: StoreSet, get: StoreGet) => ({
 
       const currentProfile = get().profile
 
-      // if (currentProfile && currentProfile.role) {
-      //   const userRole = currentProfile.role.toLowerCase();
+      // if (currentProfile && currentprofile?.role?) {
+      //   const userRole = currentprofile?.role?.toLowerCase();
 
       //   if (userRole === "approver") {
       //     const userTeam = currentProfile.team;

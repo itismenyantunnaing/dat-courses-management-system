@@ -1107,7 +1107,7 @@ export function AuditLogsContainer() {
                 </EmptyMedia>
                 <EmptyTitle>
                   {searchTerm || hasActiveFilters
-                    ? `No Matching Logs`
+                    ? `No Matching Logs for "${searchTerm}"`
                     : "No Audit Logs"}
                 </EmptyTitle>
                 <EmptyDescription className="text-center text-pretty">

@@ -1080,7 +1080,7 @@ export function FeedbackContainer() {
                     </EmptyMedia>
                     <EmptyTitle>
                       {searchTerm || hasActiveFilters
-                        ? `No Matching Feedback for ${searchTerm}`
+                        ? `No Matching Feedback for "${searchTerm}"`
                         : "No Feedback"}
                     </EmptyTitle>
                     <EmptyDescription className="text-center text-pretty">

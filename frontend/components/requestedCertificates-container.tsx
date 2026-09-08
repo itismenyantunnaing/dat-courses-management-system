@@ -1218,7 +1218,7 @@ export function CertificatesRequestsContainer({
                 <EmptyTitle>
                   {hasAnyCertificates &&
                   (searchTerm || hasActiveFilters || statusTab === "all")
-                    ? `No Matching ${statusTab === "all" ? "" : `${statusTab}`} Certificates for ${searchTerm}`
+                    ? `No Matching ${statusTab === "all" ? "" : `${statusTab}`} Certificates for "${searchTerm}"`
                     : `No ${statusTab === "all" ? "" : `${statusTab}`} certificates found.`}
                 </EmptyTitle>
                 <EmptyDescription className="text-center text-pretty">

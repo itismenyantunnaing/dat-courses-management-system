@@ -463,7 +463,7 @@ export function SkillsetDrawer({
       <DrawerContent className="right-0 left-auto h-full w-full max-w-2xl">
         <DrawerHeader className="shrink-0 border-b">
           <DrawerTitle>Edit Skillset</DrawerTitle>
-          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground select-text">
             <HugeiconsIcon
               icon={UserIcon}
               strokeWidth={2}

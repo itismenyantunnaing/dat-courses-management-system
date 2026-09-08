@@ -289,7 +289,7 @@ export default function DashboardPage({ userData }: DashboardClientProps) {
   }, [profile])
 
   const userRole = profile?.role
-    ? (profile.role.toLowerCase() as "admin" | "learner" | "approver")
+    ? (profile?.role?.toLowerCase() as "admin" | "learner" | "approver")
     : "learner"
 
   const user_role = profile?.role ? userRole : "learner"

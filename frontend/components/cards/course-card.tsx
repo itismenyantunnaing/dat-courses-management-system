@@ -1,4 +1,3 @@
-// components/cards/course-card.tsx
 "use client"
 
 import React from "react"
@@ -7,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {resolveUploadUrl} from "@/lib/utils";
+import { resolveUploadUrl } from "@/lib/utils";
 import {
   Calendar03Icon,
   Calendar05Icon,
@@ -26,6 +25,7 @@ import { cn } from "@/lib/utils"
 interface CourseCardProps {
   course: Course
   onView: (course: Course) => void
+  isInfoTab?: boolean
   isEnrolled?: boolean
   progress?: number // 0-100
 }
@@ -133,6 +133,7 @@ const getDaysUntilClose = (
 export function CourseCard({
   course,
   onView,
+  isInfoTab = false,
   isEnrolled = false,
   progress = 0,
 }: CourseCardProps) {
@@ -365,14 +366,17 @@ export function CourseCard({
           </div>
 
           {/* Right side: Continue/View Button */}
-          <Button
-            variant={isEnrolled ? "default" : "outline"}
-            size="default"
-            onClick={() => onView(course)}
-            className="shrink-0 gap-1"
-          >
-            {isEnrolled ? "Continue" : "View"}
-          </Button>
+          {!isInfoTab &&
+            <Button
+              variant={isEnrolled ? "default" : "outline"}
+              size="default"
+              onClick={() => onView(course)}
+              className="shrink-0 gap-1"
+            >
+              {isEnrolled ? "Continue" : "View"}
+            </Button>
+          }
+
         </div>
       </div>
     </Card>

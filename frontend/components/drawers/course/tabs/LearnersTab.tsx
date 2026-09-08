@@ -144,6 +144,9 @@ export function LearnersTab({
   const [addLearnerOpen, setAddLearnerOpen] = useState(false)
   const [learnersCommandOpen, setLearnersCommandOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [learnerSearchTerm, setLearnerSearchTerm] = useState(
+    enrollmentSearchTerm
+  )
   const [visibleLearnersCount, setVisibleLearnersCount] = useState(
     AVAILABLE_LEARNERS_PER_PAGE
   )
@@ -158,6 +161,10 @@ export function LearnersTab({
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { fetch_courseEnrollments } = mainStore()
+
+  useEffect(() => {
+    setLearnerSearchTerm(enrollmentSearchTerm)
+  }, [enrollmentSearchTerm])
 
   let activeEnrollments = enrollments.filter(
     (e) => e.enrollmentStatus !== "CANCELLED"
@@ -183,8 +190,8 @@ export function LearnersTab({
   }
 
   let filteredEnrollments = activeEnrollments.filter((employee) => {
-    if (!enrollmentSearchTerm.trim()) return true
-    const searchLower = enrollmentSearchTerm.toLowerCase()
+    if (!learnerSearchTerm.trim()) return true
+    const searchLower = learnerSearchTerm.toLowerCase()
     return (
       (employee.employeeName || "").toLowerCase().includes(searchLower) ||
       (employee.departmentName || "").toLowerCase().includes(searchLower) ||
@@ -491,8 +498,12 @@ export function LearnersTab({
                   <InputGroupInput
                     ref={searchInputRef}
                     placeholder="Search by name, dept, team, or group..."
-                    value={enrollmentSearchTerm}
-                    onChange={(e) => onSearchChange(e.target.value)}
+                    value={learnerSearchTerm}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      setLearnerSearchTerm(value)
+                      onSearchChange(value)
+                    }}
                   />
                   <InputGroupAddon>
                     <HugeiconsIcon
@@ -529,20 +540,34 @@ export function LearnersTab({
           </CardHeader>
           <CardContent className="px-0 pt-4">
             {filteredEnrollments.length === 0 ? (
-              <div className="py-8 text-center">
-                <HugeiconsIcon
-                  icon={UserGroupIcon}
-                  strokeWidth={1.5}
-                  className="mx-auto h-12 w-12 text-muted-foreground/50"
-                />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {enrollmentSearchTerm
-                    ? "No matching learners found"
-                    : isDepartmentHead && profile?.deptDat && isRestrictedView
-                      ? `No learners from your department (${profile.deptDat}) are enrolled in this course yet`
-                      : "No learners enrolled in this course yet"}
-                </p>
-              </div>
+              <Empty className="h-full">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <HugeiconsIcon
+                      icon={UserGroupIcon}
+                      strokeWidth={1.5}
+                      className="h-12 w-12"
+                    />
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    No Matching Learners for "{learnerSearchTerm}"
+                  </EmptyTitle>
+                  <EmptyDescription className="max-w-sm text-pretty">
+                    Try adjusting your search.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setLearnerSearchTerm("")
+                      onSearchChange("")
+                    }}
+                  >
+                    Clear Search
+                  </Button>
+                </EmptyContent>
+              </Empty>
             ) : viewMode === "table" ? (
               // Table View with Bordered Cells - Matching employee-container design
               <div className="overflow-x-auto rounded-md border">

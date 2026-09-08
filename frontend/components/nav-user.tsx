@@ -317,7 +317,7 @@ export function NavUser() {
                   <HugeiconsIcon icon={Key02Icon} strokeWidth={2} />
                   Change password
                 </DropdownMenuItem>
-                {profile.role.toLowerCase() === "admin" &&
+                {profile?.role?.toLowerCase() === "admin" &&
                   <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault()

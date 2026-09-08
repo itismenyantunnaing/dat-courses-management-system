@@ -11,6 +11,11 @@ import { useEffect, useState, useMemo } from "react"
 import { mainStore } from "@/store/mainStore"
 import { CourseCard } from "@/components/cards/course-card"
 import { cn } from "@/lib/utils"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface EmployeeViewProps {
   employee: Employee | null
@@ -80,7 +85,7 @@ const getCategoryDisplayName = (category: string, skills: any[]) => {
   return null
 }
 
-// Skill item component
+// Skill item component with tooltip
 const SkillItem = ({ skill }: { skill: any }) => {
   // Get color based on years of experience
   const getYearColor = (years: number) => {
@@ -94,16 +99,23 @@ const SkillItem = ({ skill }: { skill: any }) => {
     <div className="group flex items-center justify-between rounded-md px-4 py-3 transition-colors hover:bg-muted/30">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium transition-colors group-hover:text-primary">
-            {skill.skillName}
-          </p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="cursor-text select-text truncate text-sm font-medium transition-colors group-hover:text-primary">
+                {skill.skillName}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{skill.skillName}</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
       <div className="ml-4 flex shrink-0 items-center gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Years */}
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-center gap-1">
             <span
               className={cn(
                 "text-sm font-semibold tabular-nums",
@@ -119,12 +131,9 @@ const SkillItem = ({ skill }: { skill: any }) => {
           <div className="h-5 w-px bg-border" />
 
           {/* Experience Level */}
-          <Badge
-            variant="outline"
-            className="h-5 px-2 py-0 text-xs font-normal"
-          >
+          <span className="text-xs font-normal">
             {skill.experienceLevel || "N/A"}
-          </Badge>
+          </span>
         </div>
       </div>
     </div>
@@ -136,7 +145,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingSkills, setIsLoadingSkills] = useState(false)
   const { checkMyEnrollment, fetch_SkillData, skillData, profile } = mainStore()
-  const userRole = profile.role.toLowerCase()
+  const userRole = profile?.role?.toLowerCase()
   const isAdmin = userRole === "admin"
 
   // Filter courses when courses prop changes
@@ -242,12 +251,19 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <h2 className="truncate text-xl font-semibold">
-                {employee.name}
-              </h2>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <h2 className="cursor-text select-text truncate text-xl font-semibold">
+                    {employee.name}
+                  </h2>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{employee.name}</p>
+                </TooltipContent>
+              </Tooltip>
               {isAdmin && (
                 <div className="flex items-center gap-2">
-                  <p className="text-xs text-muted-foreground">{employee.id}</p>
+                  <p className="text-xs text-muted-foreground select-text">{employee.id}</p>
                   <Badge className={getStatusBadge(employee.emp_status)}>
                     {statusLabels[employee.emp_status] || employee.emp_status}
                   </Badge>
@@ -257,87 +273,73 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
               {/* <p className="text-sm text-muted-foreground">
                 {employee.role || "-"}
               </p> */}
-              <p className="truncate text-sm text-muted-foreground">
-                {employee.email || "-"}
-              </p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="cursor-text select-text truncate text-sm text-muted-foreground">
+                    {employee.email || "-"}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="select-text">{employee.email || "-"}</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardContent>
 
         {/* Employment Information */}
         <CardContent className="col-span-2 px-0">
-          {/* <div className="divide-y">
-            <InfoRow label="Division" value={employee.div_name} />
-            <InfoRow label="Department" value={employee.dept_dat} />
-            <InfoRow label="Team" value={employee.team} />
-            {isAdmin && (
-              <InfoRow label="Door Log Access" value={employee.doorlog} />
-            )}
-            {isAdmin && (
-              <InfoRow label="Joined Date" value={employee.joinedDate} />
-            )}
-            <InfoRow label="Service Year" value={employee.serviceYear} />
-            <InfoRow
-              label="Core Personnel"
-              value={employee.is_core_personnel ? "Yes" : "No"}
-            />
-            <InfoRow
-              label="Japan Business Trip"
-              value={employee.has_japan_business_trip ? "Yes" : "No"}
-            />
-            {employee.dob && (
-              <InfoRow label="Date of Birth" value={employee.dob} />
-            )}
-          </div> */}
-          <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+          <div className="mt-4 grid grid-cols-3 gap-4 text-sm select-text">
             <div>
-              <span className="block text-xs text-muted-foreground uppercase">
+              <span className="block text-xs text-muted-foreground uppercase select-text">
                 Div
               </span>
-              {employee.div_name || "-"}
+              <span className="select-text">{employee.div_name || "-"}</span>
             </div>
             <div className="col-span-2">
-              <span className="block text-xs text-muted-foreground uppercase">
+              <span className="block text-xs text-muted-foreground uppercase select-text">
                 Dept
               </span>
-              {employee.dept_dat || "-"}
+              <span className="select-text">{employee.dept_dat || "-"}</span>
             </div>
             <div>
-              <span className="block text-xs text-muted-foreground uppercase">
+              <span className="block text-xs text-muted-foreground uppercase select-text">
                 Door Log
               </span>
-              {employee.doorlog || "-"}
+              <span className="select-text">{employee.doorlog || "-"}</span>
             </div>
             <div className="col-span-2">
-              <span className="block text-xs text-muted-foreground uppercase">
+              <span className="block text-xs text-muted-foreground uppercase select-text">
                 Team
               </span>
-              {employee.team || "-"}
+              <span className="select-text">{employee.team || "-"}</span>
             </div>
             <div>
-              <span className="block text-xs text-muted-foreground uppercase">
-                Service year
+              <span className="block text-xs text-muted-foreground uppercase select-text">
+                Role
               </span>
-              {employee.serviceYear || "-"}
+              <span className="select-text">{employee.role || "-"}</span>
             </div>
             <div className="col-span-2">
-              <span className="block text-xs text-muted-foreground uppercase">
-                Joined Date
+              <span className="block text-xs text-muted-foreground uppercase select-text">
+                Service Year
               </span>
-              {employee.joinedDate || "-"}
+              <span className="select-text">{employee.serviceYear || "-"}</span>
             </div>
           </div>
         </CardContent>
       </div>
 
       {/* Skills Section */}
-      <CardContent className="pt-6 px-0">
+      <CardContent className="px-0 pt-6">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-muted-foreground">
             Skills
           </h3>
           <Badge variant="secondary" className="text-xs">
-            {isLoadingSkills ? "Loading..." : `${employeeSkills.length} skill${employeeSkills.length > 1 ? "s" : ""}`}
+            {isLoadingSkills
+              ? "Loading..."
+              : `${employeeSkills.length} skill${employeeSkills.length > 1 ? "s" : ""}`}
           </Badge>
         </div>
         <Separator className="mb-4" />
@@ -353,7 +355,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
             No skills recorded for this employee
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2 space-y-2">
             {Object.entries(groupedSkills).map(([category, skills]) => {
               const displayName = getCategoryDisplayName(category, skills)
               const isOtherCategory = category.includes("empty")
@@ -361,7 +363,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
               return (
                 <div key={category}>
                   {/* Separator with optional label */}
-                  <div className="mb-3 flex items-center gap-3">
+                  <div className="mb-3 flex items-center gap-2">
                     <div className="flex-1 border-t border-border" />
                     {displayName ? (
                       <div className="flex items-center gap-2">
@@ -388,7 +390,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
                     className={cn(
                       "overflow-hidden rounded-md border",
                       (isOtherCategory || !displayName) &&
-                        "border-dashed border-muted-foreground/20"
+                      "border-dashed border-muted-foreground/20"
                     )}
                   >
                     {skills.map((skill, skillIndex) => (
@@ -408,7 +410,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
       </CardContent>
 
       {/* Enrolled Courses Section */}
-      <CardContent className="pt-6 px-0">
+      <CardContent className="px-0 pt-6">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-muted-foreground">
             Enrolled Courses
@@ -430,7 +432,7 @@ export function EmployeeView({ employee, courses }: EmployeeViewProps) {
             No enrolled courses found
           </div>
         ) : (
-          <div className="space-y-3 grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 space-y-3">
             {enrolledCourses.map((course) => (
               <CourseCard
                 key={course.id}

@@ -98,6 +98,16 @@ interface AnnouncementContainerProps {
   shouldRefresh?: boolean
 }
 
+const getInitials = (name: string) => {
+  if (!name) return "?"
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+}
+
 // Helper function to format time
 const formatTime = (dateString: string) => {
   const date = new Date(dateString)

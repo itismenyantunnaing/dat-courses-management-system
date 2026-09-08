@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import {
   Table,
   TableBody,
@@ -237,6 +237,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
 
   // State for import dialog
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const {
     profile,
@@ -275,6 +276,11 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
+
+  const refreshData = useCallback(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [])
+
 
   // Helper function to get initials
   const getInitials = (name: string) => {
@@ -353,76 +359,33 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
     return result
   }
 
-  // Add this ref with the other state declarations
-  const hasLoadedRef = useRef(false)
 
-  // Replace the existing useEffect with this:
   useEffect(() => {
     const loadData = async () => {
-      // Skip if already loaded
-      if (hasLoadedRef.current) {
-        setIsLoading(false)
-        return
-      }
-
       setIsLoading(true)
-
       try {
-        const promises = []
-
-        if (!employee_data || employee_data.length === 0) {
-          promises.push(fetch_EmployeeData())
-        }
-
-        if (
-          !employeeJapaneseLevel_Data ||
-          employeeJapaneseLevel_Data.length === 0
-        ) {
-          promises.push(fetch_EmployeeJapaneseLevel())
-        }
-
-        if (!skill_headers || skill_headers.length === 0) {
-          promises.push(fetch_SkillHeaders())
-        }
-
-        if (!skillData || skillData.length === 0) {
-          promises.push(fetch_SkillData())
-        }
-
-        if (!devCap_headers || devCap_headers.length === 0) {
-          promises.push(fetch_devCapHeaders())
-        }
-
-        if (!devCap_data || devCap_data.length === 0) {
-          promises.push(fetch_devCapData())
-        }
-
-        if (!languageSkill_data || languageSkill_data.length === 0) {
-          promises.push(fetch_languageSkillData())
-        }
-
-        if (!managementScores_Data || managementScores_Data.length === 0) {
-          promises.push(fetch_managementScoreData())
-        }
-
-        if (!dictionary || dictionary.length === 0) {
-          promises.push(fetch_dictionary())
-        }
-
-        if (promises.length > 0) {
-          await Promise.all(promises)
-        }
-
-        hasLoadedRef.current = true
+        // Always fetch fresh data when refreshKey changes
+        const promises = [
+          fetch_EmployeeData(),
+          fetch_EmployeeJapaneseLevel(),
+          fetch_SkillHeaders(),
+          fetch_SkillData(),
+          fetch_devCapHeaders(),
+          fetch_devCapData(),
+          fetch_languageSkillData(),
+          fetch_managementScoreData(),
+          fetch_dictionary(),
+        ]
+        await Promise.all(promises)
       } catch (error) {
-        console.error(" Error loading skills data:", error)
+        console.error("Error loading skills data:", error)
       } finally {
         setIsLoading(false)
       }
     }
 
     loadData()
-  }, [])
+  }, [refreshKey])
 
   // Employee data with role-based filtering
   useEffect(() => {
@@ -595,40 +558,40 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
       category: string
       sub_category: string
     }[] = []
-    ;(skill_headers || []).forEach((category: SkillCategory) => {
-      // API returns: categoryName, skillSubCategories
-      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-        // API returns: subCategoryName, skills
-        subCategory.skills?.forEach((skill: Skill) => {
-          // API returns: id, skillName
-          skills.push({
-            id: skill.id,
-            name: skill.skillName,
-            category: category.categoryName,
-            sub_category: subCategory.subCategoryName,
+      ; (skill_headers || []).forEach((category: SkillCategory) => {
+        // API returns: categoryName, skillSubCategories
+        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+          // API returns: subCategoryName, skills
+          subCategory.skills?.forEach((skill: Skill) => {
+            // API returns: id, skillName
+            skills.push({
+              id: skill.id,
+              name: skill.skillName,
+              category: category.categoryName,
+              sub_category: subCategory.subCategoryName,
+            })
           })
         })
       })
-    })
     return skills
   }, [skill_headers])
 
   // Group skills by category
   const dynamicSkillsByCategory = useMemo(() => {
     const grouped: Record<string, GroupedSkill[]> = {}
-    ;(skill_headers || []).forEach((category: SkillCategory) => {
-      const categoryName = category.categoryName
-      grouped[categoryName] = []
-      category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
-        subCategory.skills?.forEach((skill: Skill) => {
-          grouped[categoryName].push({
-            skill_id: skill.id,
-            skill_name: skill.skillName,
-            sub_category_name: subCategory.subCategoryName,
+      ; (skill_headers || []).forEach((category: SkillCategory) => {
+        const categoryName = category.categoryName
+        grouped[categoryName] = []
+        category.skillSubCategories?.forEach((subCategory: SkillSubCategory) => {
+          subCategory.skills?.forEach((skill: Skill) => {
+            grouped[categoryName].push({
+              skill_id: skill.id,
+              skill_name: skill.skillName,
+              sub_category_name: subCategory.subCategoryName,
+            })
           })
         })
       })
-    })
     return grouped
   }, [skill_headers])
 
@@ -1064,8 +1027,8 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                           colSpan={
                             devCap_headers?.length !== 0
                               ? devCap_headers?.length &&
-                                languageSkillHeaders.length +
-                                  devCap_headers.length * 2
+                              languageSkillHeaders.length +
+                              devCap_headers.length * 2
                               : languageSkillHeaders.length
                           }
                           className="cursor-pointer align-middle whitespace-nowrap transition-colors hover:bg-muted/70"
@@ -1774,7 +1737,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
                         }}
                         className={
                           currentPage === totalPages ||
-                          filteredEmployees.length === 0
+                            filteredEmployees.length === 0
                             ? "pointer-events-none opacity-50"
                             : ""
                         }
@@ -1897,6 +1860,7 @@ export function SkillContainer({ searchPlaceholder = "Search employees..." }) {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         label="skillset_data"
+        onSuccess={refreshData}
       />
     </>
   )

@@ -41,7 +41,7 @@ const TABS = [
   { id: "course", label: "Course" },
   { id: "certificate", label: "Certificate" },
   { id: "jlpt", label: "JLPT Exam" },
-  { id: "announcement", label: "Announce" },
+  { id: "announcement", label: "Announcement" },
 
 ] as const
 
@@ -220,7 +220,7 @@ export function NotificationsDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="right-0 left-auto h-full w-[500px] rounded-l-2xl border-l border-gray-100 bg-white shadow-2xl">
+      <DrawerContent className="right-0 left-auto h-full w-[600px] rounded-l-2xl border-l border-gray-100 bg-white shadow-2xl">
         {/* Header */}
         <DrawerHeader className="flex flex-row items-start justify-between border-gray-100 px-5 pt-5">
           <div>

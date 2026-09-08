@@ -24,7 +24,7 @@ import { mainStore } from "@/store/mainStore"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Delete02Icon,
-  EditIcon,
+  Edit03Icon,
   Add01Icon,
   Search01Icon,
   Loading03Icon,
@@ -32,6 +32,12 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { Kbd } from "@/components/ui/kbd"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 
 interface DictionaryDrawerProps {
   open: boolean
@@ -92,6 +98,9 @@ export function DictionaryDrawer({
   const isLoadingMoreRef = useRef(false)
   const searchTermRef = useRef(searchTerm)
 
+  // Search input ref for keyboard shortcut
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
   // Refs to track dialog states to prevent drawer from closing.
   // Combined into one flag with a short delay before clearing — mirrors the
   // dropdown-close-timer pattern used in other drawers. Without the delay,
@@ -114,6 +123,24 @@ export function DictionaryDrawer({
   useEffect(() => {
     searchTermRef.current = searchTerm
   }, [searchTerm])
+
+  // Keyboard shortcut for search focus (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger when the drawer is open and not in a dialog
+      if (!open) return
+      if (isDialogInteractingRef.current) return
+      
+      // Check for Cmd+K (Mac) or Ctrl+K (Windows/Linux)
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [open])
 
   // Update the combined dialog-interacting ref whenever either dialog's
   // open state changes. Opening sets it immediately; closing waits 150ms
@@ -398,7 +425,7 @@ export function DictionaryDrawer({
     <>
       <Drawer open={open} onOpenChange={handleOpenChange} direction="right">
         <DrawerContent
-          className="right-0 left-auto h-full w-[75%] sm:w-[60%] md:w-[50%] lg:w-[40%] xl:w-[30%]"
+          className="right-0 left-auto h-full w-[75%] sm:w-[60%] md:w-[50%] lg:w-[40%] xl:w-[30%] select-text"
           onPointerDownOutside={handlePointerDownOutside}
           onEscapeKeyDown={(e) => {
             if (isDialogInteractingRef.current) {
@@ -409,7 +436,10 @@ export function DictionaryDrawer({
           <DrawerHeader className="shrink-0 border-b">
             <div className="flex items-center justify-between">
               <div>
-                <DrawerTitle>Translations for the skillset table</DrawerTitle>
+                <DrawerTitle>
+                  All Translations for the skillset table (
+                  {filteredDictionary.length})
+                </DrawerTitle>
               </div>
               <Button size="sm" onClick={handleAddNew}>
                 <HugeiconsIcon
@@ -421,21 +451,26 @@ export function DictionaryDrawer({
               </Button>
             </div>
 
-            {/* Search Bar */}
+            {/* Search Bar with Keyboard Shortcut */}
             <div className="shrink-0 pt-1">
-              <div className="relative">
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  strokeWidth={2}
-                  className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
+              <InputGroup className="w-full">
+                <InputGroupInput
+                  ref={searchInputRef}
                   placeholder="Search translations in English or Japanese..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
                 />
-              </div>
+                <InputGroupAddon>
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    strokeWidth={2}
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                </InputGroupAddon>
+                <InputGroupAddon align="inline-end">
+                  <Kbd>Ctrl + K</Kbd>
+                </InputGroupAddon>
+              </InputGroup>
             </div>
           </DrawerHeader>
 
@@ -447,9 +482,6 @@ export function DictionaryDrawer({
             <div className="px-6 py-4">
               {/* Dictionary List */}
               <div>
-                <h3 className="mb-4 text-lg font-semibold">
-                  All Translations ({filteredDictionary.length})
-                </h3>
 
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
@@ -492,11 +524,11 @@ export function DictionaryDrawer({
                           <div className="flex flex-1 items-center gap-4">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">
+                                <span className="font-medium select-text">
                                   {entry.englishText}
                                 </span>
-                                <span className="text-muted-foreground">→</span>
-                                <span>{entry.japaneseText}</span>
+                                <span className="text-muted-foreground ">→</span>
+                                <span className="select-text">{entry.japaneseText}</span>
                               </div>
                             </div>
                             {editingEntry?.id === entry.id && (
@@ -505,7 +537,7 @@ export function DictionaryDrawer({
                               </Badge>
                             )}
                           </div>
-                          <div className="flex shrink-0 gap-1">
+                          <div className="flex shrink-0">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -514,7 +546,7 @@ export function DictionaryDrawer({
                               disabled={isSubmitting}
                             >
                               <HugeiconsIcon
-                                icon={EditIcon}
+                                icon={Edit03Icon}
                                 strokeWidth={2}
                                 className="h-4 w-4"
                               />
@@ -522,7 +554,7 @@ export function DictionaryDrawer({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => handleDeleteClick(entry)}
                               disabled={isSubmitting}
                             >

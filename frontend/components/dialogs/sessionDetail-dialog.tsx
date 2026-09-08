@@ -69,8 +69,8 @@ import {
 
 // TESTING_DATE - set to null for real date, or a specific date for testing
 // (same pattern as AttendanceTab / ProgressTab)
-// const TESTING_DATE: Date | null = new Date("2026-09-11")
-const TESTING_DATE: Date | null = null
+const TESTING_DATE: Date | null = new Date("2026-09-11")
+// const TESTING_DATE: Date | null = null
 
 const getEffectiveToday = () => TESTING_DATE ?? new Date()
 
@@ -1144,11 +1144,142 @@ export function SessionDetailDialog({
             })
           }
         } else {
-          toast.success("Attendance submitted", {
-            description: currentLearnerRow
-              ? `Your status: ${ATTENDANCE_OPTION_BY_VALUE[currentLearnerRow.status].label}`
-              : "Your attendance has been recorded",
-          })
+          // ============  ATTENDANCE LOGIC FOR LEARNERS ============
+          if (session && currentLearnerRow) {
+            const parsed = parseSessionId(session.id)
+            const courseId = parsed?.courseId
+              ? Number(parsed.courseId)
+              : NaN
+            const groupId = parsed?.groupId
+              ? Number(parsed.groupId)
+              : NaN
+            const sessionId = parsed?.sessionId
+              ? Number(parsed.sessionId)
+              : NaN
+            const sessionNoMatch = session.name.match(/Session\s+(\d+)/i)
+            const sessionNo = sessionNoMatch ? Number(sessionNoMatch[1]) : null
+
+            // Find the enrollment ID for the current learner
+            let enrollmentId: number = NaN
+            for (const e of enrollments) {
+              const eRec = e as Record<string, unknown>
+              const empId =
+                typeof eRec.employeeId === "string"
+                  ? eRec.employeeId
+                  : typeof eRec.employee_id === "string"
+                    ? eRec.employee_id
+                    : null
+              const eCourseId =
+                typeof eRec.courseId === "number"
+                  ? eRec.courseId
+                  : typeof eRec.courseId === "string"
+                    ? Number(eRec.courseId)
+                    : NaN
+              const eGroupId =
+                typeof eRec.courseGroupId === "number"
+                  ? eRec.courseGroupId
+                  : typeof eRec.courseGroupId === "string"
+                    ? Number(eRec.courseGroupId)
+                    : NaN
+              const eId =
+                typeof eRec.id === "number"
+                  ? eRec.id
+                  : typeof eRec.id === "string"
+                    ? Number(eRec.id)
+                    : NaN
+              if (
+                empId === currentLearnerRow.id &&
+                eCourseId === courseId &&
+                eGroupId === groupId &&
+                !isNaN(eId)
+              ) {
+                enrollmentId = eId
+                break
+              }
+            }
+
+            if (!isNaN(enrollmentId) && !isNaN(courseId) && !isNaN(groupId)) {
+              // Find existing attendance record
+              let existingAttendanceId: number | null = null
+              let fallbackCourseSessionId: number = 0
+              for (const a of attendances) {
+                const aRec = a as Record<string, unknown>
+                const aEmpId =
+                  typeof aRec.employeeId === "string"
+                    ? aRec.employeeId
+                    : typeof aRec.employee_id === "string"
+                      ? aRec.employee_id
+                      : null
+                const aSessionId =
+                  typeof aRec.courseSessionId === "number"
+                    ? aRec.courseSessionId
+                    : typeof aRec.courseSessionId === "string"
+                      ? Number(aRec.courseSessionId)
+                      : NaN
+                const aSessionNo =
+                  typeof aRec.sessionNo === "number" ? aRec.sessionNo : null
+                const aGroupId =
+                  typeof aRec.groupId === "number"
+                    ? aRec.groupId
+                    : typeof aRec.groupId === "string"
+                      ? Number(aRec.groupId)
+                      : NaN
+                const aId =
+                  typeof aRec.id === "number"
+                    ? aRec.id
+                    : typeof aRec.id === "string"
+                      ? Number(aRec.id)
+                      : NaN
+                const sessMatches = !isNaN(sessionId)
+                  ? aSessionId === sessionId
+                  : sessionNo != null
+                    ? aSessionNo === sessionNo
+                    : false
+                if (
+                  aEmpId === currentLearnerRow.id &&
+                  aGroupId === groupId &&
+                  sessMatches
+                ) {
+                  if (!isNaN(aId)) existingAttendanceId = aId
+                  if (!isNaN(aSessionId)) fallbackCourseSessionId = aSessionId
+                  break
+                }
+              }
+
+              const payload = {
+                enrollmentId,
+                courseSessionId: !isNaN(sessionId)
+                  ? sessionId
+                  : fallbackCourseSessionId || 0,
+                attendanceStatus: currentLearnerRow.status,
+              }
+
+              try {
+                if (existingAttendanceId != null) {
+                  await updateAttendance(
+                    courseId,
+                    groupId,
+                    existingAttendanceId,
+                    payload
+                  )
+                } else {
+                  await createAttendance(courseId, groupId, payload)
+                }
+                toast.success("Attendance submitted", {
+                  description: `Your status: ${ATTENDANCE_OPTION_BY_VALUE[currentLearnerRow.status].label}`,
+                })
+              } catch (err) {
+                console.warn("Failed to save attendance:", err)
+                toast.error("Failed to save attendance. Please try again.")
+              }
+            } else {
+              toast.error("Could not find your enrollment record.")
+            }
+          } else {
+            toast.success("Attendance submitted", {
+              description: "Your attendance has been recorded",
+            })
+          }
         }
       }
     } finally {

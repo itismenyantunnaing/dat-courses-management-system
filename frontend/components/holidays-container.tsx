@@ -667,7 +667,7 @@ export function HolidaysContainer({
                 </EmptyMedia>
                 <EmptyTitle>
                   {searchTerm
-                    ? `No Matching Holidays for ${searchTerm}`
+                    ? `No Matching Holidays for "${searchTerm}"`
                     : "No Holiday"}
                 </EmptyTitle>
                 <EmptyDescription className="text-center text-pretty">

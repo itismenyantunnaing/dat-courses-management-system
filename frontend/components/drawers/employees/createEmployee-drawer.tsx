@@ -57,7 +57,7 @@ export function CreateEmployeeDrawer({
     doorlog: "",
     dept_dat: "",
     dept_dir: "",
-    position: "", // Added position
+    position: "",
     team: "",
     emp_status: "active",
     role: "",
@@ -188,6 +188,7 @@ export function CreateEmployeeDrawer({
 
       if (result && result.success) {
         toast.success(` Division "${name}" added successfully!`)
+        // Update form data with the new division
         setFormData((prev) => ({ ...prev, div: name }))
       } else {
         toast.error(
@@ -196,7 +197,6 @@ export function CreateEmployeeDrawer({
       }
     } else if (addItemType === "department") {
       // You need to get the division ID from the selected division
-      // Find the selected division from the divisions list
       const selectedDivision = divisions.find(
         (div: any) =>
           div.divisionName === formData.div || div.id === formData.div
@@ -211,20 +211,16 @@ export function CreateEmployeeDrawer({
 
       const divisionId = selectedDivision.id || selectedDivision.divisionId
 
-      // Find if the division has the ID
       let finalDivisionId = divisionId
       if (!finalDivisionId && divisions.length > 0) {
-        // If the divisions list has items with id
         const divWithId = divisions.find((d: any) => d.id)
         if (divWithId) {
-          // Try to find the matching division by name
           const match = divisions.find(
             (d: any) => d.divisionName === formData.div
           )
           if (match) {
             finalDivisionId = match.id
           } else {
-            // If we can't find it, use the first division's ID
             finalDivisionId = divisions[0]?.id
           }
         }
@@ -248,7 +244,6 @@ export function CreateEmployeeDrawer({
         )
       }
     } else if (addItemType === "team") {
-      // You need to get the department ID from the selected department
       const selectedDepartment = dat_departments.find(
         (dept: any) =>
           dept.deptName === formData.dept_dat || dept.id === formData.dept_dat
@@ -278,6 +273,9 @@ export function CreateEmployeeDrawer({
         toast.error(` Failed to add team: ${result?.error || "Unknown error"}`)
       }
     }
+
+    // Close the dialog after adding
+    setAddDialogOpen(false)
   }
 
   const handleDropdownOpenChange = (isOpen: boolean) => {
