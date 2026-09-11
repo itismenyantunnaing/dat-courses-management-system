@@ -424,7 +424,7 @@ export function CurrentTargetForm({
         }}
       >
         <Command>
-          <div className="border-b px-3 py-2">
+          <div className="border-b pb-2">
             <CommandInput
               placeholder="Search employees..."
               value={searchQuery}
@@ -453,7 +453,7 @@ export function CurrentTargetForm({
                         src={avatarUrl || undefined}
                         alt={employee?.name || option.label}
                       />
-                      <AvatarFallback className="rounded-full bg-primary/10 text-xs text-primary">
+                      <AvatarFallback className=" text-xs text-primary">
                         {initials}
                       </AvatarFallback>
                     </Avatar>

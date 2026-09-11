@@ -733,6 +733,38 @@ export function CoursesContainer({
     }
   }
 
+  const renderNoCourses = (canCreateCourse: boolean) => (
+    <Empty className="m-auto min-h-[300px] max-w-[500px] rounded-lg">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <HugeiconsIcon
+            icon={CourseIcon}
+            strokeWidth={2}
+            className="h-12 w-12 text-muted-foreground"
+          />
+        </EmptyMedia>
+        <EmptyTitle>No Courses</EmptyTitle>
+        <EmptyDescription className="text-center text-pretty">
+          {canCreateCourse
+            ? "Get started by creating your first course."
+            : "There are no courses available at the moment. Check back later."}
+        </EmptyDescription>
+      </EmptyHeader>
+      {canCreateCourse && (
+        <EmptyContent>
+          <Button variant="default" onClick={handleNewCourse}>
+            <HugeiconsIcon
+              icon={CourseIcon}
+              strokeWidth={2}
+              className="h-4 w-4"
+            />
+            New Course
+          </Button>
+        </EmptyContent>
+      )}
+    </Empty>
+  )
+
   // Learner view
   if (!isAdmin) {
     return (
@@ -745,6 +777,8 @@ export function CoursesContainer({
               onBack={handleBackFromDetail}
               userRole={userRole}
             />
+          ) : !isLoadingCourses && courses.length === 0 ? (
+            renderNoCourses(false)
           ) : (
             <>
               {/* Tabs and Search Bar */}
@@ -896,6 +930,8 @@ export function CoursesContainer({
             onBack={handleBackFromDetail}
             userRole={userRole}
           />
+        ) : !isLoadingCourses && courses.length === 0 ? (
+          renderNoCourses(true)
         ) : (
           <>
             {/* Tabs and Search Bar + New Course Button */}
@@ -978,7 +1014,7 @@ export function CoursesContainer({
                 <Button
                   variant="default"
                   onClick={handleNewCourse}
-                  className="shrink-0 bg-primary hover:bg-primary/90"
+                  // className="shrink-0 bg-primary hover:bg-primary/90"
                 >
                   <HugeiconsIcon icon={CourseIcon} strokeWidth={2} />
                   New Course
@@ -1037,7 +1073,7 @@ export function CoursesContainer({
                     <Button
                       variant="default"
                       onClick={handleNewCourse}
-                      className="bg-primary hover:bg-primary/90"
+                      // className="bg-primary hover:bg-primary/90"
                     >
                       <HugeiconsIcon
                         icon={CourseIcon}

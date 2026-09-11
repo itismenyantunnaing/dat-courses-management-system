@@ -1,4 +1,3 @@
-// lib/tabs-config.ts
 import {
   UserGroupIcon,
   CodeIcon,
@@ -2297,7 +2296,7 @@ export const allTabs = [
   },
   {
     id: "exam_progress_report",
-    label: "Exam Progress report",
+    label: "Exam Progress",
     exportTitle: "Export Exam Progress report",
     exportDescription: "Export Exam Progress report from the system.",
     icon: ChartIcon,

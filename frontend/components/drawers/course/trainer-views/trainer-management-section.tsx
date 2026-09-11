@@ -1204,7 +1204,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    captionLayout="dropdown"
+                    // captionLayout="dropdown"
                     selected={group.startDate}
                     onSelect={(date) =>
                       handleStartDateChange(group.id, date || undefined)
@@ -1221,14 +1221,10 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                       return compareDate < minDate || isHolidayDate
                     }}
                     modifiers={{
-                      holiday: (date) => {
-                        const compareDate = new Date(date)
-                        compareDate.setHours(0, 0, 0, 0)
-                        return holidayDates.some(h => h.getTime() === compareDate.getTime())
-                      },
+                      holiday: holidayDates,
                     }}
                     modifiersClassNames={{
-                      holiday: "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 rounded-md",
+                      holiday: "[&>button]:line-through opacity-100",
                     }}
                   />
                 </PopoverContent>
@@ -1255,7 +1251,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    captionLayout="dropdown"
+                    // captionLayout="dropdown"
                     selected={group.endDate}
                     onSelect={(date) => {
                       if (date && group.startDate && date < group.startDate)
@@ -1272,14 +1268,10 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                       return isHolidayDate
                     }}
                     modifiers={{
-                      holiday: (date) => {
-                        const compareDate = new Date(date)
-                        compareDate.setHours(0, 0, 0, 0)
-                        return holidayDates.some(h => h.getTime() === compareDate.getTime())
-                      },
+                      holiday: holidayDates,
                     }}
                     modifiersClassNames={{
-                      holiday: "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 rounded-md",
+                      holiday: "[&>button]:line-through opacity-100",
                     }}
                   />
                 </PopoverContent>
@@ -1523,7 +1515,7 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                             >
                               <Calendar
                                 mode="single"
-                                captionLayout="dropdown"
+                                // captionLayout="dropdown"
                                 selected={session.date}
                                 onSelect={(date) =>
                                   handleGroupSessionDateChange(
@@ -1543,14 +1535,11 @@ export const TrainerSection: React.FC<TrainerSectionProps> = ({
                                   return isHolidayDate
                                 }}
                                 modifiers={{
-                                  holiday: (date) => {
-                                    const compareDate = new Date(date)
-                                    compareDate.setHours(0, 0, 0, 0)
-                                    return holidayDates.some(h => h.getTime() === compareDate.getTime())
-                                  },
+                                  holiday: holidayDates,
                                 }}
                                 modifiersClassNames={{
-                                  holiday: "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 rounded-md",
+                                  holiday:
+                                    "[&>button]:line-through opacity-100",
                                 }}
                               />
                             </PopoverContent>

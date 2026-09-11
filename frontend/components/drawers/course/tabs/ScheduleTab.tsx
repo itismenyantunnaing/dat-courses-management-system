@@ -54,6 +54,7 @@ import {
   formatFullDate,
 } from "@/components/schedule/utils/schedule.utils"
 import { SessionDetailDialog } from "@/components/dialogs/sessionDetail-dialog"
+import { TimeSlotSessionsDialog } from "@/components/dialogs/timeSlotSessions-dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 const THEME_COUNT = SESSION_THEMES.length
@@ -159,6 +160,7 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
   )
   const [searchTerm, setSearchTerm] = useState("")
   const [justScrolledToToday, setJustScrolledToToday] = useState(false)
+  const [timeSlotSessions, setTimeSlotSessions] = useState<Session[]>([])
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [dialog, setDialog] = useState<SessionDialogState>({
     open: false,
@@ -1074,7 +1076,8 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
     <TabsContent value="schedule" className="w-full min-w-0 pt-4">
       <div className="w-full min-w-0 rounded-lg bg-background pb-6">
         {/* Header - Removed Tabs for switching between Trainer-Provided and Self-Study */}
-        <div className="flex flex-wrap items-center justify-end gap-4 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4">
+          <h2 className="text-xl font-semibold">Course Schedule</h2>
           <div className="flex flex-wrap items-center gap-2">
             <InputGroup className="w-[300px]">
               <InputGroupInput
@@ -1351,6 +1354,17 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
                     }
                     return true
                   })
+                  const sessionGroups = Array.from(
+                    daySessions
+                      .reduce((groups, session) => {
+                        const key = `${session.startHour}-${session.endHour}`
+                        const group = groups.get(key) ?? []
+                        group.push(session)
+                        groups.set(key, group)
+                        return groups
+                      }, new Map<string, Session[]>())
+                      .values()
+                  )
 
                   return (
                     <div
@@ -1383,67 +1397,59 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
                           </div>
                         )}
 
-                      {daySessions.map((session, index, array) => {
-                        // Find all sessions that overlap at the same time
-                        const overlappingSessions = array.filter(s =>
-                          s.startHour === session.startHour && s.endHour === session.endHour
-                        )
-                        const overlapIndex = overlappingSessions.findIndex(s => s.id === session.id)
-                        const totalOverlapping = overlappingSessions.length
-
+                      {sessionGroups.map((sessionsAtTime) => {
+                        const session = sessionsAtTime[0]
                         const theme = SESSION_THEMES[session.theme]
                         const top = (session.startHour - HOUR_START) * HOUR_HEIGHT + 14
                         const height = (session.endHour - session.startHour) * HOUR_HEIGHT
-
-                        // Calculate width for each session (distribute evenly)
-                        const width = totalOverlapping > 1 ? 100 / totalOverlapping : 100
-                        const left = totalOverlapping > 1 ? (overlapIndex * width) : 0
+                        const hasMoreSessions = sessionsAtTime.length > 1
 
                         return (
-                          <button
-                            type="button"
-                            key={session.id}
-                            onClick={() => openSessionDialog(session)}
-                            className={cn(
-                              "group absolute cursor-pointer overflow-hidden rounded-md border-l-[3px] p-1.5 text-left ring-offset-background transition-all hover:ring-2 hover:ring-offset-1",
-                              theme.bg,
-                              theme.border,
-                              theme.hoverRing
-                            )}
+                          <div
+                            key={`${session.startHour}-${session.endHour}`}
+                            className="absolute inset-x-0 flex flex-col gap-1"
                             style={{
                               top: top + 2,
-                              left: `${left}%`,
-                              width: `${width}%`,
-                              height: Math.max(height - 4, 30),
-                              zIndex: overlapIndex + 1,
+                              zIndex: 1,
                             }}
                           >
-                            <div
+                            <button
+                              type="button"
+                              onClick={() => openSessionDialog(session)}
                               className={cn(
-                                "truncate text-xs font-semibold",
-                                theme.text
+                                "group w-full shrink-0 cursor-pointer overflow-hidden rounded-md border-l-[3px] p-1.5 text-left ring-offset-background transition-all hover:ring-2 hover:ring-offset-1",
+                                theme.bg,
+                                theme.border,
+                                theme.hoverRing
                               )}
+                              style={{ height: Math.max(height - 4, 30) }}
                             >
-                              {session.courseName}
-                            </div>
-                            <div
-                              className={cn(
-                                "mt-0.5 truncate text-[10px]",
-                                theme.subtext
-                              )}
-                            >
-                              {session.group} • {session.name}
-                            </div>
-                            <div
-                              className={cn(
-                                "mt-0.5 truncate text-[11px]",
-                                theme.subtext
-                              )}
-                            >
-                              {formatTimeLabel(session.startHour)} -{" "}
-                              {formatTimeLabel(session.endHour)}
-                            </div>
-                          </button>
+                              <div className={cn("truncate text-xs font-semibold", theme.text)}>
+                                {session.courseName}
+                              </div>
+                              <div className={cn("mt-0.5 truncate text-[10px]", theme.subtext)}>
+                                {session.group} • {session.name}
+                              </div>
+                              <div className={cn("mt-0.5 truncate text-[11px]", theme.subtext)}>
+                                {formatTimeLabel(session.startHour)} -{" "}
+                                {formatTimeLabel(session.endHour)}
+                              </div>
+                            </button>
+                            {hasMoreSessions && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-6 w-full shrink-0 text-xs"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setTimeSlotSessions(sessionsAtTime)
+                                }}
+                              >
+                                +{sessionsAtTime.length - 1} more
+                              </Button>
+                            )}
+                          </div>
                         )
                       })}
                     </div>
@@ -1453,6 +1459,17 @@ export function ScheduleTab({ course, userRole }: ScheduleTabProps) {
             </div>
           </div>
         )}
+
+        <TimeSlotSessionsDialog
+          sessions={timeSlotSessions}
+          onOpenChange={(open) => {
+            if (!open) setTimeSlotSessions([])
+          }}
+          onSelectSession={(session) => {
+            setTimeSlotSessions([])
+            openSessionDialog(session)
+          }}
+        />
 
         {/* Session Detail Dialog */}
         <SessionDetailDialog

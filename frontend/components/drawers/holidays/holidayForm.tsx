@@ -4,6 +4,7 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Calendar } from "@/components/ui/calendar"
+import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Popover,
   PopoverContent,
@@ -14,6 +15,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import { useState, useMemo } from "react"
 import { mainStore } from "@/store/mainStore"
+import { format } from "date-fns"
 
 export interface HolidayFormData {
   holidayName: string
@@ -24,7 +26,7 @@ interface HolidayFormProps {
   data: HolidayFormData
   onChange: (data: HolidayFormData) => void
   isEdit?: boolean
-  editId?: string // ID of the holiday being edited (to exclude it from disabled dates)
+  editId?: string
 }
 
 export function HolidayForm({
@@ -40,17 +42,15 @@ export function HolidayForm({
 
   const { holiday_data } = mainStore()
 
-  // Get disabled dates from existing holidays
   const disabledDates = useMemo(() => {
     return holiday_data
-      .filter(holiday => {
-        // If editing, exclude the current holiday from disabled dates
+      .filter((holiday) => {
         if (isEdit && editId) {
           return holiday.id !== editId
         }
         return true
       })
-      .map(holiday => {
+      .map((holiday) => {
         const date = new Date(holiday.holidayDate)
         date.setHours(0, 0, 0, 0)
         return date
@@ -68,18 +68,15 @@ export function HolidayForm({
     setSelectedDate(date)
     if (date) {
       const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      const formattedDate = `${year}-${month}-${day}`
-
-      handleInputChange("holidayDate", formattedDate)
+      const month = String(date.getMonth() + 1).padStart(2, "0")
+      const day = String(date.getDate()).padStart(2, "0")
+      handleInputChange("holidayDate", `${year}-${month}-${day}`)
     } else {
       handleInputChange("holidayDate", "")
     }
     setDatePickerOpen(false)
   }
 
-  // Get day of week for display
   const getDayOfWeek = (dateString: string) => {
     if (!dateString) return ""
     const date = new Date(dateString)
@@ -95,19 +92,16 @@ export function HolidayForm({
     return days[date.getDay()]
   }
 
-  // Check if a date is disabled
   const isDateDisabled = (date: Date) => {
     const dateToCheck = new Date(date)
     dateToCheck.setHours(0, 0, 0, 0)
-    
-    return disabledDates.some(disabledDate => 
-      disabledDate.getTime() === dateToCheck.getTime()
+    return disabledDates.some(
+      (disabledDate) => disabledDate.getTime() === dateToCheck.getTime()
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Basic Information Section */}
       <div>
         <h3 className="mb-4 text-lg font-semibold">Basic Information</h3>
         <div className="flex-1 space-y-4">
@@ -125,31 +119,37 @@ export function HolidayForm({
             />
           </div>
         </div>
-        <div className="flex-1 space-y-4 mt-4">
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="date">
+        <div className="mt-4 flex-1 space-y-4">
+          <Field className="min-w-0">
+            <FieldLabel htmlFor="date">
               Date <span className="text-red-500">*</span>
-            </Label>
+            </FieldLabel>
             <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
               <PopoverTrigger asChild>
                 <Button
+                  type="button"
                   variant="outline"
                   id="date"
-                  className="w-full justify-between font-normal"
+                  data-empty={!selectedDate}
+                  className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground"
                 >
-                  {selectedDate
-                    ? selectedDate.toLocaleDateString()
-                    : "Select date"}
+                  {selectedDate ? (
+                    format(selectedDate, "PPP")
+                  ) : (
+                    <span>Pick a date</span>
+                  )}
                   <HugeiconsIcon icon={CalendarIcon} strokeWidth={2} />
                 </Button>
               </PopoverTrigger>
               <PopoverContent
-                className="w-auto overflow-hidden p-0"
+                className="z-[9999] w-auto overflow-hidden p-0"
                 align="start"
+                side="bottom"
+                sideOffset={4}
+                avoidCollisions={false}
               >
                 <Calendar
                   mode="single"
-                  captionLayout="dropdown"
                   selected={selectedDate}
                   defaultMonth={selectedDate}
                   onSelect={handleDateSelect}
@@ -169,7 +169,7 @@ export function HolidayForm({
                 )}
               </>
             )}
-          </div>
+          </Field>
         </div>
       </div>
     </div>

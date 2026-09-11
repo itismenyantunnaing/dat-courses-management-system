@@ -60,6 +60,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { SessionDetailDialog } from "@/components/dialogs/sessionDetail-dialog"
+import { TimeSlotSessionsDialog } from "@/components/dialogs/timeSlotSessions-dialog"
 import {
   Session,
   SessionDialogState,
@@ -246,6 +247,7 @@ export function InformationTab({
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()))
   const [searchTerm, setSearchTerm] = useState("")
   const [justScrolledToToday, setJustScrolledToToday] = useState(false)
+  const [timeSlotSessions, setTimeSlotSessions] = useState<Session[]>([])
   const [dialog, setDialog] = useState<SessionDialogState>({
     open: false,
     session: null,
@@ -340,14 +342,26 @@ export function InformationTab({
           if (isNaN(gid)) continue
           await fetchAttendance(cid, gid)
         }
-        console.log('✅ Attendance data fetched successfully for course:', course.id)
+        console.log(
+          "✅ Attendance data fetched successfully for course:",
+          course.id
+        )
       } catch (e) {
-        console.warn(`Failed to fetch attendance data for course ${course.id}:`, e)
+        console.warn(
+          `Failed to fetch attendance data for course ${course.id}:`,
+          e
+        )
       }
     }
 
     fetchAttendanceData()
-  }, [course.id, course.courseType, course.groups, fetch_courseEnrollments, fetchAttendance])
+  }, [
+    course.id,
+    course.courseType,
+    course.groups,
+    fetch_courseEnrollments,
+    fetchAttendance,
+  ])
 
   const nowHour =
     nowTime.getHours() + nowTime.getMinutes() / 60 + nowTime.getSeconds() / 3600
@@ -454,9 +468,13 @@ export function InformationTab({
     derivedSessions.forEach((s) => {
       if (s.type === "trainer-provided") {
         const parsed = parseSessionId(s.id)
-        const courseIdNum = parsed?.courseId ? parseInt(parsed.courseId, 10) : NaN
+        const courseIdNum = parsed?.courseId
+          ? parseInt(parsed.courseId, 10)
+          : NaN
         const groupIdNum = parsed?.groupId ? parseInt(parsed.groupId, 10) : NaN
-        const sessionIdNum = parsed?.sessionId ? parseInt(parsed.sessionId, 10) : NaN
+        const sessionIdNum = parsed?.sessionId
+          ? parseInt(parsed.sessionId, 10)
+          : NaN
         const sessionNoMatch = s.name.match(/Session\s+(\d+)/i)
         const sessionNo = sessionNoMatch ? Number(sessionNoMatch[1]) : null
 
@@ -525,11 +543,7 @@ export function InformationTab({
               : sessionNo != null
                 ? aSessionNo === sessionNo
                 : false
-            if (
-              aEmpId === empId &&
-              aGroupId === groupIdNum &&
-              sessMatches
-            ) {
+            if (aEmpId === empId && aGroupId === groupIdNum && sessMatches) {
               matchedAttendance = a
               break
             }
@@ -715,11 +729,11 @@ export function InformationTab({
           [sid]: rows.map((r) =>
             r.id === learnerId
               ? {
-                ...r,
-                status: next,
-                lateMinutes:
-                  next === "LATE" ? (r.lateMinutes ?? 15) : undefined,
-              }
+                  ...r,
+                  status: next,
+                  lateMinutes:
+                    next === "LATE" ? (r.lateMinutes ?? 15) : undefined,
+                }
               : r
           ),
         }
@@ -978,7 +992,8 @@ export function InformationTab({
       if (result.success) {
         await fetch_studyProgress(course.id)
         toast.success(
-          `Progress saved successfully for Session ${session.session_no || session.sessionNo || ""
+          `Progress saved successfully for Session ${
+            session.session_no || session.sessionNo || ""
           }`
         )
 
@@ -1150,12 +1165,17 @@ export function InformationTab({
             <div className="grid grid-cols-3 gap-6">
               {/* Left Column - Course Card (takes 1 column) */}
               <div className="col-span-1">
-                <CourseCard course={course} onView={() => { }} isInfoTab={true} />
+                <CourseCard
+                  course={course}
+                  onView={() => {}}
+                  isInfoTab={true}
+                />
               </div>
 
               {/* Right Column - Session Content (takes 2 columns) */}
               <div className="col-span-2">
-                {course.courseType === "self-study" && sessionsList.length > 0 ? (
+                {course.courseType === "self-study" &&
+                sessionsList.length > 0 ? (
                   <Accordion
                     type="single"
                     collapsible
@@ -1196,7 +1216,7 @@ export function InformationTab({
                             (progress?.grammar_progress_percent || 0) +
                             (progress?.reading_progress_percent || 0) +
                             (progress?.listening_progress_percent || 0)) /
-                          5
+                            5
                         )
                         if (overallProgress > 0) {
                           statusBadge = (
@@ -1301,7 +1321,7 @@ export function InformationTab({
                                                 0) +
                                               (progress?.listening_progress_percent ||
                                                 0)) /
-                                            5
+                                              5
                                           )}
                                           %
                                         </span>
@@ -1349,7 +1369,8 @@ export function InformationTab({
                   /* Trainer Schedule - EXACTLY like ScheduleTab */
                   <div className="w-full min-w-0 rounded-lg bg-background">
                     {/* Header with Search and Navigation */}
-                    <div className="flex flex-wrap items-center justify-end gap-4 pb-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4 pb-4">
+                      <h2 className="text-xl font-semibold">Course Schedule</h2>
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="flex items-center rounded-md border">
                           <Button
@@ -1430,8 +1451,8 @@ export function InformationTab({
                                   "sticky top-0 z-20 border-l bg-background py-2 text-center transition-colors duration-200",
                                   isToday && "bg-blue-100/50 text-blue-600",
                                   isToday &&
-                                  justScrolledToToday &&
-                                  "animate-pulse bg-blue-200/80 ring-2 ring-blue-500 ring-inset"
+                                    justScrolledToToday &&
+                                    "animate-pulse bg-blue-200/80 ring-2 ring-blue-500 ring-inset"
                                 )}
                               >
                                 <div className="mx-auto mb-1 flex w-fit items-center justify-center gap-1 rounded-lg text-sm font-semibold">
@@ -1480,6 +1501,17 @@ export function InformationTab({
                               }
                               return true
                             })
+                            const sessionGroups = Array.from(
+                              daySessions
+                                .reduce((groups, session) => {
+                                  const key = `${session.startHour}-${session.endHour}`
+                                  const group = groups.get(key) ?? []
+                                  group.push(session)
+                                  groups.set(key, group)
+                                  return groups
+                                }, new Map<string, Session[]>())
+                                .values()
+                            )
 
                             return (
                               <div
@@ -1488,8 +1520,8 @@ export function InformationTab({
                                   "relative border-t border-l",
                                   isToday && "bg-blue-50/40",
                                   isToday &&
-                                  justScrolledToToday &&
-                                  "animate-pulse bg-blue-100/60"
+                                    justScrolledToToday &&
+                                    "animate-pulse bg-blue-100/60"
                                 )}
                                 style={{ height: gridHeight }}
                               >
@@ -1512,67 +1544,84 @@ export function InformationTab({
                                     </div>
                                   )}
 
-                                {daySessions.map((session, index, array) => {
-                                  // Find all sessions that overlap at the same time
-                                  const overlappingSessions = array.filter(s =>
-                                    s.startHour === session.startHour && s.endHour === session.endHour
-                                  )
-                                  const overlapIndex = overlappingSessions.findIndex(s => s.id === session.id)
-                                  const totalOverlapping = overlappingSessions.length
-
+                                {sessionGroups.map((sessionsAtTime) => {
+                                  const session = sessionsAtTime[0]
                                   const theme = SESSION_THEMES[session.theme]
-                                  const top = (session.startHour - HOUR_START) * HOUR_HEIGHT + 14
-                                  const height = (session.endHour - session.startHour) * HOUR_HEIGHT
-
-                                  // Calculate width for each session (distribute evenly)
-                                  const width = totalOverlapping > 1 ? 100 / totalOverlapping : 100
-                                  const left = totalOverlapping > 1 ? (overlapIndex * width) : 0
+                                  const top =
+                                    (session.startHour - HOUR_START) *
+                                      HOUR_HEIGHT +
+                                    14
+                                  const height =
+                                    (session.endHour - session.startHour) *
+                                    HOUR_HEIGHT
+                                  const hasMoreSessions =
+                                    sessionsAtTime.length > 1
 
                                   return (
-                                    <button
-                                      type="button"
-                                      key={session.id}
-                                      onClick={() => openSessionDialog(session)}
-                                      className={cn(
-                                        "group absolute cursor-pointer overflow-hidden rounded-md border-l-[3px] p-1.5 text-left ring-offset-background transition-all hover:ring-2 hover:ring-offset-1",
-                                        theme.bg,
-                                        theme.border,
-                                        theme.hoverRing
-                                      )}
+                                    <div
+                                      key={`${session.startHour}-${session.endHour}`}
+                                      className="absolute inset-x-0 flex flex-col gap-1"
                                       style={{
                                         top: top + 2,
-                                        left: `${left}%`,
-                                        width: `${width}%`,
-                                        height: Math.max(height - 4, 30),
-                                        zIndex: overlapIndex + 1,
+                                        zIndex: 1,
                                       }}
                                     >
-                                      <div
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          openSessionDialog(session)
+                                        }
                                         className={cn(
-                                          "truncate text-xs font-semibold",
-                                          theme.text
+                                          "group w-full shrink-0 cursor-pointer overflow-hidden rounded-md border-l-[3px] p-1.5 text-left ring-offset-background transition-all hover:ring-2 hover:ring-offset-1",
+                                          theme.bg,
+                                          theme.border,
+                                          theme.hoverRing
                                         )}
+                                        style={{
+                                          height: Math.max(height - 4, 30),
+                                        }}
                                       >
-                                        {session.courseName}
-                                      </div>
-                                      <div
-                                        className={cn(
-                                          "mt-0.5 truncate text-[10px]",
-                                          theme.subtext
-                                        )}
-                                      >
-                                        {session.group} • {session.name}
-                                      </div>
-                                      <div
-                                        className={cn(
-                                          "mt-0.5 truncate text-[11px]",
-                                          theme.subtext
-                                        )}
-                                      >
-                                        {formatTimeLabel(session.startHour)} -{" "}
-                                        {formatTimeLabel(session.endHour)}
-                                      </div>
-                                    </button>
+                                        <div
+                                          className={cn(
+                                            "truncate text-xs font-semibold",
+                                            theme.text
+                                          )}
+                                        >
+                                          {session.courseName}
+                                        </div>
+                                        <div
+                                          className={cn(
+                                            "mt-0.5 truncate text-[10px]",
+                                            theme.subtext
+                                          )}
+                                        >
+                                          {session.group} • {session.name}
+                                        </div>
+                                        <div
+                                          className={cn(
+                                            "mt-0.5 truncate text-[11px]",
+                                            theme.subtext
+                                          )}
+                                        >
+                                          {formatTimeLabel(session.startHour)} -{" "}
+                                          {formatTimeLabel(session.endHour)}
+                                        </div>
+                                      </button>
+                                      {hasMoreSessions && (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-6 w-full shrink-0 text-xs"
+                                          onClick={(event) => {
+                                            event.stopPropagation()
+                                            setTimeSlotSessions(sessionsAtTime)
+                                          }}
+                                        >
+                                          +{sessionsAtTime.length - 1} more
+                                        </Button>
+                                      )}
+                                    </div>
                                   )
                                 })}
                               </div>
@@ -1594,6 +1643,17 @@ export function InformationTab({
           </div>
         </div>
 
+        <TimeSlotSessionsDialog
+          sessions={timeSlotSessions}
+          onOpenChange={(open) => {
+            if (!open) setTimeSlotSessions([])
+          }}
+          onSelectSession={(session) => {
+            setTimeSlotSessions([])
+            openSessionDialog(session)
+          }}
+        />
+
         {/* Session Detail Dialog */}
         <SessionDetailDialog
           open={dialog.open}
@@ -1606,7 +1666,7 @@ export function InformationTab({
           onNoteChange={onNoteChange}
           onMarkAllPresent={onMarkAllPresent}
           progressRows={activeProgressRows}
-          onProgressChange={() => { }}
+          onProgressChange={() => {}}
           currentLearnerId={effectiveUserId || ""}
           userRole={userRole}
         />

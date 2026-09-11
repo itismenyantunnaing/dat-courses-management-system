@@ -12,6 +12,7 @@ import {
   ArrowRight01Icon,
   Calendar01Icon,
   Search01Icon,
+  Time02Icon,
 } from "@hugeicons/core-free-icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -58,6 +59,16 @@ import {
 } from "@/components/schedule/utils/schedule.utils"
 import { SessionDetailDialog } from "@/components/dialogs/sessionDetail-dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Field, FieldGroup } from "@/components/ui/field"
 
 const THEME_COUNT = SESSION_THEMES.length
 
@@ -151,7 +162,8 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
   const currentUserId = getUserId?.() || "unknown-user"
 
   // Check if user is admin
-  const isAdmin = userRole === "admin" ||
+  const isAdmin =
+    userRole === "admin" ||
     userRole === "approver" ||
     userRole === "department_head"
 
@@ -163,8 +175,9 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
   )
   const [searchTerm, setSearchTerm] = useState("")
   const [justScrolledToToday, setJustScrolledToToday] = useState(false)
+  const [timeSlotSessions, setTimeSlotSessions] = useState<Session[]>([])
   const searchInputRef = useCallback((node: HTMLInputElement | null) => {
-    ; (
+    ;(
       window as unknown as { __scheduleSearch?: HTMLInputElement | null }
     ).__scheduleSearch = node
   }, [])
@@ -183,7 +196,9 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
     Record<string, SessionProgressRow[]>
   >({})
 
-  const [fetchedCourseIds, setFetchedCourseIds] = useState<Set<string>>(new Set())
+  const [fetchedCourseIds, setFetchedCourseIds] = useState<Set<string>>(
+    new Set()
+  )
 
   // Get user's enrolled group IDs for trainer courses
   const userEnrolledGroupIds = useMemo(() => {
@@ -202,7 +217,9 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
 
     userEnrollments.forEach((e) => {
       const eCourseId = String((e as Record<string, unknown>).courseId || "")
-      const eGroupId = String((e as Record<string, unknown>).courseGroupId || "")
+      const eGroupId = String(
+        (e as Record<string, unknown>).courseGroupId || ""
+      )
 
       if (eCourseId && eGroupId) {
         if (!groupIds.has(eCourseId)) {
@@ -304,9 +321,10 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
           return
         }
 
-        const sessions = course.self_study_sessions?.length > 0
-          ? course.self_study_sessions
-          : course.sessions || []
+        const sessions =
+          course.self_study_sessions?.length > 0
+            ? course.self_study_sessions
+            : course.sessions || []
 
         sessions.forEach((sess: CourseSession, idx: number) => {
           const sessionNo = sess.sessionNo ?? idx + 1
@@ -347,11 +365,7 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
                     ? p.sessionNo
                     : null
               const pDeadline = p.session_deadline ?? p.sessionDeadline
-              if (
-                pEmp === empId &&
-                pSess === sessionNo &&
-                pDeadline
-              ) {
+              if (pEmp === empId && pSess === sessionNo && pDeadline) {
                 deadlineDate = new Date(pDeadline as string)
                 if (!isNaN(deadlineDate.getTime())) break
               }
@@ -410,7 +424,16 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
     })
 
     return result
-  }, [courses, weekStart, allEnrollments, allStudyProgress, studyPeriodStart, isAdmin, userEnrolledGroupIds, currentUserId])
+  }, [
+    courses,
+    weekStart,
+    allEnrollments,
+    allStudyProgress,
+    studyPeriodStart,
+    isAdmin,
+    userEnrolledGroupIds,
+    currentUserId,
+  ])
 
   useEffect(() => {
     const toFetch: Array<{ courseId: number; groupId: number }> = []
@@ -441,26 +464,26 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
 
     if (toFetch.length > 0 || selfStudyToFetch.length > 0) {
       setFetchedCourseIds(newFetched)
-        ; (async () => {
-          for (const { courseId, groupId } of toFetch) {
-            try {
-              await fetch_courseEnrollments(courseId)
-              // Only fetch attendance - skip fetchCourseEnrollments
-              // since we already have allEnrollments from the main store
-              await fetchAttendance(courseId, groupId)
-            } catch (e) {
-              console.warn(`Failed to fetch data for course ${courseId}:`, e)
-            }
+      ;(async () => {
+        for (const { courseId, groupId } of toFetch) {
+          try {
+            await fetch_courseEnrollments(courseId)
+            // Only fetch attendance - skip fetchCourseEnrollments
+            // since we already have allEnrollments from the main store
+            await fetchAttendance(courseId, groupId)
+          } catch (e) {
+            console.warn(`Failed to fetch data for course ${courseId}:`, e)
           }
-          for (const cid of selfStudyToFetch) {
-            try {
-              await fetch_courseEnrollments(cid)
-              await fetch_studyProgress(cid)
-            } catch (e) {
-              console.warn(`Failed to fetch data for self-study ${cid}:`, e)
-            }
+        }
+        for (const cid of selfStudyToFetch) {
+          try {
+            await fetch_courseEnrollments(cid)
+            await fetch_studyProgress(cid)
+          } catch (e) {
+            console.warn(`Failed to fetch data for self-study ${cid}:`, e)
           }
-        })()
+        }
+      })()
     }
   }, [
     courses,
@@ -479,7 +502,7 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
       if (Array.isArray(allStudyProgress)) {
         return allStudyProgress
       }
-      if (allStudyProgress && typeof allStudyProgress === 'object') {
+      if (allStudyProgress && typeof allStudyProgress === "object") {
         // Check for progress property
         const progress = (allStudyProgress as any).progress
         if (Array.isArray(progress)) {
@@ -499,7 +522,9 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
     derivedSessions.forEach((s) => {
       if (s.type === "self-study") {
         const parsed = parseSessionId(s.id)
-        const courseIdNum = parsed?.courseId ? parseInt(parsed.courseId, 10) : NaN
+        const courseIdNum = parsed?.courseId
+          ? parseInt(parsed.courseId, 10)
+          : NaN
         const sessionNoMatch = s.name.match(/Session\s+(\d+)/i)
         const sessionNo = sessionNoMatch ? Number(sessionNoMatch[1]) : null
 
@@ -595,19 +620,37 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
 
           // Get current values from progress data - try different property names
           const grammarCurrent = userProgressRaw
-            ? Number(userProgressRaw.grammar_count ?? userProgressRaw.grammarCurrent ?? 0)
+            ? Number(
+                userProgressRaw.grammar_count ??
+                  userProgressRaw.grammarCurrent ??
+                  0
+              )
             : 0
           const vocabularyCurrent = userProgressRaw
-            ? Number(userProgressRaw.vocabulary_count ?? userProgressRaw.vocabularyCurrent ?? 0)
+            ? Number(
+                userProgressRaw.vocabulary_count ??
+                  userProgressRaw.vocabularyCurrent ??
+                  0
+              )
             : 0
           const kanjiCurrent = userProgressRaw
-            ? Number(userProgressRaw.kanji_count ?? userProgressRaw.kanjiCurrent ?? 0)
+            ? Number(
+                userProgressRaw.kanji_count ?? userProgressRaw.kanjiCurrent ?? 0
+              )
             : 0
           const readingCurrent = userProgressRaw
-            ? Number(userProgressRaw.reading_minutes ?? userProgressRaw.readingCurrent ?? 0)
+            ? Number(
+                userProgressRaw.reading_minutes ??
+                  userProgressRaw.readingCurrent ??
+                  0
+              )
             : 0
           const listeningCurrent = userProgressRaw
-            ? Number(userProgressRaw.listening_minutes ?? userProgressRaw.listeningCurrent ?? 0)
+            ? Number(
+                userProgressRaw.listening_minutes ??
+                  userProgressRaw.listeningCurrent ??
+                  0
+              )
             : 0
 
           const learnerName =
@@ -662,9 +705,13 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
         })
       } else {
         const parsed = parseSessionId(s.id)
-        const courseIdNum = parsed?.courseId ? parseInt(parsed.courseId, 10) : NaN
+        const courseIdNum = parsed?.courseId
+          ? parseInt(parsed.courseId, 10)
+          : NaN
         const groupIdNum = parsed?.groupId ? parseInt(parsed.groupId, 10) : NaN
-        const sessionIdNum = parsed?.sessionId ? parseInt(parsed.sessionId, 10) : NaN
+        const sessionIdNum = parsed?.sessionId
+          ? parseInt(parsed.sessionId, 10)
+          : NaN
         const sessionNoMatch = s.name.match(/Session\s+(\d+)/i)
         const sessionNo = sessionNoMatch ? Number(sessionNoMatch[1]) : null
 
@@ -733,11 +780,7 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
               : sessionNo != null
                 ? aSessionNo === sessionNo
                 : false
-            if (
-              aEmpId === empId &&
-              aGroupId === groupIdNum &&
-              sessMatches
-            ) {
+            if (aEmpId === empId && aGroupId === groupIdNum && sessMatches) {
               matchedAttendance = a
               break
             }
@@ -795,9 +838,13 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
 
     setAttendanceStore(initialAttendance)
     setProgressStore(initialProgress)
-  }, [derivedSessions, allEnrollments, allAttendances, allStudyProgress, courses])
-
-
+  }, [
+    derivedSessions,
+    allEnrollments,
+    allAttendances,
+    allStudyProgress,
+    courses,
+  ])
 
   // Keyboard shortcut: Ctrl/Cmd + K focuses the search
   useEffect(() => {
@@ -955,7 +1002,6 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
     })
   }
 
-
   const openSessionDialog = useCallback((s: Session) => {
     setDialog({ open: true, session: s })
   }, [])
@@ -1000,11 +1046,11 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
           [sid]: rows.map((r) =>
             r.id === learnerId
               ? {
-                ...r,
-                status: next,
-                lateMinutes:
-                  next === "LATE" ? (r.lateMinutes ?? 15) : undefined,
-              }
+                  ...r,
+                  status: next,
+                  lateMinutes:
+                    next === "LATE" ? (r.lateMinutes ?? 15) : undefined,
+                }
               : r
           ),
         }
@@ -1273,14 +1319,14 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
             const isCurrentColumn =
               today >= col.start &&
               today <=
-              new Date(
-                col.end.getFullYear(),
-                col.end.getMonth(),
-                col.end.getDate(),
-                23,
-                59,
-                59
-              )
+                new Date(
+                  col.end.getFullYear(),
+                  col.end.getMonth(),
+                  col.end.getDate(),
+                  23,
+                  59,
+                  59
+                )
 
             return (
               <div
@@ -1319,7 +1365,7 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
                       const theme = SESSION_THEMES[session.theme]
                       const deadlineLabel =
                         session.sessionDate instanceof Date &&
-                          !isNaN(session.sessionDate.getTime())
+                        !isNaN(session.sessionDate.getTime())
                           ? formatFullDate(session.sessionDate).trim()
                           : ""
                       return (
@@ -1350,7 +1396,9 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
                           >
                             {session.name}
                             {session.instructor && (
-                              <span className="ml-1">• {session.instructor}</span>
+                              <span className="ml-1">
+                                • {session.instructor}
+                              </span>
                             )}
                           </div>
                           {deadlineLabel && (
@@ -1396,8 +1444,8 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
                       "sticky top-0 z-20 border-l bg-background py-2 text-center transition-colors duration-200",
                       isToday && "bg-blue-100/50 text-blue-600",
                       isToday &&
-                      justScrolledToToday &&
-                      "animate-pulse bg-blue-200/80 ring-2 ring-blue-500 ring-inset"
+                        justScrolledToToday &&
+                        "animate-pulse bg-blue-200/80 ring-2 ring-blue-500 ring-inset"
                     )}
                   >
                     <div className="mx-auto mb-1 flex w-fit items-center justify-center gap-1 rounded-lg text-sm font-semibold">
@@ -1446,6 +1494,17 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
                   }
                   return true
                 })
+                const sessionGroups = Array.from(
+                  daySessions
+                    .reduce((groups, session) => {
+                      const key = `${session.startHour}-${session.endHour}`
+                      const group = groups.get(key) ?? []
+                      group.push(session)
+                      groups.set(key, group)
+                      return groups
+                    }, new Map<string, Session[]>())
+                    .values()
+                )
 
                 return (
                   <div
@@ -1454,8 +1513,8 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
                       "relative border-t border-l",
                       isToday && "bg-blue-50/40",
                       isToday &&
-                      justScrolledToToday &&
-                      "animate-pulse bg-blue-100/60"
+                        justScrolledToToday &&
+                        "animate-pulse bg-blue-100/60"
                     )}
                     style={{ height: gridHeight }}
                   >
@@ -1478,67 +1537,76 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
                         </div>
                       )}
 
-                    {daySessions.map((session, index, array) => {
-                      // Find all sessions that overlap at the same time
-                      const overlappingSessions = array.filter(s =>
-                        s.startHour === session.startHour && s.endHour === session.endHour
-                      )
-                      const overlapIndex = overlappingSessions.findIndex(s => s.id === session.id)
-                      const totalOverlapping = overlappingSessions.length
-
+                    {sessionGroups.map((sessionsAtTime) => {
+                      const session = sessionsAtTime[0]
                       const theme = SESSION_THEMES[session.theme]
-                      const top = (session.startHour - HOUR_START) * HOUR_HEIGHT + 14
-                      const height = (session.endHour - session.startHour) * HOUR_HEIGHT
-
-                      // Calculate width for each session (distribute evenly)
-                      const width = totalOverlapping > 1 ? 100 / totalOverlapping : 100
-                      const left = totalOverlapping > 1 ? (overlapIndex * width) : 0
+                      const top =
+                        (session.startHour - HOUR_START) * HOUR_HEIGHT + 14
+                      const height =
+                        (session.endHour - session.startHour) * HOUR_HEIGHT
+                      const hasMoreSessions = sessionsAtTime.length > 1
 
                       return (
-                        <button
-                          type="button"
-                          key={session.id}
-                          onClick={() => openSessionDialog(session)}
-                          className={cn(
-                            "group absolute cursor-pointer overflow-hidden rounded-md border-l-[3px] p-1.5 text-left ring-offset-background transition-all hover:ring-2 hover:ring-offset-1",
-                            theme.bg,
-                            theme.border,
-                            theme.hoverRing
-                          )}
+                        <div
+                          key={`${session.startHour}-${session.endHour}`}
+                          className="absolute inset-x-0 flex flex-col gap-1"
                           style={{
                             top: top + 2,
-                            left: `${left}%`,
-                            width: `${width}%`,
-                            height: Math.max(height - 4, 30),
-                            zIndex: overlapIndex + 1,
+                            zIndex: 1,
                           }}
                         >
-                          <div
+                          <button
+                            type="button"
+                            onClick={() => openSessionDialog(session)}
                             className={cn(
-                              "truncate text-xs font-semibold",
-                              theme.text
+                              "group w-full shrink-0 cursor-pointer overflow-hidden rounded-md border-l-[3px] p-1.5 text-left ring-offset-background transition-all hover:ring-2 hover:ring-offset-1",
+                              theme.bg,
+                              theme.border,
+                              theme.hoverRing
                             )}
+                            style={{ height: Math.max(height - 4, 30) }}
                           >
-                            {session.courseName}
-                          </div>
-                          <div
-                            className={cn(
-                              "mt-0.5 truncate text-[10px]",
-                              theme.subtext
-                            )}
-                          >
-                            {session.group} • {session.name}
-                          </div>
-                          <div
-                            className={cn(
-                              "mt-0.5 truncate text-[11px]",
-                              theme.subtext
-                            )}
-                          >
-                            {formatTimeLabel(session.startHour)} -{" "}
-                            {formatTimeLabel(session.endHour)}
-                          </div>
-                        </button>
+                            <div
+                              className={cn(
+                                "truncate text-xs font-semibold",
+                                theme.text
+                              )}
+                            >
+                              {session.courseName}
+                            </div>
+                            <div
+                              className={cn(
+                                "mt-0.5 truncate text-[10px]",
+                                theme.subtext
+                              )}
+                            >
+                              {session.group} • {session.name}
+                            </div>
+                            <div
+                              className={cn(
+                                "mt-0.5 truncate text-[11px]",
+                                theme.subtext
+                              )}
+                            >
+                              {formatTimeLabel(session.startHour)} -{" "}
+                              {formatTimeLabel(session.endHour)}
+                            </div>
+                          </button>
+                          {hasMoreSessions && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-6 w-full shrink-0 text-xs"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setTimeSlotSessions(sessionsAtTime)
+                              }}
+                            >
+                              +{sessionsAtTime.length - 1} more
+                            </Button>
+                          )}
+                        </div>
                       )
                     })}
                   </div>
@@ -1548,6 +1616,90 @@ export function ScheduleContainer({ userRole }: { userRole?: string }) {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={timeSlotSessions.length > 0}
+        onOpenChange={(open) => {
+          if (!open) setTimeSlotSessions([])
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sessions at this time</DialogTitle>
+            <DialogDescription>
+              {timeSlotSessions[0] && (
+                <>
+                  {formatTimeLabel(timeSlotSessions[0].startHour)} -{" "}
+                  {formatTimeLabel(timeSlotSessions[0].endHour)} ·{" "}
+                  {timeSlotSessions.length} sessions
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid max-h-[60vh] grid-cols-2 gap-4 overflow-y-auto px-1 py-4">
+            {timeSlotSessions.map((session) => {
+              const theme = SESSION_THEMES[session.theme]
+              return (
+                <Field key={session.id} className="h-full min-w-0">
+                  <button
+                    type="button"
+                    className={cn(
+                      "h-full w-full rounded-md border border-l-[3px] p-3 text-left ring-offset-background transition-all hover:ring-2 hover:ring-offset-1",
+                      theme.bg,
+                      theme.border,
+                      theme.hoverRing
+                    )}
+                    onClick={() => {
+                      setTimeSlotSessions([])
+                      openSessionDialog(session)
+                    }}
+                  >
+                    <div className={cn("font-semibold", theme.text)}>
+                      {session.courseName}
+                    </div>
+                    <div
+                      className={cn(
+                        "mt-2 flex items-center gap-2 text-sm",
+                        theme.subtext
+                      )}
+                    >
+                      <HugeiconsIcon
+                        icon={Calendar01Icon}
+                        strokeWidth={STROKE_WIDTH}
+                        className="size-4 shrink-0"
+                      />
+                      <span>
+                        {session.group} • {session.name}
+                      </span>
+                    </div>
+                    <div
+                      className={cn(
+                        "mt-1 flex items-center gap-2 text-xs",
+                        theme.subtext
+                      )}
+                    >
+                      <HugeiconsIcon
+                        icon={Time02Icon}
+                        strokeWidth={STROKE_WIDTH}
+                        className="size-4 shrink-0"
+                      />
+                      <span>
+                        {formatTimeLabel(session.startHour)} -{" "}
+                        {formatTimeLabel(session.endHour)}
+                      </span>
+                    </div>
+                  </button>
+                </Field>
+              )
+            })}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Session Detail Dialog */}
       <SessionDetailDialog

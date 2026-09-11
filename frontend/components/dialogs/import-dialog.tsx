@@ -347,12 +347,14 @@ export function ImportDialog({
               variant="outline"
               onClick={handleCancel}
               disabled={isProcessing}
+              className="flex-1"
             >
               Cancel
             </Button>
             <Button
               onClick={handleImport}
               disabled={!selectedFile || isProcessing}
+              className="flex-1"
             >
               {isProcessing
                 ? "Processing..."

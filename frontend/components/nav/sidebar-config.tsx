@@ -4,7 +4,6 @@ import {
   DatabaseIcon,
   CourseIcon,
   DocumentValidationIcon,
-  ChartHistogramIcon,
   ChartIcon,
   UserGroupIcon,
   CodeIcon,
@@ -224,7 +223,7 @@ export const adminData: SidebarConfig = {
           icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
         },
         {
-          title: "Schedule",
+          title: "Course Schedule",
           tabId: "schedule",
           type: "primary",
           icon: (
@@ -351,7 +350,7 @@ export const learnerData: SidebarConfig = {
           icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
         },
         {
-          title: "Schedule",
+          title: "Course Schedule",
           tabId: "schedule",
           type: "primary",
           icon: (
@@ -473,7 +472,7 @@ export const approverData: SidebarConfig = {
           icon: <HugeiconsIcon icon={CourseIcon} strokeWidth={STROKE_WIDTH} />,
         },
         {
-          title: "Schedule",
+          title: "Course Schedule",
           tabId: "schedule",
           type: "primary",
           icon: (

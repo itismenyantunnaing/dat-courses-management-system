@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { format } from "date-fns"
 import { resolveUploadUrl } from "@/lib/utils"
 import {
   Dialog,
@@ -19,6 +20,12 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Select,
@@ -33,23 +40,21 @@ import {
   Camera01Icon,
   Delete02Icon,
   BriefcaseIcon,
-  UserIcon,
-  AwardIcon,
   CodeIcon,
-  Language,
   ClockIcon,
   Loading03Icon,
   CalendarIcon,
   UserGroupIcon,
   PlaneIcon,
-  Edit01Icon,
-  Trash,
   Add01Icon,
+  Edit03Icon,
+  LanguageSquareIcon,
 } from "@hugeicons/core-free-icons"
 import { mainStore } from "@/store/mainStore"
 import { compressFile } from "@/lib/compressImage"
 import { toast } from "sonner"
 import { dialog } from "./import-export-confirm-dialog"
+import { Field, FieldLabel } from "@/components/ui/field"
 
 // Custom progress bar component
 const ProgressBar = ({
@@ -89,11 +94,17 @@ export function PersonalInformationDialog({
   const [isUploading, setIsUploading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
+  // Dropdown interaction state
+  const [isInteractingWithDropdown, setIsInteractingWithDropdown] =
+    useState(false)
+  const dropdownCloseTimer = useRef<NodeJS.Timeout | null>(null)
+
   // Form fields state
   const [isCorePersonnel, setIsCorePersonnel] = useState<boolean>(false)
   const [hasJapanBusinessTrip, setHasJapanBusinessTrip] =
     useState<boolean>(false)
   const [dob, setDob] = useState<string>("")
+  const [isDobPickerOpen, setIsDobPickerOpen] = useState(false)
 
   // Technical skill editing states
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null)
@@ -285,8 +296,69 @@ export function PersonalInformationDialog({
       setEditingSkillId(null)
       setEditYears("")
       setEditExperienceLevel("")
+      // Reset dropdown interaction state
+      setIsInteractingWithDropdown(false)
+      setIsDobPickerOpen(false)
+      if (dropdownCloseTimer.current) {
+        clearTimeout(dropdownCloseTimer.current)
+        dropdownCloseTimer.current = null
+      }
     }
   }, [open])
+
+  // Dropdown interaction handlers
+  const handleDropdownOpenChange = (isOpen: boolean) => {
+    // Clear any pending timer
+    if (dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+
+    if (isOpen) {
+      setIsInteractingWithDropdown(true)
+      // Notify parent if callback provided
+      if (onDropdownOpenChange) {
+        onDropdownOpenChange(true)
+      }
+    } else {
+      // Delay setting to false to prevent dialog from closing when clicking outside dropdown
+      dropdownCloseTimer.current = setTimeout(() => {
+        setIsInteractingWithDropdown(false)
+        dropdownCloseTimer.current = null
+        // Notify parent if callback provided
+        if (onDropdownOpenChange) {
+          onDropdownOpenChange(false)
+        }
+      }, 150)
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    // Don't close if we're interacting with a dropdown
+    if (!newOpen && isInteractingWithDropdown) {
+      return
+    }
+    // Clear any pending timer when dialog closes
+    if (!newOpen && dropdownCloseTimer.current) {
+      clearTimeout(dropdownCloseTimer.current)
+      dropdownCloseTimer.current = null
+    }
+    onOpenChange(newOpen)
+  }
+
+  // Handle pointer down outside - only prevent if clicking on dropdown
+  const handlePointerDownOutside = (e: Event) => {
+    const target = e.target as HTMLElement
+    // Allow closing when clicking on the overlay or outside
+    // But prevent if clicking on dropdown items or the select trigger
+    if (
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="option"]') ||
+      target.closest("[data-dropdown-trigger]")
+    ) {
+      e.preventDefault()
+    }
+  }
 
   // Check if there are any changes
   const hasChanges = () => {
@@ -751,18 +823,17 @@ export function PersonalInformationDialog({
 
   const displayProfile = profile || profile || {}
 
+  // Convert dob string to Date for the calendar
+  const dobDate = dob ? new Date(dob) : undefined
+
   if (isLoading && !profile) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           className="flex max-h-[90vh] flex-col p-0 sm:max-w-[700px]"
-          onInteractOutside={(e) => {
-            // Prevent closing when clicking on the select dropdown
-            const target = e.target as HTMLElement
-            if (
-              target.closest('[role="combobox"]') ||
-              target.closest('[role="listbox"]')
-            ) {
+          onPointerDownOutside={handlePointerDownOutside}
+          onEscapeKeyDown={(e) => {
+            if (isInteractingWithDropdown) {
               e.preventDefault()
             }
           }}
@@ -788,8 +859,17 @@ export function PersonalInformationDialog({
   if (!displayProfile && !profile) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-[700px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="flex max-h-[90vh] flex-col p-0 sm:max-w-[700px]"
+        onPointerDownOutside={handlePointerDownOutside}
+        onEscapeKeyDown={(e) => {
+          // Prevent escape key from closing when dropdown is open
+          if (isInteractingWithDropdown) {
+            e.preventDefault()
+          }
+        }}
+      >
         <DialogHeader className="p-6 pb-4">
           <DialogTitle>Personal Information</DialogTitle>
           <DialogDescription>
@@ -858,7 +938,7 @@ export function PersonalInformationDialog({
             )}
 
             <p className="text-center text-xs text-muted-foreground">
-              Supported formats: JPG, PNG, GIF (Max 5MB)
+              Supported formats: JPG, PNG, GIF
             </p>
           </div>
 
@@ -1057,16 +1137,50 @@ export function PersonalInformationDialog({
                     Date of Birth
                   </Label>
                 </div>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={dob}
-                  onChange={(e) => {
-                    setDob(e.target.value)
+                <Popover
+                  open={isDobPickerOpen}
+                  onOpenChange={(isOpen) => {
+                    setIsDobPickerOpen(isOpen)
+                    handleDropdownOpenChange(isOpen)
                   }}
-                  disabled={isUpdating || isSaving}
-                  className="max-w-[200px]"
-                />
+                >
+                  <PopoverTrigger
+                    id="dob"
+                    disabled={isUpdating || isSaving}
+                    className="inline-flex h-9 w-[200px] items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm font-normal ring-offset-background hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {dobDate ? (
+                      format(dobDate, "PPP")
+                    ) : (
+                      <span className="text-muted-foreground">Select date</span>
+                    )}
+                    <HugeiconsIcon
+                      icon={CalendarIcon}
+                      strokeWidth={2}
+                      className="h-4 w-4 text-muted-foreground"
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto overflow-hidden p-0"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={dobDate}
+                      defaultMonth={dobDate}
+                      captionLayout="dropdown"
+                      onSelect={(date) => {
+                        if (date) {
+                          const formatted = format(date, "yyyy-MM-dd")
+                          setDob(formatted)
+                        } else {
+                          setDob("")
+                        }
+                        setIsDobPickerOpen(false)
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardContent>
           </div>
@@ -1110,13 +1224,7 @@ export function PersonalInformationDialog({
                       </Label>
                       <Select
                         value={newSkillName}
-                        onOpenChange={(open) => {
-                          // This prevents the dialog from closing when the select opens/closes
-                          if (onDropdownOpenChange) {
-                            onDropdownOpenChange(open)
-                          }
-                        }}
-
+                        onOpenChange={handleDropdownOpenChange}
                         onValueChange={(value) => {
                           setNewSkillName(value)
                           // Find the selected skill to get category and subcategory
@@ -1138,22 +1246,26 @@ export function PersonalInformationDialog({
                           <SelectValue placeholder="Select a skill..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {skill_headers.map((category: any) => (
-                            <div key={category.id}>
-                              {category.skillSubCategories?.map((sub: any) => (
-                                <div key={sub.id}>
-                                  {sub.skills?.map((skill: any) => (
-                                    <SelectItem
-                                      key={skill.id}
-                                      value={skill.skillName}
-                                    >
-                                      {skill.skillName}
-                                    </SelectItem>
-                                  ))}
-                                </div>
-                              ))}
-                            </div>
-                          ))}
+                          <SelectGroup>
+                            {skill_headers.map((category: any) => (
+                              <div key={category.id}>
+                                {category.skillSubCategories?.map(
+                                  (sub: any) => (
+                                    <div key={sub.id}>
+                                      {sub.skills?.map((skill: any) => (
+                                        <SelectItem
+                                          key={skill.id}
+                                          value={skill.skillName}
+                                        >
+                                          {skill.skillName}
+                                        </SelectItem>
+                                      ))}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1323,7 +1435,7 @@ export function PersonalInformationDialog({
                                                       }
                                                     >
                                                       <HugeiconsIcon
-                                                        icon={Edit01Icon}
+                                                        icon={Edit03Icon}
                                                         strokeWidth={2}
                                                         className="h-4 w-4"
                                                       />
@@ -1453,7 +1565,7 @@ export function PersonalInformationDialog({
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <HugeiconsIcon
-                    icon={UserIcon}
+                    icon={CodeIcon}
                     strokeWidth={2}
                     className="h-4 w-4"
                   />
@@ -1485,6 +1597,7 @@ export function PersonalInformationDialog({
                       </Label>
                       <Select
                         value={newDevTypeName}
+                        onOpenChange={handleDropdownOpenChange}
                         onValueChange={(value) => {
                           setNewDevTypeName(value)
                         }}
@@ -1493,14 +1606,16 @@ export function PersonalInformationDialog({
                           <SelectValue placeholder="Select type..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {devCap_headers.map((type: any) => (
-                            <SelectItem
-                              key={type.id}
-                              value={type.developmentTypeName}
-                            >
-                              {type.developmentTypeName}
-                            </SelectItem>
-                          ))}
+                          <SelectGroup>
+                            {devCap_headers.map((type: any) => (
+                              <SelectItem
+                                key={type.id}
+                                value={type.developmentTypeName}
+                              >
+                                {type.developmentTypeName}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1625,7 +1740,7 @@ export function PersonalInformationDialog({
                                         disabled={isUpdating || isSaving}
                                       >
                                         <HugeiconsIcon
-                                          icon={Edit01Icon}
+                                          icon={Edit03Icon}
                                           strokeWidth={2}
                                           className="h-4 w-4"
                                         />
@@ -1744,62 +1859,68 @@ export function PersonalInformationDialog({
             <div className="py-2">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                 <HugeiconsIcon
-                  icon={Language}
+                  icon={LanguageSquareIcon}
                   strokeWidth={2}
                   className="h-4 w-4"
                 />
                 Language Skills
               </h3>
               <CardContent className="space-y-4 p-0">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="flex gap-2">
                   {/* JLPT Level - Editable */}
-                  <div className="space-y-1">
+                  <div className="flex-1 space-y-1">
                     <Label className="text-sm text-muted-foreground">
                       JLPT Level
                     </Label>
                     <Select
                       value={jlptLevel}
+                      onOpenChange={handleDropdownOpenChange}
                       onValueChange={(value) => {
                         setJlptLevel(value)
                       }}
                       disabled={isLanguageUpdating || isUpdating || isSaving}
                     >
-                      <SelectTrigger className="h-9 w-40">
+                      <SelectTrigger className="h-9 w-full">
                         <SelectValue placeholder="Select JLPT level..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Not specified</SelectItem>
-                        <SelectItem value="N1">N1</SelectItem>
-                        <SelectItem value="N2">N2</SelectItem>
-                        <SelectItem value="N3">N3</SelectItem>
-                        <SelectItem value="N4">N4</SelectItem>
-                        <SelectItem value="N5">N5</SelectItem>
+                        <SelectGroup>
+                          <SelectItem value="">Not specified</SelectItem>
+                          <SelectItem value="N1">N1</SelectItem>
+                          <SelectItem value="N2">N2</SelectItem>
+                          <SelectItem value="N3">N3</SelectItem>
+                          <SelectItem value="N4">N4</SelectItem>
+                          <SelectItem value="N5">N5</SelectItem>
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {/* Language Level - Editable */}
-                  <div className="space-y-1">
+                  <div className="flex-1 space-y-1">
                     <Label className="text-sm text-muted-foreground">
                       Language Level *
                     </Label>
                     <div className="flex items-center gap-3">
                       <Select
                         value={String(languageLevel)}
+                        onOpenChange={handleDropdownOpenChange}
                         onValueChange={(value) => {
                           setLanguageLevel(parseInt(value))
                         }}
                         disabled={isLanguageUpdating || isUpdating || isSaving}
                       >
-                        <SelectTrigger className="h-9 w-32">
+                        <SelectTrigger className="h-9 w-full">
                           <SelectValue placeholder="Select level..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {[1, 2, 3, 4, 5].map((level) => (
-                            <SelectItem key={level} value={String(level)}>
-                              Level {level}
-                            </SelectItem>
-                          ))}
+                          <SelectGroup>
+                            {[1, 2, 3, 4, 5].map((level) => (
+                              <SelectItem key={level} value={String(level)}>
+                                Level {level}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                       <Button
@@ -1836,7 +1957,7 @@ export function PersonalInformationDialog({
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <HugeiconsIcon
-                    icon={AwardIcon}
+                    icon={CodeIcon}
                     strokeWidth={2}
                     className="h-4 w-4"
                   />
@@ -1884,11 +2005,14 @@ export function PersonalInformationDialog({
                     }}
                     disabled={isManagementUpdating || isUpdating || isSaving}
                   >
-                    <HugeiconsIcon
-                      icon={isManagementEditing ? Trash : Edit01Icon}
-                      strokeWidth={2}
-                      className="mr-1 h-4 w-4"
-                    />
+                    {!isManagementEditing && (
+                      <HugeiconsIcon
+                        icon={Edit03Icon}
+                        strokeWidth={2}
+                        className="mr-1 h-4 w-4"
+                      />
+                    )}
+
                     {isManagementEditing ? "Cancel" : "Edit"}
                   </Button>
                 )}
@@ -1897,15 +2021,16 @@ export function PersonalInformationDialog({
               <CardContent className="space-y-3 p-0">
                 {profile?.managementSkill || isManagementEditing ? (
                   <>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="flex gap-2">
                       {/* Education Score */}
-                      <div className="space-y-1">
+                      <div className="flex-1 space-y-1">
                         <Label className="text-xs text-muted-foreground">
                           Education
                         </Label>
                         {isManagementEditing ? (
                           <Select
                             value={String(managementEducation)}
+                            onOpenChange={handleDropdownOpenChange}
                             onValueChange={(value) => {
                               setManagementEducation(parseInt(value))
                             }}
@@ -1913,15 +2038,17 @@ export function PersonalInformationDialog({
                               isManagementUpdating || isUpdating || isSaving
                             }
                           >
-                            <SelectTrigger className="h-8">
+                            <SelectTrigger className="h-8 w-full">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {[1, 2, 3, 4].map((level) => (
-                                <SelectItem key={level} value={String(level)}>
-                                  {level}
-                                </SelectItem>
-                              ))}
+                              <SelectGroup>
+                                {[1, 2, 3, 4].map((level) => (
+                                  <SelectItem key={level} value={String(level)}>
+                                    {level}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         ) : (
@@ -1932,13 +2059,14 @@ export function PersonalInformationDialog({
                       </div>
 
                       {/* Management Experience Level */}
-                      <div className="space-y-1">
+                      <div className="flex-1 space-y-1">
                         <Label className="text-xs text-muted-foreground">
                           Management Exp.
                         </Label>
                         {isManagementEditing ? (
                           <Select
                             value={String(managementExperience)}
+                            onOpenChange={handleDropdownOpenChange}
                             onValueChange={(value) => {
                               setManagementExperience(parseInt(value))
                             }}
@@ -1946,15 +2074,17 @@ export function PersonalInformationDialog({
                               isManagementUpdating || isUpdating || isSaving
                             }
                           >
-                            <SelectTrigger className="h-8">
+                            <SelectTrigger className="h-8 w-full">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {[1, 2, 3, 4, 5].map((level) => (
-                                <SelectItem key={level} value={String(level)}>
-                                  Level {level}
-                                </SelectItem>
-                              ))}
+                              <SelectGroup>
+                                {[1, 2, 3, 4, 5].map((level) => (
+                                  <SelectItem key={level} value={String(level)}>
+                                    Level {level}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         ) : (
@@ -1967,13 +2097,14 @@ export function PersonalInformationDialog({
                       </div>
 
                       {/* QCD Score */}
-                      <div className="space-y-1">
+                      <div className="flex-1 space-y-1">
                         <Label className="text-xs text-muted-foreground">
                           QCD
                         </Label>
                         {isManagementEditing ? (
                           <Select
                             value={String(managementQcd)}
+                            onOpenChange={handleDropdownOpenChange}
                             onValueChange={(value) => {
                               setManagementQcd(parseInt(value))
                             }}
@@ -1981,15 +2112,17 @@ export function PersonalInformationDialog({
                               isManagementUpdating || isUpdating || isSaving
                             }
                           >
-                            <SelectTrigger className="h-8">
+                            <SelectTrigger className="h-8 w-full">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {[1, 2, 3, 4].map((level) => (
-                                <SelectItem key={level} value={String(level)}>
-                                  {level}
-                                </SelectItem>
-                              ))}
+                              <SelectGroup>
+                                {[1, 2, 3, 4].map((level) => (
+                                  <SelectItem key={level} value={String(level)}>
+                                    {level}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         ) : (
@@ -2000,13 +2133,14 @@ export function PersonalInformationDialog({
                       </div>
 
                       {/* Report/Consult Score */}
-                      <div className="space-y-1">
+                      <div className="flex-1 space-y-1">
                         <Label className="text-xs text-muted-foreground">
                           Report/Consult
                         </Label>
                         {isManagementEditing ? (
                           <Select
                             value={String(managementReportConsult)}
+                            onOpenChange={handleDropdownOpenChange}
                             onValueChange={(value) => {
                               setManagementReportConsult(parseInt(value))
                             }}
@@ -2014,15 +2148,17 @@ export function PersonalInformationDialog({
                               isManagementUpdating || isUpdating || isSaving
                             }
                           >
-                            <SelectTrigger className="h-8">
+                            <SelectTrigger className="h-8 w-full">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {[1, 2, 3, 4].map((level) => (
-                                <SelectItem key={level} value={String(level)}>
-                                  {level}
-                                </SelectItem>
-                              ))}
+                              <SelectGroup>
+                                {[1, 2, 3, 4].map((level) => (
+                                  <SelectItem key={level} value={String(level)}>
+                                    {level}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         ) : (
@@ -2036,13 +2172,13 @@ export function PersonalInformationDialog({
 
                     {/* Total Level - Inline with action buttons */}
                     <div className="flex items-center justify-between border-t pt-3">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm font-medium">
-                          Total Level
+                      <div className="flex items-center gap-1">
+                        <Label className="text-sm text-muted-foreground">
+                          Total Level:
                         </Label>
-                        <Badge className="px-3 py-1 text-base font-semibold">
-                          Level {profile?.managementSkill?.totalLevel || 0}
-                        </Badge>
+                        <span className="text-base font-semibold">
+                          {profile?.managementSkill?.totalLevel || 0}
+                        </span>
                       </div>
                       {isManagementEditing && (
                         <Button
@@ -2084,7 +2220,7 @@ export function PersonalInformationDialog({
           <Button
             className="flex-1"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={isUpdating || isSaving}
           >
             Close
